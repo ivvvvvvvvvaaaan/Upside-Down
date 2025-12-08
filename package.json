@@ -1,0 +1,51 @@
+{
+  "name": "prototype-factory",
+  "version": "0.1.0",
+  "description": "Next.js template for rapidly building clickable prototypes with pre-built UI components",
+  "private": false,
+  "keywords": [
+    "nextjs",
+    "react",
+    "typescript",
+    "tailwindcss",
+    "prototype",
+    "template",
+    "ui-components",
+    "design-system"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/prototype-factory"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/prototype-factory/issues"
+  },
+  "homepage": "https://github.com/yourusername/prototype-factory#readme",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "new:page": "node scripts/new-page.mjs"
+  },
+  "dependencies": {
+    "clsx": "^2.1.0",
+    "lucide-react": "^0.312.0",
+    "next": "14.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tailwind-merge": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5"
+  }
+}

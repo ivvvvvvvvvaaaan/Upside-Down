@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * ===========================================
+ * CSS VARIABLES FOR THEMING
+ * ===========================================
+ * These enable light/dark mode switching.
+ * Components use these via Tailwind config.
+ */
+
+:root {
+  /* Light mode (default) */
+  --surface-primary: #ffffff;
+  --surface-secondary: #fafafa;
+  --surface-tertiary: #f5f5f5;
+  
+  --content-primary: #171717;
+  --content-secondary: #525252;
+  --content-tertiary: #a3a3a3;
+  
+  --border-color: #e5e5e5;
+}
+
+.dark {
+  /* Dark mode */
+  --surface-primary: #171717;
+  --surface-secondary: #262626;
+  --surface-tertiary: #404040;
+  
+  --content-primary: #fafafa;
+  --content-secondary: #a3a3a3;
+  --content-tertiary: #737373;
+  
+  --border-color: #404040;
+}
+
+/*
+ * ===========================================
+ * BASE STYLES
+ * ===========================================
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  @apply bg-surface-primary text-content-primary;
+  font-family: theme('fontFamily.sans');
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/*
+ * ===========================================
+ * UTILITY CLASSES
+ * ===========================================
+ */
+
+/* Hide scrollbar but keep functionality */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Focus ring for accessibility */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+}
+
+.dark .focus-ring {
+  @apply focus:ring-offset-gray-900;
+}
