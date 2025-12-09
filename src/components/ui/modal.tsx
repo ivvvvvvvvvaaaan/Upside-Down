@@ -33,10 +33,13 @@ function Modal({
   }, [onClose])
   
   useEffect(() => {
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape)
-      document.body.style.overflow = 'hidden'
-    }
+    if (!isOpen) return
+    
+    // Only run setup when modal is actually open
+    document.addEventListener('keydown', handleEscape)
+    document.body.style.overflow = 'hidden'
+    
+    // ✅ Cleanup only runs if setup ran
     return () => {
       document.removeEventListener('keydown', handleEscape)
       document.body.style.overflow = 'unset'

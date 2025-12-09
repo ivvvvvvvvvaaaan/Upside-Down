@@ -1,42 +1,36 @@
 import { cn } from '@/lib/utils'
 
 /**
- * HAWKINS DESIGN SYSTEM - Badge Component
+ * Badge Component
  * 
- * Status indicator or label for tagging and categorization.
+ * Displays status indicators and labels.
  * 
- * PRODUCTION DIFFERENCES:
- * This component is a simplified prototype version. Production Hawkins Badge includes:
- * - Explicit token-based color system (Blue400, Gray500, etc.)
- * - Movie phase support (complete, in-progress, UNKNOWN)
- * - startAdornment/endAdornment composition props
- * - Standalone compact boolean (not size enum)
+ * PROPS:
+ * - variant: Semantic color variants (default, success, warning, error, info)
+ * - color: Direct color specification (gray, blue, green, yellow, red) - overrides variant
+ * - compact: Reduced padding for dense layouts
+ * - size: Legacy size prop (deprecated, use compact instead)
  * 
- * MIGRATION PATH:
- * When moving to production, replace variant-based styling with explicit color tokens
- * and use adornment props for icons instead of inline children.
+ * DIFFERENCES FROM PRODUCTION HAWKINS:
+ * - Production uses explicit token names (Blue400, Gray500)
+ * - Production includes startAdornment/endAdornment props
+ * - Production supports movie phase states
+ * - This uses simplified variant system
  * 
  * @example
- * // Variant-based styling (prototype)
  * <Badge variant="success">Active</Badge>
- * 
- * @example
- * // Color-based styling (closer to Hawkins)
  * <Badge color="green">Active</Badge>
- * 
- * @example
- * // Compact variant
  * <Badge compact>New</Badge>
  */
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  /** Visual style variant. Use for semantic states (success, error, etc.) */
+  /** Semantic color variant */
   variant?: 'default' | 'success' | 'warning' | 'error' | 'info'
-  /** Direct color override. Accepts 'gray', 'blue', 'green', 'yellow', 'red'. Takes precedence over variant. */
+  /** Direct color specification (overrides variant) */
   color?: 'gray' | 'blue' | 'green' | 'yellow' | 'red'
-  /** Deprecated: Use compact prop instead */
+  /** Legacy size prop (deprecated) */
   size?: 'sm' | 'md'
-  /** Compact spacing for dense layouts */
+  /** Reduced padding for dense layouts */
   compact?: boolean
 }
 

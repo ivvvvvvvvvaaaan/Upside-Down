@@ -2,44 +2,40 @@ import { cn } from '@/lib/utils'
 import { forwardRef } from 'react'
 
 /**
- * HAWKINS DESIGN SYSTEM - Input Component
+ * Input Component
  * 
- * Text input field with label, error states, and optional icon.
+ * Text input field with label, helper text, error states, and optional icon.
  * 
- * PRODUCTION DIFFERENCES:
- * This component is a simplified prototype version. Production Hawkins Input uses:
- * - Composition pattern (separate InputAdornment components for icons)
- * - More granular state management (isFocused, isHovered)
- * - Character count support with maxLength integration
- * - Clear button functionality for text inputs
+ * PROPS:
+ * - label: Label text displayed above input
+ * - error: Error message (replaces helperText when present)
+ * - helperText: Helper text displayed below input
+ * - icon: Icon element to display inside input
+ * - iconPosition: Position of icon ('left' | 'right')
  * 
- * MIGRATION PATH:
- * When moving to production, replace icon prop with InputAdornment composition:
- * <Input startAdornment={<InputAdornment><SearchIcon /></InputAdornment>} />
+ * DIFFERENCES FROM PRODUCTION HAWKINS:
+ * - Production uses InputAdornment components for icons (composition pattern)
+ * - Production tracks isFocused and isHovered states
+ * - Production includes character count with maxLength integration
+ * - Production includes clear button for text inputs
+ * - This uses simplified icon prop for convenience
  * 
  * @example
- * // Basic input
  * <Input label="Email" placeholder="Enter email" />
- * 
- * @example
- * // Input with icon (prototype convenience)
  * <Input icon={<SearchIcon />} iconPosition="left" placeholder="Search..." />
- * 
- * @example
- * // Input with error
  * <Input label="Password" error="Password is required" />
  */
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  /** Input label text */
+  /** Label text */
   label?: string
-  /** Error message to display */
+  /** Error message (overrides helperText) */
   error?: string
-  /** Helper text displayed below input */
+  /** Helper text */
   helperText?: string
-  /** Icon element (prototype convenience - production uses composition) */
+  /** Icon element */
   icon?: React.ReactNode
-  /** Icon position when icon prop is used */
+  /** Icon position */
   iconPosition?: 'left' | 'right'
 }
 

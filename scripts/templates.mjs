@@ -32,29 +32,33 @@ export const TEMPLATES = {
   search: {
     name: 'Search Center',
     description: 'Centralized search with recent history (Best for: Homepages, Discovery)',
+    features: []
   },
   gallery: {
     name: 'Asset Gallery',
     description: 'Media collection with Grid/List toggle (Best for: Browsing assets)',
+    features: ['hasFilters']
   },
   manager: {
     name: 'File Manager',
     description: 'Tree navigation and file table (Best for: Organizing files)',
+    features: ['hasSidebar', 'hasFilters']
   },
   empty: {
     name: 'Empty Page',
     description: 'Blank canvas',
+    features: []
   },
 }
 
-export function getTemplate(type, { title, componentName }) {
+export function getTemplate(type, { title, componentName, hasFilters = true, hasSidebar = false }) {
   switch (type) {
     case 'search':
       return searchTemplate(title, componentName)
     case 'gallery':
-      return galleryTemplate(title, componentName)
+      return galleryTemplate(title, componentName, { hasFilters })
     case 'manager':
-      return managerTemplate(title, componentName)
+      return managerTemplate(title, componentName, { hasFilters, hasSidebar })
     case 'empty':
     default:
       return emptyTemplate(title, componentName)
@@ -202,7 +206,7 @@ export function ${componentName}View({ title }: { title: string }) {
  * - Implement actual file uploads
  * - Add selection mode with bulk actions
  */
-function galleryTemplate(title, componentName) {
+function galleryTemplate(title, componentName, { hasFilters }) {
   const pageContent = `import { getAssets } from '@/lib/data'
 import { ${componentName}View } from './view'
 
@@ -260,9 +264,13 @@ export function ${componentName}View({ title, assets }: { title: string, assets:
                 >
                   <ListIcon className="w-4 h-4" />
                 </button>
-              </div>
+              </div>${
+                hasFilters
+                  ? `
               <Divider orientation="vertical" className="h-6" />
-              <Button variant="secondary" icon={<Filter className="w-4 h-4" />}>Filter</Button>
+              <Button variant="secondary" icon={<Filter className="w-4 h-4" />}>Filter</Button>`
+                  : ''
+              }
             </Stack>
           </Stack>
         </Stack>
@@ -362,7 +370,7 @@ export function ${componentName}View({ title, assets }: { title: string, assets:
  * - Add context menus for file actions
  * - Connect to real file storage API
  */
-function managerTemplate(title, componentName) {
+function managerTemplate(title, componentName, { hasFilters, hasSidebar }) {
   const pageContent = `import { getAssets } from '@/lib/data'
 import { ${componentName}View } from './view'
 
@@ -387,7 +395,7 @@ import type { Asset } from '@/lib/data'
 
 export function ${componentName}View({ title, assets }: { title: string, assets: Asset[] }) {
   return (
-    <div className="flex h-screen bg-surface-0">
+    <div className="flex h-screen bg-surface-0">${hasSidebar ? `
       
       {/* Sidebar */}
       <div className="w-64 border-r border-border-subtle p-4 flex flex-col gap-6">
@@ -405,22 +413,23 @@ export function ${componentName}View({ title, assets }: { title: string, assets:
           <SidebarItem label="Sales" indent />
           <SidebarItem label="Legal" indent />
         </Stack>
-      </div>
+      </div>` : ''}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         
         {/* Toolbar */}
-        <div className="h-16 border-b border-border-subtle flex items-center justify-between px-6 bg-surface-0">
+        <div className="h-16 border-b border-border-subtle flex items-center justify-between px-6 bg-surface-0">${hasSidebar ? `
           <Stack direction="horizontal" align="center" spacing="sm">
             <Text variant="body-2" color="secondary">All Files</Text>
             <ChevronRight className="w-4 h-4 text-foreground-subtle" />
             <Text variant="body-2" weight="medium">Marketing</Text>
-          </Stack>
-          <Stack direction="horizontal" spacing="sm">
+          </Stack>` : `
+          <Text variant="headline-2">{title}</Text>`}
+          <Stack direction="horizontal" spacing="sm">${hasFilters ? `
              <div className="w-64">
                <Input placeholder="Search..." icon={<Search className="w-4 h-4" />} iconPosition="left" />
-             </div>
+             </div>` : ''}
              <Button variant="primary" icon={<Folder className="w-4 h-4" />}>New Folder</Button>
           </Stack>
         </div>

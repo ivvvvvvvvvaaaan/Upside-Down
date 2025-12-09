@@ -1,30 +1,33 @@
 /**
- * HAWKINS DESIGN SYSTEM - Button Component
+ * Button Component
  * 
- * PRODUCTION DIFFERENCES:
- * This component is a simplified prototype version. Production Hawkins Button includes:
- * - Additional variants: genai-primary, genai-secondary, icon-reverse, tertiary-reverse
- * - executing/loading/disabled state management with loading spinners
- * - Tooltip integration via tooltipProps
- * - href/to props for automatic Link/RouterLink composition
- * - Extended icon support (leftIcon, rightIcon instead of single icon)
- * - standalone compact boolean (independent of size)
+ * Interactive button with multiple variants and sizes.
  * 
- * MIGRATION PATH:
- * When moving to production, add loading state handlers and integrate routing
- * props for seamless navigation. Consider tooltip prop for accessibility.
+ * VARIANTS:
+ * - primary: Main actions (CTA, submit forms)
+ * - secondary: Supporting actions (cancel, back)
+ * - destructive: Dangerous actions (delete, remove)
+ * - tertiary: Low emphasis actions (links, text buttons)
+ * - icon: Icon-only buttons (toolbar actions)
  * 
- * STYLING RULES:
- * - Use values from tailwind.config.ts only
- * - Avoid arbitrary values for colors, font sizes, etc.
- * - Follow semantic naming conventions
+ * PROPS:
+ * - variant: Visual style (primary, secondary, destructive, tertiary, icon)
+ * - size: Button dimensions (default, compact, icon)
+ * - compact: Boolean alternative to size="compact"
+ * - icon: React node to display before button text
+ * - dropdown: Displays chevron icon after text
  * 
- * AI USAGE GUIDE:
- * - Primary: Main actions (CTA, submit forms)
- * - Secondary: Secondary actions (cancel, back)
- * - Destructive: Dangerous actions (delete, remove)
- * - Tertiary: Low emphasis actions (links, text buttons)
- * - Icon: Icon-only buttons (toolbar actions)
+ * DIFFERENCES FROM PRODUCTION HAWKINS:
+ * - Production includes genai-primary, genai-secondary, icon-reverse, tertiary-reverse variants
+ * - Production supports executing/loading states with spinners
+ * - Production includes tooltipProps for accessibility
+ * - Production has href/to props for automatic Link/RouterLink composition
+ * - Production uses leftIcon/rightIcon instead of single icon prop
+ * 
+ * STYLING:
+ * - Uses tokens from tailwind.config.ts
+ * - Avoids arbitrary color values
+ * - Follows semantic naming conventions
  */
 
 import * as React from "react"
@@ -67,30 +70,12 @@ const buttonVariants = cva(
 )
 
 /**
- * Button component props extending native button attributes
- * 
- * @interface ButtonProps
- * @param {ButtonVariant} variant - Visual style variant. Use 'primary' for main actions, 'secondary' for supporting actions
- * @param {ButtonSize} size - Button size. 'default' for most cases, 'icon' for icon-only buttons
- * @param {boolean} compact - Apply compact spacing (independent of size). Closer to Hawkins API.
- * @param {boolean} asChild - Render as child component (useful for Next.js Link integration)
- * @param {React.ReactNode} icon - Icon element to display before text
- * @param {boolean} dropdown - Add dropdown chevron icon after text
+ * Button component props
  * 
  * @example
- * // Primary action button
  * <Button variant="primary">Save Changes</Button>
- * 
- * @example  
- * // Secondary button with icon
  * <Button variant="secondary" icon={<PlusIcon />}>Add Item</Button>
- * 
- * @example
- * // Icon-only button
  * <Button variant="icon" size="icon"><TrashIcon /></Button>
- * 
- * @example
- * // Compact button (Hawkins-style)
  * <Button compact>Compact Action</Button>
  */
 export interface ButtonProps

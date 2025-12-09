@@ -27,6 +27,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "wizard": "node scripts/wizard.mjs",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "new:page": "node scripts/new-page.mjs",
