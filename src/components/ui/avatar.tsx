@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import Image from 'next/image'
 
 /*
  * ===========================================
@@ -27,6 +28,14 @@ function Avatar({
     md: 'w-10 h-10 text-base',
     lg: 'w-12 h-12 text-lg',
     xl: 'w-16 h-16 text-xl',
+  }
+
+  // Helper to get pixel value for next/image sizes prop
+  // Tailwind unit (e.g. 10) * 4 = pixels (40px)
+  const getPixelSize = (s: keyof typeof sizes) => {
+    const match = sizes[s].match(/w-(\d+)/)
+    const unit = match ? parseInt(match[1]) : 10
+    return `${unit * 4}px`
   }
   
   // Generate initials from name
@@ -60,10 +69,12 @@ function Avatar({
       {...props}
     >
       {src ? (
-        <img 
+        <Image 
           src={src} 
           alt={name || 'Avatar'} 
-          className="w-full h-full object-cover"
+          fill
+          className="object-cover"
+          sizes={getPixelSize(size)}
         />
       ) : (
         <span>{initials}</span>

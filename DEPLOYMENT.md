@@ -64,6 +64,48 @@ git push -u origin main
 
 ---
 
+## Setting up Real Data (Supabase)
+
+If you want your prototype to save data (instead of resetting on refresh), follow these steps:
+
+1. **Create a Supabase Project:**
+   - Go to [supabase.com](https://supabase.com) and sign up.
+   - Click "New Project".
+   - Name it (e.g., "Prototype DB").
+   - Set a database password (save it somewhere safe!).
+
+2. **Get API Keys:**
+   - In your project dashboard, go to **Settings** (gear icon) -> **API**.
+   - Find `Project URL` and `anon public` key.
+
+3. **Add to Vercel (Production):**
+   - Go to your project on Vercel.
+   - Click **Settings** -> **Environment Variables**.
+   - Add two variables:
+     - `NEXT_PUBLIC_SUPABASE_URL`: (Paste your URL)
+     - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: (Paste your anon key)
+   - Redeploy your project for changes to take effect.
+
+4. **Add Locally (Development):**
+   - Create a file named `.env.local` in your project folder.
+   - Add the same variables there.
+
+5. **Create the Table:**
+   - Go to Supabase -> **SQL Editor**.
+   - Run this query:
+     ```sql
+     create table nodes (
+       id uuid default gen_random_uuid() primary key,
+       parent_id uuid references nodes(id),
+       type text,
+       name text,
+       meta jsonb default '{}'::jsonb,
+       created_at timestamptz default now()
+     );
+     ```
+
+---
+
 ## Daily Workflow
 
 ### Saving Your Work
