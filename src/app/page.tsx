@@ -1,14 +1,14 @@
-'use client'
-
+import fs from 'fs'
+import path from 'path'
 import Link from 'next/link'
-import { Stack, Text, Card, Button, Badge } from '@/components/ui'
-import { Rocket, BookOpen, Zap, ExternalLink } from 'lucide-react'
+import { Stack, Text, Card, Badge } from '@/components/ui'
+import { Rocket, BookOpen, Zap, FolderOpen, Sparkles } from 'lucide-react'
 
 /*
  * ===========================================
  * PROTOTYPE FACTORY HOME
  * ===========================================
- * Landing page with links to examples and docs.
+ * Landing page with auto-discovered projects and examples.
  */
 
 const examples = [
@@ -26,7 +26,44 @@ const examples = [
   },
 ]
 
+// Auto-discover all user-created pages
+function getProjects() {
+  const appDir = path.join(process.cwd(), 'src', 'app')
+  const entries = fs.readdirSync(appDir, { withFileTypes: true })
+
+  // Filter out system folders and files
+  const systemFolders = ['api', 'examples', 'fonts', 'favicon.ico']
+
+  const projects = entries
+    .filter(entry => {
+      if (!entry.isDirectory()) return false
+      if (systemFolders.includes(entry.name)) return false
+      if (entry.name.startsWith('_')) return false
+
+      // Check if it has a page.tsx file
+      const pagePath = path.join(appDir, entry.name, 'page.tsx')
+      return fs.existsSync(pagePath)
+    })
+    .map(entry => {
+      const slug = entry.name
+      const title = slug
+        .split('-')
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ')
+
+      return {
+        name: title,
+        slug,
+        href: `/${slug}`,
+      }
+    })
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  return projects
+}
+
 export default function Home() {
+  const projects = getProjects()
   return (
     <div className="max-w-4xl mx-auto px-6 py-12">
       <Stack spacing="xl">
@@ -52,15 +89,58 @@ export default function Home() {
             </Stack>
             <Stack spacing="sm">
               <code className="block bg-surface-6 text-foreground-inverse p-4 rounded-lg text-sm font-mono overflow-x-auto">
-                <span className="text-foreground-inverse-dim"># Create a new prototype page</span>{'\n'}
-                npm run new:page my-feature
+                <span className="text-foreground-inverse-dim"># Run the interactive wizard</span>{'\n'}
+                npm run wizard
               </code>
               <Text variant="body-2" color="secondary">
-                This creates a new page at <code className="text-primary">/my-feature</code> with boilerplate ready to customize.
+                The wizard helps you create new pages, start the dev server, or deploy your changes.
               </Text>
             </Stack>
           </Stack>
         </Card>
+
+        {/* Your Projects */}
+        <Stack spacing="md">
+          <Stack direction="horizontal" spacing="sm" align="center">
+            <FolderOpen className="w-5 h-5 text-primary" />
+            <Text variant="headline-2">Your Projects</Text>
+            {projects.length > 0 && <Badge color="primary" compact>{projects.length}</Badge>}
+          </Stack>
+
+          {projects.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {projects.map((project) => (
+                <Link key={project.href} href={project.href}>
+                  <Card variant="elevated" padding="lg" className="h-full hover:shadow-lg transition-shadow cursor-pointer group">
+                    <Stack spacing="sm">
+                      <Stack direction="horizontal" justify="between" align="center">
+                        <Text variant="headline-4">{project.name}</Text>
+                        <Sparkles className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </Stack>
+                      <Text variant="caption" color="secondary" className="font-mono">
+                        {project.href}
+                      </Text>
+                    </Stack>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <Card variant="outlined" padding="lg">
+              <Stack spacing="sm" align="center" className="text-center py-8">
+                <div className="w-12 h-12 rounded-full bg-surface-highlight flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-foreground-dim" />
+                </div>
+                <Stack spacing="xs">
+                  <Text variant="body-1" weight="medium">No projects yet</Text>
+                  <Text variant="body-2" color="secondary">
+                    Run <code className="text-primary">npm run wizard</code> to create your first prototype
+                  </Text>
+                </Stack>
+              </Stack>
+            </Card>
+          )}
+        </Stack>
 
         {/* Examples */}
         <Stack spacing="md">

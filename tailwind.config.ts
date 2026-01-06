@@ -6,6 +6,19 @@ const config: Config = {
   content: [
     './src/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  safelist: [
+    // Ensure design system typography classes are always generated
+    'text-display-1',
+    'text-display-2',
+    'text-headline-1',
+    'text-headline-2',
+    'text-headline-3',
+    'text-headline-4',
+    'text-body-1',
+    'text-body-2',
+    'text-caption',
+    'text-overline',
+  ],
   theme: {
     extend: {
       // ... (colors object remains the same)
@@ -298,6 +311,17 @@ const config: Config = {
         "6xl": ["52px", "1.25"],
         "7xl": ["68px", "1.25"],
         "8xl": ["88px", "1.25"],
+        // Design system typography variants
+        "display-1": ["56px", "1.25"],
+        "display-2": ["48px", "1.25"],
+        "headline-1": ["32px", "1.25"],
+        "headline-2": ["24px", "1.25"],
+        "headline-3": ["20px", "1.25"],
+        "headline-4": ["18px", "1.25"],
+        "body-1": ["16px", "1.25"],
+        "body-2": ["14px", "1.25"],
+        "caption": ["12px", "1.25"],
+        "overline": ["10px", "1.25"],
       },
       fontWeight: {
         normal: '400',

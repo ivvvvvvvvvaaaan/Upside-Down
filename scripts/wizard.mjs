@@ -9,11 +9,12 @@ import { spawn, execSync } from 'child_process'
 import fs from 'fs'
 import { ask } from './utils.mjs'
 
-// ANSI Colors
+// ANSI Colors - optimized for dark terminals
 const colors = {
   cyan: '\x1b[36m',
   bright: '\x1b[1m',
-  dim: '\x1b[2m',
+  gray: '\x1b[90m',    // Bright black (better than dim on dark backgrounds)
+  white: '\x1b[97m',   // Bright white
   reset: '\x1b[0m'
 }
 
