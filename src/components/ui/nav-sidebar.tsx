@@ -20,6 +20,7 @@ export function NavSidebar({ className }: NavSidebarProps) {
   const pathname = usePathname()
 
   const navItems = [
+    { href: '/media-library', label: 'Media Library' },
     { href: '/collection-cards', label: 'Collections' },
     { href: '/assets', label: 'Assets' },
   ]

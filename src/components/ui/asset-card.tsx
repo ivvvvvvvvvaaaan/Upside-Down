@@ -36,10 +36,11 @@ import type { Asset } from '@/lib/data'
  */
 
 export interface AssetCardProps {
-  asset: Asset
+  asset?: Asset
   onClick?: (asset: Asset) => void
   onMenuClick?: (asset: Asset) => void
   className?: string
+  loading?: boolean
 }
 
 export function AssetCard({
@@ -47,7 +48,29 @@ export function AssetCard({
   onClick,
   onMenuClick,
   className,
+  loading = false,
 }: AssetCardProps) {
+  // Loading state with breathing animation
+  if (loading || !asset) {
+    return (
+      <div className={cn('flex flex-col w-full p-1 animate-breathe', className)}>
+        {/* Thumbnail skeleton - 16:9 aspect ratio */}
+        <div className="w-full aspect-video rounded mb-2 bg-surface-3" />
+        {/* Content skeleton */}
+        <div className="flex items-start justify-between gap-2 px-1 pb-1">
+          <div className="flex-1 flex flex-col gap-1">
+            {/* Title skeleton */}
+            <div className="h-4 w-3/4 rounded bg-surface-3" />
+            {/* Tag + metadata skeleton */}
+            <div className="flex items-center gap-2">
+              <div className="h-3 w-12 rounded bg-surface-3" />
+              <div className="h-3 w-20 rounded bg-surface-3" />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
   const hasDuration = asset.type === 'shot' || asset.type === 'video'
   const duration = asset.type === 'shot'
     ? asset.shotMeta?.duration
@@ -72,7 +95,7 @@ export function AssetCard({
         break
     }
 
-    return <Tag type="neutral" size="compact" variant="fill">{tagLabel}</Tag>
+    return <Tag>{tagLabel}</Tag>
   }
 
   // Render metadata line (SHOT type only) - label-0-regular (10px/15px/400)
@@ -94,10 +117,10 @@ export function AssetCard({
   // Render thumbnail based on type
   const renderThumbnail = () => {
     if (asset.type === 'image' && asset.imageMeta?.imageCount) {
-      // Multi-image grid with white padding (from Figma spec)
+      // Multi-image grid
       return (
         <div className="absolute inset-0">
-          <div className="grid grid-cols-2 gap-1 p-2 h-full">
+          <div className="grid grid-cols-2 gap-1 h-full">
             {[...Array(Math.min(4, asset.imageMeta.imageCount))].map((_, i) => (
               <div key={i} className="relative bg-surface-2 rounded-sm overflow-hidden">
                 {asset.thumbnail && (
@@ -129,13 +152,13 @@ export function AssetCard({
   }
 
   return (
-    <button
+    <div
       onClick={() => onClick?.(asset)}
       className={cn(
         'group relative flex flex-col',
-        'w-full text-left',
+        'w-full cursor-pointer',
         'bg-surface-flat hover:bg-surface-low',
-        'rounded p-0',
+        'rounded p-1',
         'transition-colors',
         className
       )}
@@ -144,18 +167,18 @@ export function AssetCard({
       <div className="relative w-full aspect-video rounded overflow-hidden mb-2">
         {renderThumbnail()}
 
-        {/* Duration badge - bottom-right overlay - tag--text-small (10px/15px/600) */}
+        {/* Duration badge - bottom-right overlay - Hawkins text-label-0-bold (10px/15px/600) */}
         {hasDuration && duration && (
-          <div className="absolute bottom-2 right-2 px-1 py-0 bg-black/60 rounded">
-            <span className="text-tag-small text-white">
+          <div className="absolute bottom-2 right-2 px-1 bg-black/60 rounded flex items-center">
+            <span className="text-label-0-bold text-white leading-none">
               {duration}
             </span>
           </div>
         )}
       </div>
 
-      {/* Content area - matching Figma spacing */}
-      <div className="flex items-start justify-between gap-2 px-2 pb-2">
+      {/* Content area */}
+      <div className="flex items-start justify-between gap-2">
         {/* Left: Title, Tag + Metadata row */}
         <div className="flex-1 min-w-0 flex flex-col gap-1">
           {/* Title - 1st line with hover state - body-0-bold (13px/20px/600) */}
@@ -173,16 +196,16 @@ export function AssetCard({
         {/* Right: Menu button (appears on hover) */}
         <Button
           variant="icon"
-          size="icon"
+          compact
           onClick={(e) => {
             e.stopPropagation()
             onMenuClick?.(asset)
           }}
-          className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-1"
         >
           <MoreVertical className="w-4 h-4" />
         </Button>
       </div>
-    </button>
+    </div>
   )
 }

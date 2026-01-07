@@ -42,7 +42,7 @@ export function AssetsView({ assets, collections }: AssetsViewProps) {
 
           {/* Header */}
           <div>
-            <Text variant="headline-1" className="mb-2">Media Library</Text>
+            <Text variant="headline-1" weight="bold" className="mb-2">Assets</Text>
             <Text variant="body-2" color="secondary">
               Browse shots, videos, images, and documents
             </Text>

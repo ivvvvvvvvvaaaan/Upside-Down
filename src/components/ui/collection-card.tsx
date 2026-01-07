@@ -1,7 +1,6 @@
 import { cn } from '@/lib/utils'
 import { Avatar } from './avatar'
 import { Card } from './card'
-import { Text } from './text'
 import { MapPin, Film } from 'lucide-react'
 import Image from 'next/image'
 
@@ -11,7 +10,16 @@ import Image from 'next/image'
  * ===========================================
  * Card component for displaying collections with thumbnails.
  * Supports multiple states, asset count variants, and collection types.
- * 
+ *
+ * TOKENS USED (Hawkins only - NO hardcoded values):
+ * - text-body-2-bold: Collection title (16px/24px/600)
+ * - text-label-1-regular: Asset count metadata (12px/18px/400)
+ * - text-body-0-regular: "No assets" state (13px/20px/400)
+ * - text-foreground: Default text color
+ * - text-foreground-subtle: Secondary text (metadata)
+ * - text-foreground-system-link: Link color on hover (blue)
+ * - bg-surface-low: Card background on hover
+ *
  * Variants:
  * - state: Normal, Hover, Selected, Focused, Loading, etc.
  * - numberOfAssets: Many (1 large + 2 small + "+X"), Two (1 large + 1 small), One (1 large)
@@ -80,11 +88,22 @@ export function CollectionCard({
     state === 'Hover Selected' || 
     state === 'HoverFocused_CharCollection'
   
-  // Loading state
+  // Loading state with breathing animation
   if (state === 'Loading') {
     return (
-      <div className={cn('h-[204px] relative w-full', className)}>
-        <Card variant="outlined" className="h-full w-full" />
+      <div className={cn('flex flex-col gap-4 min-h-[204px] p-1 relative w-full animate-breathe', className)}>
+        {/* Thumbnail skeleton */}
+        <div className="h-[124px] w-full rounded bg-surface-3" />
+        {/* Footer skeleton */}
+        <div className="flex gap-4 items-center">
+          {/* Avatar skeleton */}
+          <div className="w-8 h-8 rounded-full bg-surface-3" />
+          {/* Text skeleton */}
+          <div className="flex flex-col gap-2 flex-1">
+            <div className="h-4 w-3/4 rounded bg-surface-3" />
+            <div className="h-3 w-1/2 rounded bg-surface-3" />
+          </div>
+        </div>
       </div>
     )
   }
@@ -101,9 +120,9 @@ export function CollectionCard({
     if (numberOfAssets === 'None') {
       return (
         <div className="h-[124px] relative rounded shrink-0 w-full bg-surface-2 border border-border-subtle border-dashed flex items-center justify-center">
-          <Text variant="caption" color="secondary">
+          <div className="text-body-0-regular text-foreground-subtle">
             No assets
-          </Text>
+          </div>
         </div>
       )
     }
@@ -209,13 +228,9 @@ export function CollectionCard({
                   </div>
                 </div>
                 {remainingAssets > 0 && (
-                  <Text
-                    variant="body-2"
-                    weight="semibold"
-                    className="absolute left-[calc(50%-16px)] text-foreground text-nowrap top-[calc(50%-12px)]"
-                  >
+                  <div className="absolute left-[calc(50%-16px)] text-foreground text-nowrap top-[calc(50%-12px)] text-body-2-bold">
                     +{remainingAssets}
-                  </Text>
+                  </div>
                 )}
               </>
             ) : (
@@ -239,20 +254,18 @@ export function CollectionCard({
             <MapPin className="w-4 h-4 text-foreground-dim" />
           </div>
           <div className="flex flex-col items-start flex-1 min-w-0">
-            <Text 
-              variant="body-2" 
-              weight="semibold" 
+            <div
               className={cn(
-                'break-words',
+                'text-body-2-bold text-foreground break-words',
                 linkClass,
                 isHovered && 'underline text-foreground-system-link'
               )}
             >
               {title}
-            </Text>
-            <Text variant="caption" color="secondary">
+            </div>
+            <div className="text-label-1-regular text-foreground-subtle">
               {assetCount} assets
-            </Text>
+            </div>
           </div>
         </div>
       )
@@ -265,16 +278,12 @@ export function CollectionCard({
             <Film className="w-4 h-4 text-foreground-dim" />
           </div>
           <div className="flex flex-col items-start flex-1 min-w-0">
-            <Text 
-              variant="caption" 
-              weight="semibold"
-              className="break-words"
-            >
+            <div className="text-body-2-bold text-foreground break-words">
               {title}
-            </Text>
-            <Text variant="caption" color="secondary">
+            </div>
+            <div className="text-label-1-regular text-foreground-subtle">
               {assetCount} assets
-            </Text>
+            </div>
           </div>
         </div>
       )
@@ -283,27 +292,25 @@ export function CollectionCard({
     // Character type (default) - uses Avatar
     return (
       <div className="flex gap-4 items-center w-full">
-        <Avatar 
-          src={avatarSrc} 
-          name={avatarName || title} 
+        <Avatar
+          src={avatarSrc}
+          name={avatarName || title}
           size="sm"
           className="shrink-0"
         />
         <div className="flex flex-col items-start flex-1 min-w-0">
-          <Text 
-            variant="body-2" 
-            weight="semibold" 
+          <div
             className={cn(
-              'break-words',
+              'text-body-2-bold text-foreground break-words',
               linkClass,
               isHovered && 'underline text-foreground-system-link'
             )}
           >
             {title}
-          </Text>
-          <Text variant="caption" color="secondary">
+          </div>
+          <div className="text-label-1-regular text-foreground-subtle">
             {assetCount} assets
-          </Text>
+          </div>
         </div>
       </div>
     )

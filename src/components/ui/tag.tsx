@@ -9,88 +9,71 @@ import { cn } from '@/lib/utils'
  * Documentation: https://sites.google.com/netflix.com/hawkins-professional/components/tags
  *
  * SIZES:
- * - Compact: 10px font (text-overline), 4px horizontal/0px vertical padding (px-1 py-0), no icons
- * - Standard: 13px font (text-caption), 8px horizontal/0px vertical padding (px-2 py-0), optional icons
+ * - compact: text-label-0-bold (10px/15px/600), px-1 (4px), py-0 (0px)
+ * - standard: text-body-0-bold (13px/20px/600), px-2 (8px), py-0 (0px)
  *
  * TYPES (semantic colors):
- * - Announcement: Purple (indigo-500)
- * - Informative: Blue (blue-500)
- * - Neutral: Dark gray (gray-600/gray-400 - consistent rgb(65,65,65))
- * - Positive: Green (green-500)
- * - Notice: Yellow (yellow-500)
- * - Negative: Red (red-500)
+ * - neutral: Gray (gray-600/gray-400 for theme support)
+ * - positive: Green (green-500)
+ * - negative: Red (red-500)
+ * - notice: Yellow (yellow-500)
+ * - informative: Blue (blue-500)
+ * - announcement: Purple (indigo-500)
  *
- * STYLES:
- * - Fill: Colored background, white text
- * - Border: Border only, dark text
+ * VARIANTS:
+ * - fill: Colored background, white text (default)
+ * - border: Border only, foreground text
  *
- * TOKENS USED (Hawkins only):
- * - Typography: text-overline (10px font / 15px line), text-caption (13px font / 20px line), font-semibold
- * - Colors: Semantic tag colors (gray-600, indigo-500, blue-500, etc.)
- * - Spacing: space-4 (4px) for compact, space-8 (8px) for standard, space-0 (0px) vertical
- * - Border: border-radius-4 (4px rounded)
+ * TOKENS USED (Hawkins only - NO hardcoded values):
+ * - Typography: text-label-0-bold (10px/15px/600), text-body-0-bold (13px/20px/600)
+ * - Colors: bg-{color}-500, border-{color}-500, text-foreground, text-white
+ * - Spacing: px-1 (4px), px-2 (8px), py-0 (0px)
+ * - Border: rounded (4px)
  */
 
+const FILL_COLORS = {
+  neutral: 'bg-gray-600 dark:bg-gray-400 text-white',
+  positive: 'bg-green-500 text-white',
+  negative: 'bg-red-500 text-white',
+  notice: 'bg-yellow-500 text-white',
+  informative: 'bg-blue-500 text-white',
+  announcement: 'bg-indigo-500 text-white',
+} as const
+
+const BORDER_COLORS = {
+  neutral: 'border border-gray-600 dark:border-gray-400 text-foreground',
+  positive: 'border border-green-500 text-foreground',
+  negative: 'border border-red-500 text-foreground',
+  notice: 'border border-yellow-500 text-foreground',
+  informative: 'border border-blue-500 text-foreground',
+  announcement: 'border border-indigo-500 text-foreground',
+} as const
+
 export interface TagProps extends React.HTMLAttributes<HTMLSpanElement> {
-  type?: 'announcement' | 'informative' | 'neutral' | 'positive' | 'notice' | 'negative'
+  children: React.ReactNode
   size?: 'compact' | 'standard'
+  type?: 'neutral' | 'positive' | 'negative' | 'notice' | 'informative' | 'announcement'
   variant?: 'fill' | 'border'
 }
 
 export function Tag({
   className,
   children,
-  type = 'neutral',
   size = 'compact',
+  type = 'neutral',
   variant = 'fill',
   ...props
 }: TagProps) {
-  // Typography based on size (Hawkins spacing tokens - exact Figma specs)
-  const sizeStyles = {
-    compact: 'text-tag-small px-1 py-0',  // 10px font, 15px line, 600 weight (from Figma tag--text-small), 4px horizontal, 0px vertical
-    standard: 'text-body-0-bold px-2 py-0',  // 13px font, 20px line, 600 weight (from Figma), 8px horizontal, 0px vertical
-  }
-
-  // Colors based on type and style
-  // Note: neutral uses gray-600 (light) / gray-400 (dark) for consistent rgb(65,65,65) across themes
-  const typeStyles = {
-    announcement: {
-      fill: 'bg-indigo-500 text-white',
-      border: 'border border-indigo-500 text-foreground',
-    },
-    informative: {
-      fill: 'bg-blue-500 text-white',
-      border: 'border border-blue-500 text-foreground',
-    },
-    neutral: {
-      fill: 'bg-gray-600 dark:bg-gray-400 text-white',
-      border: 'border border-gray-600 dark:border-gray-400 text-foreground',
-    },
-    positive: {
-      fill: 'bg-green-500 text-white',
-      border: 'border border-green-500 text-foreground',
-    },
-    notice: {
-      fill: 'bg-yellow-500 text-white',
-      border: 'border border-yellow-500 text-foreground',
-    },
-    negative: {
-      fill: 'bg-red-500 text-white',
-      border: 'border border-red-500 text-foreground',
-    },
-  }
+  const colorClasses = variant === 'fill' ? FILL_COLORS[type] : BORDER_COLORS[type]
 
   return (
     <span
       className={cn(
-        // Layout
         'inline-flex items-center justify-center',
-        // Border radius - 4px
-        'rounded',
-        // Size-specific styles
-        sizeStyles[size],
-        // Type and variant-specific colors
-        typeStyles[type][variant],
+        'py-0 rounded',
+        colorClasses,
+        size === 'compact' && 'text-label-0-bold px-1',
+        size === 'standard' && 'text-body-0-bold px-2',
         className
       )}
       {...props}

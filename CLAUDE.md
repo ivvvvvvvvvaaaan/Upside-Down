@@ -15,10 +15,20 @@ This document contains rules and guidelines for AI assistants (Claude) working o
    - ✅ Always use Hawkins tokens: `px-2`, `text-caption`, `bg-gray-600`
 
 2. **Use Design System Tokens**
-   - **Colors**: Use semantic color tokens from `tailwind.config.ts`
-     - `text-foreground`, `text-foreground-dim`, `text-foreground-subtle`
-     - `bg-surface-flat`, `bg-surface-low`, `bg-surface-high`
-     - Semantic colors: `gray-600`, `indigo-500`, `blue-500`, etc.
+   - **Colors**: Use Hawkins color tokens from `globals.css` (see `COLORS.md` for complete reference)
+     - **Foreground (Text)**: `text-foreground`, `text-foreground-dim`, `text-foreground-subtle`
+       - System colors: `text-foreground-system-error`, `text-foreground-system-link`, `text-foreground-system-success`, `text-foreground-system-warning`
+       - Inverse (dark bg): `text-foreground-inverse`, `text-foreground-inverse-dim`
+     - **Surface (Backgrounds)**: `bg-surface-flat`, `bg-surface-low`, `bg-surface-mid`, `bg-surface-high`
+       - Interactive: `bg-surface-interactive`, `hover:bg-surface-interactive-hover`
+       - Selection: `bg-surface-selected`, `bg-surface-selected-subtle`
+       - System: `bg-surface-system-error`, `bg-surface-system-success`, `bg-surface-system-warning`
+     - **Border**: `border-border`, `border-border-subtle`, `border-border-dim`
+       - Interactive: `border-selected`, `hover:border-selected-hover`
+       - System: `border-system-error`, `border-system-focus`, `border-system-success`
+     - **Semantic Palette**: `gray-600`, `indigo-500`, `blue-500`, `red-500`, `green-500`, `yellow-500`
+
+     **Important**: Use semantic tokens (foreground/surface/border) for theme support. Use palette colors (gray/indigo/etc) for specific cases only.
 
    - **Typography**: Use Hawkins typography tokens from `globals.css` (see `TYPOGRAPHY.md` for complete reference)
      - **Body Text**: `text-body-0-bold`, `text-body-0-regular`, `text-body-1-bold`, `text-body-1-regular`, `text-body-2-bold`, `text-body-2-regular`
@@ -55,41 +65,62 @@ This document contains rules and guidelines for AI assistants (Claude) working o
 
 ```tsx
 // ❌ BAD - Hardcoded values
-<div className="px-[14px] py-[2px] text-[#414141]" style={{ fontSize: '10px' }}>
+<div
+  className="px-[14px] py-[2px] text-[#414141] bg-[#ffffff]"
+  style={{ fontSize: '10px', border: '1px solid #808080' }}
+>
   Content
 </div>
 
 // ✅ GOOD - Hawkins tokens
-<div className="px-2 py-0 text-foreground text-label-0-regular">
+<div className="px-2 py-0 text-foreground text-label-0-regular bg-surface-flat border border-border">
   Content
 </div>
 
-// Asset card title example
-<div className="text-body-0-bold text-foreground group-hover:text-foreground-system-link">
+// ❌ BAD - Direct palette colors without semantic meaning
+<div className="text-indigo-500 bg-gray-100">
+  Interactive element
+</div>
+
+// ✅ GOOD - Semantic tokens with theme support
+<div className="text-foreground-system-link bg-surface-interactive hover:bg-surface-interactive-hover">
+  Interactive element
+</div>
+
+// Asset card title with hover state
+<div className="text-body-0-bold text-foreground group-hover:text-foreground-system-link group-hover:underline">
   Asset Title
 </div>
 
-// Tag example
+// Tag component with theme support
 <span className="text-tag-small px-1 py-0 bg-gray-600 dark:bg-gray-400 text-white rounded">
   Shot
 </span>
+
+// Error state with system colors
+<div className="bg-surface-system-error-subtle border border-system-error p-2 rounded">
+  <span className="text-foreground-system-error text-body-1-regular">Error message</span>
+</div>
 ```
 
 #### Reference Files:
 
-- **Typography system**: `TYPOGRAPHY.md` - Complete Hawkins typography reference
+- **Typography system**: `TYPOGRAPHY.md` - Complete Hawkins typography tokens (60+ variants)
+- **Color system**: `COLORS.md` - Complete Hawkins color tokens (Border/Foreground/Surface)
 - **Design system tokens**: `tailwind.config.ts` - Safelist and theme configuration
-- **Typography utilities**: `src/app/globals.css` - All typography class definitions
-- **Theme system**: `THEME_SYSTEM.md` - Color and theme documentation
+- **Design system utilities**: `src/app/globals.css` - All typography and color definitions
+- **Theme system**: `THEME_SYSTEM.md` - Theme switching and color mode documentation
 - **Existing components**: `src/components/ui/` - Component patterns and examples
 
 #### Enforcement:
 
 If you find yourself about to use a hardcoded value, STOP and:
-1. Check `tailwind.config.ts` for the appropriate token
-2. Check existing components for similar patterns
-3. Consult Figma design specs to verify correct tokens
-4. Ask the user if the appropriate token is unclear
+1. **Check documentation**: Review `TYPOGRAPHY.md` and `COLORS.md` for available tokens
+2. **Check config**: Look in `tailwind.config.ts` for the appropriate token
+3. **Check existing patterns**: Review similar components for established patterns
+4. **Consult Figma**: Verify design specs match Hawkins tokens
+5. **Use semantic tokens**: Prefer `text-foreground` over `text-gray-900` for theme support
+6. **Ask if unclear**: Request clarification if the appropriate token is ambiguous
 
 **Remember:** Consistency with the Hawkins Design System is more important than pixel-perfect accuracy with arbitrary values.
 

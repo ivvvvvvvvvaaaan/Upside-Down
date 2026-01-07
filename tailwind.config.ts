@@ -77,6 +77,15 @@ const config: Config = {
 
     // Component-Specific Aliases
     'text-tag-small',
+
+    // Simplified Hawkins tokens (also in fontSize config)
+    'text-body-0',
+    'text-label-0',
+    'text-label-1',
+    'text-body-2',
+
+    // Animations
+    'animate-breathe',
   ],
   theme: {
     extend: {
@@ -317,20 +326,10 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "fade-in": {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-        "slide-up": {
-          "0%": { transform: "translateY(10px)", opacity: "0" },
-          "100%": { transform: "translateY(0)", opacity: "1" },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.2s ease-out",
-        "slide-up": "slide-up 0.3s ease-out",
       },
       boxShadow: {
         flat: "0px 0px 0px 0px var(--shadow-flat)",
@@ -370,7 +369,7 @@ const config: Config = {
         "6xl": ["52px", "1.25"],
         "7xl": ["68px", "1.25"],
         "8xl": ["88px", "1.25"],
-        // Design system typography variants
+        // Legacy design system typography variants
         "display-1": ["56px", "1.25"],
         "display-2": ["48px", "1.25"],
         "headline-1": ["32px", "1.25"],
@@ -379,8 +378,19 @@ const config: Config = {
         "headline-4": ["18px", "1.25"],
         "body-1": ["16px", "1.25"],
         "body-2": ["14px", "1.25"],
-        "caption": ["13px", "20px"],  // 13px font, 20px line-height (from Figma)
-        "overline": ["10px", "15px"], // 10px font, 15px line-height (from Figma)
+        "caption": ["13px", "20px"],
+        "overline": ["10px", "15px"],
+        // Hawkins typography tokens (proper theme extension)
+        "tag-small": ["10px", { lineHeight: "15px", fontWeight: "600" }],
+        "body-0": ["13px", { lineHeight: "20px", fontWeight: "600" }],
+        "body-0-bold": ["13px", { lineHeight: "20px", fontWeight: "600" }],
+        "body-0-regular": ["13px", { lineHeight: "20px", fontWeight: "400" }],
+        "label-0": ["10px", { lineHeight: "15px", fontWeight: "400" }],
+        "label-0-regular": ["10px", { lineHeight: "15px", fontWeight: "400" }],
+        "label-1": ["12px", { lineHeight: "18px", fontWeight: "400" }],
+        "label-1-regular": ["12px", { lineHeight: "18px", fontWeight: "400" }],
+        "body-2": ["16px", { lineHeight: "24px", fontWeight: "600" }],
+        "body-2-bold": ["16px", { lineHeight: "24px", fontWeight: "600" }],
       },
       fontWeight: {
         normal: '400',

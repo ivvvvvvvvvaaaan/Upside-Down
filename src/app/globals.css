@@ -408,12 +408,43 @@
  * See TYPOGRAPHY.md for full documentation
  */
 
+/* ========== ANIMATIONS ========== */
+@keyframes breathe {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes slide-up {
+  0% { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.animate-breathe {
+  animation: breathe 1.5s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
 @layer utilities {
   /* ========== BODY TEXT ========== */
+  .text-body-0 { font-size: 13px; line-height: 20px; }
   .text-body-0-bold { font-size: 13px; line-height: 20px; font-weight: 600; }
   .text-body-0-regular { font-size: 13px; line-height: 20px; font-weight: 400; }
+  .text-body-1 { font-size: 14px; line-height: 21px; }
   .text-body-1-bold { font-size: 14px; line-height: 21px; font-weight: 600; }
   .text-body-1-regular { font-size: 14px; line-height: 21px; font-weight: 400; }
+  .text-body-2 { font-size: 16px; line-height: 24px; }
   .text-body-2-bold { font-size: 16px; line-height: 24px; font-weight: 600; }
   .text-body-2-regular { font-size: 16px; line-height: 24px; font-weight: 400; }
 
@@ -429,8 +460,10 @@
   .text-heading-8 { font-size: 88px; line-height: 110px; font-weight: 800; }
 
   /* ========== LABELS ========== */
+  .text-label-0 { font-size: 10px; line-height: 15px; }
   .text-label-0-bold { font-size: 10px; line-height: 15px; font-weight: 600; }
   .text-label-0-regular { font-size: 10px; line-height: 15px; font-weight: 400; }
+  .text-label-1 { font-size: 12px; line-height: 18px; }
   .text-label-1-bold { font-size: 12px; line-height: 18px; font-weight: 600; }
   .text-label-1-regular { font-size: 12px; line-height: 18px; font-weight: 400; }
 

@@ -260,7 +260,8 @@ const MOCK_ASSETS: Asset[] = [
 ]
 
 export async function getAssets(): Promise<Asset[]> {
-  const isLive = !!process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const isLive = supabaseUrl && supabaseUrl.startsWith('http')
 
   if (!isLive) {
     // Simulate network delay for realism
@@ -300,7 +301,8 @@ export async function getAllAssets(): Promise<Asset[]> {
 }
 
 export async function getCollections(): Promise<Collection[]> {
-  const isLive = !!process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const isLive = supabaseUrl && supabaseUrl.startsWith('http')
 
   if (!isLive) {
     // Simulate network delay for realism
@@ -313,7 +315,8 @@ export async function getCollections(): Promise<Collection[]> {
 }
 
 export async function getAssetsByCollection(collectionId: string): Promise<Asset[]> {
-  const isLive = !!process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const isLive = supabaseUrl && supabaseUrl.startsWith('http')
 
   if (!isLive) {
     // Simulate network delay for realism
