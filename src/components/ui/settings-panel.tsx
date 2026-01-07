@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Settings, ChevronRight } from 'lucide-react'
+import { Settings, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Text } from './text'
 
@@ -34,7 +34,7 @@ export function SettingsPanel({ children, defaultOpen = false }: SettingsPanelPr
               onClick={() => setIsOpen(false)}
               className="p-1 hover:bg-surface-highlight rounded transition-colors"
             >
-              <ChevronRight className="w-3 h-3 text-foreground-dim" />
+              <X className="w-3 h-3 text-foreground-dim" />
             </button>
           </div>
 

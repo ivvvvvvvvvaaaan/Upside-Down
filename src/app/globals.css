@@ -438,13 +438,10 @@
 
 @layer utilities {
   /* ========== BODY TEXT ========== */
-  .text-body-0 { font-size: 13px; line-height: 20px; }
   .text-body-0-bold { font-size: 13px; line-height: 20px; font-weight: 600; }
   .text-body-0-regular { font-size: 13px; line-height: 20px; font-weight: 400; }
-  .text-body-1 { font-size: 14px; line-height: 21px; }
   .text-body-1-bold { font-size: 14px; line-height: 21px; font-weight: 600; }
   .text-body-1-regular { font-size: 14px; line-height: 21px; font-weight: 400; }
-  .text-body-2 { font-size: 16px; line-height: 24px; }
   .text-body-2-bold { font-size: 16px; line-height: 24px; font-weight: 600; }
   .text-body-2-regular { font-size: 16px; line-height: 24px; font-weight: 400; }
 
@@ -460,10 +457,8 @@
   .text-heading-8 { font-size: 88px; line-height: 110px; font-weight: 800; }
 
   /* ========== LABELS ========== */
-  .text-label-0 { font-size: 10px; line-height: 15px; }
   .text-label-0-bold { font-size: 10px; line-height: 15px; font-weight: 600; }
   .text-label-0-regular { font-size: 10px; line-height: 15px; font-weight: 400; }
-  .text-label-1 { font-size: 12px; line-height: 18px; }
   .text-label-1-bold { font-size: 12px; line-height: 18px; font-weight: 600; }
   .text-label-1-regular { font-size: 12px; line-height: 18px; font-weight: 400; }
 
