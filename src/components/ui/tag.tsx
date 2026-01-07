@@ -9,26 +9,26 @@ import { cn } from '@/lib/utils'
  * Documentation: https://sites.google.com/netflix.com/hawkins-professional/components/tags
  *
  * SIZES:
- * - Compact: 10px font, compact padding (px-1.5 py-0.5), no icons
- * - Standard: 13px font, standard padding (px-2 py-0.5), optional icons
+ * - Compact: 10px font (text-overline), 4px horizontal/0px vertical padding (px-1 py-0), no icons
+ * - Standard: 13px font (text-caption), 8px horizontal/0px vertical padding (px-2 py-0), optional icons
  *
  * TYPES (semantic colors):
- * - Announcement: Purple (#6d3be3)
- * - Informative: Blue (#2172e3)
- * - Neutral: Gray (#808080)
- * - Positive: Green (#0aa356)
- * - Notice: Yellow (#d89d31)
- * - Negative: Red (#c11119)
+ * - Announcement: Purple (indigo-500)
+ * - Informative: Blue (blue-500)
+ * - Neutral: Dark gray (gray-600/gray-400 - consistent rgb(65,65,65))
+ * - Positive: Green (green-500)
+ * - Notice: Yellow (yellow-500)
+ * - Negative: Red (red-500)
  *
  * STYLES:
  * - Fill: Colored background, white text
  * - Border: Border only, dark text
  *
  * TOKENS USED (Hawkins only):
- * - Typography: text-overline (10px), text-caption (13px), font-semibold
- * - Colors: Semantic tag colors (tag--surface-*, tag--border-*)
- * - Spacing: Space tokens (px-1.5/2, py-0.5)
- * - Border: rounded (4px)
+ * - Typography: text-overline (10px font / 15px line), text-caption (13px font / 20px line), font-semibold
+ * - Colors: Semantic tag colors (gray-600, indigo-500, blue-500, etc.)
+ * - Spacing: space-4 (4px) for compact, space-8 (8px) for standard, space-0 (0px) vertical
+ * - Border: border-radius-4 (4px rounded)
  */
 
 export interface TagProps extends React.HTMLAttributes<HTMLSpanElement> {
@@ -45,13 +45,14 @@ export function Tag({
   variant = 'fill',
   ...props
 }: TagProps) {
-  // Typography based on size
+  // Typography based on size (Hawkins spacing tokens - exact Figma specs)
   const sizeStyles = {
-    compact: 'text-overline font-semibold px-1.5 py-0.5',
-    standard: 'text-caption font-semibold px-2 py-0.5',
+    compact: 'text-tag-small px-1 py-0',  // 10px font, 15px line, 600 weight (from Figma tag--text-small), 4px horizontal, 0px vertical
+    standard: 'text-body-0-bold px-2 py-0',  // 13px font, 20px line, 600 weight (from Figma), 8px horizontal, 0px vertical
   }
 
   // Colors based on type and style
+  // Note: neutral uses gray-600 (light) / gray-400 (dark) for consistent rgb(65,65,65) across themes
   const typeStyles = {
     announcement: {
       fill: 'bg-indigo-500 text-white',
@@ -62,8 +63,8 @@ export function Tag({
       border: 'border border-blue-500 text-foreground',
     },
     neutral: {
-      fill: 'bg-gray-600 text-white',
-      border: 'border border-gray-600 text-foreground',
+      fill: 'bg-gray-600 dark:bg-gray-400 text-white',
+      border: 'border border-gray-600 dark:border-gray-400 text-foreground',
     },
     positive: {
       fill: 'bg-green-500 text-white',

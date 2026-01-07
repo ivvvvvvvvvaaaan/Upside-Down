@@ -46,8 +46,8 @@ function Text({
     'headline-4': 'text-headline-4 text-lg',
     'body-1': 'text-body-1 text-base',
     'body-2': 'text-body-2 text-sm',
-    'caption': 'text-caption text-xs',
-    'overline': 'text-overline text-xs uppercase tracking-wider',
+    'caption': 'text-caption',
+    'overline': 'text-overline uppercase tracking-wider',
   }
   
   const colorStyles = {

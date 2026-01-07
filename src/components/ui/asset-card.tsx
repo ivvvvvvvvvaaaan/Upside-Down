@@ -9,38 +9,44 @@ import type { Asset } from '@/lib/data'
 /**
  * AssetCard Component
  *
- * Displays individual assets with type-specific styling and metadata.
+ * Clickable card displaying individual assets with type-specific styling and metadata.
  * Supports 4 asset types: shot, video, image, text
  *
  * TOKENS USED (Hawkins only - NO hardcoded values):
- * - text-foreground: Asset title (#ffffffe5)
- * - text-foreground-dim: Metadata line (#ffffffb2)
- * - bg-surface-flat: Card background (#161616)
- * - bg-gray-600: Type tag background (#414141)
- * - bg-black/60: Duration badge background (rgba(0,0,0,0.6))
- * - text-xs: Title font (13px)
- * - text-overline: Metadata and duration (10px)
- * - font-semibold: Title and duration weight (600)
+ * - text-body-0-bold: Asset title (13px font / 20px line / 600 weight)
+ * - text-label-0-regular: Metadata (10px font / 15px line / 400 weight)
+ * - text-tag-small: Tag and duration (10px font / 15px line / 600 weight)
+ * - text-foreground: Asset title default color
+ * - text-foreground-system-link: Asset title hover color (blue)
+ * - text-foreground-subtle: Metadata line color
+ * - bg-surface-flat: Card background default
+ * - bg-surface-low: Card background on hover
+ * - bg-gray-600 / dark:bg-gray-400: Type tag background
+ * - bg-black/60: Duration badge background
  * - rounded: 4px radius
  *
- * Design specs from Figma:
- * - Title: text-xs font-semibold text-foreground
- * - Type Tag: Tag component (bg-gray-600, text-white, text-overline)
- * - Metadata: text-overline text-foreground-dim
- * - Duration: text-overline font-semibold text-white bg-black/60
- * - Menu: Button variant="icon" size="icon" (16px icon)
+ * Design specs from Figma (Node: 4244-234267):
+ * - Card: button element with hover states
+ * - Title: body-0-bold (13px/20px/600), hover → link blue with underline
+ * - Background: surface-flat → surface-low on hover
+ * - Type Tag: tag--text-small (10px/15px/600), 4px horizontal, 0px vertical, gray bg, white text
+ * - Metadata: label-0-regular (10px/15px/400), foreground-subtle color (SHOT type only)
+ * - Duration: tag--text-small (10px/15px/600), 4px horizontal, 0px vertical, bg-black/60
+ * - Menu: Button variant="icon" size="icon", appears on hover
  */
 
-export interface AssetCardProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface AssetCardProps {
   asset: Asset
+  onClick?: (asset: Asset) => void
   onMenuClick?: (asset: Asset) => void
+  className?: string
 }
 
 export function AssetCard({
   asset,
+  onClick,
   onMenuClick,
   className,
-  ...props
 }: AssetCardProps) {
   const hasDuration = asset.type === 'shot' || asset.type === 'video'
   const duration = asset.type === 'shot'
@@ -66,10 +72,10 @@ export function AssetCard({
         break
     }
 
-    return <Tag>{tagLabel}</Tag>
+    return <Tag type="neutral" size="compact" variant="fill">{tagLabel}</Tag>
   }
 
-  // Render metadata line (SHOT type only)
+  // Render metadata line (SHOT type only) - label-0-regular (10px/15px/400)
   const renderMetadata = () => {
     if (asset.type !== 'shot' || !asset.shotMeta) return null
 
@@ -79,13 +85,9 @@ export function AssetCard({
     if (parts.length === 0) return null
 
     return (
-      <Text
-        variant="overline"
-        color="secondary"
-        className="truncate"
-      >
+      <div className="text-label-0-regular text-foreground-subtle truncate">
         {parts.join(' • ')}
-      </Text>
+      </div>
     )
   }
 
@@ -127,45 +129,45 @@ export function AssetCard({
   }
 
   return (
-    <div
+    <button
+      onClick={() => onClick?.(asset)}
       className={cn(
         'group relative flex flex-col',
-        'w-full',
+        'w-full text-left',
+        'bg-surface-flat hover:bg-surface-low',
+        'rounded p-0',
+        'transition-colors',
         className
       )}
-      {...props}
     >
       {/* Thumbnail container - 16:9 aspect ratio */}
-      <div className="relative w-full aspect-video rounded overflow-hidden bg-surface-flat mb-2">
+      <div className="relative w-full aspect-video rounded overflow-hidden mb-2">
         {renderThumbnail()}
 
-        {/* Duration badge - bottom-right overlay */}
+        {/* Duration badge - bottom-right overlay - tag--text-small (10px/15px/600) */}
         {hasDuration && duration && (
-          <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/60 rounded">
-            <Text
-              variant="overline"
-              weight="semibold"
-              className="text-white"
-            >
+          <div className="absolute bottom-2 right-2 px-1 py-0 bg-black/60 rounded">
+            <span className="text-tag-small text-white">
               {duration}
-            </Text>
+            </span>
           </div>
         )}
       </div>
 
-      {/* Content area */}
-      <div className="flex items-start gap-2">
-        {/* Left: Title, Tag, Metadata */}
+      {/* Content area - matching Figma spacing */}
+      <div className="flex items-start justify-between gap-2 px-2 pb-2">
+        {/* Left: Title, Tag + Metadata row */}
         <div className="flex-1 min-w-0 flex flex-col gap-1">
-          <Text
-            variant="caption"
-            weight="semibold"
-            className="truncate"
-          >
+          {/* Title - 1st line with hover state - body-0-bold (13px/20px/600) */}
+          <div className="text-body-0-bold text-foreground truncate group-hover:text-foreground-system-link group-hover:underline">
             {asset.name}
-          </Text>
-          {renderTypeTag()}
-          {renderMetadata()}
+          </div>
+
+          {/* Tag + Metadata - 2nd line with 8px gap */}
+          <div className="flex items-center gap-2">
+            {renderTypeTag()}
+            {renderMetadata()}
+          </div>
         </div>
 
         {/* Right: Menu button (appears on hover) */}
@@ -181,6 +183,6 @@ export function AssetCard({
           <MoreVertical className="w-4 h-4" />
         </Button>
       </div>
-    </div>
+    </button>
   )
 }

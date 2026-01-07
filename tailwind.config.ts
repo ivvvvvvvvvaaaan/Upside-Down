@@ -7,7 +7,7 @@ const config: Config = {
     './src/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   safelist: [
-    // Ensure design system typography classes are always generated
+    // Legacy design system typography classes (kept for backward compatibility)
     'text-display-1',
     'text-display-2',
     'text-headline-1',
@@ -18,6 +18,65 @@ const config: Config = {
     'text-body-2',
     'text-caption',
     'text-overline',
+
+    // Hawkins Typography System (from Figma HP--Toolkit)
+    // See TYPOGRAPHY.md for complete documentation
+
+    // Body Text
+    'text-body-0-bold',
+    'text-body-0-regular',
+    'text-body-1-bold',
+    'text-body-1-regular',
+    'text-body-2-bold',
+    'text-body-2-regular',
+
+    // Headings
+    'text-heading-0',
+    'text-heading-1',
+    'text-heading-2',
+    'text-heading-3',
+    'text-heading-4',
+    'text-heading-5',
+    'text-heading-6',
+    'text-heading-7',
+    'text-heading-8',
+
+    // Labels
+    'text-label-0-bold',
+    'text-label-0-regular',
+    'text-label-1-bold',
+    'text-label-1-regular',
+
+    // Links
+    'text-body-text-link-0-bold',
+    'text-body-text-link-0-regular',
+    'text-body-text-link-1-bold',
+    'text-body-text-link-1-regular',
+    'text-body-text-link-2-bold',
+    'text-body-text-link-2-regular',
+    'text-label-text-link-0-bold',
+    'text-label-text-link-0-regular',
+    'text-label-text-link-1-bold',
+    'text-label-text-link-1-regular',
+
+    // Monospace
+    'text-body-mono-0-bold',
+    'text-body-mono-0-regular',
+    'text-body-mono-1-bold',
+    'text-body-mono-1-regular',
+    'text-body-mono-2-bold',
+    'text-body-mono-2-regular',
+
+    // Tabular (Numeric)
+    'text-body-tabular-0-bold',
+    'text-body-tabular-0-regular',
+    'text-body-tabular-1-bold',
+    'text-body-tabular-1-regular',
+    'text-body-tabular-2-bold',
+    'text-body-tabular-2-regular',
+
+    // Component-Specific Aliases
+    'text-tag-small',
   ],
   theme: {
     extend: {
@@ -320,8 +379,8 @@ const config: Config = {
         "headline-4": ["18px", "1.25"],
         "body-1": ["16px", "1.25"],
         "body-2": ["14px", "1.25"],
-        "caption": ["12px", "1.25"],
-        "overline": ["10px", "1.25"],
+        "caption": ["13px", "20px"],  // 13px font, 20px line-height (from Figma)
+        "overline": ["10px", "15px"], // 10px font, 15px line-height (from Figma)
       },
       fontWeight: {
         normal: '400',

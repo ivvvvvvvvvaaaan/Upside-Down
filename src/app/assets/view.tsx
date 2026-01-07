@@ -9,6 +9,7 @@ import {
   SettingGroup,
   SettingOption
 } from '@/components/ui'
+import { AppLayout } from '@/components/layouts'
 import type { Asset, Collection, AssetType } from '@/lib/data'
 
 interface AssetsViewProps {
@@ -34,9 +35,10 @@ export function AssetsView({ assets, collections }: AssetsViewProps) {
   }
 
   return (
-    <div className="min-h-screen bg-surface-flat p-6">
-      <div className="max-w-7xl mx-auto">
-        <Stack spacing="lg">
+    <AppLayout>
+      <div className="p-6">
+        <div className="max-w-7xl mx-auto">
+          <Stack spacing="lg">
 
           {/* Header */}
           <div>
@@ -67,11 +69,11 @@ export function AssetsView({ assets, collections }: AssetsViewProps) {
             </div>
           )}
 
-        </Stack>
-      </div>
+          </Stack>
+        </div>
 
-      {/* Settings Panel */}
-      <SettingsPanel>
+        {/* Settings Panel */}
+        <SettingsPanel>
         <SettingGroup label="Collection">
           <SettingOption
             label="All Collections"
@@ -122,7 +124,8 @@ export function AssetsView({ assets, collections }: AssetsViewProps) {
             onChange={(val) => setSelectedType(val as AssetType)}
           />
         </SettingGroup>
-      </SettingsPanel>
-    </div>
+        </SettingsPanel>
+      </div>
+    </AppLayout>
   )
 }

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import { Stack, Text, CollectionCard, AssetCard, SettingsPanel, SettingGroup, SettingOption } from '@/components/ui'
+import { AppLayout } from '@/components/layouts'
 import type { Asset, Collection } from '@/lib/data'
 import type { CollectionCardAssetCount } from '@/components/ui/collection-card'
 
@@ -45,20 +45,8 @@ export function CollectionCardsView({ title, initialCollections }: CollectionCar
   }
 
   return (
-    <div className="min-h-screen bg-surface-flat flex">
-      {/* Left vertical nav placeholder */}
-      <div className="w-20 bg-surface-3 flex-shrink-0 flex flex-col items-center px-4 py-6">
-        {/* Logo */}
-        <Image
-          src="/assets/Vertical/Lockup/Logo/Professional.svg"
-          alt="Logo"
-          width={120}
-          height={40}
-          className="h-10 w-auto"
-        />
-      </div>
-
-      <div className="flex-1 p-6">
+    <AppLayout>
+      <div className="p-6">
         <div className="max-w-7xl mx-auto">
         <Stack spacing="lg">
 
@@ -160,8 +148,8 @@ export function CollectionCardsView({ title, initialCollections }: CollectionCar
             onChange={(value) => setAssetCount(value as CollectionCardAssetCount)}
           />
         </SettingGroup>
-      </SettingsPanel>
+        </SettingsPanel>
       </div>
-    </div>
+    </AppLayout>
   )
 }
