@@ -324,8 +324,8 @@ export function CollectionCard({
       className={cn(
         'group flex flex-col gap-4 min-h-[204px] p-1 relative w-full rounded',
         isCentered ? 'items-start' : 'items-start',
-        isHovered && 'bg-surface-low',
-        'hover:bg-surface-low transition-colors',
+        isHovered && 'bg-surface-2',
+        'hover:bg-surface-2 transition-colors',
         isSelected && 'ring-2 ring-primary',
         onClick && 'cursor-pointer',
         className

@@ -157,7 +157,7 @@ export function AssetCard({
       className={cn(
         'group relative flex flex-col',
         'w-full cursor-pointer',
-        'bg-surface-flat hover:bg-surface-low',
+        'bg-surface-flat hover:bg-surface-2',
         'rounded p-1',
         'transition-colors',
         className
