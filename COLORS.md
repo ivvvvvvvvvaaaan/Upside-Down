@@ -225,18 +225,19 @@ Each category includes variants for states (hover, disabled, selected), system f
 
 ### Theme-Adaptive Selection States
 
-Our selection tokens use the **indigo scale** but pick different levels per theme for optimal contrast:
+Our selection tokens use the **indigo scale** with opposite hover directions per theme:
 
 | Token | Light Theme | Indigo Level | Dark Theme | Indigo Level |
 |-------|-------------|--------------|------------|--------------|
-| `bg-surface-selected` | `#C7D2FC` | indigo-100 | `#2C429C` | indigo-300 |
-| `bg-surface-selected-hover` | `#A9B9FA` | indigo-200 | `#3451C5` | indigo-400 |
-| `ring-border-selected` | `#5B79F1` | indigo-400 | `#5B79F1` | indigo-600 |
+| `bg-surface-selected` | `#C7D2FC` | indigo-100 | `#233371` | indigo-800 |
+| `bg-surface-selected-hover` | `#E1E5F5` | indigo-50 | `#192247` | indigo-900 |
+| `ring-border-selected` | `#4061E7` | indigo-500 | `#4061E7` | indigo-500 |
 
 **Design System Logic:**
-- **Light theme**: Uses lighter indigo levels (100-400) for contrast on white backgrounds
-- **Dark theme**: Uses middle indigo levels (300-600) for contrast on dark backgrounds
-- All values come from the indigo palette, ensuring color harmony
+- **Light theme**: Selected bg is indigo-100, hover goes **lighter** to indigo-50
+- **Dark theme**: Selected bg is indigo-800, hover goes **darker** to indigo-900
+- **Border**: Both themes use indigo-500 for consistent, visible selection ring
+- Hover directions move away from the border color to avoid clashing with link colors
 
 ```tsx
 // Asset card selection pattern
@@ -252,7 +253,7 @@ Our selection tokens use the **indigo scale** but pick different levels per them
 </div>
 ```
 
-**For Designers:** When updating the indigo palette, the selection tokens will need to be updated to match. The mapping is documented in `globals.css` comments.
+**For Designers:** Selection tokens reference specific indigo levels documented in `globals.css`. Key pattern: hover moves *away* from the border color (lighter in light theme, darker in dark theme) to avoid visual clash with links.
 
 ### System Feedback Colors
 
