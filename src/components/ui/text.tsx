@@ -34,16 +34,18 @@ function Text({
   children,
   ...props 
 }: TextProps) {
-  // Map variants to Tailwind classes
+  // Map variants to design system typography tokens with fallbacks
+  // Primary: Design system classes (text-caption, text-body-1, etc.)
+  // Fallback: Standard Tailwind classes ensure layout works
   const variantStyles = {
-    'display-1': 'text-display-1',
-    'display-2': 'text-display-2',
-    'headline-1': 'text-headline-1',
-    'headline-2': 'text-headline-2',
-    'headline-3': 'text-headline-3',
-    'headline-4': 'text-headline-4',
-    'body-1': 'text-body-1',
-    'body-2': 'text-body-2',
+    'display-1': 'text-display-1 text-5xl',
+    'display-2': 'text-display-2 text-4xl',
+    'headline-1': 'text-headline-1 text-3xl',
+    'headline-2': 'text-headline-2 text-2xl',
+    'headline-3': 'text-headline-3 text-xl',
+    'headline-4': 'text-headline-4 text-lg',
+    'body-1': 'text-body-1 text-base',
+    'body-2': 'text-body-2 text-sm',
     'caption': 'text-caption',
     'overline': 'text-overline uppercase tracking-wider',
   }

@@ -32,7 +32,7 @@
   --foreground-inverse-subtle-rgb: 255 255 255;
   --foreground-product-brand: 229 9 20;
   --foreground-system-error: 247 99 107;
-  --foreground-system-link: 136 159 249;
+  --foreground-system-link: 52 81 197;
   --foreground-system-success: 82 200 141;
   --foreground-system-warning: 229 181 93;
 
@@ -56,6 +56,15 @@
   --surface-system-neutral: 128 128 128;
   --surface-system-success: 10 163 86;
   --surface-system-warning: 195 131 14;
+
+  /* Selection states - Light theme
+   * surface-selected: indigo-100 (light bg)
+   * surface-selected-hover: indigo-50 (lighter on hover)
+   * border-selected: indigo-500
+   */
+  --surface-selected: 199 210 252;
+  --surface-selected-hover: 225 229 245;
+  --border-selected: 64 97 231;
 
   --shadow-flat: rgba(0, 0, 0, 0);
   --shadow-high-primary: rgba(0, 0, 0, 0.1);
@@ -219,7 +228,7 @@
   --foreground-inverse-subtle-rgb: 0 0 0;
   --foreground-product-brand: 229 9 20;
   --foreground-system-error: 247 99 107;
-  --foreground-system-link: 52 81 197;
+  --foreground-system-link: 136 159 249;
   --foreground-system-success: 82 200 141;
   --foreground-system-warning: 229 181 93;
 
@@ -243,6 +252,15 @@
   --surface-system-neutral: 128 128 128;
   --surface-system-success: 10 163 86;
   --surface-system-warning: 195 131 14;
+
+  /* Selection states - Dark theme
+   * surface-selected: indigo-800 (#233371) - dark blue bg
+   * surface-selected-hover: indigo-900 (#192247) - darker on hover
+   * border-selected: indigo-500
+   */
+  --surface-selected: 35 51 113;
+  --surface-selected-hover: 25 34 71;
+  --border-selected: 64 97 231;
 
   --shadow-flat: rgba(0, 0, 0, 0);
   --shadow-high-primary: rgba(0, 0, 0, 0.5);
@@ -396,6 +414,102 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+/*
+ * ===========================================
+ * HAWKINS TYPOGRAPHY UTILITIES
+ * ===========================================
+ * Complete typography system from Figma HP--Toolkit
+ * Source: https://www.figma.com/design/guNFUaRXVHGePsyJ5fToO6/HP--Toolkit?node-id=93266-12
+ *
+ * See TYPOGRAPHY.md for full documentation
+ */
+
+/* ========== ANIMATIONS ========== */
+@keyframes breathe {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes slide-up {
+  0% { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.animate-breathe {
+  animation: breathe 1.5s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+@layer utilities {
+  /* ========== BODY TEXT ========== */
+  .text-body-0-bold { font-size: 13px; line-height: 20px; font-weight: 600; }
+  .text-body-0-regular { font-size: 13px; line-height: 20px; font-weight: 400; }
+  .text-body-1-bold { font-size: 14px; line-height: 21px; font-weight: 600; }
+  .text-body-1-regular { font-size: 14px; line-height: 21px; font-weight: 400; }
+  .text-body-2-bold { font-size: 16px; line-height: 24px; font-weight: 600; }
+  .text-body-2-regular { font-size: 16px; line-height: 24px; font-weight: 400; }
+
+  /* ========== HEADINGS ========== */
+  .text-heading-0 { font-size: 18px; line-height: 23px; font-weight: 700; }
+  .text-heading-1 { font-size: 20px; line-height: 25px; font-weight: 700; }
+  .text-heading-2 { font-size: 24px; line-height: 30px; font-weight: 700; }
+  .text-heading-3 { font-size: 28px; line-height: 35px; font-weight: 700; }
+  .text-heading-4 { font-size: 32px; line-height: 40px; font-weight: 700; }
+  .text-heading-5 { font-size: 40px; line-height: 50px; font-weight: 700; }
+  .text-heading-6 { font-size: 52px; line-height: 65px; font-weight: 800; }
+  .text-heading-7 { font-size: 68px; line-height: 85px; font-weight: 800; }
+  .text-heading-8 { font-size: 88px; line-height: 110px; font-weight: 800; }
+
+  /* ========== LABELS ========== */
+  .text-label-0-bold { font-size: 10px; line-height: 15px; font-weight: 600; }
+  .text-label-0-regular { font-size: 10px; line-height: 15px; font-weight: 400; }
+  .text-label-1-bold { font-size: 12px; line-height: 18px; font-weight: 600; }
+  .text-label-1-regular { font-size: 12px; line-height: 18px; font-weight: 400; }
+
+  /* ========== LINKS ========== */
+  .text-body-text-link-0-bold { font-size: 13px; line-height: 20px; font-weight: 600; text-decoration: underline; }
+  .text-body-text-link-0-regular { font-size: 13px; line-height: 20px; font-weight: 400; text-decoration: underline; }
+  .text-body-text-link-1-bold { font-size: 14px; line-height: 21px; font-weight: 600; text-decoration: underline; }
+  .text-body-text-link-1-regular { font-size: 14px; line-height: 21px; font-weight: 400; text-decoration: underline; }
+  .text-body-text-link-2-bold { font-size: 16px; line-height: 24px; font-weight: 600; text-decoration: underline; }
+  .text-body-text-link-2-regular { font-size: 16px; line-height: 24px; font-weight: 400; text-decoration: underline; }
+  .text-label-text-link-0-bold { font-size: 10px; line-height: 15px; font-weight: 600; text-decoration: underline; }
+  .text-label-text-link-0-regular { font-size: 10px; line-height: 15px; font-weight: 400; text-decoration: underline; }
+  .text-label-text-link-1-bold { font-size: 12px; line-height: 18px; font-weight: 600; text-decoration: underline; }
+  .text-label-text-link-1-regular { font-size: 12px; line-height: 18px; font-weight: 400; text-decoration: underline; }
+
+  /* ========== MONOSPACE ========== */
+  .text-body-mono-0-bold { font-size: 13px; line-height: 20px; font-weight: 600; font-family: monospace; }
+  .text-body-mono-0-regular { font-size: 13px; line-height: 20px; font-weight: 400; font-family: monospace; }
+  .text-body-mono-1-bold { font-size: 14px; line-height: 21px; font-weight: 600; font-family: monospace; }
+  .text-body-mono-1-regular { font-size: 14px; line-height: 21px; font-weight: 400; font-family: monospace; }
+  .text-body-mono-2-bold { font-size: 16px; line-height: 24px; font-weight: 600; font-family: monospace; }
+  .text-body-mono-2-regular { font-size: 16px; line-height: 24px; font-weight: 400; font-family: monospace; }
+
+  /* ========== TABULAR (NUMBERS) ========== */
+  .text-body-tabular-0-bold { font-size: 13px; line-height: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .text-body-tabular-0-regular { font-size: 13px; line-height: 20px; font-weight: 400; font-variant-numeric: tabular-nums; }
+  .text-body-tabular-1-bold { font-size: 14px; line-height: 21px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .text-body-tabular-1-regular { font-size: 14px; line-height: 21px; font-weight: 400; font-variant-numeric: tabular-nums; }
+  .text-body-tabular-2-bold { font-size: 16px; line-height: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .text-body-tabular-2-regular { font-size: 16px; line-height: 24px; font-weight: 400; font-variant-numeric: tabular-nums; }
+
+  /* ========== COMPONENT-SPECIFIC ALIASES ========== */
+  .text-tag-small { font-size: 10px; line-height: 15px; font-weight: 600; } /* Alias for compact tags */
 }
 
 /*

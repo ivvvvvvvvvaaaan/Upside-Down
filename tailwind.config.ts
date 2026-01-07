@@ -6,6 +6,93 @@ const config: Config = {
   content: [
     './src/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  safelist: [
+    // Legacy design system typography classes (kept for backward compatibility)
+    'text-display-1',
+    'text-display-2',
+    'text-headline-1',
+    'text-headline-2',
+    'text-headline-3',
+    'text-headline-4',
+    'text-body-1',
+    'text-body-2',
+    'text-caption',
+    'text-overline',
+
+    // Hawkins Typography System (from Figma HP--Toolkit)
+    // See TYPOGRAPHY.md for complete documentation
+
+    // Body Text
+    'text-body-0-bold',
+    'text-body-0-regular',
+    'text-body-1-bold',
+    'text-body-1-regular',
+    'text-body-2-bold',
+    'text-body-2-regular',
+
+    // Headings
+    'text-heading-0',
+    'text-heading-1',
+    'text-heading-2',
+    'text-heading-3',
+    'text-heading-4',
+    'text-heading-5',
+    'text-heading-6',
+    'text-heading-7',
+    'text-heading-8',
+
+    // Labels
+    'text-label-0-bold',
+    'text-label-0-regular',
+    'text-label-1-bold',
+    'text-label-1-regular',
+
+    // Links
+    'text-body-text-link-0-bold',
+    'text-body-text-link-0-regular',
+    'text-body-text-link-1-bold',
+    'text-body-text-link-1-regular',
+    'text-body-text-link-2-bold',
+    'text-body-text-link-2-regular',
+    'text-label-text-link-0-bold',
+    'text-label-text-link-0-regular',
+    'text-label-text-link-1-bold',
+    'text-label-text-link-1-regular',
+
+    // Monospace
+    'text-body-mono-0-bold',
+    'text-body-mono-0-regular',
+    'text-body-mono-1-bold',
+    'text-body-mono-1-regular',
+    'text-body-mono-2-bold',
+    'text-body-mono-2-regular',
+
+    // Tabular (Numeric)
+    'text-body-tabular-0-bold',
+    'text-body-tabular-0-regular',
+    'text-body-tabular-1-bold',
+    'text-body-tabular-1-regular',
+    'text-body-tabular-2-bold',
+    'text-body-tabular-2-regular',
+
+    // Component-Specific Aliases
+    'text-tag-small',
+
+    // Simplified Hawkins tokens (also in fontSize config)
+    'text-body-0',
+    'text-label-0',
+    'text-label-1',
+    'text-body-2',
+
+    // Animations
+    'animate-breathe',
+
+    // Selection state classes (theme-adaptive)
+    'bg-surface-selected',
+    'bg-surface-selected-hover',
+    'hover:bg-surface-selected-hover',
+    'ring-border-selected',
+  ],
   theme: {
     extend: {
       // ... (colors object remains the same)
@@ -186,6 +273,11 @@ const config: Config = {
             success: 'rgb(var(--surface-system-success) / <alpha-value>)',
             warning: 'rgb(var(--surface-system-warning) / <alpha-value>)',
           },
+          // Selection variants (theme-adaptive)
+          selected: {
+            DEFAULT: 'rgb(var(--surface-selected) / <alpha-value>)',
+            hover: 'rgb(var(--surface-selected-hover) / <alpha-value>)',
+          },
           // Navigation variants
           'navigation-selected': {
             DEFAULT: 'rgb(var(--indigo-500) / 0.4)',
@@ -209,7 +301,8 @@ const config: Config = {
             focus: 'rgb(var(--border-system-focus))',
             success: 'rgb(var(--border-system-success))',
             warning: 'rgb(var(--border-system-warning))',
-          }
+          },
+          selected: 'rgb(var(--border-selected))',
         },
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
@@ -245,20 +338,10 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "fade-in": {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-        "slide-up": {
-          "0%": { transform: "translateY(10px)", opacity: "0" },
-          "100%": { transform: "translateY(0)", opacity: "1" },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.2s ease-out",
-        "slide-up": "slide-up 0.3s ease-out",
       },
       boxShadow: {
         flat: "0px 0px 0px 0px var(--shadow-flat)",
@@ -298,6 +381,29 @@ const config: Config = {
         "6xl": ["52px", "1.25"],
         "7xl": ["68px", "1.25"],
         "8xl": ["88px", "1.25"],
+        // Legacy design system typography variants
+        "display-1": ["56px", "1.25"],
+        "display-2": ["48px", "1.25"],
+        "headline-1": ["32px", "1.25"],
+        "headline-2": ["24px", "1.25"],
+        "headline-3": ["20px", "1.25"],
+        "headline-4": ["18px", "1.25"],
+        "body-1": ["16px", "1.25"],
+        "body-2": ["14px", "1.25"],
+        "caption": ["13px", "20px"],
+        "overline": ["10px", "15px"],
+        // Hawkins typography tokens (proper theme extension)
+        "tag-small": ["10px", { lineHeight: "15px", fontWeight: "600" }],
+        "body-0-bold": ["13px", { lineHeight: "20px", fontWeight: "600" }],
+        "body-0-regular": ["13px", { lineHeight: "20px", fontWeight: "400" }],
+        "body-1-bold": ["14px", { lineHeight: "21px", fontWeight: "600" }],
+        "body-1-regular": ["14px", { lineHeight: "21px", fontWeight: "400" }],
+        "body-2-bold": ["16px", { lineHeight: "24px", fontWeight: "600" }],
+        "body-2-regular": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+        "label-0-bold": ["10px", { lineHeight: "15px", fontWeight: "600" }],
+        "label-0-regular": ["10px", { lineHeight: "15px", fontWeight: "400" }],
+        "label-1-bold": ["12px", { lineHeight: "18px", fontWeight: "600" }],
+        "label-1-regular": ["12px", { lineHeight: "18px", fontWeight: "400" }],
       },
       fontWeight: {
         normal: '400',
