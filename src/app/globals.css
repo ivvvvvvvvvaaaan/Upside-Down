@@ -57,6 +57,15 @@
   --surface-system-success: 10 163 86;
   --surface-system-warning: 195 131 14;
 
+  /* Selection states - Light theme
+   * surface-selected: indigo-100 (light bg)
+   * surface-selected-hover: indigo-50 (lighter on hover)
+   * border-selected: indigo-500
+   */
+  --surface-selected: 199 210 252;
+  --surface-selected-hover: 225 229 245;
+  --border-selected: 64 97 231;
+
   --shadow-flat: rgba(0, 0, 0, 0);
   --shadow-high-primary: rgba(0, 0, 0, 0.1);
   --shadow-high-secondary: rgba(0, 0, 0, 0.1);
@@ -243,6 +252,15 @@
   --surface-system-neutral: 128 128 128;
   --surface-system-success: 10 163 86;
   --surface-system-warning: 195 131 14;
+
+  /* Selection states - Dark theme
+   * surface-selected: indigo-800 (#233371) - dark blue bg
+   * surface-selected-hover: indigo-900 (#192247) - darker on hover
+   * border-selected: indigo-500
+   */
+  --surface-selected: 35 51 113;
+  --surface-selected-hover: 25 34 71;
+  --border-selected: 64 97 231;
 
   --shadow-flat: rgba(0, 0, 0, 0);
   --shadow-high-primary: rgba(0, 0, 0, 0.5);

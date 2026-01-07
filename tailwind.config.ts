@@ -86,6 +86,12 @@ const config: Config = {
 
     // Animations
     'animate-breathe',
+
+    // Selection state classes (theme-adaptive)
+    'bg-surface-selected',
+    'bg-surface-selected-hover',
+    'hover:bg-surface-selected-hover',
+    'ring-border-selected',
   ],
   theme: {
     extend: {
@@ -267,6 +273,11 @@ const config: Config = {
             success: 'rgb(var(--surface-system-success) / <alpha-value>)',
             warning: 'rgb(var(--surface-system-warning) / <alpha-value>)',
           },
+          // Selection variants (theme-adaptive)
+          selected: {
+            DEFAULT: 'rgb(var(--surface-selected) / <alpha-value>)',
+            hover: 'rgb(var(--surface-selected-hover) / <alpha-value>)',
+          },
           // Navigation variants
           'navigation-selected': {
             DEFAULT: 'rgb(var(--indigo-500) / 0.4)',
@@ -290,7 +301,8 @@ const config: Config = {
             focus: 'rgb(var(--border-system-focus))',
             success: 'rgb(var(--border-system-success))',
             warning: 'rgb(var(--border-system-warning))',
-          }
+          },
+          selected: 'rgb(var(--border-selected))',
         },
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',

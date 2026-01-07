@@ -213,16 +213,46 @@ Each category includes variants for states (hover, disabled, selected), system f
   Interactive Button
 </button>
 
-// Selected state with hover
+// Selected state with hover (theme-adaptive)
 <div className="
-  bg-surface-selected-subtle
-  hover:bg-surface-selected-subtle-hover
-  border border-selected
-  hover:border-selected-hover
+  bg-surface-selected
+  hover:bg-surface-selected-hover
+  ring-2 ring-border-selected
 ">
   Selected Item
 </div>
 ```
+
+### Theme-Adaptive Selection States
+
+Our selection tokens use the **indigo scale** but pick different levels per theme for optimal contrast:
+
+| Token | Light Theme | Indigo Level | Dark Theme | Indigo Level |
+|-------|-------------|--------------|------------|--------------|
+| `bg-surface-selected` | `#C7D2FC` | indigo-100 | `#2C429C` | indigo-300 |
+| `bg-surface-selected-hover` | `#A9B9FA` | indigo-200 | `#3451C5` | indigo-400 |
+| `ring-border-selected` | `#5B79F1` | indigo-400 | `#5B79F1` | indigo-600 |
+
+**Design System Logic:**
+- **Light theme**: Uses lighter indigo levels (100-400) for contrast on white backgrounds
+- **Dark theme**: Uses middle indigo levels (300-600) for contrast on dark backgrounds
+- All values come from the indigo palette, ensuring color harmony
+
+```tsx
+// Asset card selection pattern
+<div className={cn(
+  // Normal state
+  !isSelected && 'bg-surface-flat hover:bg-surface-2',
+  // Selected state (theme-adaptive)
+  isSelected && 'bg-surface-selected hover:bg-surface-selected-hover',
+  // Primary selection gets ring
+  isPrimary && 'ring-2 ring-border-selected',
+)}>
+  Card Content
+</div>
+```
+
+**For Designers:** When updating the indigo palette, the selection tokens will need to be updated to match. The mapping is documented in `globals.css` comments.
 
 ### System Feedback Colors
 

@@ -35,20 +35,16 @@ import type { Asset } from '@/lib/data'
  * - Menu: Button variant="icon" size="icon", appears on hover
  */
 
-export type AssetCardState = 'default' | 'hover' | 'selected' | 'selectedFocused' | 'focused'
-
 export interface AssetCardProps {
   asset?: Asset
-  onClick?: (asset: Asset) => void
+  onClick?: (asset: Asset, event: React.MouseEvent) => void
   onMenuClick?: (asset: Asset) => void
   className?: string
   loading?: boolean
-  /** Selection state - controls background and border styling */
-  state?: AssetCardState
-  /** Shorthand for selected state */
+  /** Card is selected (blue background) */
   selected?: boolean
-  /** Shorthand for focused state (adds border) */
-  focused?: boolean
+  /** Primary selection - the anchor card from initial click (has border) */
+  primary?: boolean
 }
 
 export function AssetCard({
@@ -57,14 +53,11 @@ export function AssetCard({
   onMenuClick,
   className,
   loading = false,
-  state: stateProp,
   selected = false,
-  focused = false,
+  primary = false,
 }: AssetCardProps) {
-  // Determine effective state from props
-  const state = stateProp || (selected && focused ? 'selectedFocused' : selected ? 'selected' : focused ? 'focused' : 'default')
-  const isSelected = state === 'selected' || state === 'selectedFocused'
-  const isFocused = state === 'focused' || state === 'selectedFocused'
+  // Primary implies selected
+  const isSelected = selected || primary
   // Loading state with breathing animation
   if (loading || !asset) {
     return (
@@ -168,16 +161,18 @@ export function AssetCard({
 
   return (
     <div
-      onClick={() => onClick?.(asset)}
+      onClick={(e) => onClick?.(asset, e)}
       className={cn(
         'group relative flex flex-col',
         'w-full cursor-pointer',
         'rounded p-1',
         'transition-colors',
-        // Background: selected uses light blue (light theme) / dark blue (dark theme)
-        isSelected ? 'bg-indigo-100 dark:bg-indigo-200' : 'bg-surface-flat hover:bg-surface-2',
-        // Border: selected states get 2px indigo border
-        isSelected && 'ring-2 ring-indigo-400 dark:ring-indigo-600',
+        // Background states
+        !isSelected && 'bg-surface-flat hover:bg-surface-2',
+        // Selected: theme-adaptive selection background
+        isSelected && 'bg-surface-selected hover:bg-surface-selected-hover',
+        // Border: only primary selection gets the ring (theme-adaptive)
+        primary && 'ring-2 ring-border-selected',
         className
       )}
     >

@@ -3,14 +3,25 @@
 import { useState } from 'react'
 import {
   Stack,
-  Text,
   AssetCard,
   SettingsPanel,
   SettingGroup,
-  SettingOption
+  SettingOption,
+  CardGrid,
+  PageHeader,
+  EmptyState,
 } from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
+import { useAssetSelection } from '@/hooks'
 import type { Asset, Collection, AssetType } from '@/lib/data'
+
+const ASSET_TYPE_OPTIONS = [
+  { label: 'All Types', value: 'all' },
+  { label: 'Shot', value: 'shot' },
+  { label: 'Video', value: 'video' },
+  { label: 'Image', value: 'image' },
+  { label: 'Text', value: 'text' },
+] as const
 
 interface AssetsViewProps {
   assets: Asset[]
@@ -20,7 +31,8 @@ interface AssetsViewProps {
 export function AssetsView({ assets, collections }: AssetsViewProps) {
   const [selectedCollection, setSelectedCollection] = useState<string>('all')
   const [selectedType, setSelectedType] = useState<AssetType | 'all'>('all')
-  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null)
+
+  const { selectedIds, primaryId, handleAssetClick } = useAssetSelection()
 
   const filteredAssets = assets.filter(asset => {
     if (selectedType !== 'all' && asset.type !== selectedType) return false
@@ -32,7 +44,6 @@ export function AssetsView({ assets, collections }: AssetsViewProps) {
 
   const handleMenuClick = (asset: Asset) => {
     console.log('Menu clicked for:', asset.name)
-    // Add menu logic here
   }
 
   return (
@@ -40,93 +51,63 @@ export function AssetsView({ assets, collections }: AssetsViewProps) {
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
           <Stack spacing="lg">
+            <PageHeader
+              title="Assets"
+              description="Browse shots, videos, images, and documents"
+            />
 
-          {/* Header */}
-          <div>
-            <Text variant="headline-1" weight="bold" className="mb-2">Assets</Text>
-            <Text variant="body-2" color="secondary">
-              Browse shots, videos, images, and documents
-            </Text>
-          </div>
-
-          {/* Asset Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredAssets.map((asset) => (
-              <AssetCard
-                key={asset.id}
-                asset={asset}
-                selected={selectedAssetId === asset.id}
-                onClick={(a) => setSelectedAssetId(prev => prev === a.id ? null : a.id)}
-                onMenuClick={handleMenuClick}
+            {filteredAssets.length > 0 ? (
+              <CardGrid>
+                {filteredAssets.map((asset) => (
+                  <AssetCard
+                    key={asset.id}
+                    asset={asset}
+                    selected={selectedIds.has(asset.id)}
+                    primary={primaryId === asset.id}
+                    onClick={(a, e) => handleAssetClick(a, e, filteredAssets)}
+                    onMenuClick={handleMenuClick}
+                  />
+                ))}
+              </CardGrid>
+            ) : (
+              <EmptyState
+                title="No assets found"
+                message="Try adjusting your filters"
               />
-            ))}
-          </div>
-
-          {/* Empty state */}
-          {filteredAssets.length === 0 && (
-            <div className="text-center py-12">
-              <Text variant="headline-3" className="mb-2">No assets found</Text>
-              <Text variant="body-2" color="secondary">
-                Try adjusting your filters
-              </Text>
-            </div>
-          )}
-
+            )}
           </Stack>
         </div>
 
-        {/* Settings Panel */}
         <SettingsPanel>
-        <SettingGroup label="Collection">
-          <SettingOption
-            label="All Collections"
-            value="all"
-            checked={selectedCollection === 'all'}
-            onChange={setSelectedCollection}
-          />
-          {collections.map((collection) => (
+          <SettingGroup label="Collection">
             <SettingOption
-              key={collection.id}
-              label={collection.name}
-              value={collection.id}
-              checked={selectedCollection === collection.id}
+              label="All Collections"
+              value="all"
+              checked={selectedCollection === 'all'}
               onChange={setSelectedCollection}
             />
-          ))}
-        </SettingGroup>
+            {collections.map((collection) => (
+              <SettingOption
+                key={collection.id}
+                label={collection.name}
+                value={collection.id}
+                checked={selectedCollection === collection.id}
+                onChange={setSelectedCollection}
+              />
+            ))}
+          </SettingGroup>
 
-        <SettingGroup label="Asset Type">
-          <SettingOption
-            label="All Types"
-            value="all"
-            checked={selectedType === 'all'}
-            onChange={(val) => setSelectedType(val as AssetType | 'all')}
-          />
-          <SettingOption
-            label="Shot"
-            value="shot"
-            checked={selectedType === 'shot'}
-            onChange={(val) => setSelectedType(val as AssetType)}
-          />
-          <SettingOption
-            label="Video"
-            value="video"
-            checked={selectedType === 'video'}
-            onChange={(val) => setSelectedType(val as AssetType)}
-          />
-          <SettingOption
-            label="Image"
-            value="image"
-            checked={selectedType === 'image'}
-            onChange={(val) => setSelectedType(val as AssetType)}
-          />
-          <SettingOption
-            label="Text"
-            value="text"
-            checked={selectedType === 'text'}
-            onChange={(val) => setSelectedType(val as AssetType)}
-          />
-        </SettingGroup>
+          <SettingGroup label="Asset Type">
+            {ASSET_TYPE_OPTIONS.map(option => (
+              <SettingOption
+                key={option.value}
+                label={option.label}
+                value={option.value}
+                checked={selectedType === option.value}
+                onChange={(val) => setSelectedType(val as AssetType | 'all')}
+              />
+            ))}
+          </SettingGroup>
         </SettingsPanel>
       </div>
     </AppLayout>

@@ -1,9 +1,23 @@
 'use client'
 
 import { useState } from 'react'
-import { Stack, Text, CollectionCard, AssetCard, SettingsPanel, SettingGroup, SettingOption, SettingBoolean, Button } from '@/components/ui'
+import {
+  Stack,
+  Text,
+  CollectionCard,
+  AssetCard,
+  SettingsPanel,
+  SettingGroup,
+  SettingOption,
+  SettingBoolean,
+  Button,
+  CardGrid,
+  PageHeader,
+  EmptyState,
+} from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
 import { ArrowLeft } from 'lucide-react'
+import { useAssetSelection, useCollectionAssets } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
 import type { CollectionCardAssetCount } from '@/components/ui/collection-card'
 
@@ -14,41 +28,20 @@ interface CollectionCardsViewProps {
 
 export function CollectionCardsView({ title, initialCollections }: CollectionCardsViewProps) {
   const [collections] = useState<Collection[]>(initialCollections)
-  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null)
-  const [selectedCollectionAssets, setSelectedCollectionAssets] = useState<Asset[]>([])
-  const [loadingAssets, setLoadingAssets] = useState(false)
+  const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
+  const {
+    selectedCollection,
+    assets: collectionAssets,
+    loading: loadingAssets,
+    loadCollection,
+    goBack,
+  } = useCollectionAssets({ onNavigate: clearSelection })
+
   const [assetCount, setAssetCount] = useState<CollectionCardAssetCount>('Many')
-  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null)
 
   // Loading state controls
   const [showCollectionLoading, setShowCollectionLoading] = useState(false)
   const [showAssetLoading, setShowAssetLoading] = useState(false)
-
-  // Toggle asset selection
-  const handleAssetClick = (asset: Asset) => {
-    setSelectedAssetId(prev => prev === asset.id ? null : asset.id)
-  }
-
-  // Handle collection click - open collection view
-  const handleCollectionClick = async (collection: Collection) => {
-    setSelectedCollection(collection)
-    setLoadingAssets(true)
-    try {
-      const response = await fetch(`/api/collections/${collection.id}/assets`)
-      const assets = await response.json()
-      setSelectedCollectionAssets(assets)
-    } catch (error) {
-      console.error('Failed to load assets:', error)
-      setSelectedCollectionAssets([])
-    }
-    setLoadingAssets(false)
-  }
-
-  // Handle back button - return to collections grid
-  const handleBack = () => {
-    setSelectedCollection(null)
-    setSelectedCollectionAssets([])
-  }
 
   const handleMenuClick = (asset: Asset) => {
     console.log('Menu clicked for:', asset.name)
@@ -61,13 +54,12 @@ export function CollectionCardsView({ title, initialCollections }: CollectionCar
         <div className="p-6">
           <div className="max-w-7xl mx-auto">
             <Stack spacing="lg">
-              {/* Back button + Header */}
               <div>
                 <Button
                   variant="tertiary"
                   compact
                   icon={<ArrowLeft className="w-4 h-4" />}
-                  onClick={handleBack}
+                  onClick={goBack}
                   className="mb-4"
                 >
                   Back to Collections
@@ -78,43 +70,40 @@ export function CollectionCardsView({ title, initialCollections }: CollectionCar
                 <Text variant="body-2" color="secondary">
                   {loadingAssets
                     ? 'Loading assets...'
-                    : `${selectedCollectionAssets.length} asset${selectedCollectionAssets.length !== 1 ? 's' : ''}`
+                    : `${collectionAssets.length} asset${collectionAssets.length !== 1 ? 's' : ''}`
                   }
                 </Text>
               </div>
 
-              {/* Assets Grid */}
               {loadingAssets ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <CardGrid>
                   {[...Array(8)].map((_, i) => (
                     <AssetCard key={i} loading />
                   ))}
-                </div>
-              ) : selectedCollectionAssets.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {selectedCollectionAssets.map((asset) => (
+                </CardGrid>
+              ) : collectionAssets.length > 0 ? (
+                <CardGrid>
+                  {collectionAssets.map((asset) => (
                     <AssetCard
                       key={asset.id}
                       asset={asset}
-                      selected={selectedAssetId === asset.id}
-                      onClick={handleAssetClick}
+                      selected={selectedIds.has(asset.id)}
+                      primary={primaryId === asset.id}
+                      onClick={(a, e) => handleAssetClick(a, e, collectionAssets)}
                       onMenuClick={handleMenuClick}
                       loading={showAssetLoading}
                     />
                   ))}
-                </div>
+                </CardGrid>
               ) : (
-                <div className="py-12 text-center">
-                  <Text variant="headline-3" className="mb-2">No assets found</Text>
-                  <Text variant="body-2" color="secondary">
-                    This collection doesn't have any assets yet
-                  </Text>
-                </div>
+                <EmptyState
+                  title="No assets found"
+                  message="This collection doesn't have any assets yet"
+                />
               )}
             </Stack>
           </div>
 
-          {/* Settings Panel */}
           <SettingsPanel>
             <SettingGroup label="Loading States">
               <SettingBoolean
@@ -135,16 +124,12 @@ export function CollectionCardsView({ title, initialCollections }: CollectionCar
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
           <Stack spacing="lg">
-            {/* Header */}
-            <div>
-              <Text variant="headline-1" weight="bold" className="mb-2">{title}</Text>
-              <Text variant="body-2" color="secondary">
-                Browse collections by character, location, or scene
-              </Text>
-            </div>
+            <PageHeader
+              title={title}
+              description="Browse collections by character, location, or scene"
+            />
 
-            {/* Collection Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <CardGrid gap="4">
               {collections.map((collection) => (
                 <CollectionCard
                   key={collection.id}
@@ -157,14 +142,13 @@ export function CollectionCardsView({ title, initialCollections }: CollectionCar
                   avatarName={collection.name}
                   state={showCollectionLoading ? 'Loading' : 'Normal'}
                   numberOfAssets={assetCount}
-                  onClick={() => handleCollectionClick(collection)}
+                  onClick={() => loadCollection(collection)}
                 />
               ))}
-            </div>
+            </CardGrid>
           </Stack>
         </div>
 
-        {/* Settings Panel */}
         <SettingsPanel>
           <SettingGroup label="Loading States">
             <SettingBoolean
