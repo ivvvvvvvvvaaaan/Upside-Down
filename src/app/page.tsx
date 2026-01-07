@@ -104,7 +104,7 @@ export default function Home() {
           <Stack direction="horizontal" spacing="sm" align="center">
             <FolderOpen className="w-5 h-5 text-primary" />
             <Text variant="headline-2">Your Projects</Text>
-            {projects.length > 0 && <Badge color="primary" compact>{projects.length}</Badge>}
+            {projects.length > 0 && <Badge color="blue" compact>{projects.length}</Badge>}
           </Stack>
 
           {projects.length > 0 ? (
