@@ -35,12 +35,20 @@ import type { Asset } from '@/lib/data'
  * - Menu: Button variant="icon" size="icon", appears on hover
  */
 
+export type AssetCardState = 'default' | 'hover' | 'selected' | 'selectedFocused' | 'focused'
+
 export interface AssetCardProps {
   asset?: Asset
   onClick?: (asset: Asset) => void
   onMenuClick?: (asset: Asset) => void
   className?: string
   loading?: boolean
+  /** Selection state - controls background and border styling */
+  state?: AssetCardState
+  /** Shorthand for selected state */
+  selected?: boolean
+  /** Shorthand for focused state (adds border) */
+  focused?: boolean
 }
 
 export function AssetCard({
@@ -49,7 +57,14 @@ export function AssetCard({
   onMenuClick,
   className,
   loading = false,
+  state: stateProp,
+  selected = false,
+  focused = false,
 }: AssetCardProps) {
+  // Determine effective state from props
+  const state = stateProp || (selected && focused ? 'selectedFocused' : selected ? 'selected' : focused ? 'focused' : 'default')
+  const isSelected = state === 'selected' || state === 'selectedFocused'
+  const isFocused = state === 'focused' || state === 'selectedFocused'
   // Loading state with breathing animation
   if (loading || !asset) {
     return (
@@ -157,9 +172,12 @@ export function AssetCard({
       className={cn(
         'group relative flex flex-col',
         'w-full cursor-pointer',
-        'bg-surface-flat hover:bg-surface-2',
         'rounded p-1',
         'transition-colors',
+        // Background: selected uses light blue (light theme) / dark blue (dark theme)
+        isSelected ? 'bg-indigo-100 dark:bg-indigo-200' : 'bg-surface-flat hover:bg-surface-2',
+        // Border: selected states get 2px indigo border
+        isSelected && 'ring-2 ring-indigo-400 dark:ring-indigo-600',
         className
       )}
     >

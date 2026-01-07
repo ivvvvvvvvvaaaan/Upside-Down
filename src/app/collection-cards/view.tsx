@@ -18,10 +18,16 @@ export function CollectionCardsView({ title, initialCollections }: CollectionCar
   const [selectedCollectionAssets, setSelectedCollectionAssets] = useState<Asset[]>([])
   const [loadingAssets, setLoadingAssets] = useState(false)
   const [assetCount, setAssetCount] = useState<CollectionCardAssetCount>('Many')
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null)
 
   // Loading state controls
   const [showCollectionLoading, setShowCollectionLoading] = useState(false)
   const [showAssetLoading, setShowAssetLoading] = useState(false)
+
+  // Toggle asset selection
+  const handleAssetClick = (asset: Asset) => {
+    setSelectedAssetId(prev => prev === asset.id ? null : asset.id)
+  }
 
   // Handle collection click - open collection view
   const handleCollectionClick = async (collection: Collection) => {
@@ -90,6 +96,8 @@ export function CollectionCardsView({ title, initialCollections }: CollectionCar
                     <AssetCard
                       key={asset.id}
                       asset={asset}
+                      selected={selectedAssetId === asset.id}
+                      onClick={handleAssetClick}
                       onMenuClick={handleMenuClick}
                       loading={showAssetLoading}
                     />

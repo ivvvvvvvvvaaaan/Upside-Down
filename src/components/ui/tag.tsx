@@ -32,12 +32,12 @@ import { cn } from '@/lib/utils'
  */
 
 const FILL_COLORS = {
-  neutral: 'bg-gray-600 dark:bg-gray-400 text-white',
-  positive: 'bg-green-500 text-white',
-  negative: 'bg-red-500 text-white',
-  notice: 'bg-yellow-500 text-white',
-  informative: 'bg-blue-500 text-white',
-  announcement: 'bg-indigo-500 text-white',
+  neutral: 'bg-gray-600 dark:bg-gray-400 !text-white',
+  positive: 'bg-green-500 !text-white',
+  negative: 'bg-red-500 !text-white',
+  notice: 'bg-yellow-500 !text-white',
+  informative: 'bg-blue-500 !text-white',
+  announcement: 'bg-indigo-500 !text-white',
 } as const
 
 const BORDER_COLORS = {

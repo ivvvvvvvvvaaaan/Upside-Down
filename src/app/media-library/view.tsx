@@ -25,10 +25,16 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null)
   const [selectedCollectionAssets, setSelectedCollectionAssets] = useState<Asset[]>([])
   const [loadingAssets, setLoadingAssets] = useState(false)
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null)
 
   // Loading state controls
   const [showCollectionLoading, setShowCollectionLoading] = useState(false)
   const [showAssetLoading, setShowAssetLoading] = useState(false)
+
+  // Toggle asset selection
+  const handleAssetClick = (asset: Asset) => {
+    setSelectedAssetId(prev => prev === asset.id ? null : asset.id)
+  }
 
   // Group assets by type
   const shotAssets = assets.filter(a => a.type === 'shot')
@@ -103,6 +109,8 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
                     <AssetCard
                       key={asset.id}
                       asset={asset}
+                      selected={selectedAssetId === asset.id}
+                      onClick={handleAssetClick}
                       onMenuClick={handleMenuClick}
                       loading={showAssetLoading}
                     />
@@ -147,6 +155,8 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
             <AssetCard
               key={asset.id}
               asset={asset}
+              selected={selectedAssetId === asset.id}
+              onClick={handleAssetClick}
               onMenuClick={handleMenuClick}
               loading={showAssetLoading}
             />

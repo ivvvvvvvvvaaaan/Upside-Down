@@ -20,6 +20,7 @@ interface AssetsViewProps {
 export function AssetsView({ assets, collections }: AssetsViewProps) {
   const [selectedCollection, setSelectedCollection] = useState<string>('all')
   const [selectedType, setSelectedType] = useState<AssetType | 'all'>('all')
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null)
 
   const filteredAssets = assets.filter(asset => {
     if (selectedType !== 'all' && asset.type !== selectedType) return false
@@ -54,6 +55,8 @@ export function AssetsView({ assets, collections }: AssetsViewProps) {
               <AssetCard
                 key={asset.id}
                 asset={asset}
+                selected={selectedAssetId === asset.id}
+                onClick={(a) => setSelectedAssetId(prev => prev === a.id ? null : a.id)}
                 onMenuClick={handleMenuClick}
               />
             ))}
