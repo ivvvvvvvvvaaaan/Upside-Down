@@ -208,14 +208,14 @@
 
 .dark {
   /* Dark theme */
-  --border-default: 128 128 128;
-  --border-dim-rgb: 128 128 128;
-  --border-elevation-rgb: 0 0 0;
-  --border-inverse: 255 255 255;
-  --border-inverse-dim-rgb: 255 255 255;
-  --border-inverse-subtle-rgb: 255 255 255;
-  --border-subtle-rgb: 128 128 128;
-  --border-system-error: 193 17 25;
+  --border-default: 255 255 255;
+  --border-dim-rgb: 255 255 255;
+  --border-elevation-rgb: 255 255 255;
+  --border-inverse: 128 128 128;
+  --border-inverse-dim-rgb: 128 128 128;
+  --border-inverse-subtle-rgb: 128 128 128;
+  --border-subtle-rgb: 255 255 255;
+  --border-system-error: 247 99 107;
   --border-system-focus: 64 97 231;
   --border-system-success: 10 163 86;
   --border-system-warning: 195 131 14;

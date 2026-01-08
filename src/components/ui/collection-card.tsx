@@ -12,13 +12,16 @@ import Image from 'next/image'
  * Supports multiple states, asset count variants, and collection types.
  *
  * TOKENS USED (Hawkins only - NO hardcoded values):
- * - text-body-2-bold: Collection title (16px/24px/600)
+ * - text-body-2-bold: Collection title for character/location (16px/24px/600)
+ * - text-body-0-bold: Collection title for scene (13px/20px/600) - smaller for long names
  * - text-label-1-regular: Asset count metadata (12px/18px/400)
  * - text-body-0-regular: "No assets" state (13px/20px/400)
  * - text-foreground: Default text color
  * - text-foreground-subtle: Secondary text (metadata)
  * - text-foreground-system-link: Link color on hover (blue)
- * - bg-surface-low: Card background on hover
+ * - bg-surface-low: Card background (elevated from flat)
+ * - bg-surface-mid: Card background on hover
+ * - border-border-subtle: Subtle border to distinguish from assets
  *
  * Variants:
  * - state: Normal, Hover, Selected, Focused, Loading, etc.
@@ -280,7 +283,7 @@ export function CollectionCard({
           <div className="flex flex-col items-start flex-1 min-w-0">
             <div
               className={cn(
-                'text-body-2-bold text-foreground break-words',
+                'text-body-0-bold text-foreground break-words',
                 linkClass,
                 isHovered && 'underline text-foreground-system-link'
               )}
@@ -328,10 +331,11 @@ export function CollectionCard({
   return (
     <div
       className={cn(
-        'group flex flex-col gap-4 min-h-[204px] p-1 relative w-full rounded',
+        'group flex flex-col gap-4 min-h-[204px] p-2 relative w-full rounded',
+        'bg-surface-2 border border-border-elevation',
         isCentered ? 'items-start' : 'items-start',
-        isHovered && 'bg-surface-2',
-        'hover:bg-surface-2 transition-colors',
+        isHovered && 'bg-surface-3',
+        'hover:bg-surface-3 transition-colors',
         isSelected && 'ring-2 ring-primary',
         onClick && 'cursor-pointer',
         className

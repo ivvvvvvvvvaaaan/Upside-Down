@@ -101,11 +101,11 @@ const config: Config = {
         background: 'rgb(var(--background-rgb) / <alpha-value>)',
         foreground: {
           DEFAULT: 'rgb(var(--foreground-rgb) / 0.9)',
-          dim: 'rgb(var(--foreground-dim-rgb) / 0.6)',
+          dim: 'rgb(var(--foreground-dim-rgb) / 0.5)',
           subtle: 'rgb(var(--foreground-subtle-rgb) / 0.7)',
           inverse: {
-            DEFAULT: 'rgb(var(--foreground-inverse))',
-            dim: 'rgb(var(--foreground-inverse-dim-rgb) / 0.5)',
+            DEFAULT: 'rgb(var(--foreground-inverse) / 0.9)',
+            dim: 'rgb(var(--foreground-inverse-dim-rgb) / 0.6)',
             subtle: 'rgb(var(--foreground-inverse-subtle-rgb) / 0.7)',
           },
           product: {

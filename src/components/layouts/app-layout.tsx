@@ -20,7 +20,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Left vertical nav with logo */}
       <div className="w-20 bg-surface-3 flex-shrink-0 flex flex-col items-center px-4 py-6 gap-6">
         <Image
-          src="/assets/Vertical/Lockup/Logo/Professional.svg"
+          src="/assets/Vertical/Lockup/Logo/N-Professional.svg"
           alt="Logo"
           width={120}
           height={40}
