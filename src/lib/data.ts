@@ -54,6 +54,7 @@ export type Collection = {
 }
 
 const MOCK_COLLECTIONS: Collection[] = [
+  // Characters
   {
     id: 'char-1',
     name: 'Billy Hargrove',
@@ -79,6 +80,55 @@ const MOCK_COLLECTIONS: Collection[] = [
     avatarSrc: 'https://i.pravatar.cc/150?img=5',
   },
   {
+    id: 'char-3',
+    name: 'Mike Wheeler',
+    type: 'character',
+    assetCount: 38,
+    mainImage: 'https://picsum.photos/seed/mike1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/mike2/400/300',
+      'https://picsum.photos/seed/mike3/400/300',
+    ],
+    avatarSrc: 'https://i.pravatar.cc/150?img=33',
+  },
+  {
+    id: 'char-4',
+    name: 'Dustin Henderson',
+    type: 'character',
+    assetCount: 31,
+    mainImage: 'https://picsum.photos/seed/dustin1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/dustin2/400/300',
+      'https://picsum.photos/seed/dustin3/400/300',
+    ],
+    avatarSrc: 'https://i.pravatar.cc/150?img=59',
+  },
+  {
+    id: 'char-5',
+    name: 'Joyce Byers',
+    type: 'character',
+    assetCount: 45,
+    mainImage: 'https://picsum.photos/seed/joyce1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/joyce2/400/300',
+      'https://picsum.photos/seed/joyce3/400/300',
+    ],
+    avatarSrc: 'https://i.pravatar.cc/150?img=44',
+  },
+  {
+    id: 'char-6',
+    name: 'Jim Hopper',
+    type: 'character',
+    assetCount: 67,
+    mainImage: 'https://picsum.photos/seed/hopper1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/hopper2/400/300',
+      'https://picsum.photos/seed/hopper3/400/300',
+    ],
+    avatarSrc: 'https://i.pravatar.cc/150?img=68',
+  },
+  // Locations
+  {
     id: 'loc-1',
     name: 'The Upside Down',
     type: 'location',
@@ -90,6 +140,51 @@ const MOCK_COLLECTIONS: Collection[] = [
     ],
   },
   {
+    id: 'loc-2',
+    name: 'Hawkins Lab',
+    type: 'location',
+    assetCount: 56,
+    mainImage: 'https://picsum.photos/seed/lab1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/lab2/400/300',
+      'https://picsum.photos/seed/lab3/400/300',
+    ],
+  },
+  {
+    id: 'loc-3',
+    name: 'Starcourt Mall',
+    type: 'location',
+    assetCount: 42,
+    mainImage: 'https://picsum.photos/seed/mall1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/mall2/400/300',
+      'https://picsum.photos/seed/mall3/400/300',
+    ],
+  },
+  {
+    id: 'loc-4',
+    name: 'Byers House',
+    type: 'location',
+    assetCount: 73,
+    mainImage: 'https://picsum.photos/seed/byers1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/byers2/400/300',
+      'https://picsum.photos/seed/byers3/400/300',
+    ],
+  },
+  {
+    id: 'loc-5',
+    name: 'Hawkins High School',
+    type: 'location',
+    assetCount: 34,
+    mainImage: 'https://picsum.photos/seed/school1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/school2/400/300',
+      'https://picsum.photos/seed/school3/400/300',
+    ],
+  },
+  // Scenes
+  {
     id: 'scene-1',
     name: 'EXT. GULAG YARD - DAY',
     type: 'scene',
@@ -98,6 +193,94 @@ const MOCK_COLLECTIONS: Collection[] = [
     thumbnailImages: [
       'https://picsum.photos/seed/scene2/400/300',
       'https://picsum.photos/seed/scene3/400/300',
+    ],
+  },
+  {
+    id: 'scene-2',
+    name: 'INT. HAWKINS LAB - NIGHT',
+    type: 'scene',
+    assetCount: 28,
+    mainImage: 'https://picsum.photos/seed/labscene1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/labscene2/400/300',
+      'https://picsum.photos/seed/labscene3/400/300',
+    ],
+  },
+  {
+    id: 'scene-3',
+    name: 'EXT. STARCOURT PARKING - NIGHT',
+    type: 'scene',
+    assetCount: 51,
+    mainImage: 'https://picsum.photos/seed/parking1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/parking2/400/300',
+      'https://picsum.photos/seed/parking3/400/300',
+    ],
+  },
+  {
+    id: 'scene-4',
+    name: 'INT. WHEELER BASEMENT - DAY',
+    type: 'scene',
+    assetCount: 19,
+    mainImage: 'https://picsum.photos/seed/basement1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/basement2/400/300',
+      'https://picsum.photos/seed/basement3/400/300',
+    ],
+  },
+  {
+    id: 'scene-5',
+    name: 'EXT. FOREST CHASE - DUSK',
+    type: 'scene',
+    assetCount: 37,
+    mainImage: 'https://picsum.photos/seed/forest1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/forest2/400/300',
+      'https://picsum.photos/seed/forest3/400/300',
+    ],
+  },
+  {
+    id: 'scene-6',
+    name: 'INT. BYERS LIVING ROOM - CHRISTMAS LIGHTS REVELATION - NIGHT',
+    type: 'scene',
+    assetCount: 24,
+    mainImage: 'https://picsum.photos/seed/lights1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/lights2/400/300',
+      'https://picsum.photos/seed/lights3/400/300',
+    ],
+  },
+  {
+    id: 'scene-7',
+    name: 'EXT. HAWKINS NATIONAL LABORATORY PERIMETER FENCE - CONTINUOUS',
+    type: 'scene',
+    assetCount: 18,
+    mainImage: 'https://picsum.photos/seed/fence1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/fence2/400/300',
+      'https://picsum.photos/seed/fence3/400/300',
+    ],
+  },
+  {
+    id: 'scene-8',
+    name: 'INT. STARCOURT MALL FOOD COURT - SCOOPS AHOY BACK ROOM - DAY',
+    type: 'scene',
+    assetCount: 33,
+    mainImage: 'https://picsum.photos/seed/scoops1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/scoops2/400/300',
+      'https://picsum.photos/seed/scoops3/400/300',
+    ],
+  },
+  {
+    id: 'scene-9',
+    name: 'EXT. ABANDONED JUNKYARD - SCHOOL BUS STANDOFF - SUNSET',
+    type: 'scene',
+    assetCount: 41,
+    mainImage: 'https://picsum.photos/seed/junkyard1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/junkyard2/400/300',
+      'https://picsum.photos/seed/junkyard3/400/300',
     ],
   },
 ]
@@ -312,6 +495,11 @@ export async function getCollections(): Promise<Collection[]> {
 
   // TODO: Implement Supabase collections query when schema is ready
   return MOCK_COLLECTIONS
+}
+
+export async function getCollectionsByType(type: Collection['type']): Promise<Collection[]> {
+  const collections = await getCollections()
+  return collections.filter(c => c.type === type)
 }
 
 export async function getAssetsByCollection(collectionId: string): Promise<Asset[]> {
