@@ -12,14 +12,14 @@
 
 :root {
   /* Light theme (default) */
-  --border-default: 255 255 255;
-  --border-dim-rgb: 255 255 255;
-  --border-elevation-rgb: 255 255 255;
-  --border-inverse: 128 128 128;
-  --border-inverse-dim-rgb: 128 128 128;
-  --border-inverse-subtle-rgb: 128 128 128;
+  --border-default: 128 128 128;
+  --border-dim-rgb: 128 128 128;
+  --border-elevation-rgb: 0 0 0;
+  --border-inverse: 255 255 255;
+  --border-inverse-dim-rgb: 255 255 255;
+  --border-inverse-subtle-rgb: 255 255 255;
   --border-subtle-rgb: 128 128 128;
-  --border-system-error: 247 99 107;
+  --border-system-error: 193 17 25;
   --border-system-focus: 64 97 231;
   --border-system-success: 10 163 86;
   --border-system-warning: 195 131 14;
@@ -31,10 +31,10 @@
   --foreground-inverse-dim-rgb: 255 255 255;
   --foreground-inverse-subtle-rgb: 255 255 255;
   --foreground-product-brand: 229 9 20;
-  --foreground-system-error: 247 99 107;
+  --foreground-system-error: 193 17 25;
   --foreground-system-link: 52 81 197;
-  --foreground-system-success: 82 200 141;
-  --foreground-system-warning: 229 181 93;
+  --foreground-system-success: 16 113 64;
+  --foreground-system-warning: 132 93 22;
 
   --surface-background-0: 255 255 255;
   --surface-background-1: 250 250 250;
@@ -52,7 +52,7 @@
   --surface-overlay-rgb: 0 0 0;
 
   --surface-product-brand: 229 9 20;
-  --surface-system-error: 247 99 107;
+  --surface-system-error: 193 17 25;
   --surface-system-neutral: 128 128 128;
   --surface-system-success: 10 163 86;
   --surface-system-warning: 195 131 14;
