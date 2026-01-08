@@ -15,7 +15,8 @@ import {
   EmptyState,
 } from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 import { useAssetSelection, useCollectionAssets } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
 
@@ -37,6 +38,11 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
   // Loading state controls
   const [showCollectionLoading, setShowCollectionLoading] = useState(false)
   const [showAssetLoading, setShowAssetLoading] = useState(false)
+
+  // Group collections by type
+  const characterCollections = collections.filter(c => c.type === 'character')
+  const locationCollections = collections.filter(c => c.type === 'location')
+  const sceneCollections = collections.filter(c => c.type === 'scene')
 
   // Group assets by type
   const shotAssets = assets.filter(a => a.type === 'shot')
@@ -119,6 +125,48 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
     )
   }
 
+  // Collection section component
+  const CollectionSection = ({ title, collectionList, href }: { title: string; collectionList: Collection[]; href: string }) => {
+    if (collectionList.length === 0) return null
+    const displayedCollections = collectionList.slice(0, 4)
+    const hasMore = collectionList.length > 4
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <Text variant="headline-3" weight="semibold">
+            {title} ({collectionList.length})
+          </Text>
+          {hasMore && (
+            <Link
+              href={href}
+              className="flex items-center gap-1 text-body-0-bold text-foreground-subtle hover:text-foreground transition-colors"
+            >
+              See all
+              <ChevronRight className="w-4 h-4" />
+            </Link>
+          )}
+        </div>
+        <CardGrid gap="4">
+          {displayedCollections.map((collection) => (
+            <CollectionCard
+              key={collection.id}
+              title={collection.name}
+              assetCount={collection.assetCount}
+              type={collection.type}
+              mainImage={collection.mainImage}
+              thumbnailImages={collection.thumbnailImages}
+              avatarSrc={collection.avatarSrc}
+              avatarName={collection.name}
+              state={showCollectionLoading ? 'Loading' : 'Normal'}
+              numberOfAssets="Many"
+              onClick={() => loadCollection(collection)}
+            />
+          ))}
+        </CardGrid>
+      </div>
+    )
+  }
+
   // Asset section component
   const AssetSection = ({ title, assetList }: { title: string; assetList: Asset[] }) => {
     if (assetList.length === 0) return null
@@ -156,29 +204,10 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
               description="Browse collections and assets"
             />
 
-            {/* Collections Section */}
-            <div>
-              <Text variant="headline-2" weight="semibold" className="mb-4">
-                Collections ({collections.length})
-              </Text>
-              <CardGrid gap="4">
-                {collections.map((collection) => (
-                  <CollectionCard
-                    key={collection.id}
-                    title={collection.name}
-                    assetCount={collection.assetCount}
-                    type={collection.type}
-                    mainImage={collection.mainImage}
-                    thumbnailImages={collection.thumbnailImages}
-                    avatarSrc={collection.avatarSrc}
-                    avatarName={collection.name}
-                    state={showCollectionLoading ? 'Loading' : 'Normal'}
-                    numberOfAssets="Many"
-                    onClick={() => loadCollection(collection)}
-                  />
-                ))}
-              </CardGrid>
-            </div>
+            {/* Collections by Type */}
+            <CollectionSection title="Characters" collectionList={characterCollections} href="/collections/characters" />
+            <CollectionSection title="Locations" collectionList={locationCollections} href="/collections/locations" />
+            <CollectionSection title="Scenes" collectionList={sceneCollections} href="/collections/scenes" />
 
             {/* Assets by Type */}
             <AssetSection title="Shots" assetList={shotAssets} />

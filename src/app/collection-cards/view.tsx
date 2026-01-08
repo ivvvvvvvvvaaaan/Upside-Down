@@ -14,7 +14,9 @@ import {
   CardGrid,
   PageHeader,
   EmptyState,
+  AppearanceDropdown,
 } from '@/components/ui'
+import type { LayoutType, CardSize } from '@/components/ui/appearance-dropdown'
 import { AppLayout } from '@/components/layouts'
 import { ArrowLeft } from 'lucide-react'
 import { useAssetSelection, useCollectionAssets } from '@/hooks'
@@ -38,6 +40,10 @@ export function CollectionCardsView({ title, initialCollections }: CollectionCar
   } = useCollectionAssets({ onNavigate: clearSelection })
 
   const [assetCount, setAssetCount] = useState<CollectionCardAssetCount>('Many')
+
+  // Appearance settings
+  const [layout, setLayout] = useState<LayoutType>('grid')
+  const [cardSize, setCardSize] = useState<CardSize>('md')
 
   // Loading state controls
   const [showCollectionLoading, setShowCollectionLoading] = useState(false)
@@ -124,12 +130,20 @@ export function CollectionCardsView({ title, initialCollections }: CollectionCar
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
           <Stack spacing="lg">
-            <PageHeader
-              title={title}
-              description="Browse collections by character, location, or scene"
-            />
+            <div className="flex items-start justify-between">
+              <PageHeader
+                title={title}
+                description="Browse collections by character, location, or scene"
+              />
+              <AppearanceDropdown
+                layout={layout}
+                onLayoutChange={setLayout}
+                cardSize={cardSize}
+                onCardSizeChange={setCardSize}
+              />
+            </div>
 
-            <CardGrid gap="4">
+            <CardGrid gap="4" layout={layout} columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
               {collections.map((collection) => (
                 <CollectionCard
                   key={collection.id}

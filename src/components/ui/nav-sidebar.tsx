@@ -48,7 +48,7 @@ export function NavSidebar({ className }: NavSidebarProps) {
   }
 
   return (
-    <nav className={cn('w-60 bg-surface-1 border-r border-border-subtle flex-shrink-0 flex flex-col', className)}>
+    <nav className={cn('w-60 bg-surface-1 border-r border-border-dim flex-shrink-0 flex flex-col', className)}>
       {/* Main Items (no header) */}
       <div className="pt-4 pb-2">
         <div className="px-3 space-y-1">
