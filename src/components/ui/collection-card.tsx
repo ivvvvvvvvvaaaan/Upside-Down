@@ -278,7 +278,13 @@ export function CollectionCard({
             <Film className="w-4 h-4 text-foreground-dim" />
           </div>
           <div className="flex flex-col items-start flex-1 min-w-0">
-            <div className="text-body-2-bold text-foreground break-words">
+            <div
+              className={cn(
+                'text-body-2-bold text-foreground break-words',
+                linkClass,
+                isHovered && 'underline text-foreground-system-link'
+              )}
+            >
               {title}
             </div>
             <div className="text-label-1-regular text-foreground-subtle">

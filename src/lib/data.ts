@@ -91,7 +91,7 @@ const MOCK_COLLECTIONS: Collection[] = [
   },
   {
     id: 'scene-1',
-    name: 'Lab Escape Sequence',
+    name: 'EXT. GULAG YARD - DAY',
     type: 'scene',
     assetCount: 43,
     mainImage: 'https://picsum.photos/seed/scene1/400/300',
