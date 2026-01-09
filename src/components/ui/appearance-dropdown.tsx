@@ -31,7 +31,7 @@ export function AppearanceDropdown({
       align="end"
       width="auto"
     >
-      <div className="space-y-3">
+      <div className="space-y-3 min-w-56">
         {showLayoutOptions && (
           <ToggleButtonGroup
             options={[

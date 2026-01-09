@@ -38,7 +38,7 @@ export function AssetsView({ assets, collections }: AssetsViewProps) {
   const [selectedType, setSelectedType] = useState<AssetType | 'all'>('all')
 
   const { selectedIds, primaryId, handleAssetClick } = useAssetSelection()
-  const { cardSize, setCardSize } = useViewPreferences()
+  const { layout, setLayout, cardSize, setCardSize } = useViewPreferences()
 
   // Asset card state
   const [assetCardState, setAssetCardState] = useState<AssetCardState>('asis')
@@ -77,11 +77,10 @@ export function AssetsView({ assets, collections }: AssetsViewProps) {
                 description="Browse shots, videos, images, and documents"
               />
               <AppearanceDropdown
-                layout="grid"
-                onLayoutChange={() => {}}
+                layout={layout}
+                onLayoutChange={setLayout}
                 cardSize={cardSize}
                 onCardSizeChange={setCardSize}
-                showLayoutOptions={false}
               />
             </div>
 

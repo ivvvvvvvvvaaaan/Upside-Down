@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Stack,
   Text,
@@ -14,11 +14,13 @@ import {
   PageHeader,
   EmptyState,
   AppearanceDropdown,
+  CollectionsListView,
+  CollectionsGalleryView,
 } from '@/components/ui'
+import type { GalleryThumbnailMode } from '@/components/ui/collections-gallery-view'
 import type { CollectionCardAssetCount } from '@/components/ui/collection-card'
 import { AppLayout } from '@/components/layouts'
-import { ArrowLeft, ChevronRight } from 'lucide-react'
-import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { useAssetSelection, useCollectionAssets, useViewPreferences } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
 
@@ -28,12 +30,11 @@ type CollectionCardState = 'loading' | 'asis' | 'many' | 'two' | 'one' | 'none'
 // Asset card states: loading, real data, or no preview placeholder
 type AssetCardState = 'loading' | 'asis' | 'no-preview'
 
-interface MediaLibraryViewProps {
+interface AllCollectionsViewProps {
   collections: Collection[]
-  assets: Asset[]
 }
 
-export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps) {
+export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const {
     selectedCollection,
@@ -44,7 +45,7 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
   } = useCollectionAssets({ onNavigate: clearSelection })
 
   // Appearance settings - persisted globally
-  const { cardSize, setCardSize } = useViewPreferences()
+  const { layout, setLayout, cardSize, setCardSize } = useViewPreferences()
 
   // Card state controls
   const [collectionCardState, setCollectionCardState] = useState<CollectionCardState>('asis')
@@ -54,17 +55,69 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
   const showCollectionLoading = collectionCardState === 'loading'
   const showAssetLoading = assetCardState === 'loading'
   const forceEmptyPreview = assetCardState === 'no-preview'
+  const thumbnailMode: GalleryThumbnailMode = collectionCardState === 'loading' ? 'asis' : collectionCardState
 
-  // Group collections by type
-  const characterCollections = collections.filter(c => c.type === 'character')
-  const locationCollections = collections.filter(c => c.type === 'location')
-  const sceneCollections = collections.filter(c => c.type === 'scene')
+  // Pre-loaded asset data for accurate counts
+  const [loadedAssets, setLoadedAssets] = useState<Record<string, Asset[]>>({})
+  const [isPreloading, setIsPreloading] = useState(true)
 
-  // Group assets by type
-  const shotAssets = assets.filter(a => a.type === 'shot')
-  const videoAssets = assets.filter(a => a.type === 'video')
-  const imageAssets = assets.filter(a => a.type === 'image')
-  const textAssets = assets.filter(a => a.type === 'text')
+  // Pre-fetch all collection assets on mount
+  useEffect(() => {
+    const fetchAllAssets = async () => {
+      setIsPreloading(true)
+      const fetchPromises = collections.map(async (collection) => {
+        try {
+          const response = await fetch(`/api/collections/${collection.id}/assets`)
+          if (!response.ok) throw new Error(`HTTP ${response.status}`)
+          const assets = await response.json()
+          return { id: collection.id, assets }
+        } catch (error) {
+          console.error('Failed to pre-fetch assets:', error)
+          return { id: collection.id, assets: [] }
+        }
+      })
+
+      const results = await Promise.all(fetchPromises)
+      const assetsMap: Record<string, Asset[]> = {}
+      for (const result of results) {
+        assetsMap[result.id] = result.assets
+      }
+      setLoadedAssets(assetsMap)
+      setIsPreloading(false)
+    }
+
+    fetchAllAssets()
+  }, [collections])
+
+  // Enrich collections with real or fake data based on thumbnail mode
+  const enrichedCollections = useMemo(() => {
+    if (isPreloading) return collections
+
+    return collections.map((collection) => {
+      const assets = loadedAssets[collection.id] || []
+      const realAssetCount = assets.length
+
+      // "As Is" mode: use real thumbnails from loaded assets
+      if (thumbnailMode === 'asis') {
+        const assetThumbnails = assets
+          .map((a) => a.thumbnail)
+          .filter((t): t is string => !!t)
+
+        return {
+          ...collection,
+          assetCount: realAssetCount,
+          mainImage: assetThumbnails[0] || undefined,
+          thumbnailImages: assetThumbnails.slice(1, 3),
+        }
+      }
+
+      // Other modes: use original fake data but with real asset count
+      return {
+        ...collection,
+        assetCount: realAssetCount,
+      }
+    })
+  }, [collections, loadedAssets, isPreloading, thumbnailMode])
 
   const handleMenuClick = (asset: Asset) => {
     console.log('Menu clicked for:', asset.name)
@@ -112,7 +165,7 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
                   onClick={goBack}
                   className="mb-4"
                 >
-                  Back to Media Library
+                  Back to All Collections
                 </Button>
                 <Text variant="headline-1" weight="bold" className="mb-2">
                   {selectedCollection.name}
@@ -173,77 +226,7 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
     )
   }
 
-  // Collection section component
-  const CollectionSection = ({ title, collectionList, href }: { title: string; collectionList: Collection[]; href: string }) => {
-    if (collectionList.length === 0) return null
-    const displayedCollections = collectionList.slice(0, 4)
-    const hasMore = collectionList.length > 4
-    return (
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <Text variant="headline-3" weight="semibold">
-            {title} ({collectionList.length})
-          </Text>
-          {hasMore && (
-            <Link
-              href={href}
-              className="flex items-center gap-1 text-body-0-bold text-foreground-subtle hover:text-foreground transition-colors"
-            >
-              See all
-              <ChevronRight className="w-4 h-4" />
-            </Link>
-          )}
-        </div>
-        <CardGrid columns={getColumns()} gap="4">
-          {displayedCollections.map((collection) => (
-            <CollectionCard
-              key={collection.id}
-              title={collection.name}
-              assetCount={collection.assetCount}
-              type={collection.type}
-              mainImage={collection.mainImage}
-              thumbnailImages={collection.thumbnailImages}
-              avatarSrc={collection.avatarSrc}
-              avatarName={collection.name}
-              state={showCollectionLoading ? 'Loading' : 'Normal'}
-              numberOfAssets={getNumberOfAssets(collection)}
-              size={cardSize}
-              onClick={() => loadCollection(collection)}
-            />
-          ))}
-        </CardGrid>
-      </div>
-    )
-  }
-
-  // Asset section component
-  const AssetSection = ({ title, assetList }: { title: string; assetList: Asset[] }) => {
-    if (assetList.length === 0) return null
-    const displayedAssets = assetList.slice(0, 4)
-    return (
-      <div>
-        <Text variant="headline-3" weight="semibold" className="mb-4">
-          {title} ({assetList.length})
-        </Text>
-        <CardGrid columns={getColumns()} gap="4">
-          {displayedAssets.map((asset) => (
-            <AssetCard
-              key={asset.id}
-              asset={asset}
-              selected={selectedIds.has(asset.id)}
-              primary={primaryId === asset.id}
-              onClick={(a, e) => handleAssetClick(a, e, displayedAssets)}
-              onMenuClick={handleMenuClick}
-              loading={showAssetLoading}
-              forceEmptyPreview={forceEmptyPreview}
-            />
-          ))}
-        </CardGrid>
-      </div>
-    )
-  }
-
-  // Main Media Library view
+  // Main All Collections view
   return (
     <AppLayout>
       <div className="p-6">
@@ -251,60 +234,110 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
           <Stack spacing="lg">
             <div className="flex items-start justify-between">
               <PageHeader
-                title="Media Library"
-                description="Browse collections and assets"
+                title="All Collections"
+                description={`${collections.length} collection${collections.length !== 1 ? 's' : ''}`}
               />
               <AppearanceDropdown
-                layout="grid"
-                onLayoutChange={() => {}}
+                layout={layout}
+                onLayoutChange={setLayout}
                 cardSize={cardSize}
                 onCardSizeChange={setCardSize}
-                showLayoutOptions={false}
               />
             </div>
 
-            {/* Collections by Type */}
-            <CollectionSection title="Characters" collectionList={characterCollections} href="/nextgen/collections/characters" />
-            <CollectionSection title="Locations" collectionList={locationCollections} href="/nextgen/collections/locations" />
-            <CollectionSection title="Scenes" collectionList={sceneCollections} href="/nextgen/collections/scenes" />
-
-            {/* Assets by Type */}
-            <AssetSection title="Shots" assetList={shotAssets} />
-            <AssetSection title="Videos" assetList={videoAssets} />
-            <AssetSection title="Images" assetList={imageAssets} />
-            <AssetSection title="Documents" assetList={textAssets} />
+            {layout === 'list' ? (
+              <CollectionsListView
+                collections={enrichedCollections}
+                onCollectionClick={loadCollection}
+                loading={isPreloading}
+              />
+            ) : layout === 'gallery' ? (
+              <CollectionsGalleryView
+                collections={enrichedCollections}
+                selectedIds={selectedIds}
+                primaryId={primaryId}
+                onAssetClick={handleAssetClick}
+                onAssetMenuClick={handleMenuClick}
+                showAssetLoading={showAssetLoading}
+                showCollectionLoading={showCollectionLoading}
+                thumbnailMode={thumbnailMode}
+                loadedAssets={loadedAssets}
+                isPreloading={isPreloading}
+                forceEmptyPreview={forceEmptyPreview}
+              />
+            ) : isPreloading ? (
+              <CardGrid gap="4" columns={getColumns()}>
+                {[...Array(8)].map((_, i) => (
+                  <CollectionCard
+                    key={i}
+                    title=""
+                    assetCount={0}
+                    type="character"
+                    state="Loading"
+                    numberOfAssets="None"
+                    size={cardSize}
+                  />
+                ))}
+              </CardGrid>
+            ) : (
+              <CardGrid gap="4" columns={getColumns()}>
+                {enrichedCollections.map((collection) => (
+                  <CollectionCard
+                    key={collection.id}
+                    title={collection.name}
+                    assetCount={collection.assetCount}
+                    type={collection.type}
+                    mainImage={collection.mainImage}
+                    thumbnailImages={collection.thumbnailImages}
+                    avatarSrc={collection.avatarSrc}
+                    avatarName={collection.name}
+                    state={showCollectionLoading ? 'Loading' : 'Normal'}
+                    numberOfAssets={getNumberOfAssets(collection)}
+                    size={cardSize}
+                    onClick={() => loadCollection(collection)}
+                  />
+                ))}
+              </CardGrid>
+            )}
           </Stack>
         </div>
 
         <SettingsPanel>
-          <SettingGroup label="Collection Cards">
-            <SettingSegmented
-              options={[
-                { value: 'loading' as const, label: 'Loading' },
-                { value: 'asis' as const, label: 'As Is' },
-                { value: 'many' as const, label: '3+ imgs' },
-                { value: 'two' as const, label: '2 imgs' },
-                { value: 'one' as const, label: '1 img' },
-                { value: 'none' as const, label: 'None' },
-              ]}
-              value={collectionCardState}
-              onChange={(val) => setCollectionCardState(val as CollectionCardState)}
-            />
-          </SettingGroup>
+          {(layout === 'grid' || layout === 'gallery') && (
+            <SettingGroup label="Collection Cards">
+              <SettingSegmented
+                options={[
+                  { value: 'loading' as const, label: 'Loading' },
+                  { value: 'asis' as const, label: 'As Is' },
+                  { value: 'many' as const, label: '3+ imgs' },
+                  { value: 'two' as const, label: '2 imgs' },
+                  { value: 'one' as const, label: '1 img' },
+                  { value: 'none' as const, label: 'None' },
+                ]}
+                value={collectionCardState}
+                onChange={(val) => setCollectionCardState(val as CollectionCardState)}
+              />
+            </SettingGroup>
+          )}
 
-          <SettingGroup label="Asset Cards">
-            <SettingSegmented
-              options={[
-                { value: 'loading' as const, label: 'Loading' },
-                { value: 'asis' as const, label: 'As Is' },
-                { value: 'no-preview' as const, label: 'No Preview' },
-              ]}
-              value={assetCardState}
-              onChange={(val) => setAssetCardState(val as AssetCardState)}
-            />
-          </SettingGroup>
+          {layout === 'gallery' && (
+            <SettingGroup label="Asset Cards">
+              <SettingSegmented
+                options={[
+                  { value: 'loading' as const, label: 'Loading' },
+                  { value: 'asis' as const, label: 'As Is' },
+                  { value: 'no-preview' as const, label: 'No Preview' },
+                ]}
+                value={assetCardState}
+                onChange={(val) => setAssetCardState(val as AssetCardState)}
+              />
+            </SettingGroup>
+          )}
         </SettingsPanel>
       </div>
     </AppLayout>
   )
 }
+
+// Keep the old export name for backwards compatibility
+export { AllCollectionsView as MediaLibraryView }

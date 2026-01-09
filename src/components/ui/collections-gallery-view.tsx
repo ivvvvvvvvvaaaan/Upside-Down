@@ -57,6 +57,7 @@ interface ExpandedState {
   [collectionId: string]: {
     assets: Asset[]
     loading: boolean
+    error?: string | null
   }
 }
 
@@ -78,13 +79,36 @@ export function CollectionsGalleryView({
   const [localAssetsData, setLocalAssetsData] = useState<ExpandedState>({})
 
   // Use parent's pre-loaded assets if available, falling back to local state
-  const getAssetsForCollection = (collectionId: string): { assets: Asset[], loading: boolean } | undefined => {
+  const getAssetsForCollection = (collectionId: string): { assets: Asset[], loading: boolean, error?: string | null } | undefined => {
     // Prefer parent's pre-loaded data
     if (parentLoadedAssets && parentLoadedAssets[collectionId]) {
-      return { assets: parentLoadedAssets[collectionId], loading: false }
+      return { assets: parentLoadedAssets[collectionId], loading: false, error: null }
     }
     // Fall back to local state (for on-demand loading when expanding)
     return localAssetsData[collectionId]
+  }
+
+  const fetchCollectionAssets = async (collectionId: string) => {
+    setLocalAssetsData((prev) => ({
+      ...prev,
+      [collectionId]: { assets: [], loading: true, error: null },
+    }))
+
+    try {
+      const response = await fetch(`/api/collections/${collectionId}/assets`)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const assets = await response.json()
+      setLocalAssetsData((prev) => ({
+        ...prev,
+        [collectionId]: { assets, loading: false, error: null },
+      }))
+    } catch (error) {
+      console.error('Failed to load assets:', error)
+      setLocalAssetsData((prev) => ({
+        ...prev,
+        [collectionId]: { assets: [], loading: false, error: 'Failed to load assets' },
+      }))
+    }
   }
 
   const toggleCollection = async (collection: Collection) => {
@@ -104,28 +128,13 @@ export function CollectionsGalleryView({
       // Check if we have data from parent or local state
       const existingData = getAssetsForCollection(collection.id)
       if (!existingData) {
-        setLocalAssetsData((prev) => ({
-          ...prev,
-          [collection.id]: { assets: [], loading: true },
-        }))
-
-        try {
-          const response = await fetch(`/api/collections/${collection.id}/assets`)
-          if (!response.ok) throw new Error(`HTTP ${response.status}`)
-          const assets = await response.json()
-          setLocalAssetsData((prev) => ({
-            ...prev,
-            [collection.id]: { assets, loading: false },
-          }))
-        } catch (error) {
-          console.error('Failed to load assets:', error)
-          setLocalAssetsData((prev) => ({
-            ...prev,
-            [collection.id]: { assets: [], loading: false },
-          }))
-        }
+        await fetchCollectionAssets(collection.id)
       }
     }
+  }
+
+  const retryFetchAssets = async (collectionId: string) => {
+    await fetchCollectionAssets(collectionId)
   }
 
   const renderCollectionIcon = (collection: Collection) => {
@@ -330,6 +339,16 @@ export function CollectionsGalleryView({
                       <AssetCard key={i} loading />
                     ))}
                   </CardGrid>
+                ) : collectionData?.error ? (
+                  <div className="flex flex-col items-center gap-2 py-6">
+                    <span className="text-body-1-regular text-foreground-system-error">{collectionData.error}</span>
+                    <button
+                      onClick={() => retryFetchAssets(collection.id)}
+                      className="text-body-1-regular text-foreground-system-link hover:underline"
+                    >
+                      Try again
+                    </button>
+                  </div>
                 ) : collectionData?.assets.length ? (
                   <CardGrid columns={6} gap="4">
                     {collectionData.assets.map((asset) => (

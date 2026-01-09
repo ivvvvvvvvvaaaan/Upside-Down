@@ -25,6 +25,7 @@ export function NavSidebar({ className }: NavSidebarProps) {
   ]
 
   const collectionItems = [
+    { href: '/nextgen/media-library', label: 'All Collections' },
     { href: '/nextgen/collections/characters', label: 'Characters' },
     { href: '/nextgen/collections/locations', label: 'Locations' },
     { href: '/nextgen/collections/scenes', label: 'Scenes' },

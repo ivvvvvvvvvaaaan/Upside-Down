@@ -143,12 +143,29 @@ function TypeBadgeCellRenderer(params: ICellRendererParams<TreeRow>) {
 function NameCellRenderer(
   params: ICellRendererParams<TreeRow> & {
     onCollectionClick: (collection: Collection) => void
+    onRetryLoad?: (collectionId: string) => void
   }
 ) {
   const row = params.data
   if (!row) return null
 
   const isAsset = row.rowType === 'asset'
+  const isErrorRow = row.id.endsWith('-error')
+
+  if (isErrorRow) {
+    return (
+      <button
+        onClick={() => {
+          if (row.parentId && params.onRetryLoad) {
+            params.onRetryLoad(row.parentId)
+          }
+        }}
+        className="text-body-1-regular text-foreground-system-error hover:underline text-left truncate w-full pl-6"
+      >
+        {row.name}
+      </button>
+    )
+  }
 
   return (
     <button
@@ -187,6 +204,7 @@ export function CollectionsListView({ collections, onCollectionClick, loading = 
   const gridRef = useRef<AgGridReact<TreeRow>>(null)
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set())
   const [loadedAssets, setLoadedAssets] = useState<Record<string, Asset[]>>({})
+  const [failedCollections, setFailedCollections] = useState<Set<string>>(new Set())
 
   // Convert collections and their assets to tree rows
   const rowData = useMemo(() => {
@@ -207,21 +225,31 @@ export function CollectionsListView({ collections, onCollectionClick, loading = 
 
       // Add asset rows if collection is expanded
       if (expandedCollections.has(collection.id) && loadedAssets[collection.id]) {
-        loadedAssets[collection.id].forEach((asset) => {
+        if (failedCollections.has(collection.id)) {
+          // Show error row for failed collections
           rows.push({
-            id: `${collection.id}-${asset.id}`,
-            name: asset.name,
+            id: `${collection.id}-error`,
+            name: 'Failed to load assets. Click to retry.',
             rowType: 'asset',
-            assetType: asset.type,
-            thumbnail: asset.thumbnail,
             parentId: collection.id,
           })
-        })
+        } else {
+          loadedAssets[collection.id].forEach((asset) => {
+            rows.push({
+              id: `${collection.id}-${asset.id}`,
+              name: asset.name,
+              rowType: 'asset',
+              assetType: asset.type,
+              thumbnail: asset.thumbnail,
+              parentId: collection.id,
+            })
+          })
+        }
       }
     })
 
     return rows
-  }, [collections, expandedCollections, loadedAssets])
+  }, [collections, expandedCollections, loadedAssets, failedCollections])
 
   // Toggle expand/collapse
   const handleToggleExpand = useCallback(async (row: TreeRow) => {
@@ -238,8 +266,15 @@ export function CollectionsListView({ collections, onCollectionClick, loading = 
         return next
       })
     } else {
-      // Expand - fetch assets if not loaded
-      if (!loadedAssets[collectionId]) {
+      // Expand - fetch assets if not loaded or previously failed
+      if (!loadedAssets[collectionId] || failedCollections.has(collectionId)) {
+        // Clear previous failure state
+        setFailedCollections((prev) => {
+          const next = new Set(prev)
+          next.delete(collectionId)
+          return next
+        })
+
         try {
           const response = await fetch(`/api/collections/${collectionId}/assets`)
           if (!response.ok) throw new Error(`HTTP ${response.status}`)
@@ -247,11 +282,34 @@ export function CollectionsListView({ collections, onCollectionClick, loading = 
           setLoadedAssets((prev) => ({ ...prev, [collectionId]: assets }))
         } catch (error) {
           console.error('Failed to load assets:', error)
+          setFailedCollections((prev) => new Set(prev).add(collectionId))
+          setLoadedAssets((prev) => ({ ...prev, [collectionId]: [] }))
         }
       }
       setExpandedCollections((prev) => new Set(prev).add(collectionId))
     }
-  }, [expandedCollections, loadedAssets])
+  }, [expandedCollections, loadedAssets, failedCollections])
+
+  // Retry loading assets for a failed collection
+  const handleRetryLoad = useCallback(async (collectionId: string) => {
+    // Clear the error state
+    setFailedCollections((prev) => {
+      const next = new Set(prev)
+      next.delete(collectionId)
+      return next
+    })
+
+    try {
+      const response = await fetch(`/api/collections/${collectionId}/assets`)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const assets = await response.json()
+      setLoadedAssets((prev) => ({ ...prev, [collectionId]: assets }))
+    } catch (error) {
+      console.error('Failed to load assets:', error)
+      setFailedCollections((prev) => new Set(prev).add(collectionId))
+      setLoadedAssets((prev) => ({ ...prev, [collectionId]: [] }))
+    }
+  }, [])
 
   const columnDefs = useMemo<ColDef<TreeRow>[]>(() => [
     {
@@ -269,7 +327,7 @@ export function CollectionsListView({ collections, onCollectionClick, loading = 
       flex: 1,
       minWidth: 200,
       cellRenderer: (params: ICellRendererParams<TreeRow>) => (
-        <NameCellRenderer {...params} onCollectionClick={onCollectionClick} />
+        <NameCellRenderer {...params} onCollectionClick={onCollectionClick} onRetryLoad={handleRetryLoad} />
       ),
     },
     {
@@ -284,7 +342,7 @@ export function CollectionsListView({ collections, onCollectionClick, loading = 
       width: 100,
       cellRenderer: AssetCountCellRenderer,
     },
-  ], [onCollectionClick, handleToggleExpand])
+  ], [onCollectionClick, handleToggleExpand, handleRetryLoad])
 
   const defaultColDef = useMemo<ColDef>(() => ({
     resizable: true,

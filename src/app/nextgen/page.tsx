@@ -1,11 +1,5 @@
-import { getCollections, getAllAssets } from '@/lib/data'
-import { MediaLibraryView } from './media-library/view'
+import { MediaLibrarySearchView } from './search-view'
 
-export default async function NextGenPage() {
-  const [collections, assets] = await Promise.all([
-    getCollections(),
-    getAllAssets(),
-  ])
-
-  return <MediaLibraryView collections={collections} assets={assets} />
+export default function NextGenPage() {
+  return <MediaLibrarySearchView />
 }

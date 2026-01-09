@@ -1,11 +1,8 @@
-import { getCollections, getAllAssets } from '@/lib/data'
-import { MediaLibraryView } from './view'
+import { getCollections } from '@/lib/data'
+import { AllCollectionsView } from './view'
 
-export default async function MediaLibraryPage() {
-  const [collections, assets] = await Promise.all([
-    getCollections(),
-    getAllAssets(),
-  ])
+export default async function AllCollectionsPage() {
+  const collections = await getCollections()
 
-  return <MediaLibraryView collections={collections} assets={assets} />
+  return <AllCollectionsView collections={collections} />
 }

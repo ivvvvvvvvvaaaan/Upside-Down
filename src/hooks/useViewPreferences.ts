@@ -31,7 +31,8 @@ function getStoredPreferences(): ViewPreferences {
       layout: VALID_LAYOUTS.includes(parsed.layout) ? parsed.layout : DEFAULT_PREFERENCES.layout,
       cardSize: VALID_CARD_SIZES.includes(parsed.cardSize) ? parsed.cardSize : DEFAULT_PREFERENCES.cardSize,
     }
-  } catch {
+  } catch (error) {
+    console.warn('Failed to read view preferences from localStorage:', error)
     return DEFAULT_PREFERENCES
   }
 }
