@@ -1,4 +1,4 @@
-import { CollectionCardsView } from '@/app/collection-cards/view'
+import { CollectionCardsView } from '../view'
 import { getCollectionsByType } from '@/lib/data'
 
 export default async function CharactersPage() {

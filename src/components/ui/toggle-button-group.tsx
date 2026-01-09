@@ -42,7 +42,6 @@ export function ToggleButtonGroup<T extends string = string>({
     <div
       className={cn(
         'inline-flex rounded p-1 gap-1',
-        // Container: surface-highlight at 4% bg, 20% border
         'bg-[rgb(var(--surface-highlight-rgb)/0.04)]',
         'border border-[rgb(var(--surface-highlight-rgb)/0.2)]',
         className
@@ -60,16 +59,9 @@ export function ToggleButtonGroup<T extends string = string>({
             aria-checked={isSelected}
             onClick={() => onChange(option.value)}
             className={cn(
-              // Base styles
               'inline-flex items-center justify-center rounded transition-colors',
-              // Typography: label-1-bold equivalent (12px semibold)
-              'text-label-1-bold',
-              // Text color: foreground
-              'text-foreground',
-              // Size: compact=32px height, normal=40px height
-              // Figma: compact total 40px, normal total 48px (with 4px container padding)
+              'text-label-1-bold text-foreground',
               compact ? 'h-8 px-4' : 'h-10 px-4',
-              // Selected: indigo-500 at 40% opacity
               isSelected
                 ? 'bg-[rgb(var(--indigo-500)/0.4)]'
                 : 'bg-transparent hover:bg-[rgb(var(--surface-highlight-rgb)/0.04)]'

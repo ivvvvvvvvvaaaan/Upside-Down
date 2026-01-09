@@ -12,6 +12,8 @@ export interface AppearanceDropdownProps {
   onLayoutChange: (layout: LayoutType) => void
   cardSize: CardSize
   onCardSizeChange: (size: CardSize) => void
+  /** Hide layout options (grid/list/gallery toggle) */
+  showLayoutOptions?: boolean
 }
 
 export function AppearanceDropdown({
@@ -19,6 +21,7 @@ export function AppearanceDropdown({
   onLayoutChange,
   cardSize,
   onCardSizeChange,
+  showLayoutOptions = true,
 }: AppearanceDropdownProps) {
   return (
     <Dropdown
@@ -29,18 +32,20 @@ export function AppearanceDropdown({
       width="auto"
     >
       <div className="space-y-3">
-        <ToggleButtonGroup
-          options={[
-            { value: 'grid' as const, label: 'Grid', icon: <LayoutGrid className="w-4 h-4" /> },
-            { value: 'list' as const, label: 'List', icon: <LayoutList className="w-4 h-4" /> },
-            { value: 'gallery' as const, label: 'Gallery', icon: <GalleryHorizontalEnd className="w-4 h-4" /> },
-          ]}
-          value={layout}
-          onChange={onLayoutChange}
-          compact
-        />
+        {showLayoutOptions && (
+          <ToggleButtonGroup
+            options={[
+              { value: 'grid' as const, label: 'Grid', icon: <LayoutGrid className="w-4 h-4" /> },
+              { value: 'list' as const, label: 'List', icon: <LayoutList className="w-4 h-4" /> },
+              { value: 'gallery' as const, label: 'Gallery', icon: <GalleryHorizontalEnd className="w-4 h-4" /> },
+            ]}
+            value={layout}
+            onChange={onLayoutChange}
+            compact
+          />
+        )}
 
-        {layout === 'grid' && (
+        {(layout === 'grid' || !showLayoutOptions) && (
           <div className="flex items-center justify-between">
             <span className="text-body-0-regular text-foreground">Card Size</span>
             <ToggleButtonGroup

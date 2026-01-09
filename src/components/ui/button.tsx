@@ -50,8 +50,10 @@ const buttonVariants = cva(
         icon: "bg-transparent text-foreground hover:bg-surface-highlight dark:hover:bg-white/10",
       },
       size: {
-        default: "h-10 px-3 py-[10px] text-base font-semibold",
-        compact: "py-1 px-2 text-xs font-semibold",
+        // Hawkins: body-1-bold (14px/21px/600)
+        default: "h-10 px-3 py-[10px] text-body-1-bold",
+        // Hawkins: label-1-bold (12px/18px/600)
+        compact: "py-1 px-2 text-label-1-bold",
         icon: "h-10 w-10",
       },
     },

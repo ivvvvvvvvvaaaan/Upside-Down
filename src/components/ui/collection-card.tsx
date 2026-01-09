@@ -149,11 +149,7 @@ export function CollectionCard({
   const renderThumbnails = () => {
     if (numberOfAssets === 'None') {
       return (
-        <div className="h-[124px] relative rounded shrink-0 w-full bg-surface-2 border border-border-subtle border-dashed flex items-center justify-center">
-          <div className="text-body-0-regular text-foreground-subtle">
-            No assets
-          </div>
-        </div>
+        <div className="h-[124px] relative rounded shrink-0 w-full border border-border-dim" />
       )
     }
 

@@ -8,17 +8,25 @@ import {
   AssetCard,
   SettingsPanel,
   SettingGroup,
-  SettingBoolean,
+  SettingSegmented,
   Button,
   CardGrid,
   PageHeader,
   EmptyState,
+  AppearanceDropdown,
 } from '@/components/ui'
+import type { CollectionCardAssetCount } from '@/components/ui/collection-card'
 import { AppLayout } from '@/components/layouts'
 import { ArrowLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
-import { useAssetSelection, useCollectionAssets } from '@/hooks'
+import { useAssetSelection, useCollectionAssets, useViewPreferences } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
+
+// Collection card states: loading, real data (asis), or fake thumbnail variants
+type CollectionCardState = 'loading' | 'asis' | 'many' | 'two' | 'one' | 'none'
+
+// Asset card states: loading, real data, or no preview placeholder
+type AssetCardState = 'loading' | 'asis' | 'no-preview'
 
 interface MediaLibraryViewProps {
   collections: Collection[]
@@ -35,9 +43,17 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
     goBack,
   } = useCollectionAssets({ onNavigate: clearSelection })
 
-  // Loading state controls
-  const [showCollectionLoading, setShowCollectionLoading] = useState(false)
-  const [showAssetLoading, setShowAssetLoading] = useState(false)
+  // Appearance settings - persisted globally
+  const { cardSize, setCardSize } = useViewPreferences()
+
+  // Card state controls
+  const [collectionCardState, setCollectionCardState] = useState<CollectionCardState>('asis')
+  const [assetCardState, setAssetCardState] = useState<AssetCardState>('asis')
+
+  // Derive loading flags from state
+  const showCollectionLoading = collectionCardState === 'loading'
+  const showAssetLoading = assetCardState === 'loading'
+  const forceEmptyPreview = assetCardState === 'no-preview'
 
   // Group collections by type
   const characterCollections = collections.filter(c => c.type === 'character')
@@ -52,6 +68,33 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
 
   const handleMenuClick = (asset: Asset) => {
     console.log('Menu clicked for:', asset.name)
+  }
+
+  // Derive numberOfAssets based on collectionCardState
+  const getNumberOfAssets = (collection: Collection): CollectionCardAssetCount => {
+    if (collectionCardState === 'asis' || collectionCardState === 'loading') {
+      const count = collection.assetCount
+      if (count === 0) return 'None'
+      if (count === 1) return 'One'
+      if (count === 2) return 'Two'
+      return 'Many'
+    }
+    const modeMap: Record<string, CollectionCardAssetCount> = {
+      many: 'Many',
+      two: 'Two',
+      one: 'One',
+      none: 'None',
+    }
+    return modeMap[collectionCardState] || 'Many'
+  }
+
+  // Determine grid columns based on card size
+  const getColumns = () => {
+    switch (cardSize) {
+      case 'sm': return 6
+      case 'lg': return 3
+      default: return 4
+    }
   }
 
   // Collection detail view
@@ -83,13 +126,13 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
               </div>
 
               {loadingAssets ? (
-                <CardGrid>
+                <CardGrid columns={getColumns()} gap="4">
                   {[...Array(8)].map((_, i) => (
                     <AssetCard key={i} loading />
                   ))}
                 </CardGrid>
               ) : collectionAssets.length > 0 ? (
-                <CardGrid>
+                <CardGrid columns={getColumns()} gap="4">
                   {collectionAssets.map((asset) => (
                     <AssetCard
                       key={asset.id}
@@ -99,6 +142,7 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
                       onClick={(a, e) => handleAssetClick(a, e, collectionAssets)}
                       onMenuClick={handleMenuClick}
                       loading={showAssetLoading}
+                      forceEmptyPreview={forceEmptyPreview}
                     />
                   ))}
                 </CardGrid>
@@ -112,11 +156,15 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
           </div>
 
           <SettingsPanel>
-            <SettingGroup label="Loading States">
-              <SettingBoolean
-                label="Asset Cards"
-                value={showAssetLoading}
-                onChange={setShowAssetLoading}
+            <SettingGroup label="Asset Cards">
+              <SettingSegmented
+                options={[
+                  { value: 'loading' as const, label: 'Loading' },
+                  { value: 'asis' as const, label: 'As Is' },
+                  { value: 'no-preview' as const, label: 'No Preview' },
+                ]}
+                value={assetCardState}
+                onChange={(val) => setAssetCardState(val as AssetCardState)}
               />
             </SettingGroup>
           </SettingsPanel>
@@ -146,7 +194,7 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
             </Link>
           )}
         </div>
-        <CardGrid gap="4">
+        <CardGrid columns={getColumns()} gap="4">
           {displayedCollections.map((collection) => (
             <CollectionCard
               key={collection.id}
@@ -158,7 +206,8 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
               avatarSrc={collection.avatarSrc}
               avatarName={collection.name}
               state={showCollectionLoading ? 'Loading' : 'Normal'}
-              numberOfAssets="Many"
+              numberOfAssets={getNumberOfAssets(collection)}
+              size={cardSize}
               onClick={() => loadCollection(collection)}
             />
           ))}
@@ -176,7 +225,7 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
         <Text variant="headline-3" weight="semibold" className="mb-4">
           {title} ({assetList.length})
         </Text>
-        <CardGrid gap="4">
+        <CardGrid columns={getColumns()} gap="4">
           {displayedAssets.map((asset) => (
             <AssetCard
               key={asset.id}
@@ -186,6 +235,7 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
               onClick={(a, e) => handleAssetClick(a, e, displayedAssets)}
               onMenuClick={handleMenuClick}
               loading={showAssetLoading}
+              forceEmptyPreview={forceEmptyPreview}
             />
           ))}
         </CardGrid>
@@ -199,15 +249,24 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
           <Stack spacing="lg">
-            <PageHeader
-              title="Media Library"
-              description="Browse collections and assets"
-            />
+            <div className="flex items-start justify-between">
+              <PageHeader
+                title="Media Library"
+                description="Browse collections and assets"
+              />
+              <AppearanceDropdown
+                layout="grid"
+                onLayoutChange={() => {}}
+                cardSize={cardSize}
+                onCardSizeChange={setCardSize}
+                showLayoutOptions={false}
+              />
+            </div>
 
             {/* Collections by Type */}
-            <CollectionSection title="Characters" collectionList={characterCollections} href="/collections/characters" />
-            <CollectionSection title="Locations" collectionList={locationCollections} href="/collections/locations" />
-            <CollectionSection title="Scenes" collectionList={sceneCollections} href="/collections/scenes" />
+            <CollectionSection title="Characters" collectionList={characterCollections} href="/nextgen/collections/characters" />
+            <CollectionSection title="Locations" collectionList={locationCollections} href="/nextgen/collections/locations" />
+            <CollectionSection title="Scenes" collectionList={sceneCollections} href="/nextgen/collections/scenes" />
 
             {/* Assets by Type */}
             <AssetSection title="Shots" assetList={shotAssets} />
@@ -218,16 +277,30 @@ export function MediaLibraryView({ collections, assets }: MediaLibraryViewProps)
         </div>
 
         <SettingsPanel>
-          <SettingGroup label="Loading States">
-            <SettingBoolean
-              label="Collection Cards"
-              value={showCollectionLoading}
-              onChange={setShowCollectionLoading}
+          <SettingGroup label="Collection Cards">
+            <SettingSegmented
+              options={[
+                { value: 'loading' as const, label: 'Loading' },
+                { value: 'asis' as const, label: 'As Is' },
+                { value: 'many' as const, label: '3+ imgs' },
+                { value: 'two' as const, label: '2 imgs' },
+                { value: 'one' as const, label: '1 img' },
+                { value: 'none' as const, label: 'None' },
+              ]}
+              value={collectionCardState}
+              onChange={(val) => setCollectionCardState(val as CollectionCardState)}
             />
-            <SettingBoolean
-              label="Asset Cards"
-              value={showAssetLoading}
-              onChange={setShowAssetLoading}
+          </SettingGroup>
+
+          <SettingGroup label="Asset Cards">
+            <SettingSegmented
+              options={[
+                { value: 'loading' as const, label: 'Loading' },
+                { value: 'asis' as const, label: 'As Is' },
+                { value: 'no-preview' as const, label: 'No Preview' },
+              ]}
+              value={assetCardState}
+              onChange={(val) => setAssetCardState(val as AssetCardState)}
             />
           </SettingGroup>
         </SettingsPanel>

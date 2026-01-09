@@ -92,6 +92,11 @@ const config: Config = {
     'bg-surface-selected-hover',
     'hover:bg-surface-selected-hover',
     'ring-border-selected',
+    'border-border-selected',
+    'border-b-2',
+
+    // Tab typography
+    'text-tab',
   ],
   theme: {
     extend: {

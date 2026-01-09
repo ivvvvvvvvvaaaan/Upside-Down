@@ -30,6 +30,7 @@ export function useCollectionAssets(options?: UseCollectionAssetsOptions): UseCo
     setLoading(true)
     try {
       const response = await fetch(`/api/collections/${collection.id}/assets`)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const fetchedAssets = await response.json()
       setAssets(fetchedAssets)
     } catch (error) {

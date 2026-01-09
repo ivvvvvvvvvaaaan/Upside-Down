@@ -20,18 +20,19 @@ export function NavSidebar({ className }: NavSidebarProps) {
   const pathname = usePathname()
 
   const mainItems = [
-    { href: '/media-library', label: 'Media Library' },
-    { href: '/assets', label: 'Assets' },
+    { href: '/nextgen', label: 'Media Library' },
+    { href: '/nextgen/assets', label: 'Assets' },
   ]
 
   const collectionItems = [
-    { href: '/collections/characters', label: 'Characters' },
-    { href: '/collections/locations', label: 'Locations' },
-    { href: '/collections/scenes', label: 'Scenes' },
+    { href: '/nextgen/collections/characters', label: 'Characters' },
+    { href: '/nextgen/collections/locations', label: 'Locations' },
+    { href: '/nextgen/collections/scenes', label: 'Scenes' },
   ]
 
   const NavLink = ({ href, label }: { href: string; label: string }) => {
-    const isActive = pathname === href
+    // Check exact match or if pathname starts with href (for nested routes)
+    const isActive = pathname === href || (href !== '/nextgen' && pathname.startsWith(href))
     return (
       <Link
         href={href}

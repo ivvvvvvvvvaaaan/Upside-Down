@@ -6,8 +6,12 @@ import { ChevronRight } from 'lucide-react'
 import { AssetCard } from './asset-card'
 import { Avatar } from './avatar'
 import { CardGrid } from './card-grid'
+import { EmptyState } from './empty-state'
 import Image from 'next/image'
 import type { Collection, Asset } from '@/lib/data'
+
+// Skeleton placeholder count for loading states
+const SKELETON_ASSET_COUNT = 6
 
 // Custom collection type icons
 const LocationIcon = () => (
@@ -21,6 +25,8 @@ const SceneIcon = () => (
     <path fillRule="evenodd" clipRule="evenodd" d="M5.94011 8.55023L6.20011 9.52023L8.88011 8.80023L7.90011 8.03023L5.94011 8.55023ZM9.51011 7.60023L10.4901 8.37023L13.3901 7.60023L12.4001 6.82023L9.51011 7.60023ZM14.0001 6.40023L15.0001 7.17023L16.4601 6.77023L16.2001 5.80023L14.0001 6.40023ZM5.04011 10.7202C4.96577 10.618 4.91148 10.5027 4.88011 10.3802L4.36011 8.46023C4.32521 8.3335 4.31564 8.20114 4.33194 8.07071C4.34824 7.94028 4.39009 7.81434 4.45511 7.7001C4.52012 7.58586 4.60702 7.48556 4.71083 7.40494C4.81464 7.32431 4.93333 7.26494 5.06011 7.23023L16.3001 4.23023C16.4268 4.19533 16.5592 4.18575 16.6896 4.20206C16.8201 4.21836 16.946 4.26021 17.0602 4.32522C17.1745 4.39024 17.2748 4.47714 17.3554 4.58095C17.436 4.68476 17.4954 4.80345 17.5301 4.93023L18.0501 6.87023C18.1172 7.12614 18.0802 7.39822 17.9471 7.62688C17.814 7.85555 17.5958 8.02216 17.3401 8.09023L10.2201 10.0002H18.0001C18.2653 10.0002 18.5197 10.1056 18.7072 10.2931C18.8948 10.4807 19.0001 10.735 19.0001 11.0002V18.0002C19.0001 18.2654 18.8948 18.5198 18.7072 18.7073C18.5197 18.8949 18.2653 19.0002 18.0001 19.0002H6.00011C5.73489 19.0002 5.48054 18.8949 5.293 18.7073C5.10547 18.5198 5.00011 18.2654 5.00011 18.0002V11.0002L5.04011 10.7202ZM6.50011 17.5002V14.0002H17.5001V17.5002H6.50011ZM8.66011 12.5002H6.50011V11.5002H9.16011L8.66011 12.5002ZM10.3401 12.5002H13.1601L13.6601 11.5002H10.8401L10.3401 12.5002ZM17.5001 12.5002H14.8401L15.3401 11.5002H17.5001V12.5002Z" fill="currentColor"/>
   </svg>
 )
+
+export type GalleryThumbnailMode = 'asis' | 'many' | 'two' | 'one' | 'none'
 
 interface CollectionsGalleryViewProps {
   collections: Collection[]
@@ -37,6 +43,14 @@ interface CollectionsGalleryViewProps {
   showAssetLoading?: boolean
   /** Show loading state on collection rows */
   showCollectionLoading?: boolean
+  /** Thumbnail display mode - 'asis' uses real asset count */
+  thumbnailMode?: GalleryThumbnailMode
+  /** Pre-loaded assets from parent (keyed by collection ID) */
+  loadedAssets?: Record<string, Asset[]>
+  /** Whether parent is still preloading assets */
+  isPreloading?: boolean
+  /** Force showing empty preview placeholder for all assets */
+  forceEmptyPreview?: boolean
 }
 
 interface ExpandedState {
@@ -55,9 +69,23 @@ export function CollectionsGalleryView({
   onAssetMenuClick,
   showAssetLoading = false,
   showCollectionLoading = false,
+  thumbnailMode = 'asis',
+  loadedAssets: parentLoadedAssets,
+  isPreloading: parentIsPreloading = false,
+  forceEmptyPreview = false,
 }: CollectionsGalleryViewProps) {
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set())
-  const [assetsData, setAssetsData] = useState<ExpandedState>({})
+  const [localAssetsData, setLocalAssetsData] = useState<ExpandedState>({})
+
+  // Use parent's pre-loaded assets if available, falling back to local state
+  const getAssetsForCollection = (collectionId: string): { assets: Asset[], loading: boolean } | undefined => {
+    // Prefer parent's pre-loaded data
+    if (parentLoadedAssets && parentLoadedAssets[collectionId]) {
+      return { assets: parentLoadedAssets[collectionId], loading: false }
+    }
+    // Fall back to local state (for on-demand loading when expanding)
+    return localAssetsData[collectionId]
+  }
 
   const toggleCollection = async (collection: Collection) => {
     const isExpanded = expandedCollections.has(collection.id)
@@ -73,22 +101,25 @@ export function CollectionsGalleryView({
       // Expand and load assets if not already loaded
       setExpandedCollections((prev) => new Set(prev).add(collection.id))
 
-      if (!assetsData[collection.id]) {
-        setAssetsData((prev) => ({
+      // Check if we have data from parent or local state
+      const existingData = getAssetsForCollection(collection.id)
+      if (!existingData) {
+        setLocalAssetsData((prev) => ({
           ...prev,
           [collection.id]: { assets: [], loading: true },
         }))
 
         try {
           const response = await fetch(`/api/collections/${collection.id}/assets`)
+          if (!response.ok) throw new Error(`HTTP ${response.status}`)
           const assets = await response.json()
-          setAssetsData((prev) => ({
+          setLocalAssetsData((prev) => ({
             ...prev,
             [collection.id]: { assets, loading: false },
           }))
         } catch (error) {
           console.error('Failed to load assets:', error)
-          setAssetsData((prev) => ({
+          setLocalAssetsData((prev) => ({
             ...prev,
             [collection.id]: { assets: [], loading: false },
           }))
@@ -123,11 +154,107 @@ export function CollectionsGalleryView({
     )
   }
 
+  // Determine effective display mode based on thumbnailMode and actual available images
+  const getEffectiveMode = (collection: Collection): 'many' | 'two' | 'one' | 'none' => {
+    if (thumbnailMode !== 'asis') {
+      return thumbnailMode as 'many' | 'two' | 'one' | 'none'
+    }
+
+    // 'asis' - if we've loaded assets, use actual count
+    const loadedData = getAssetsForCollection(collection.id)
+    if (loadedData && !loadedData.loading) {
+      const count = loadedData.assets.length
+      if (count === 0) return 'none'
+      if (count === 1) return 'one'
+      if (count === 2) return 'two'
+      return 'many'
+    }
+
+    // Before loading, use 'many' as default (will update after load)
+    return 'many'
+  }
+
+  // All thumbnail modes use w-20 (80px) total width
+  // Single: w-20 directly
+  // Multi: w-12 (48px) + gap-1 (4px) + w-7 (28px) = 80px
+  const renderThumbnails = (collection: Collection) => {
+    const mode = getEffectiveMode(collection)
+    const mainImage = collection.mainImage
+    const thumbnails = collection.thumbnailImages || []
+    const remainingCount = Math.max(0, collection.assetCount - 3)
+
+    // Single image modes ('none'/'one')
+    if (mode === 'none' || mode === 'one') {
+      return (
+        <div className={cn(
+          'w-20 h-12 relative rounded overflow-hidden shrink-0 bg-surface-2',
+          mode === 'none' && 'border border-border-dim'
+        )}>
+          {mainImage && mode === 'one' && (
+            <Image src={mainImage} alt={collection.name} fill className="object-cover" />
+          )}
+        </div>
+      )
+    }
+
+    // Multi-image modes ('two'/'many') - w-12 + gap-1 + w-7 = 80px (same as w-20)
+    return (
+      <div className="flex gap-1 h-12 shrink-0">
+        {/* Main image - w-12 (48px) */}
+        <div className="w-12 h-12 relative rounded-l overflow-hidden bg-surface-2">
+          {mainImage && (
+            <Image src={mainImage} alt={collection.name} fill className="object-cover" />
+          )}
+        </div>
+
+        {/* Side column - w-7 (28px) */}
+        <div className="flex flex-col gap-1 w-7">
+          {mode === 'two' ? (
+            // Single tall thumbnail
+            <div className="w-7 h-12 relative rounded-r overflow-hidden bg-surface-2">
+              {thumbnails[0] ? (
+                <Image src={thumbnails[0]} alt="" fill className="object-cover" />
+              ) : (
+                <div className="absolute inset-0 bg-surface-3" />
+              )}
+            </div>
+          ) : (
+            // Stacked thumbnails for 'many' mode
+            <>
+              <div className="w-7 flex-1 relative rounded-tr overflow-hidden bg-surface-2">
+                {thumbnails[0] ? (
+                  <Image src={thumbnails[0]} alt="" fill className="object-cover" />
+                ) : (
+                  <div className="absolute inset-0 bg-surface-3" />
+                )}
+              </div>
+              <div className="w-7 flex-1 relative rounded-br overflow-hidden bg-surface-2">
+                {thumbnails[1] ? (
+                  <>
+                    <Image src={thumbnails[1]} alt="" fill className="object-cover" />
+                    <div className="absolute inset-0 bg-surface-overlay" />
+                    {remainingCount > 0 && (
+                      <span className="absolute inset-0 flex items-center justify-center text-label-0-bold text-foreground">
+                        +{remainingCount}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <div className="absolute inset-0 bg-surface-3" />
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={cn('flex flex-col gap-1', className)}>
       {collections.map((collection) => {
         const isExpanded = expandedCollections.has(collection.id)
-        const collectionData = assetsData[collection.id]
+        const collectionData = getAssetsForCollection(collection.id)
 
         return (
           <div
@@ -138,12 +265,18 @@ export function CollectionsGalleryView({
             )}
           >
             {/* Collection Row */}
-            {showCollectionLoading ? (
+            {showCollectionLoading || (parentIsPreloading && !collectionData) ? (
               <div className="w-full flex items-center gap-3 p-3 rounded animate-pulse">
                 {/* Chevron skeleton */}
                 <div className="w-4 h-4 bg-surface-3 rounded" />
-                {/* Thumbnail skeleton */}
-                <div className="w-16 h-10 bg-surface-3 rounded shrink-0" />
+                {/* Thumbnail skeleton - w-12 + gap-1 + w-7 = 80px (same as w-20) */}
+                <div className="flex gap-1 h-12 shrink-0">
+                  <div className="w-12 h-12 bg-surface-3 rounded-l" />
+                  <div className="flex flex-col gap-1 w-7">
+                    <div className="w-7 flex-1 bg-surface-3 rounded-tr" />
+                    <div className="w-7 flex-1 bg-surface-3 rounded-br" />
+                  </div>
+                </div>
                 {/* Avatar skeleton - matches w-10 h-10 icon wrapper */}
                 <div className="w-10 h-10 bg-surface-3 rounded-full shrink-0" />
                 {/* Text skeleton - matches text-body-1-bold (21px) and text-label-1-regular (18px) */}
@@ -169,16 +302,7 @@ export function CollectionsGalleryView({
                 />
 
                 {/* Thumbnail */}
-                <div className="w-16 h-10 relative rounded overflow-hidden shrink-0 bg-surface-2">
-                  {collection.mainImage && (
-                    <Image
-                      src={collection.mainImage}
-                      alt={collection.name}
-                      fill
-                      className="object-cover"
-                    />
-                  )}
-                </div>
+                {renderThumbnails(collection)}
 
                 {/* Icon/Avatar */}
                 {renderCollectionIcon(collection)}
@@ -189,7 +313,9 @@ export function CollectionsGalleryView({
                     {collection.name}
                   </span>
                   <span className="text-label-1-regular text-foreground-subtle">
-                    {collection.assetCount} assets
+                    {collectionData && !collectionData.loading
+                      ? `${collectionData.assets.length} assets`
+                      : `${collection.assetCount} assets`}
                   </span>
                 </div>
               </button>
@@ -200,7 +326,7 @@ export function CollectionsGalleryView({
               <div className="pl-10 pr-3 pb-4 pt-2">
                 {collectionData?.loading ? (
                   <CardGrid columns={6} gap="4">
-                    {[...Array(6)].map((_, i) => (
+                    {[...Array(SKELETON_ASSET_COUNT)].map((_, i) => (
                       <AssetCard key={i} loading />
                     ))}
                   </CardGrid>
@@ -215,13 +341,12 @@ export function CollectionsGalleryView({
                         onClick={onAssetClick ? (a, e) => onAssetClick(a, e, collectionData.assets) : undefined}
                         onMenuClick={onAssetMenuClick}
                         loading={showAssetLoading}
+                        forceEmptyPreview={forceEmptyPreview}
                       />
                     ))}
                   </CardGrid>
                 ) : (
-                  <div className="text-body-0-regular text-foreground-subtle py-4 text-center">
-                    No assets in this collection
-                  </div>
+                  <EmptyState title="No assets in this collection" compact />
                 )}
               </div>
             )}

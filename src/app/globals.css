@@ -583,6 +583,7 @@
 
   /* ========== COMPONENT-SPECIFIC ALIASES ========== */
   .text-tag-small { font-size: 10px; line-height: 15px; font-weight: 600; } /* Alias for compact tags */
+  .text-tab { font-size: 14px; line-height: 21px; font-weight: 600; } /* Tab navigation text */
 }
 
 /*

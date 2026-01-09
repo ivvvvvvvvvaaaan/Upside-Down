@@ -10,26 +10,33 @@ interface ViewPreferences {
   cardSize: CardSize
 }
 
-interface StoredPreferences {
-  [key: string]: ViewPreferences
-}
-
 const DEFAULT_PREFERENCES: ViewPreferences = {
   layout: 'grid',
   cardSize: 'md',
 }
 
-function getStoredPreferences(): StoredPreferences {
-  if (typeof window === 'undefined') return {}
+const VALID_LAYOUTS: LayoutType[] = ['grid', 'list', 'gallery']
+const VALID_CARD_SIZES: CardSize[] = ['sm', 'md', 'lg']
+
+function getStoredPreferences(): ViewPreferences {
+  if (typeof window === 'undefined') return DEFAULT_PREFERENCES
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    return stored ? JSON.parse(stored) : {}
+    if (!stored) return DEFAULT_PREFERENCES
+
+    const parsed = JSON.parse(stored)
+
+    // Validate stored values, fall back to defaults if invalid
+    return {
+      layout: VALID_LAYOUTS.includes(parsed.layout) ? parsed.layout : DEFAULT_PREFERENCES.layout,
+      cardSize: VALID_CARD_SIZES.includes(parsed.cardSize) ? parsed.cardSize : DEFAULT_PREFERENCES.cardSize,
+    }
   } catch {
-    return {}
+    return DEFAULT_PREFERENCES
   }
 }
 
-function savePreferences(preferences: StoredPreferences): void {
+function savePreferences(preferences: ViewPreferences): void {
   if (typeof window === 'undefined') return
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences))
@@ -45,7 +52,7 @@ export interface UseViewPreferencesReturn {
   setCardSize: (cardSize: CardSize) => void
 }
 
-export function useViewPreferences(collectionType: CollectionViewType): UseViewPreferencesReturn {
+export function useViewPreferences(): UseViewPreferencesReturn {
   const [mounted, setMounted] = useState(false)
   const [layout, setLayoutState] = useState<LayoutType>(DEFAULT_PREFERENCES.layout)
   const [cardSize, setCardSizeState] = useState<CardSize>(DEFAULT_PREFERENCES.cardSize)
@@ -53,37 +60,28 @@ export function useViewPreferences(collectionType: CollectionViewType): UseViewP
   // Load preferences on mount
   useEffect(() => {
     setMounted(true)
-    const stored = getStoredPreferences()
-    const prefs = stored[collectionType] || DEFAULT_PREFERENCES
+    const prefs = getStoredPreferences()
     setLayoutState(prefs.layout)
     setCardSizeState(prefs.cardSize)
-  }, [collectionType])
+  }, [])
 
   // Save layout preference
   const setLayout = useCallback((newLayout: LayoutType) => {
     setLayoutState(newLayout)
     if (mounted) {
-      const stored = getStoredPreferences()
-      stored[collectionType] = {
-        ...stored[collectionType] || DEFAULT_PREFERENCES,
-        layout: newLayout,
-      }
-      savePreferences(stored)
+      const current = getStoredPreferences()
+      savePreferences({ ...current, layout: newLayout })
     }
-  }, [collectionType, mounted])
+  }, [mounted])
 
   // Save cardSize preference
   const setCardSize = useCallback((newCardSize: CardSize) => {
     setCardSizeState(newCardSize)
     if (mounted) {
-      const stored = getStoredPreferences()
-      stored[collectionType] = {
-        ...stored[collectionType] || DEFAULT_PREFERENCES,
-        cardSize: newCardSize,
-      }
-      savePreferences(stored)
+      const current = getStoredPreferences()
+      savePreferences({ ...current, cardSize: newCardSize })
     }
-  }, [collectionType, mounted])
+  }, [mounted])
 
   return {
     layout,

@@ -45,7 +45,12 @@ export interface AssetCardProps {
   selected?: boolean
   /** Primary selection - the anchor card from initial click (has border) */
   primary?: boolean
+  /** Force showing empty preview placeholder for all assets */
+  forceEmptyPreview?: boolean
 }
+
+// Placeholder image for assets without thumbnails
+const EMPTY_ASSET_PLACEHOLDER = '/assets/Asset-empty-img.png'
 
 export function AssetCard({
   asset,
@@ -55,6 +60,7 @@ export function AssetCard({
   loading = false,
   selected = false,
   primary = false,
+  forceEmptyPreview = false,
 }: AssetCardProps) {
   // Primary implies selected
   const isSelected = selected || primary
@@ -147,9 +153,12 @@ export function AssetCard({
     }
 
     // Single image for shot, video, text
-    return asset.thumbnail ? (
+    // forceEmptyPreview overrides to always show placeholder
+    const thumbnailSrc = forceEmptyPreview ? EMPTY_ASSET_PLACEHOLDER : asset.thumbnail
+
+    return thumbnailSrc ? (
       <Image
-        src={asset.thumbnail}
+        src={thumbnailSrc}
         alt={asset.name}
         fill
         className="object-cover"

@@ -1,4 +1,4 @@
-# Prototype Factory
+# Hawkins AI
 
 Next.js template for building clickable prototypes with the Hawkins Design System. Optimized for designers who want to ship fast.
 

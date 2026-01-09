@@ -10,6 +10,9 @@ import { ChevronRight, ChevronDown } from 'lucide-react'
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule])
 
+// Skeleton placeholder count for loading states
+const SKELETON_ROW_COUNT = 6
+
 // Unified row type for tree structure
 type TreeRow = {
   id: string
@@ -31,6 +34,7 @@ type TreeRow = {
 interface CollectionsListViewProps {
   collections: Collection[]
   onCollectionClick: (collection: Collection) => void
+  loading?: boolean
 }
 
 // Custom cell renderer for expand/collapse + thumbnail
@@ -179,7 +183,7 @@ function AssetCountCellRenderer(params: ICellRendererParams<TreeRow>) {
   )
 }
 
-export function CollectionsListView({ collections, onCollectionClick }: CollectionsListViewProps) {
+export function CollectionsListView({ collections, onCollectionClick, loading = false }: CollectionsListViewProps) {
   const gridRef = useRef<AgGridReact<TreeRow>>(null)
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set())
   const [loadedAssets, setLoadedAssets] = useState<Record<string, Asset[]>>({})
@@ -238,6 +242,7 @@ export function CollectionsListView({ collections, onCollectionClick }: Collecti
       if (!loadedAssets[collectionId]) {
         try {
           const response = await fetch(`/api/collections/${collectionId}/assets`)
+          if (!response.ok) throw new Error(`HTTP ${response.status}`)
           const assets = await response.json()
           setLoadedAssets((prev) => ({ ...prev, [collectionId]: assets }))
         } catch (error) {
@@ -296,6 +301,22 @@ export function CollectionsListView({ collections, onCollectionClick }: Collecti
   }, [])
 
   const gridHeight = Math.min(600, rowData.length * 40 + 40)
+
+  // Show skeleton while loading
+  if (loading) {
+    return (
+      <div className="w-full space-y-1 animate-breathe">
+        {[...Array(SKELETON_ROW_COUNT)].map((_, i) => (
+          <div key={i} className="flex items-center gap-3 h-10 px-2">
+            <div className="w-8 h-8 rounded bg-surface-3" />
+            <div className="flex-1 h-4 rounded bg-surface-3" style={{ maxWidth: '200px' }} />
+            <div className="w-16 h-4 rounded bg-surface-3" />
+            <div className="w-12 h-4 rounded bg-surface-3" />
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className="ag-theme-alpine w-full" style={{ height: gridHeight }}>

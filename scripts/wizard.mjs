@@ -23,7 +23,7 @@ async function main() {
   // Display more minimal or neutral title in prod
   const isProd = process.env.NODE_ENV === 'production';
   if (isProd) {
-    console.log(`${colors.bright}${colors.cyan}Prototype Factory${colors.reset}${colors.dim} v2.0${colors.reset}\n`);
+    console.log(`${colors.bright}${colors.cyan}Hawkins AI${colors.reset}${colors.dim} v2.0${colors.reset}\n`);
   } else {
     console.log(
       colors.cyan + colors.bright +
