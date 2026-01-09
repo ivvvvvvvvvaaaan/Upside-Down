@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   Stack,
   Text,
@@ -16,6 +16,7 @@ import {
   AppearanceDropdown,
   CollectionsListView,
   CollectionsGalleryView,
+  ControlGhost,
 } from '@/components/ui'
 import type { GalleryThumbnailMode } from '@/components/ui/collections-gallery-view'
 import type { CollectionCardAssetCount } from '@/components/ui/collection-card'
@@ -23,6 +24,7 @@ import { AppLayout } from '@/components/layouts'
 import { ArrowLeft } from 'lucide-react'
 import { useAssetSelection, useCollectionAssets, useViewPreferences } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
+import { cn } from '@/lib/utils'
 
 // Collection card states: loading, real data (asis), or fake thumbnail variants
 type CollectionCardState = 'loading' | 'asis' | 'many' | 'two' | 'one' | 'none'
@@ -45,6 +47,10 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
     retry: retryLoad,
     goBack,
   } = useCollectionAssets({ onNavigate: clearSelection })
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const headerRef = useRef<HTMLDivElement>(null)
+  const [showCompactBar, setShowCompactBar] = useState(false)
+  const isCompactBarVisible = !selectedCollection && showCompactBar
 
   // Appearance settings - persisted globally
   const { layout, setLayout, cardSize, setCardSize } = useViewPreferences()
@@ -100,6 +106,23 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
 
     fetchAllAssets()
   }, [collections])
+
+  useEffect(() => {
+    if (selectedCollection) return
+    const scrollEl = scrollRef.current
+    const headerEl = headerRef.current
+    if (!scrollEl || !headerEl) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setShowCompactBar(!entry.isIntersecting)
+      },
+      { root: scrollEl, threshold: 0, rootMargin: '-8px 0px 0px 0px' }
+    )
+
+    observer.observe(headerEl)
+    return () => observer.disconnect()
+  }, [selectedCollection])
 
   // Enrich collections with real or fake data based on thumbnail mode
   const enrichedCollections = useMemo(() => {
@@ -166,67 +189,71 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
   if (selectedCollection) {
     return (
       <AppLayout>
-        <div className="p-6">
-          <div className="max-w-7xl mx-auto">
-            <Stack spacing="lg">
-              <div>
-                <Button
-                  variant="tertiary"
-                  compact
-                  icon={<ArrowLeft className="w-4 h-4" />}
-                  onClick={goBack}
-                  className="mb-4"
-                >
-                  Back to All Collections
-                </Button>
-                <Text variant="headline-1" weight="bold" className="mb-2">
-                  {selectedCollection.name}
-                </Text>
-                <Text variant="body-2" color="secondary">
-                  {loadingAssets
-                    ? 'Loading assets...'
-                    : `${collectionAssets.length} asset${collectionAssets.length !== 1 ? 's' : ''}`
-                  }
-                </Text>
-              </div>
+        <div className="h-full flex flex-col">
+          <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto">
+            <div className="p-6">
+              <div className="max-w-7xl mx-auto">
+                <Stack spacing="lg">
+                  <div>
+                    <Button
+                      variant="tertiary"
+                      compact
+                      icon={<ArrowLeft className="w-4 h-4" />}
+                      onClick={goBack}
+                      className="mb-4"
+                    >
+                      Back to All Collections
+                    </Button>
+                    <Text variant="headline-1" weight="bold" className="mb-2">
+                      {selectedCollection.name}
+                    </Text>
+                    <Text variant="body-2" color="secondary">
+                      {loadingAssets
+                        ? 'Loading assets...'
+                        : `${collectionAssets.length} asset${collectionAssets.length !== 1 ? 's' : ''}`
+                      }
+                    </Text>
+                  </div>
 
-              {loadingAssets ? (
-                <CardGrid columns={getColumns()} gap="4">
-                  {[...Array(8)].map((_, i) => (
-                    <AssetCard key={i} loading />
-                  ))}
-                </CardGrid>
-              ) : loadError ? (
-                <EmptyState
-                  title="Failed to load assets"
-                  message={loadError.message}
-                >
-                  <Button variant="secondary" onClick={retryLoad} className="mt-4">
-                    Try Again
-                  </Button>
-                </EmptyState>
-              ) : collectionAssets.length > 0 ? (
-                <CardGrid columns={getColumns()} gap="4">
-                  {collectionAssets.map((asset) => (
-                    <AssetCard
-                      key={asset.id}
-                      asset={asset}
-                      selected={selectedIds.has(asset.id)}
-                      primary={primaryId === asset.id}
-                      onClick={(a, e) => handleAssetClick(a, e, collectionAssets)}
-                      onMenuClick={handleMenuClick}
-                      loading={showAssetLoading}
-                      forceEmptyPreview={forceEmptyPreview}
+                  {loadingAssets ? (
+                    <CardGrid columns={getColumns()} gap="4">
+                      {[...Array(8)].map((_, i) => (
+                        <AssetCard key={i} loading />
+                      ))}
+                    </CardGrid>
+                  ) : loadError ? (
+                    <EmptyState
+                      title="Failed to load assets"
+                      message={loadError.message}
+                    >
+                      <Button variant="secondary" onClick={retryLoad} className="mt-4">
+                        Try Again
+                      </Button>
+                    </EmptyState>
+                  ) : collectionAssets.length > 0 ? (
+                    <CardGrid columns={getColumns()} gap="4">
+                      {collectionAssets.map((asset) => (
+                        <AssetCard
+                          key={asset.id}
+                          asset={asset}
+                          selected={selectedIds.has(asset.id)}
+                          primary={primaryId === asset.id}
+                          onClick={(a, e) => handleAssetClick(a, e, collectionAssets)}
+                          onMenuClick={handleMenuClick}
+                          loading={showAssetLoading}
+                          forceEmptyPreview={forceEmptyPreview}
+                        />
+                      ))}
+                    </CardGrid>
+                  ) : (
+                    <EmptyState
+                      title="No assets found"
+                      message="This collection doesn't have any assets yet"
                     />
-                  ))}
-                </CardGrid>
-              ) : (
-                <EmptyState
-                  title="No assets found"
-                  message="This collection doesn't have any assets yet"
-                />
-              )}
-            </Stack>
+                  )}
+                </Stack>
+              </div>
+            </div>
           </div>
 
           <SettingsPanel>
@@ -250,77 +277,118 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
   // Main All Collections view
   return (
     <AppLayout>
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
-          <Stack spacing="lg">
-            <div className="flex items-start justify-between">
-              <PageHeader
-                title="All Collections"
-                description={`${collections.length} collection${collections.length !== 1 ? 's' : ''}`}
-              />
-              <AppearanceDropdown
-                layout={layout}
-                onLayoutChange={setLayout}
-                cardSize={cardSize}
-                onCardSizeChange={setCardSize}
-              />
+      <div className="h-full flex flex-col">
+        <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto">
+          <div className="sticky top-0 z-20">
+            <div
+              className={cn(
+                'bg-surface-flat/90 backdrop-blur border-b px-6 flex items-center justify-between transition-all overflow-hidden',
+                isCompactBarVisible
+                  ? 'opacity-100 max-h-16 py-2 border-border-dim'
+                  : 'opacity-0 max-h-0 py-0 border-transparent pointer-events-none'
+              )}
+            >
+              <div>
+                <Text variant="body-2" weight="semibold">
+                  All Collections
+                </Text>
+                <Text variant="caption" color="secondary">
+                  {collections.length} collection{collections.length !== 1 ? 's' : ''}
+                </Text>
+              </div>
+              {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+              <div className="flex items-center gap-2">
+                <ControlGhost widthClassName="w-48" />
+                <ControlGhost widthClassName="w-10" />
+                <AppearanceDropdown
+                  layout={layout}
+                  onLayoutChange={setLayout}
+                  cardSize={cardSize}
+                  onCardSizeChange={setCardSize}
+                />
+              </div>
             </div>
+          </div>
 
-            {layout === 'list' ? (
-              <CollectionsListView
-                collections={enrichedCollections}
-                onCollectionClick={loadCollection}
-                loading={isPreloading}
-              />
-            ) : layout === 'gallery' ? (
-              <CollectionsGalleryView
-                collections={enrichedCollections}
-                selectedIds={selectedIds}
-                primaryId={primaryId}
-                onAssetClick={handleAssetClick}
-                onAssetMenuClick={handleMenuClick}
-                showAssetLoading={showAssetLoading}
-                showCollectionLoading={showCollectionLoading}
-                thumbnailMode={thumbnailMode}
-                loadedAssets={loadedAssets}
-                isPreloading={isPreloading}
-                forceEmptyPreview={forceEmptyPreview}
-              />
-            ) : isPreloading ? (
-              <CardGrid gap="4" columns={getColumns()}>
-                {[...Array(8)].map((_, i) => (
-                  <CollectionCard
-                    key={i}
-                    title=""
-                    assetCount={0}
-                    type="character"
-                    state="Loading"
-                    numberOfAssets="None"
-                    size={cardSize}
+          <div className="p-6">
+            <div className="max-w-7xl mx-auto">
+              <Stack spacing="lg">
+                <div ref={headerRef} className="flex items-start justify-between">
+                  <PageHeader
+                    title="All Collections"
+                    description={`${collections.length} collection${collections.length !== 1 ? 's' : ''}`}
                   />
-                ))}
-              </CardGrid>
-            ) : (
-              <CardGrid gap="4" columns={getColumns()}>
-                {enrichedCollections.map((collection) => (
-                  <CollectionCard
-                    key={collection.id}
-                    title={collection.name}
-                    assetCount={collection.assetCount}
-                    type={collection.type}
-                    mainImage={collection.mainImage}
-                    thumbnailImages={collection.thumbnailImages}
-                    avatarSrc={collection.avatarSrc}
-                    avatarName={collection.name}
-                    state={showCollectionLoading ? 'Loading' : 'Normal'}
-                    numberOfAssets={getNumberOfAssets(collection)}
-                    size={cardSize}
-                    onClick={() => loadCollection(collection)}
+                  {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+                  <div className="flex items-center gap-2">
+                    <ControlGhost widthClassName="w-48" />
+                    <ControlGhost widthClassName="w-10" />
+                    <AppearanceDropdown
+                      layout={layout}
+                      onLayoutChange={setLayout}
+                      cardSize={cardSize}
+                      onCardSizeChange={setCardSize}
+                    />
+                  </div>
+                </div>
+
+                {layout === 'list' ? (
+                  <CollectionsListView
+                    collections={enrichedCollections}
+                    loading={isPreloading}
+                    preloadedAssets={loadedAssets}
+                    preloadFailures={preloadFailures}
                   />
-                ))}
-              </CardGrid>
-            )}
-          </Stack>
+                ) : layout === 'gallery' ? (
+                  <CollectionsGalleryView
+                    collections={enrichedCollections}
+                    selectedIds={selectedIds}
+                    primaryId={primaryId}
+                    onAssetClick={handleAssetClick}
+                    onAssetMenuClick={handleMenuClick}
+                    showAssetLoading={showAssetLoading}
+                    showCollectionLoading={showCollectionLoading}
+                    thumbnailMode={thumbnailMode}
+                    loadedAssets={loadedAssets}
+                    isPreloading={isPreloading}
+                    forceEmptyPreview={forceEmptyPreview}
+                  />
+                ) : isPreloading ? (
+                  <CardGrid gap="4" columns={getColumns()}>
+                    {[...Array(8)].map((_, i) => (
+                      <CollectionCard
+                        key={i}
+                        title=""
+                        assetCount={0}
+                        type="character"
+                        state="Loading"
+                        numberOfAssets="None"
+                        size={cardSize}
+                      />
+                    ))}
+                  </CardGrid>
+                ) : (
+                  <CardGrid gap="4" columns={getColumns()}>
+                    {enrichedCollections.map((collection) => (
+                      <CollectionCard
+                        key={collection.id}
+                        title={collection.name}
+                        assetCount={collection.assetCount}
+                        type={collection.type}
+                        mainImage={collection.mainImage}
+                        thumbnailImages={collection.thumbnailImages}
+                        avatarSrc={collection.avatarSrc}
+                        avatarName={collection.name}
+                        state={showCollectionLoading ? 'Loading' : 'Normal'}
+                        numberOfAssets={getNumberOfAssets(collection)}
+                        size={cardSize}
+                        onClick={() => loadCollection(collection)}
+                      />
+                    ))}
+                  </CardGrid>
+                )}
+              </Stack>
+            </div>
+          </div>
         </div>
 
         <SettingsPanel>

@@ -139,19 +139,25 @@ export default function DashboardExample() {
     {
       headerName: 'Status',
       field: 'status',
-      width: 120,
+      width: 110,
       cellRenderer: StatusCellRenderer,
+    },
+    {
+      headerName: 'Priority',
+      field: 'priority',
+      width: 110,
+      cellRenderer: PriorityCellRenderer,
     },
     {
       headerName: 'Role',
       field: 'role',
-      width: 120,
+      width: 100,
       cellRenderer: RoleCellRenderer,
     },
     {
       headerName: '',
       field: 'id',
-      width: 100,
+      width: 80,
       sortable: false,
       cellRenderer: ActionsCellRenderer,
     },

@@ -290,8 +290,8 @@ export function CollectionCard({
             >
               {title}
             </div>
-            <div className={cn(metaClass, 'text-foreground-subtle')}>
-              {assetCount} assets
+            <div className={cn(metaClass, assetCount === 0 ? 'text-foreground-dim' : 'text-foreground-subtle')}>
+              {assetCount === 0 ? 'No assets' : `${assetCount} assets`}
             </div>
           </div>
         </div>
@@ -315,8 +315,8 @@ export function CollectionCard({
             >
               {title}
             </div>
-            <div className={cn(metaClass, 'text-foreground-subtle')}>
-              {assetCount} assets
+            <div className={cn(metaClass, assetCount === 0 ? 'text-foreground-dim' : 'text-foreground-subtle')}>
+              {assetCount === 0 ? 'No assets' : `${assetCount} assets`}
             </div>
           </div>
         </div>
@@ -343,8 +343,8 @@ export function CollectionCard({
           >
             {title}
           </div>
-          <div className={cn(metaClass, 'text-foreground-subtle')}>
-            {assetCount} assets
+          <div className={cn(metaClass, assetCount === 0 ? 'text-foreground-dim' : 'text-foreground-subtle')}>
+            {assetCount === 0 ? 'No assets' : `${assetCount} assets`}
           </div>
         </div>
       </div>

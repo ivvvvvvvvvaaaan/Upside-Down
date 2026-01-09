@@ -1,79 +1,73 @@
 import { cn } from '@/lib/utils'
 
 /**
- * Badge Component
- * 
- * Displays status indicators and labels.
- * 
- * PROPS:
- * - variant: Semantic color variants (default, success, warning, error, info)
- * - color: Direct color specification (gray, blue, green, yellow, red) - overrides variant
- * - compact: Reduced padding for dense layouts
- * - size: Legacy size prop (deprecated, use compact instead)
- * 
- * DIFFERENCES FROM PRODUCTION HAWKINS:
- * - Production uses explicit token names (Blue400, Gray500)
- * - Production includes startAdornment/endAdornment props
- * - Production supports movie phase states
- * - This uses simplified variant system
- * 
+ * Badge Component (Hawkins Design System)
+ *
+ * Displays status indicators and labels with semantic colors.
+ * Updated to match Hawkins design patterns.
+ *
+ * SIZES:
+ * - compact: text-label-0-bold (10px/15px/600), px-1 (4px), py-0 (0px)
+ * - standard: text-body-0-bold (13px/20px/600), px-2 (8px), py-0 (0px)
+ *
+ * VARIANTS (semantic colors):
+ * - default: Gray background
+ * - success: Green background
+ * - warning: Yellow background
+ * - error: Red background
+ * - info: Blue background
+ *
+ * STYLES:
+ * - fill: Colored background with white text (default)
+ * - subtle: Light background with colored text
+ *
  * @example
  * <Badge variant="success">Active</Badge>
- * <Badge color="green">Active</Badge>
- * <Badge compact>New</Badge>
+ * <Badge variant="error" compact>High</Badge>
+ * <Badge variant="warning" style="subtle">Pending</Badge>
  */
+
+const FILL_COLORS = {
+  default: 'bg-gray-600 dark:bg-gray-400 text-white',
+  success: 'bg-green-500 text-white',
+  warning: 'bg-yellow-500 text-white',
+  error: 'bg-red-500 text-white',
+  info: 'bg-blue-500 text-white',
+} as const
+
+const SUBTLE_COLORS = {
+  default: 'bg-gray-600/10 text-foreground border border-gray-600/20',
+  success: 'bg-green-500/10 text-green-500 border border-green-500/20',
+  warning: 'bg-yellow-500/10 text-yellow-600 border border-yellow-500/20',
+  error: 'bg-red-500/10 text-red-500 border border-red-500/20',
+  info: 'bg-blue-500/10 text-blue-500 border border-blue-500/20',
+} as const
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   /** Semantic color variant */
   variant?: 'default' | 'success' | 'warning' | 'error' | 'info'
-  /** Direct color specification (overrides variant) */
-  color?: 'gray' | 'blue' | 'green' | 'yellow' | 'red'
-  /** Legacy size prop (deprecated) */
-  size?: 'sm' | 'md'
-  /** Reduced padding for dense layouts */
+  /** Visual style: fill (solid bg) or subtle (light bg with border) */
+  badgeStyle?: 'fill' | 'subtle'
+  /** Reduced size for dense layouts */
   compact?: boolean
 }
 
-function Badge({ 
-  className, 
-  variant = 'default', 
-  color,
-  size = 'md',
+function Badge({
+  className,
+  variant = 'default',
+  badgeStyle = 'fill',
   compact = false,
   children,
-  ...props 
+  ...props
 }: BadgeProps) {
-  // Color prop takes precedence over variant
-  const colorStyles = {
-    gray: 'bg-surface-2 text-foreground border border-border-subtle',
-    blue: 'bg-primary/10 text-primary border border-primary/20',
-    green: 'bg-success/10 text-success border border-success/20',
-    yellow: 'bg-warning/10 text-warning border border-warning/20',
-    red: 'bg-destructive/10 text-destructive border border-destructive/20',
-  }
-  
-  const variants = {
-    default: 'bg-surface-2 text-foreground border border-border-subtle',
-    success: 'bg-success/10 text-success border border-success/20',
-    warning: 'bg-warning/10 text-warning border border-warning/20',
-    error: 'bg-destructive/10 text-destructive border border-destructive/20',
-    info: 'bg-primary/10 text-primary border border-primary/20',
-  }
-  
-  const sizes = {
-    sm: 'px-1.5 py-0.5 text-xs',
-    md: 'px-2 py-1 text-caption',
-  }
-
-  const finalColor = color ? colorStyles[color] : variants[variant]
-  const finalSize = compact ? sizes.sm : sizes[size]
+  const colorClasses = badgeStyle === 'fill' ? FILL_COLORS[variant] : SUBTLE_COLORS[variant]
 
   return (
     <span
       className={cn(
-        'inline-flex items-center font-medium rounded-md',
-        finalColor,
-        finalSize,
+        'inline-flex items-center justify-center rounded',
+        colorClasses,
+        compact ? 'text-label-0-bold px-1 py-0' : 'text-body-0-bold px-2 py-0',
         className
       )}
       {...props}

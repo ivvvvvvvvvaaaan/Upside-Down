@@ -321,9 +321,20 @@ export function CollectionsGalleryView({
                   <span className="text-body-1-bold text-foreground truncate w-full text-left">
                     {collection.name}
                   </span>
-                  <span className="text-label-1-regular text-foreground-subtle">
+                  <span className={cn(
+                    'text-label-1-regular',
+                    (collectionData && !collectionData.loading
+                      ? collectionData.assets.length === 0
+                      : collection.assetCount === 0)
+                      ? 'text-foreground-dim'
+                      : 'text-foreground-subtle'
+                  )}>
                     {collectionData && !collectionData.loading
-                      ? `${collectionData.assets.length} assets`
+                      ? collectionData.assets.length === 0
+                        ? 'No assets'
+                        : `${collectionData.assets.length} assets`
+                      : collection.assetCount === 0
+                      ? 'No assets'
                       : `${collection.assetCount} assets`}
                   </span>
                 </div>

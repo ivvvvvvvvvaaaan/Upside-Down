@@ -16,7 +16,7 @@ export interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   return (
-    <div className="min-h-screen bg-surface-flat flex">
+    <div className="h-screen bg-surface-flat flex overflow-hidden">
       {/* Left vertical nav with logo */}
       <div className="w-20 bg-surface-3 flex-shrink-0 flex flex-col items-center px-4 py-6 gap-6">
         <Image
@@ -51,7 +51,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <NavSidebar />
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 min-h-0 overflow-hidden">
         {children}
       </div>
     </div>

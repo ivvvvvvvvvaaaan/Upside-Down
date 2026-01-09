@@ -12,6 +12,7 @@ import {
   PageHeader,
   EmptyState,
   AppearanceDropdown,
+  ControlGhost,
 } from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
 import { useAssetSelection, useViewPreferences } from '@/hooks'
@@ -68,44 +69,53 @@ export function AssetsView({ assets, collections }: AssetsViewProps) {
 
   return (
     <AppLayout>
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
-          <Stack spacing="lg">
+      <div className="h-full flex flex-col">
+        <div className="flex-1 min-h-0 overflow-auto">
+          <div className="p-6">
+            <div className="max-w-7xl mx-auto">
+              <Stack spacing="lg">
             <div className="flex items-start justify-between">
               <PageHeader
                 title="Assets"
                 description="Browse shots, videos, images, and documents"
               />
-              <AppearanceDropdown
-                layout={layout}
-                onLayoutChange={setLayout}
-                cardSize={cardSize}
-                onCardSizeChange={setCardSize}
-              />
+              {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+              <div className="flex items-center gap-2">
+                <ControlGhost widthClassName="w-48" />
+                <ControlGhost widthClassName="w-10" />
+                <AppearanceDropdown
+                  layout={layout}
+                  onLayoutChange={setLayout}
+                  cardSize={cardSize}
+                  onCardSizeChange={setCardSize}
+                />
+              </div>
             </div>
 
-            {filteredAssets.length > 0 ? (
-              <CardGrid columns={getColumns()} gap="4">
-                {filteredAssets.map((asset) => (
-                  <AssetCard
-                    key={asset.id}
-                    asset={asset}
-                    selected={selectedIds.has(asset.id)}
-                    primary={primaryId === asset.id}
-                    onClick={(a, e) => handleAssetClick(a, e, filteredAssets)}
-                    onMenuClick={handleMenuClick}
-                    loading={showAssetLoading}
-                    forceEmptyPreview={forceEmptyPreview}
+                {filteredAssets.length > 0 ? (
+                  <CardGrid columns={getColumns()} gap="4">
+                    {filteredAssets.map((asset) => (
+                      <AssetCard
+                        key={asset.id}
+                        asset={asset}
+                        selected={selectedIds.has(asset.id)}
+                        primary={primaryId === asset.id}
+                        onClick={(a, e) => handleAssetClick(a, e, filteredAssets)}
+                        onMenuClick={handleMenuClick}
+                        loading={showAssetLoading}
+                        forceEmptyPreview={forceEmptyPreview}
+                      />
+                    ))}
+                  </CardGrid>
+                ) : (
+                  <EmptyState
+                    title="No assets found"
+                    message="Try adjusting your filters"
                   />
-                ))}
-              </CardGrid>
-            ) : (
-              <EmptyState
-                title="No assets found"
-                message="Try adjusting your filters"
-              />
-            )}
-          </Stack>
+                )}
+              </Stack>
+            </div>
+          </div>
         </div>
 
         <SettingsPanel>
