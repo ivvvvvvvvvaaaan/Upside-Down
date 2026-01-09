@@ -42,7 +42,7 @@ export function ToggleButtonGroup<T extends string = string>({
     <div
       className={cn(
         'inline-flex rounded p-1 gap-1',
-        'bg-[rgb(var(--surface-highlight-rgb)/0.04)]',
+        'bg-surface-highlight',
         'border border-[rgb(var(--surface-highlight-rgb)/0.2)]',
         className
       )}
@@ -64,7 +64,7 @@ export function ToggleButtonGroup<T extends string = string>({
               compact ? 'h-8 px-4' : 'h-10 px-4',
               isSelected
                 ? 'bg-[rgb(var(--indigo-500)/0.4)]'
-                : 'bg-transparent hover:bg-[rgb(var(--surface-highlight-rgb)/0.04)]'
+                : 'bg-transparent hover:bg-surface-highlight'
             )}
           >
             {option.icon && (

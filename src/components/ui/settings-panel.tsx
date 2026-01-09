@@ -20,7 +20,7 @@ export function SettingsPanel({ children, defaultOpen = false }: SettingsPanelPr
   const [isOpen, setIsOpen] = useState(defaultOpen)
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="fixed bottom-4 right-16 z-50">
       {isOpen ? (
         <div className="bg-surface-low rounded shadow-high p-3 w-[320px]">
           {/* Header */}
@@ -44,7 +44,7 @@ export function SettingsPanel({ children, defaultOpen = false }: SettingsPanelPr
           onClick={() => setIsOpen(true)}
           className="bg-surface-low border border-border-subtle rounded-full p-2 shadow-high hover:bg-surface-highlight transition-colors"
         >
-          <Settings className="w-4 h-4 text-foreground" />
+          <Settings className="w-4 h-4 text-foreground-dim" />
         </button>
       )}
     </div>

@@ -51,10 +51,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body>
-        {/* Theme toggle - fixed position next to settings gear */}
+        {/* Theme toggle - fixed position in bottom right corner */}
         <button
           onClick={toggleTheme}
-          className="fixed bottom-4 right-16 z-50 bg-surface-low border border-border-subtle rounded-full p-2 shadow-high hover:bg-surface-highlight transition-colors"
+          className="fixed bottom-4 right-4 z-50 bg-surface-low border border-border-subtle rounded-full p-2 shadow-high hover:bg-surface-highlight transition-colors"
           aria-label="Toggle theme"
         >
           {theme === THEMES.LIGHT ? <Moon className="w-4 h-4 text-foreground-dim" /> : <Sun className="w-4 h-4 text-foreground-dim" />}

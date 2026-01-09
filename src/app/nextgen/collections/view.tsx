@@ -49,7 +49,9 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
     selectedCollection,
     assets: collectionAssets,
     loading: loadingAssets,
+    error: loadError,
     loadCollection,
+    retry: retryLoad,
     goBack,
   } = useCollectionAssets({ onNavigate: clearSelection })
 
@@ -69,29 +71,39 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
   // Pre-loaded asset data for accurate counts
   const [loadedAssets, setLoadedAssets] = useState<Record<string, Asset[]>>({})
   const [isPreloading, setIsPreloading] = useState(true)
+  const [preloadFailures, setPreloadFailures] = useState<Set<string>>(new Set())
 
   // Pre-fetch all collection assets on mount
   useEffect(() => {
     const fetchAllAssets = async () => {
       setIsPreloading(true)
+      setPreloadFailures(new Set())
+
       const fetchPromises = collections.map(async (collection) => {
         try {
           const response = await fetch(`/api/collections/${collection.id}/assets`)
           if (!response.ok) throw new Error(`HTTP ${response.status}`)
           const assets = await response.json()
-          return { id: collection.id, assets }
+          return { id: collection.id, assets, failed: false }
         } catch (error) {
           console.error('Failed to pre-fetch assets:', error)
-          return { id: collection.id, assets: [] }
+          return { id: collection.id, assets: [], failed: true }
         }
       })
 
       const results = await Promise.all(fetchPromises)
       const assetsMap: Record<string, Asset[]> = {}
+      const failures = new Set<string>()
+
       for (const result of results) {
         assetsMap[result.id] = result.assets
+        if (result.failed) {
+          failures.add(result.id)
+        }
       }
+
       setLoadedAssets(assetsMap)
+      setPreloadFailures(failures)
       setIsPreloading(false)
     }
 
@@ -167,6 +179,15 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                     <AssetCard key={i} loading />
                   ))}
                 </CardGrid>
+              ) : loadError ? (
+                <EmptyState
+                  title="Failed to load assets"
+                  message={loadError.message}
+                >
+                  <Button variant="secondary" onClick={retryLoad} className="mt-4">
+                    Try Again
+                  </Button>
+                </EmptyState>
               ) : collectionAssets.length > 0 ? (
                 <CardGrid>
                   {collectionAssets.map((asset) => (

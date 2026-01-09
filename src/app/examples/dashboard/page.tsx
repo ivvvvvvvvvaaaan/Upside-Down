@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import type { ColDef, ICellRendererParams } from 'ag-grid-community'
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
-import { Button, Input, Avatar, Badge, Tabs, TabsList, Tab, TabsContent, ToggleButtonGroup } from '@/components/ui'
+import { Button, Input, Avatar, Badge, Tag, Tabs, TabsList, Tab, TabsContent, ToggleButtonGroup } from '@/components/ui'
 import { Plus, Settings, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react'
 
 // Register AG Grid modules
@@ -31,18 +31,19 @@ type User = {
   email: string
   status: 'active' | 'pending' | 'inactive'
   role: string
+  priority: 'high' | 'medium' | 'low'
   avatar?: string
 }
 
 const users: User[] = [
-  { id: 1, name: 'Sarah Connor', email: 'sarah@example.com', status: 'active', role: 'Admin', avatar: 'https://i.pravatar.cc/150?img=1' },
-  { id: 2, name: 'John Doe', email: 'john@example.com', status: 'active', role: 'User', avatar: 'https://i.pravatar.cc/150?img=3' },
-  { id: 3, name: 'Jane Smith', email: 'jane@example.com', status: 'pending', role: 'User', avatar: 'https://i.pravatar.cc/150?img=5' },
-  { id: 4, name: 'Bob Wilson', email: 'bob@example.com', status: 'inactive', role: 'Viewer', avatar: 'https://i.pravatar.cc/150?img=8' },
-  { id: 5, name: 'Alice Johnson', email: 'alice@example.com', status: 'active', role: 'Editor', avatar: 'https://i.pravatar.cc/150?img=9' },
-  { id: 6, name: 'Charlie Brown', email: 'charlie@example.com', status: 'active', role: 'User', avatar: 'https://i.pravatar.cc/150?img=11' },
-  { id: 7, name: 'Diana Prince', email: 'diana@example.com', status: 'pending', role: 'Admin', avatar: 'https://i.pravatar.cc/150?img=13' },
-  { id: 8, name: 'Edward Miller', email: 'edward@example.com', status: 'inactive', role: 'Viewer', avatar: 'https://i.pravatar.cc/150?img=15' },
+  { id: 1, name: 'Sarah Connor', email: 'sarah@example.com', status: 'active', role: 'Admin', priority: 'high', avatar: 'https://i.pravatar.cc/150?img=1' },
+  { id: 2, name: 'John Doe', email: 'john@example.com', status: 'active', role: 'User', priority: 'medium', avatar: 'https://i.pravatar.cc/150?img=3' },
+  { id: 3, name: 'Jane Smith', email: 'jane@example.com', status: 'pending', role: 'User', priority: 'low', avatar: 'https://i.pravatar.cc/150?img=5' },
+  { id: 4, name: 'Bob Wilson', email: 'bob@example.com', status: 'inactive', role: 'Viewer', priority: 'low', avatar: 'https://i.pravatar.cc/150?img=8' },
+  { id: 5, name: 'Alice Johnson', email: 'alice@example.com', status: 'active', role: 'Editor', priority: 'high', avatar: 'https://i.pravatar.cc/150?img=9' },
+  { id: 6, name: 'Charlie Brown', email: 'charlie@example.com', status: 'active', role: 'User', priority: 'medium', avatar: 'https://i.pravatar.cc/150?img=11' },
+  { id: 7, name: 'Diana Prince', email: 'diana@example.com', status: 'pending', role: 'Admin', priority: 'high', avatar: 'https://i.pravatar.cc/150?img=13' },
+  { id: 8, name: 'Edward Miller', email: 'edward@example.com', status: 'inactive', role: 'Viewer', priority: 'low', avatar: 'https://i.pravatar.cc/150?img=15' },
 ]
 
 // Custom cell renderer for user avatar + name
@@ -61,18 +62,35 @@ function UserCellRenderer(params: ICellRendererParams<User>) {
   )
 }
 
-// Custom cell renderer for status badge
+// Custom cell renderer for status tag
 function StatusCellRenderer(params: ICellRendererParams<User>) {
   const user = params.data
   if (!user) return null
 
-  const variant = user.status === 'active' ? 'success' :
-                  user.status === 'pending' ? 'warning' : 'default'
+  const type = user.status === 'active' ? 'positive' :
+               user.status === 'pending' ? 'notice' : 'neutral'
+
+  return (
+    <div className="flex items-center h-full">
+      <Tag type={type} size="compact">
+        {user.status}
+      </Tag>
+    </div>
+  )
+}
+
+// Custom cell renderer for priority badge
+function PriorityCellRenderer(params: ICellRendererParams<User>) {
+  const user = params.data
+  if (!user) return null
+
+  const variant = user.priority === 'high' ? 'error' :
+                  user.priority === 'medium' ? 'warning' : 'default'
 
   return (
     <div className="flex items-center h-full">
       <Badge variant={variant} compact>
-        {user.status}
+        {user.priority}
       </Badge>
     </div>
   )

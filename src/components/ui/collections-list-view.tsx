@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { AgGridReact } from 'ag-grid-react'
-import type { ColDef, ICellRendererParams, GridApi, RowClickedEvent } from 'ag-grid-community'
+import type { ColDef, ICellRendererParams } from 'ag-grid-community'
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
 import type { Collection, Asset } from '@/lib/data'
 import { ChevronRight, ChevronDown } from 'lucide-react'

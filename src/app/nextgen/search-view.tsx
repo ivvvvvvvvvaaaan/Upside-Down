@@ -42,7 +42,7 @@ export function MediaLibrarySearchView() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search collections, assets, characters..."
-                className="w-full h-14 pl-12 pr-4 bg-surface-1 border border-border rounded-lg text-body-1-regular text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-selected focus:ring-1 focus:ring-border-selected transition-colors"
+                className="w-full h-14 pl-12 pr-4 bg-surface-low border border-border rounded text-body-1-regular text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-selected focus:ring-1 focus:ring-border-selected transition-colors"
               />
             </div>
           </form>

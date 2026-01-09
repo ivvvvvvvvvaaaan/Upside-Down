@@ -47,7 +47,13 @@ function getProjects() {
     })
     .map(entry => {
       const slug = entry.name
-      const title = slug
+
+      // Special case mappings for display names
+      const nameOverrides: Record<string, string> = {
+        'nextgen': 'Next-Gen',
+      }
+
+      const title = nameOverrides[slug] ?? slug
         .split('-')
         .map(w => w.charAt(0).toUpperCase() + w.slice(1))
         .join(' ')
@@ -92,16 +98,9 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Your Projects */}
+          {/* Projects */}
           <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-3">
-              <h2 className="text-heading-2 text-foreground">Your Projects</h2>
-              {projects.length > 0 && (
-                <span className="text-label-0-bold px-2 py-0.5 bg-indigo-500 text-white rounded-full">
-                  {projects.length}
-                </span>
-              )}
-            </div>
+            <h2 className="text-heading-2 text-foreground">Projects</h2>
 
             {projects.length > 0 ? (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
