@@ -99,18 +99,22 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const finalSize = compact ? 'compact' : size
     return (
       <Comp className={cn(buttonVariants({ variant, size: finalSize, className }))} ref={ref} {...props}>
-        {icon}
-        {children}
-        {dropdown && (
-          <svg
-            className="size-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+        {asChild ? children : (
+          <>
+            {icon}
+            {children}
+            {dropdown && (
+              <svg
+                className="size-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            )}
+          </>
         )}
       </Comp>
     )

@@ -8,15 +8,20 @@ import {
   SettingGroup,
   SettingSegmented,
   SettingOption,
+  Button,
   CardGrid,
   PageHeader,
   EmptyState,
   AppearanceDropdown,
+  AppearanceDropdownIcon,
   ControlGhost,
 } from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
 import { useAssetSelection, useViewPreferences } from '@/hooks'
 import type { Asset, Collection, AssetType } from '@/lib/data'
+import { ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 // Asset card states: loading, real data, or no preview placeholder
 type AssetCardState = 'loading' | 'asis' | 'no-preview'
@@ -37,6 +42,8 @@ interface AssetsViewProps {
 export function AssetsView({ assets, collections }: AssetsViewProps) {
   const [selectedCollection, setSelectedCollection] = useState<string>('all')
   const [selectedType, setSelectedType] = useState<AssetType | 'all'>('all')
+  const pathname = usePathname()
+  const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
 
   const { selectedIds, primaryId, handleAssetClick } = useAssetSelection()
   const { layout, setLayout, cardSize, setCardSize } = useViewPreferences()
@@ -74,23 +81,42 @@ export function AssetsView({ assets, collections }: AssetsViewProps) {
           <div className="p-6">
             <div className="max-w-7xl mx-auto">
               <Stack spacing="lg">
-            <div className="flex items-start justify-between">
-              <PageHeader
-                title="Assets"
-                description="Browse shots, videos, images, and documents"
-              />
-              {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
-              <div className="flex items-center gap-2">
-                <ControlGhost widthClassName="w-48" />
-                <ControlGhost widthClassName="w-10" />
-                <AppearanceDropdown
-                  layout={layout}
-                  onLayoutChange={setLayout}
-                  cardSize={cardSize}
-                  onCardSizeChange={setCardSize}
-                />
-              </div>
-            </div>
+                <div className="flex items-center justify-between w-full md:hidden">
+                  <Button asChild variant="icon" size="icon" aria-label="Menu">
+                    <Link href={menuHref}>
+                      <ArrowLeft className="w-4 h-4" />
+                      <span className="sr-only">Menu</span>
+                    </Link>
+                  </Button>
+                  {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+                  <div className="flex items-center gap-2">
+                    <ControlGhost widthClassName="w-48" />
+                    <ControlGhost widthClassName="w-10" />
+                    <AppearanceDropdownIcon
+                      layout={layout}
+                      onLayoutChange={setLayout}
+                      cardSize={cardSize}
+                      onCardSizeChange={setCardSize}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <PageHeader
+                    title="Assets"
+                    description="Browse shots, videos, images, and documents"
+                  />
+                  {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+                  <div className="hidden md:flex items-center gap-2">
+                    <ControlGhost widthClassName="w-48" />
+                    <ControlGhost widthClassName="w-10" />
+                    <AppearanceDropdown
+                      layout={layout}
+                      onLayoutChange={setLayout}
+                      cardSize={cardSize}
+                      onCardSizeChange={setCardSize}
+                    />
+                  </div>
+                </div>
 
                 {filteredAssets.length > 0 ? (
                   <CardGrid columns={getColumns()} gap="4">

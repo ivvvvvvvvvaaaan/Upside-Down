@@ -1,7 +1,6 @@
 'use client'
 
-import Image from 'next/image'
-import { NavSidebar } from '@/components/ui'
+import { NavSidebar, PrimaryNavRail } from '@/components/ui'
 
 /**
  * App Layout
@@ -17,38 +16,10 @@ export interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="h-screen bg-surface-flat flex overflow-hidden">
-      {/* Left vertical nav with logo */}
-      <div className="w-20 bg-surface-3 flex-shrink-0 flex flex-col items-center px-4 py-6 gap-6">
-        <Image
-          src="/assets/Vertical/Lockup/Logo/N-Professional.svg"
-          alt="Logo"
-          width={120}
-          height={40}
-          className="h-10 w-auto"
-        />
-        {/* Skeletal nav buttons */}
-        <div className="flex flex-col gap-4">
-          {[...Array(2)].map((_, i) => (
-            <div
-              key={i}
-              className="w-6 h-6 rounded bg-surface-4"
-            />
-          ))}
-        </div>
-        <div className="flex flex-col gap-4 mt-4">
-          {[...Array(5)].map((_, i) => (
-            <div
-              key={i}
-              className="w-6 h-6 rounded bg-surface-4"
-            />
-          ))}
-        </div>
-        {/* Avatar */}
-        <div className="w-10 h-10 rounded-full bg-surface-4 mt-auto" />
+      <div className="hidden md:flex">
+        <PrimaryNavRail />
+        <NavSidebar />
       </div>
-
-      {/* Navigation Sidebar */}
-      <NavSidebar />
 
       {/* Main Content */}
       <div className="flex-1 min-h-0 overflow-hidden">

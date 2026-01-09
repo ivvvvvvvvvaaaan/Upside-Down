@@ -1,7 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Search } from 'lucide-react'
+import { ArrowLeft, Search } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { Button } from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
 
 /**
@@ -12,6 +15,8 @@ import { AppLayout } from '@/components/layouts'
  */
 export function MediaLibrarySearchView() {
   const [searchQuery, setSearchQuery] = useState('')
+  const pathname = usePathname()
+  const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,7 +28,15 @@ export function MediaLibrarySearchView() {
     <AppLayout>
       <div className="h-full flex flex-col">
         <div className="flex-1 min-h-0 overflow-auto">
-          <div className="flex flex-col items-center justify-center min-h-[60vh] p-6">
+          <div className="p-6 md:hidden">
+            <Button asChild variant="icon" size="icon" aria-label="Menu">
+              <Link href={menuHref}>
+                <ArrowLeft className="w-4 h-4" />
+                <span className="sr-only">Menu</span>
+              </Link>
+            </Button>
+          </div>
+          <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 pb-6">
             <div className="w-full max-w-2xl space-y-6">
               {/* Title */}
               <div className="text-center">

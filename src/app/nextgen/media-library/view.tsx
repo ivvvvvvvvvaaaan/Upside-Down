@@ -14,6 +14,7 @@ import {
   PageHeader,
   EmptyState,
   AppearanceDropdown,
+  AppearanceDropdownIcon,
   CollectionsListView,
   CollectionsGalleryView,
   ControlGhost,
@@ -22,6 +23,8 @@ import type { GalleryThumbnailMode } from '@/components/ui/collections-gallery-v
 import type { CollectionCardAssetCount } from '@/components/ui/collection-card'
 import { AppLayout } from '@/components/layouts'
 import { ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useAssetSelection, useCollectionAssets, useViewPreferences } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
 import { cn } from '@/lib/utils'
@@ -37,6 +40,8 @@ interface AllCollectionsViewProps {
 }
 
 export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
+  const pathname = usePathname()
+  const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const {
     selectedCollection,
@@ -194,6 +199,14 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
             <div className="p-6">
               <div className="max-w-7xl mx-auto">
                 <Stack spacing="lg">
+                  <div className="md:hidden">
+                    <Button asChild variant="icon" size="icon" aria-label="Menu">
+                      <Link href={menuHref}>
+                        <ArrowLeft className="w-4 h-4" />
+                        <span className="sr-only">Menu</span>
+                      </Link>
+                    </Button>
+                  </div>
                   <div>
                     <Button
                       variant="tertiary"
@@ -282,13 +295,13 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
           <div className="sticky top-0 z-20">
             <div
               className={cn(
-                'bg-surface-flat/90 backdrop-blur border-b px-6 flex items-center justify-between transition-all overflow-hidden',
+                'bg-surface-flat/90 backdrop-blur border-b px-6 flex flex-col gap-2 md:flex-row md:items-center md:justify-between transition-all overflow-hidden',
                 isCompactBarVisible
-                  ? 'opacity-100 max-h-16 py-2 border-border-dim'
+                  ? 'opacity-100 max-h-24 md:max-h-16 py-2 border-border-dim'
                   : 'opacity-0 max-h-0 py-0 border-transparent pointer-events-none'
               )}
             >
-              <div>
+              <div className="flex items-center gap-3">
                 <Text variant="body-2" weight="semibold">
                   All Collections
                 </Text>
@@ -297,7 +310,27 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                 </Text>
               </div>
               {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between w-full md:hidden">
+                <Button asChild variant="icon" size="icon" aria-label="Menu">
+                  <Link href={menuHref}>
+                    <ArrowLeft className="w-4 h-4" />
+                    <span className="sr-only">Menu</span>
+                  </Link>
+                </Button>
+                {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+                <div className="flex items-center gap-2">
+                  <ControlGhost widthClassName="w-48" />
+                  <ControlGhost widthClassName="w-10" />
+                  <AppearanceDropdownIcon
+                    layout={layout}
+                    onLayoutChange={setLayout}
+                    cardSize={cardSize}
+                    onCardSizeChange={setCardSize}
+                  />
+                </div>
+              </div>
+              {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+              <div className="hidden md:flex items-center gap-2">
                 <ControlGhost widthClassName="w-48" />
                 <ControlGhost widthClassName="w-10" />
                 <AppearanceDropdown
@@ -313,13 +346,32 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
           <div className="p-6">
             <div className="max-w-7xl mx-auto">
               <Stack spacing="lg">
-                <div ref={headerRef} className="flex items-start justify-between">
+                <div className="flex items-center justify-between w-full md:hidden">
+                  <Button asChild variant="icon" size="icon" aria-label="Menu">
+                    <Link href={menuHref}>
+                      <ArrowLeft className="w-4 h-4" />
+                      <span className="sr-only">Menu</span>
+                    </Link>
+                  </Button>
+                  {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+                  <div className="flex items-center gap-2">
+                    <ControlGhost widthClassName="w-48" />
+                    <ControlGhost widthClassName="w-10" />
+                    <AppearanceDropdownIcon
+                      layout={layout}
+                      onLayoutChange={setLayout}
+                      cardSize={cardSize}
+                      onCardSizeChange={setCardSize}
+                    />
+                  </div>
+                </div>
+                <div ref={headerRef} className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <PageHeader
                     title="All Collections"
                     description={`${collections.length} collection${collections.length !== 1 ? 's' : ''}`}
                   />
                   {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
-                  <div className="flex items-center gap-2">
+                  <div className="hidden md:flex items-center gap-2">
                     <ControlGhost widthClassName="w-48" />
                     <ControlGhost widthClassName="w-10" />
                     <AppearanceDropdown

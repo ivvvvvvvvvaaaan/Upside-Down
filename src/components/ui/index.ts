@@ -8,6 +8,7 @@
  */
 
 export * from './alert'
+export * from './appearance-dropdown-icon'
 export * from './appearance-dropdown'
 export * from './asset-card'
 export * from './avatar'
@@ -29,6 +30,7 @@ export * from './page-header'
 export * from './popover'
 export * from './select'
 export * from './settings-panel'
+export * from './primary-nav-rail'
 export * from './stack'
 export * from './tabs'
 export * from './tag'
