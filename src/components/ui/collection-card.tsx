@@ -172,9 +172,14 @@ export function CollectionCard({
   const renderThumbnails = () => {
     if (numberOfAssets === 'None') {
       return (
-        <div className={cn('relative rounded shrink-0 w-full border border-border-dim overflow-hidden bg-surface-1 isolate', sizeStyles.thumbnail)}>
+        <div
+          className={cn(
+            'relative rounded shrink-0 w-full border border-border-dim overflow-hidden bg-surface-2 isolate',
+            sizeStyles.thumbnail
+          )}
+        >
           {assetCount === 0 && (
-            <div className={cn('absolute bg-surface-1', sizeStyles.emptyInset)}>
+            <div className={cn('absolute', sizeStyles.emptyInset)}>
               <Image
                 src={EMPTY_COLLECTION_PLACEHOLDER}
                 alt={`${title} empty`}
@@ -361,7 +366,7 @@ export function CollectionCard({
     return (
       <div className="flex gap-4 items-center w-full">
         {assetCount === 0 ? (
-          <div className={cn('rounded-full bg-surface-2 shrink-0', avatarSizeClass)} />
+          <div className={cn('rounded-full bg-surface-3 shrink-0', avatarSizeClass)} />
         ) : (
           <Avatar
             src={avatarSrc}

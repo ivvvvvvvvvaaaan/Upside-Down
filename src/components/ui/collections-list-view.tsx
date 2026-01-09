@@ -71,7 +71,7 @@ function ExpandThumbnailCellRenderer(
       // Character: circular avatar
       if (row.assetCount === 0) {
         return (
-          <div className="w-8 h-8 rounded-full bg-surface-2" />
+          <div className="w-8 h-8 rounded-full bg-surface-3" />
         )
       }
       if (imageSrc) {
@@ -86,7 +86,7 @@ function ExpandThumbnailCellRenderer(
         )
       }
       return (
-        <div className="w-8 h-8 rounded-full bg-surface-2 flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full bg-surface-3 flex items-center justify-center">
           <span className="text-foreground-subtle text-label-0-bold">
             {row.name.charAt(0)}
           </span>

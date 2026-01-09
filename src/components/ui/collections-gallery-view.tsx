@@ -156,7 +156,7 @@ export function CollectionsGalleryView({
     return (
       <div className="flex items-center justify-center w-10 h-10 shrink-0">
         {collection.assetCount === 0 ? (
-          <div className="w-8 h-8 rounded-full bg-surface-2" />
+          <div className="w-8 h-8 rounded-full bg-surface-3" />
         ) : (
           <Avatar
             src={collection.avatarSrc}
