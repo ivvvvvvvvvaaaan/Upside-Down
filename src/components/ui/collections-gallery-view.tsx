@@ -12,6 +12,7 @@ import type { Collection, Asset } from '@/lib/data'
 
 // Skeleton placeholder count for loading states
 const SKELETON_ASSET_COUNT = 6
+const EMPTY_COLLECTION_PLACEHOLDER = '/assets/clapper-img.png'
 
 // Custom collection type icons
 const LocationIcon = () => (
@@ -154,11 +155,15 @@ export function CollectionsGalleryView({
     }
     return (
       <div className="flex items-center justify-center w-10 h-10 shrink-0">
-        <Avatar
-          src={collection.avatarSrc}
-          name={collection.name}
-          size="sm"
-        />
+        {collection.assetCount === 0 ? (
+          <div className="w-8 h-8 rounded-full bg-surface-2" />
+        ) : (
+          <Avatar
+            src={collection.avatarSrc}
+            name={collection.name}
+            size="sm"
+          />
+        )}
       </div>
     )
   }
@@ -196,11 +201,22 @@ export function CollectionsGalleryView({
     if (mode === 'none' || mode === 'one') {
       return (
         <div className={cn(
-          'w-20 h-12 relative rounded overflow-hidden shrink-0 bg-surface-2',
+          'w-20 h-12 relative rounded overflow-hidden shrink-0 bg-surface-2 isolate',
           mode === 'none' && 'border border-border-dim'
         )}>
-          {mainImage && mode === 'one' && (
+          {mainImage && mode === 'one' ? (
             <Image src={mainImage} alt={collection.name} fill className="object-cover" />
+          ) : (
+            collection.assetCount === 0 && (
+              <div className="absolute inset-1">
+                <Image
+                  src={EMPTY_COLLECTION_PLACEHOLDER}
+                  alt={`${collection.name} empty`}
+                  fill
+                  className="object-contain mix-blend-luminosity"
+                />
+              </div>
+            )
           )}
         </div>
       )

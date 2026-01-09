@@ -3,6 +3,8 @@ import { Avatar } from './avatar'
 import { Card } from './card'
 import Image from 'next/image'
 
+const EMPTY_COLLECTION_PLACEHOLDER = '/assets/clapper-img.png'
+
 // Custom collection type icons
 const LocationIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -94,6 +96,27 @@ export function CollectionCard({
   className,
   ...props
 }: CollectionCardProps) {
+  const sizeStyles = size === 'sm'
+    ? {
+        thumbnail: 'h-[104px]',
+        minHeight: 'min-h-[184px]',
+        bottomThumb: 'h-[48px]',
+        emptyInset: 'inset-2',
+      }
+    : size === 'lg'
+    ? {
+        thumbnail: 'h-[152px]',
+        minHeight: 'min-h-[236px]',
+        bottomThumb: 'h-[72px]',
+        emptyInset: 'inset-4',
+      }
+    : {
+        thumbnail: 'h-[124px]',
+        minHeight: 'min-h-[204px]',
+        bottomThumb: 'h-[60px]',
+        emptyInset: 'inset-3',
+      }
+  const avatarSizeClass = size === 'sm' ? 'w-6 h-6' : 'w-8 h-8'
   // Typography classes based on size
   const titleClass = size === 'sm'
     ? 'text-body-0-bold'
@@ -121,9 +144,9 @@ export function CollectionCard({
   // Loading state with breathing animation
   if (state === 'Loading') {
     return (
-      <div className={cn('flex flex-col gap-4 min-h-[204px] p-1 relative w-full animate-breathe', className)}>
+      <div className={cn('flex flex-col gap-4 p-1 relative w-full animate-breathe', sizeStyles.minHeight, className)}>
         {/* Thumbnail skeleton */}
-        <div className="h-[124px] w-full rounded bg-surface-3" />
+        <div className={cn('w-full rounded bg-surface-3', sizeStyles.thumbnail)} />
         {/* Footer skeleton */}
         <div className="flex gap-4 items-center">
           {/* Avatar skeleton */}
@@ -149,13 +172,24 @@ export function CollectionCard({
   const renderThumbnails = () => {
     if (numberOfAssets === 'None') {
       return (
-        <div className="h-[124px] relative rounded shrink-0 w-full border border-border-dim" />
+        <div className={cn('relative rounded shrink-0 w-full border border-border-dim overflow-hidden bg-surface-1 isolate', sizeStyles.thumbnail)}>
+          {assetCount === 0 && (
+            <div className={cn('absolute bg-surface-1', sizeStyles.emptyInset)}>
+              <Image
+                src={EMPTY_COLLECTION_PLACEHOLDER}
+                alt={`${title} empty`}
+                fill
+                className="object-contain mix-blend-luminosity"
+              />
+            </div>
+          )}
+        </div>
       )
     }
 
     if (numberOfAssets === 'One') {
       return (
-        <div className="h-[124px] relative rounded shrink-0 w-full">
+        <div className={cn('relative rounded shrink-0 w-full', sizeStyles.thumbnail)}>
           {mainImage ? (
             <Image
               src={mainImage}
@@ -174,7 +208,7 @@ export function CollectionCard({
       return (
         <div className="flex gap-1 items-center w-full">
           {/* Main image - takes 2/3 of space */}
-          <div className="flex-[2] h-[124px] min-h-px min-w-px relative rounded">
+          <div className={cn('flex-[2] min-h-px min-w-px relative rounded', sizeStyles.thumbnail)}>
             {mainImage ? (
               <Image
                 src={mainImage}
@@ -187,7 +221,7 @@ export function CollectionCard({
             )}
           </div>
           {/* Thumbnail - takes 1/3 of space */}
-          <div className="flex-[1] h-[124px] min-h-px min-w-px relative rounded">
+          <div className={cn('flex-[1] min-h-px min-w-px relative rounded', sizeStyles.thumbnail)}>
             {thumbnailImages[0] ? (
               <Image
                 src={thumbnailImages[0]}
@@ -207,7 +241,7 @@ export function CollectionCard({
     return (
       <div className="flex gap-1 items-center w-full">
         {/* Main large image */}
-        <div className="basis-0 grow h-[124px] min-h-px min-w-px relative rounded shrink-0">
+        <div className={cn('basis-0 grow min-h-px min-w-px relative rounded shrink-0', sizeStyles.thumbnail)}>
           {mainImage ? (
             <div className="absolute inset-0 overflow-hidden rounded">
               <Image
@@ -223,7 +257,7 @@ export function CollectionCard({
         </div>
 
         {/* Right column: 2 small thumbnails */}
-        <div className="basis-0 flex flex-col gap-1 grow h-[124px] items-start min-h-px min-w-px relative shrink-0">
+        <div className={cn('basis-0 flex flex-col gap-1 grow items-start min-h-px min-w-px relative shrink-0', sizeStyles.thumbnail)}>
           {/* First small thumbnail */}
           <div className="basis-0 grow min-h-px min-w-px relative rounded shrink-0 w-full">
             {thumbnailImages[0] ? (
@@ -239,10 +273,10 @@ export function CollectionCard({
           </div>
 
           {/* Second small thumbnail with "+X" overlay */}
-          <div className="h-[60px] relative shrink-0 w-full">
+          <div className={cn('relative shrink-0 w-full', sizeStyles.bottomThumb)}>
             {thumbnailImages[1] ? (
               <>
-                <div className="absolute h-[60px] left-0 rounded top-0 w-full">
+                <div className={cn('absolute left-0 rounded top-0 w-full', sizeStyles.bottomThumb)}>
                   <div className="absolute inset-0 rounded">
                     <Image
                       src={thumbnailImages[1]}
@@ -326,12 +360,16 @@ export function CollectionCard({
     // Character type (default) - uses Avatar
     return (
       <div className="flex gap-4 items-center w-full">
-        <Avatar
-          src={avatarSrc}
-          name={avatarName || title}
-          size={size === 'sm' ? 'xs' : 'sm'}
-          className="shrink-0"
-        />
+        {assetCount === 0 ? (
+          <div className={cn('rounded-full bg-surface-2 shrink-0', avatarSizeClass)} />
+        ) : (
+          <Avatar
+            src={avatarSrc}
+            name={avatarName || title}
+            size={size === 'sm' ? 'xs' : 'sm'}
+            className="shrink-0"
+          />
+        )}
         <div className="flex flex-col items-start flex-1 min-w-0">
           <div
             className={cn(
@@ -357,7 +395,8 @@ export function CollectionCard({
   return (
     <div
       className={cn(
-        'group flex flex-col gap-4 min-h-[204px] p-2 relative w-full rounded',
+        'group flex flex-col gap-4 p-2 relative w-full rounded',
+        sizeStyles.minHeight,
         'bg-surface-2 border border-border-elevation',
         isCentered ? 'items-start' : 'items-start',
         isHovered && 'bg-surface-3',
@@ -388,4 +427,3 @@ export function CollectionCard({
     </div>
   )
 }
-
