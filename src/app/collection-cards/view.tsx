@@ -8,27 +8,31 @@ import {
   AssetCard,
   SettingsPanel,
   SettingGroup,
-  SettingOption,
   SettingBoolean,
+  SettingSegmented,
   Button,
   CardGrid,
   PageHeader,
   EmptyState,
   AppearanceDropdown,
+  CollectionsListView,
+  CollectionsGalleryView,
 } from '@/components/ui'
 import type { LayoutType, CardSize } from '@/components/ui/appearance-dropdown'
 import { AppLayout } from '@/components/layouts'
 import { ArrowLeft } from 'lucide-react'
-import { useAssetSelection, useCollectionAssets } from '@/hooks'
+import { useAssetSelection, useCollectionAssets, useViewPreferences } from '@/hooks'
+import type { CollectionViewType } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
 import type { CollectionCardAssetCount } from '@/components/ui/collection-card'
 
 interface CollectionCardsViewProps {
   title: string
   initialCollections: Collection[]
+  collectionType?: CollectionViewType
 }
 
-export function CollectionCardsView({ title, initialCollections }: CollectionCardsViewProps) {
+export function CollectionCardsView({ title, initialCollections, collectionType = 'all' }: CollectionCardsViewProps) {
   const [collections] = useState<Collection[]>(initialCollections)
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const {
@@ -41,9 +45,8 @@ export function CollectionCardsView({ title, initialCollections }: CollectionCar
 
   const [assetCount, setAssetCount] = useState<CollectionCardAssetCount>('Many')
 
-  // Appearance settings
-  const [layout, setLayout] = useState<LayoutType>('grid')
-  const [cardSize, setCardSize] = useState<CardSize>('md')
+  // Appearance settings - persisted per collection type
+  const { layout, setLayout, cardSize, setCardSize } = useViewPreferences(collectionType)
 
   // Loading state controls
   const [showCollectionLoading, setShowCollectionLoading] = useState(false)
@@ -143,23 +146,41 @@ export function CollectionCardsView({ title, initialCollections }: CollectionCar
               />
             </div>
 
-            <CardGrid gap="4" layout={layout} columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
-              {collections.map((collection) => (
-                <CollectionCard
-                  key={collection.id}
-                  title={collection.name}
-                  assetCount={collection.assetCount}
-                  type={collection.type}
-                  mainImage={collection.mainImage}
-                  thumbnailImages={collection.thumbnailImages}
-                  avatarSrc={collection.avatarSrc}
-                  avatarName={collection.name}
-                  state={showCollectionLoading ? 'Loading' : 'Normal'}
-                  numberOfAssets={assetCount}
-                  onClick={() => loadCollection(collection)}
-                />
-              ))}
-            </CardGrid>
+            {layout === 'list' ? (
+              <CollectionsListView
+                collections={collections}
+                onCollectionClick={loadCollection}
+              />
+            ) : layout === 'gallery' ? (
+              <CollectionsGalleryView
+                collections={collections}
+                selectedIds={selectedIds}
+                primaryId={primaryId}
+                onAssetClick={handleAssetClick}
+                onAssetMenuClick={handleMenuClick}
+                showAssetLoading={showAssetLoading}
+                showCollectionLoading={showCollectionLoading}
+              />
+            ) : (
+              <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
+                {collections.map((collection) => (
+                  <CollectionCard
+                    key={collection.id}
+                    title={collection.name}
+                    assetCount={collection.assetCount}
+                    type={collection.type}
+                    mainImage={collection.mainImage}
+                    thumbnailImages={collection.thumbnailImages}
+                    avatarSrc={collection.avatarSrc}
+                    avatarName={collection.name}
+                    state={showCollectionLoading ? 'Loading' : 'Normal'}
+                    numberOfAssets={assetCount}
+                    size={cardSize}
+                    onClick={() => loadCollection(collection)}
+                  />
+                ))}
+              </CardGrid>
+            )}
           </Stack>
         </div>
 
@@ -170,32 +191,25 @@ export function CollectionCardsView({ title, initialCollections }: CollectionCar
               value={showCollectionLoading}
               onChange={setShowCollectionLoading}
             />
+            {layout === 'gallery' && (
+              <SettingBoolean
+                label="Asset Cards"
+                value={showAssetLoading}
+                onChange={setShowAssetLoading}
+              />
+            )}
           </SettingGroup>
 
           <SettingGroup label="Collection Card Thumbnails">
-            <SettingOption
-              label="Many (3+ images)"
-              value="Many"
-              checked={assetCount === 'Many'}
-              onChange={(value) => setAssetCount(value as CollectionCardAssetCount)}
-            />
-            <SettingOption
-              label="Two (2 images)"
-              value="Two"
-              checked={assetCount === 'Two'}
-              onChange={(value) => setAssetCount(value as CollectionCardAssetCount)}
-            />
-            <SettingOption
-              label="One (1 image)"
-              value="One"
-              checked={assetCount === 'One'}
-              onChange={(value) => setAssetCount(value as CollectionCardAssetCount)}
-            />
-            <SettingOption
-              label="None (Empty)"
-              value="None"
-              checked={assetCount === 'None'}
-              onChange={(value) => setAssetCount(value as CollectionCardAssetCount)}
+            <SettingSegmented
+              options={[
+                { value: 'Many' as const, label: 'Many' },
+                { value: 'Two' as const, label: 'Two' },
+                { value: 'One' as const, label: 'One' },
+                { value: 'None' as const, label: 'None' },
+              ]}
+              value={assetCount}
+              onChange={(val) => setAssetCount(val as CollectionCardAssetCount)}
             />
           </SettingGroup>
         </SettingsPanel>

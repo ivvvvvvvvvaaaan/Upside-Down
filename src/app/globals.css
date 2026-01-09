@@ -2,6 +2,79 @@
 @tailwind components;
 @tailwind utilities;
 
+/* AG Grid Theme */
+@import 'ag-grid-community/styles/ag-grid.css';
+@import 'ag-grid-community/styles/ag-theme-alpine.css';
+
+/* AG Grid - Hawkins Design System Overrides
+ * Figma ref: https://www.figma.com/design/8FNmhzKUqlr6MEo7pJINCd/?node-id=11-1624
+ * Uses Hawkins tokens: surface-highlight (4%), surface-selected, border-selected
+ */
+.ag-theme-alpine {
+  /* Backgrounds - Hawkins surface tokens */
+  --ag-background-color: rgb(var(--surface-flat));
+  --ag-header-background-color: rgb(var(--surface-low));
+  --ag-odd-row-background-color: rgb(var(--surface-flat));
+  --ag-modal-overlay-background-color: rgb(var(--surface-overlay-rgb) / 0.7);
+
+  /* Foreground - Hawkins foreground tokens */
+  --ag-foreground-color: rgb(var(--foreground-rgb) / 0.9);
+  --ag-header-foreground-color: rgb(var(--foreground-rgb) / 0.9);
+  --ag-secondary-foreground-color: rgb(var(--foreground-rgb) / 0.6);
+  --ag-disabled-foreground-color: rgb(var(--foreground-rgb) / 0.4);
+
+  /* Borders - Hawkins border tokens (subtle=40%, dim=20%) */
+  --ag-border-color: rgb(var(--border-default) / 0.4);
+  --ag-secondary-border-color: rgb(var(--border-default) / 0.2);
+  --ag-row-border-color: rgb(var(--border-default) / 0.2);
+  --ag-header-column-separator-color: rgb(var(--border-default) / 0.2);
+
+  /* Interactive - Hawkins surface-highlight (4%) and surface-selected tokens */
+  --ag-row-hover-color: rgb(var(--surface-highlight-rgb) / 0.04);
+  --ag-selected-row-background-color: rgb(var(--surface-selected));
+  --ag-range-selection-background-color: rgb(var(--surface-selected));
+  --ag-range-selection-border-color: rgb(var(--border-selected));
+
+  /* Typography */
+  --ag-font-family: inherit;
+  --ag-font-size: 14px;
+
+  /* Spacing - Figma: 16px horizontal padding, 40px row height */
+  --ag-grid-size: 4px;
+  --ag-cell-horizontal-padding: 16px;
+}
+
+/* AG Grid - Dark Mode: direct element styling with !important */
+.dark .ag-theme-alpine,
+.dark .ag-theme-alpine .ag-root-wrapper,
+.dark .ag-theme-alpine .ag-header,
+.dark .ag-theme-alpine .ag-body,
+.dark .ag-theme-alpine .ag-row {
+  --ag-background-color: rgb(22 22 22) !important;
+  --ag-header-background-color: rgb(35 35 35) !important;
+  --ag-odd-row-background-color: rgb(22 22 22) !important;
+  --ag-foreground-color: rgb(255 255 255 / 0.9) !important;
+  --ag-header-foreground-color: rgb(255 255 255 / 0.9) !important;
+  --ag-secondary-foreground-color: rgb(255 255 255 / 0.6) !important;
+  --ag-row-hover-color: rgb(255 255 255 / 0.04) !important;
+  --ag-border-color: rgb(255 255 255 / 0.4) !important;
+  --ag-row-border-color: rgb(255 255 255 / 0.2) !important;
+  background-color: rgb(22 22 22) !important;
+  color: rgb(255 255 255 / 0.9) !important;
+}
+
+.dark .ag-theme-alpine .ag-header {
+  background-color: rgb(35 35 35) !important;
+}
+
+.dark .ag-theme-alpine .ag-row {
+  background-color: rgb(22 22 22) !important;
+}
+
+.dark .ag-theme-alpine .ag-cell {
+  color: rgb(255 255 255 / 0.9) !important;
+}
+
 /*
  * ===========================================
  * HAWKINS DESIGN SYSTEM - THEME TOKENS

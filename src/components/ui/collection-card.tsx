@@ -58,21 +58,25 @@ export type CollectionCardAssetCount = 'Many' | 'Two' | 'One' | 'None'
 
 export type CollectionCardType = 'character' | 'location' | 'scene'
 
+export type CollectionCardSize = 'sm' | 'md' | 'lg'
+
 export interface CollectionCardProps extends React.HTMLAttributes<HTMLDivElement> {
   // Collection metadata
   title: string
   assetCount: number
   type?: CollectionCardType
-  
+
   // Visual content
   mainImage?: string
   thumbnailImages?: string[]
   avatarSrc?: string
   avatarName?: string
-  
+
   // State and variant props
   state?: CollectionCardState
   numberOfAssets?: CollectionCardAssetCount
+  /** Card size - affects font sizes and spacing */
+  size?: CollectionCardSize
 }
 
 export function CollectionCard({
@@ -85,10 +89,21 @@ export function CollectionCard({
   avatarName,
   state = 'Normal',
   numberOfAssets = 'Many',
+  size = 'md',
   onClick,
   className,
   ...props
 }: CollectionCardProps) {
+  // Typography classes based on size
+  const titleClass = size === 'sm'
+    ? 'text-body-0-bold'
+    : 'text-body-2-bold'
+  const sceneTitleClass = size === 'sm'
+    ? 'text-label-1-bold'
+    : 'text-body-0-bold'
+  const metaClass = size === 'sm'
+    ? 'text-label-0-regular'
+    : 'text-label-1-regular'
   // Determine if card should show selection border
   const isSelected = 
     state === 'Selected' || 
@@ -271,14 +286,15 @@ export function CollectionCard({
           <div className="flex flex-col items-start flex-1 min-w-0">
             <div
               className={cn(
-                'text-body-2-bold text-foreground break-words',
+                titleClass,
+                'text-foreground break-words',
                 linkClass,
                 isHovered && 'underline text-foreground-system-link'
               )}
             >
               {title}
             </div>
-            <div className="text-label-1-regular text-foreground-subtle">
+            <div className={cn(metaClass, 'text-foreground-subtle')}>
               {assetCount} assets
             </div>
           </div>
@@ -295,14 +311,15 @@ export function CollectionCard({
           <div className="flex flex-col items-start flex-1 min-w-0">
             <div
               className={cn(
-                'text-body-0-bold text-foreground break-words',
+                sceneTitleClass,
+                'text-foreground break-words',
                 linkClass,
                 isHovered && 'underline text-foreground-system-link'
               )}
             >
               {title}
             </div>
-            <div className="text-label-1-regular text-foreground-subtle">
+            <div className={cn(metaClass, 'text-foreground-subtle')}>
               {assetCount} assets
             </div>
           </div>
@@ -316,20 +333,21 @@ export function CollectionCard({
         <Avatar
           src={avatarSrc}
           name={avatarName || title}
-          size="sm"
+          size={size === 'sm' ? 'xs' : 'sm'}
           className="shrink-0"
         />
         <div className="flex flex-col items-start flex-1 min-w-0">
           <div
             className={cn(
-              'text-body-2-bold text-foreground break-words',
+              titleClass,
+              'text-foreground break-words',
               linkClass,
               isHovered && 'underline text-foreground-system-link'
             )}
           >
             {title}
           </div>
-          <div className="text-label-1-regular text-foreground-subtle">
+          <div className={cn(metaClass, 'text-foreground-subtle')}>
             {assetCount} assets
           </div>
         </div>

@@ -168,7 +168,7 @@ export function AssetCard({
         'rounded p-1',
         'transition-colors',
         // Background states
-        !isSelected && 'bg-surface-flat hover:bg-surface-2',
+        !isSelected && 'bg-transparent hover:bg-surface-2',
         // Selected: theme-adaptive selection background
         isSelected && 'bg-surface-selected hover:bg-surface-selected-hover',
         // Border: only primary selection gets the ring (theme-adaptive)

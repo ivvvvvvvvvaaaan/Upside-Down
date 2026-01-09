@@ -155,7 +155,7 @@ export function SettingBoolean({
         <button
           onClick={() => onChange(false)}
           className={cn(
-            'px-1 py-0 transition-colors',
+            'px-2 py-1 transition-colors',
             !value
               ? 'bg-gray-500 text-white'
               : 'bg-surface-flat text-foreground-dim hover:bg-surface-highlight'
@@ -166,7 +166,7 @@ export function SettingBoolean({
         <button
           onClick={() => onChange(true)}
           className={cn(
-            'px-1 py-0 transition-colors',
+            'px-2 py-1 transition-colors',
             value
               ? 'bg-indigo-600 text-white'
               : 'bg-surface-flat text-foreground-dim hover:bg-surface-highlight'
@@ -174,6 +174,46 @@ export function SettingBoolean({
         >
           {onLabel}
         </button>
+      </div>
+    </div>
+  )
+}
+
+export interface SettingSegmentedProps<T extends string> {
+  label?: string
+  options: { value: T; label: string }[]
+  value: T
+  onChange: (value: T) => void
+}
+
+export function SettingSegmented<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: SettingSegmentedProps<T>) {
+  return (
+    <div className={cn('flex items-center', label ? 'justify-between' : '')}>
+      {label && (
+        <span className="text-body-0-regular text-foreground-dim">
+          {label}
+        </span>
+      )}
+      <div className="flex rounded overflow-hidden border border-border-subtle text-label-0-regular">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => onChange(option.value)}
+            className={cn(
+              'px-2 py-1 transition-colors',
+              value === option.value
+                ? 'bg-gray-500 text-white'
+                : 'bg-surface-flat text-foreground-dim hover:bg-surface-highlight'
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
       </div>
     </div>
   )

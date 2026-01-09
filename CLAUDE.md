@@ -126,6 +126,15 @@ If you find yourself about to use a hardcoded value, STOP and:
 
 ---
 
+## Development Workflow
+
+### Running the Project
+- **NEVER run `npm run dev`, `npm run build`, or `npm start`** - The user runs the project locally in the background
+- Use `npx tsc --noEmit` for type checking only
+- The user will see changes via hot reload
+
+---
+
 ## Code Quality Rules
 
 ### TypeScript
