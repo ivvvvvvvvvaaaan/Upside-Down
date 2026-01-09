@@ -1,16 +1,24 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { NavSidebar, PrimaryNavRail } from '@/components/ui'
 
 export default function MobileNavPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const returnTo = searchParams.get('return') || '/nextgen/collections'
+
+  const getReturnPath = () => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      return params.get('return') || '/nextgen/collections'
+    } catch {
+      return '/nextgen/collections'
+    }
+  }
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 768px)')
+    const returnTo = getReturnPath()
     const handleChange = () => {
       if (media.matches) {
         router.replace(returnTo)
@@ -20,7 +28,7 @@ export default function MobileNavPage() {
     handleChange()
     media.addEventListener('change', handleChange)
     return () => media.removeEventListener('change', handleChange)
-  }, [router, returnTo])
+  }, [router])
 
   return (
     <div className="h-screen bg-surface-flat flex">
