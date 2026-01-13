@@ -14,11 +14,12 @@ import {
   PageHeader,
   EmptyState,
   AppearanceDropdown,
-  AppearanceDropdownIcon,
+    SortDropdown,
   CollectionsListView,
   CollectionsGalleryView,
   ControlGhost,
 } from '@/components/ui'
+import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import type { GalleryThumbnailMode } from '@/components/ui/collections-gallery-view'
 import type { LayoutType, CardSize } from '@/components/ui/appearance-dropdown'
 import { AppLayout } from '@/components/layouts'
@@ -40,8 +41,8 @@ interface CollectionCardsViewProps {
 // Collection card states: loading, real data (asis), or fake thumbnail variants
 type CollectionCardState = 'loading' | 'asis' | 'many' | 'two' | 'one' | 'none'
 
-// Asset card states: loading, real data, or no preview placeholder
-type AssetCardState = 'loading' | 'asis' | 'no-preview'
+// Asset card states: loading, real data, no preview placeholder, or processing
+type AssetCardState = 'loading' | 'asis' | 'no-preview' | 'processing'
 
 // Skeleton placeholder counts for loading states
 const SKELETON_COLLECTION_COUNT = 8
@@ -69,6 +70,17 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
   // Appearance settings - persisted globally
   const { layout, setLayout, cardSize, setCardSize } = useViewPreferences()
 
+  // Sort settings
+  const sortFields = [
+    { value: 'name', label: 'Name' },
+    { value: 'date', label: 'Date Modified' },
+    { value: 'type', label: 'Type' },
+    { value: 'size', label: 'Size' },
+  ]
+  const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
+    { field: 'name', direction: 'asc' }
+  ])
+
   // Separate display states for collection and asset cards
   const [collectionCardState, setCollectionCardState] = useState<CollectionCardState>('asis')
   const [assetCardState, setAssetCardState] = useState<AssetCardState>('asis')
@@ -77,6 +89,7 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
   const showCollectionLoading = collectionCardState === 'loading'
   const showAssetLoading = assetCardState === 'loading'
   const forceEmptyPreview = assetCardState === 'no-preview'
+  const showProcessing = assetCardState === 'processing'
   const thumbnailMode: GalleryThumbnailMode = collectionCardState === 'loading' ? 'asis' : collectionCardState
 
   // Pre-loaded asset data for accurate counts
@@ -240,6 +253,7 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                           onMenuClick={handleMenuClick}
                           loading={showAssetLoading}
                           forceEmptyPreview={forceEmptyPreview}
+                          processing={showProcessing}
                         />
                       ))}
                     </CardGrid>
@@ -261,6 +275,7 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                   { value: 'loading' as const, label: 'Loading' },
                   { value: 'asis' as const, label: 'As Is' },
                   { value: 'no-preview' as const, label: 'No Preview' },
+                  { value: 'processing' as const, label: 'Processing' },
                 ]}
                 value={assetCardState}
                 onChange={(val) => setAssetCardState(val as AssetCardState)}
@@ -301,11 +316,15 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                     <span className="sr-only">Menu</span>
                   </Link>
                 </Button>
-                {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+                {/* TODO: Placeholder ghost for upcoming search control */}
                 <div className="flex items-center gap-2">
                   <ControlGhost widthClassName="w-48" />
-                  <ControlGhost widthClassName="w-10" />
-                  <AppearanceDropdownIcon
+                  <SortDropdown
+                    fields={sortFields}
+                    value={sortCriteria}
+                    onChange={setSortCriteria}
+                  />
+                  <AppearanceDropdown iconOnly
                     layout={layout}
                     onLayoutChange={setLayout}
                     cardSize={cardSize}
@@ -313,10 +332,14 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                   />
                 </div>
               </div>
-              {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+              {/* TODO: Placeholder ghost for upcoming search control */}
               <div className="hidden md:flex items-center gap-2">
                 <ControlGhost widthClassName="w-48" />
-                <ControlGhost widthClassName="w-10" />
+                <SortDropdown
+                  fields={sortFields}
+                  value={sortCriteria}
+                  onChange={setSortCriteria}
+                />
                 <AppearanceDropdown
                   layout={layout}
                   onLayoutChange={setLayout}
@@ -337,11 +360,15 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                       <span className="sr-only">Menu</span>
                     </Link>
                   </Button>
-                  {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+                  {/* TODO: Placeholder ghost for upcoming search control */}
                   <div className="flex items-center gap-2">
                     <ControlGhost widthClassName="w-48" />
-                    <ControlGhost widthClassName="w-10" />
-                    <AppearanceDropdownIcon
+                    <SortDropdown
+                      fields={sortFields}
+                      value={sortCriteria}
+                      onChange={setSortCriteria}
+                    />
+                    <AppearanceDropdown iconOnly
                       layout={layout}
                       onLayoutChange={setLayout}
                       cardSize={cardSize}
@@ -354,10 +381,14 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                     title={title}
                     description="Browse collections by character, location, or scene"
                   />
-                  {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+                  {/* TODO: Placeholder ghost for upcoming search control */}
                   <div className="hidden md:flex items-center gap-2">
                     <ControlGhost widthClassName="w-48" />
-                    <ControlGhost widthClassName="w-10" />
+                    <SortDropdown
+                      fields={sortFields}
+                      value={sortCriteria}
+                      onChange={setSortCriteria}
+                    />
                     <AppearanceDropdown
                       layout={layout}
                       onLayoutChange={setLayout}
@@ -387,6 +418,7 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                     loadedAssets={loadedAssets}
                     isPreloading={isPreloading}
                     forceEmptyPreview={forceEmptyPreview}
+                    showProcessing={showProcessing}
                   />
                 ) : isPreloading ? (
                   <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
@@ -474,6 +506,7 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                   { value: 'loading' as const, label: 'Loading' },
                   { value: 'asis' as const, label: 'As Is' },
                   { value: 'no-preview' as const, label: 'No Preview' },
+                  { value: 'processing' as const, label: 'Processing' },
                 ]}
                 value={assetCardState}
                 onChange={(val) => setAssetCardState(val as AssetCardState)}

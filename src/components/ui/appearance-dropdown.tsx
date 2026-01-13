@@ -1,6 +1,7 @@
 'use client'
 
 import { LayoutGrid, LayoutList, GalleryHorizontalEnd } from 'lucide-react'
+import { Card } from './card'
 import { Dropdown } from './dropdown'
 import { ToggleButtonGroup } from './toggle-button-group'
 
@@ -12,8 +13,10 @@ export interface AppearanceDropdownProps {
   onLayoutChange: (layout: LayoutType) => void
   cardSize: CardSize
   onCardSizeChange: (size: CardSize) => void
-  /** Hide layout options (grid/list/gallery toggle) */
   showLayoutOptions?: boolean
+  label?: string
+  /** Show only icon in trigger */
+  iconOnly?: boolean
 }
 
 export function AppearanceDropdown({
@@ -22,45 +25,50 @@ export function AppearanceDropdown({
   cardSize,
   onCardSizeChange,
   showLayoutOptions = true,
+  label = 'Appearance',
+  iconOnly = false,
 }: AppearanceDropdownProps) {
   return (
     <Dropdown
-      label="Appearance"
+      label={label}
       icon={<LayoutGrid className="w-4 h-4" />}
       size="standard"
       align="end"
       width="auto"
+      triggerClassName={iconOnly ? "w-10 justify-center px-0 [&_span]:gap-0 [&_span]:text-[0px] [&>svg]:hidden" : undefined}
     >
-      <div className="space-y-3 min-w-56">
-        {showLayoutOptions && (
-          <ToggleButtonGroup
-            options={[
-              { value: 'grid' as const, label: 'Grid', icon: <LayoutGrid className="w-4 h-4" /> },
-              { value: 'list' as const, label: 'List', icon: <LayoutList className="w-4 h-4" /> },
-              { value: 'gallery' as const, label: 'Gallery', icon: <GalleryHorizontalEnd className="w-4 h-4" /> },
-            ]}
-            value={layout}
-            onChange={onLayoutChange}
-            compact
-          />
-        )}
-
-        {(layout === 'grid' || !showLayoutOptions) && (
-          <div className="flex items-center justify-between">
-            <span className="text-body-0-regular text-foreground">Card Size</span>
+      <Card.Body padding="md">
+        <div className="space-y-3 min-w-56">
+          {showLayoutOptions && (
             <ToggleButtonGroup
               options={[
-                { value: 'sm' as const, label: 'SM' },
-                { value: 'md' as const, label: 'MD' },
-                { value: 'lg' as const, label: 'LG' },
+                { value: 'grid' as const, label: 'Grid', icon: <LayoutGrid className="w-4 h-4" /> },
+                { value: 'list' as const, label: 'List', icon: <LayoutList className="w-4 h-4" /> },
+                { value: 'gallery' as const, label: 'Gallery', icon: <GalleryHorizontalEnd className="w-4 h-4" /> },
               ]}
-              value={cardSize}
-              onChange={onCardSizeChange}
+              value={layout}
+              onChange={onLayoutChange}
               compact
             />
-          </div>
-        )}
-      </div>
+          )}
+
+          {(layout === 'grid' || !showLayoutOptions) && (
+            <div className="flex items-center justify-between">
+              <span className="text-body-0-regular text-foreground">Card Size</span>
+              <ToggleButtonGroup
+                options={[
+                  { value: 'sm' as const, label: 'SM' },
+                  { value: 'md' as const, label: 'MD' },
+                  { value: 'lg' as const, label: 'LG' },
+                ]}
+                value={cardSize}
+                onChange={onCardSizeChange}
+                compact
+              />
+            </div>
+          )}
+        </div>
+      </Card.Body>
     </Dropdown>
   )
 }

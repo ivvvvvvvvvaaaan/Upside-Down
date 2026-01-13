@@ -14,11 +14,12 @@ import {
   PageHeader,
   EmptyState,
   AppearanceDropdown,
-  AppearanceDropdownIcon,
+    SortDropdown,
   CollectionsListView,
   CollectionsGalleryView,
   ControlGhost,
 } from '@/components/ui'
+import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import type { GalleryThumbnailMode } from '@/components/ui/collections-gallery-view'
 import type { CollectionCardAssetCount } from '@/components/ui/collection-card'
 import { AppLayout } from '@/components/layouts'
@@ -32,8 +33,8 @@ import { cn } from '@/lib/utils'
 // Collection card states: loading, real data (asis), or fake thumbnail variants
 type CollectionCardState = 'loading' | 'asis' | 'many' | 'two' | 'one' | 'none'
 
-// Asset card states: loading, real data, or no preview placeholder
-type AssetCardState = 'loading' | 'asis' | 'no-preview'
+// Asset card states: loading, real data, no preview placeholder, or processing
+type AssetCardState = 'loading' | 'asis' | 'no-preview' | 'processing'
 
 interface AllCollectionsViewProps {
   collections: Collection[]
@@ -60,6 +61,17 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
   // Appearance settings - persisted globally
   const { layout, setLayout, cardSize, setCardSize } = useViewPreferences()
 
+  // Sort settings
+  const sortFields = [
+    { value: 'name', label: 'Name' },
+    { value: 'date', label: 'Date Modified' },
+    { value: 'type', label: 'Type' },
+    { value: 'size', label: 'Size' },
+  ]
+  const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
+    { field: 'name', direction: 'asc' }
+  ])
+
   // Card state controls
   const [collectionCardState, setCollectionCardState] = useState<CollectionCardState>('asis')
   const [assetCardState, setAssetCardState] = useState<AssetCardState>('asis')
@@ -68,6 +80,7 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
   const showCollectionLoading = collectionCardState === 'loading'
   const showAssetLoading = assetCardState === 'loading'
   const forceEmptyPreview = assetCardState === 'no-preview'
+  const showProcessing = assetCardState === 'processing'
   const thumbnailMode: GalleryThumbnailMode = collectionCardState === 'loading' ? 'asis' : collectionCardState
 
   // Pre-loaded asset data for accurate counts
@@ -255,6 +268,7 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                           onMenuClick={handleMenuClick}
                           loading={showAssetLoading}
                           forceEmptyPreview={forceEmptyPreview}
+                          processing={showProcessing}
                         />
                       ))}
                     </CardGrid>
@@ -276,6 +290,7 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                   { value: 'loading' as const, label: 'Loading' },
                   { value: 'asis' as const, label: 'As Is' },
                   { value: 'no-preview' as const, label: 'No Preview' },
+                  { value: 'processing' as const, label: 'Processing' },
                 ]}
                 value={assetCardState}
                 onChange={(val) => setAssetCardState(val as AssetCardState)}
@@ -309,7 +324,7 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                   {collections.length} collection{collections.length !== 1 ? 's' : ''}
                 </Text>
               </div>
-              {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+              {/* Mobile compact bar controls */}
               <div className="flex items-center justify-between w-full md:hidden">
                 <Button asChild variant="icon" size="icon" aria-label="Menu">
                   <Link href={menuHref}>
@@ -317,11 +332,15 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                     <span className="sr-only">Menu</span>
                   </Link>
                 </Button>
-                {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+                {/* TODO: Placeholder ghost for upcoming search control */}
                 <div className="flex items-center gap-2">
                   <ControlGhost widthClassName="w-48" />
-                  <ControlGhost widthClassName="w-10" />
-                  <AppearanceDropdownIcon
+                  <SortDropdown
+                    fields={sortFields}
+                    value={sortCriteria}
+                    onChange={setSortCriteria}
+                  />
+                  <AppearanceDropdown iconOnly
                     layout={layout}
                     onLayoutChange={setLayout}
                     cardSize={cardSize}
@@ -329,10 +348,14 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                   />
                 </div>
               </div>
-              {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+              {/* Desktop compact bar controls */}
               <div className="hidden md:flex items-center gap-2">
                 <ControlGhost widthClassName="w-48" />
-                <ControlGhost widthClassName="w-10" />
+                <SortDropdown
+                  fields={sortFields}
+                  value={sortCriteria}
+                  onChange={setSortCriteria}
+                />
                 <AppearanceDropdown
                   layout={layout}
                   onLayoutChange={setLayout}
@@ -353,11 +376,15 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                       <span className="sr-only">Menu</span>
                     </Link>
                   </Button>
-                  {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+                  {/* TODO: Placeholder ghost for upcoming search control */}
                   <div className="flex items-center gap-2">
                     <ControlGhost widthClassName="w-48" />
-                    <ControlGhost widthClassName="w-10" />
-                    <AppearanceDropdownIcon
+                    <SortDropdown
+                      fields={sortFields}
+                      value={sortCriteria}
+                      onChange={setSortCriteria}
+                    />
+                    <AppearanceDropdown iconOnly
                       layout={layout}
                       onLayoutChange={setLayout}
                       cardSize={cardSize}
@@ -370,10 +397,14 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                     title="All Collections"
                     description={`${collections.length} collection${collections.length !== 1 ? 's' : ''}`}
                   />
-                  {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+                  {/* TODO: Placeholder ghost for upcoming search control */}
                   <div className="hidden md:flex items-center gap-2">
                     <ControlGhost widthClassName="w-48" />
-                    <ControlGhost widthClassName="w-10" />
+                    <SortDropdown
+                      fields={sortFields}
+                      value={sortCriteria}
+                      onChange={setSortCriteria}
+                    />
                     <AppearanceDropdown
                       layout={layout}
                       onLayoutChange={setLayout}
@@ -403,6 +434,7 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                     loadedAssets={loadedAssets}
                     isPreloading={isPreloading}
                     forceEmptyPreview={forceEmptyPreview}
+                    showProcessing={showProcessing}
                   />
                 ) : isPreloading ? (
                   <CardGrid gap="4" columns={getColumns()}>
@@ -468,6 +500,7 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                   { value: 'loading' as const, label: 'Loading' },
                   { value: 'asis' as const, label: 'As Is' },
                   { value: 'no-preview' as const, label: 'No Preview' },
+                  { value: 'processing' as const, label: 'Processing' },
                 ]}
                 value={assetCardState}
                 onChange={(val) => setAssetCardState(val as AssetCardState)}

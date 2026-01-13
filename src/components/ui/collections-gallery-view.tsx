@@ -52,6 +52,8 @@ interface CollectionsGalleryViewProps {
   isPreloading?: boolean
   /** Force showing empty preview placeholder for all assets */
   forceEmptyPreview?: boolean
+  /** Show processing state on asset cards */
+  showProcessing?: boolean
 }
 
 interface ExpandedState {
@@ -75,6 +77,7 @@ export function CollectionsGalleryView({
   loadedAssets: parentLoadedAssets,
   isPreloading: parentIsPreloading = false,
   forceEmptyPreview = false,
+  showProcessing = false,
 }: CollectionsGalleryViewProps) {
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set())
   const [localAssetsData, setLocalAssetsData] = useState<ExpandedState>({})
@@ -388,6 +391,7 @@ export function CollectionsGalleryView({
                         onMenuClick={onAssetMenuClick}
                         loading={showAssetLoading}
                         forceEmptyPreview={forceEmptyPreview}
+                        processing={showProcessing}
                       />
                     ))}
                   </CardGrid>

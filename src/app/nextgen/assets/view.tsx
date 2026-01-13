@@ -7,59 +7,52 @@ import {
   SettingsPanel,
   SettingGroup,
   SettingSegmented,
-  SettingOption,
   Button,
   CardGrid,
   PageHeader,
   EmptyState,
   AppearanceDropdown,
-  AppearanceDropdownIcon,
+    SortDropdown,
   ControlGhost,
 } from '@/components/ui'
+import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import { AppLayout } from '@/components/layouts'
 import { useAssetSelection, useViewPreferences } from '@/hooks'
-import type { Asset, Collection, AssetType } from '@/lib/data'
+import type { Asset } from '@/lib/data'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-// Asset card states: loading, real data, or no preview placeholder
-type AssetCardState = 'loading' | 'asis' | 'no-preview'
-
-const ASSET_TYPE_OPTIONS = [
-  { label: 'All Types', value: 'all' },
-  { label: 'Shot', value: 'shot' },
-  { label: 'Video', value: 'video' },
-  { label: 'Image', value: 'image' },
-  { label: 'Text', value: 'text' },
-] as const
+// Asset card states: loading, real data, no preview placeholder, or processing
+type AssetCardState = 'loading' | 'asis' | 'no-preview' | 'processing'
 
 interface AssetsViewProps {
   assets: Asset[]
-  collections: Collection[]
 }
 
-export function AssetsView({ assets, collections }: AssetsViewProps) {
-  const [selectedCollection, setSelectedCollection] = useState<string>('all')
-  const [selectedType, setSelectedType] = useState<AssetType | 'all'>('all')
+export function AssetsView({ assets }: AssetsViewProps) {
   const pathname = usePathname()
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
 
   const { selectedIds, primaryId, handleAssetClick } = useAssetSelection()
   const { layout, setLayout, cardSize, setCardSize } = useViewPreferences()
 
+  // Sort settings
+  const sortFields = [
+    { value: 'name', label: 'Name' },
+    { value: 'date', label: 'Date Modified' },
+    { value: 'type', label: 'Type' },
+    { value: 'size', label: 'Size' },
+  ]
+  const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
+    { field: 'name', direction: 'asc' }
+  ])
+
   // Asset card state
   const [assetCardState, setAssetCardState] = useState<AssetCardState>('asis')
   const showAssetLoading = assetCardState === 'loading'
   const forceEmptyPreview = assetCardState === 'no-preview'
-
-  const filteredAssets = assets.filter(asset => {
-    if (selectedType !== 'all' && asset.type !== selectedType) return false
-    if (selectedCollection !== 'all') {
-      return asset.collectionIds?.includes(selectedCollection)
-    }
-    return true
-  })
+  const showProcessing = assetCardState === 'processing'
 
   const handleMenuClick = (asset: Asset) => {
     console.log('Menu clicked for:', asset.name)
@@ -88,11 +81,15 @@ export function AssetsView({ assets, collections }: AssetsViewProps) {
                       <span className="sr-only">Menu</span>
                     </Link>
                   </Button>
-                  {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+                  {/* TODO: Placeholder ghost for upcoming search control */}
                   <div className="flex items-center gap-2">
                     <ControlGhost widthClassName="w-48" />
-                    <ControlGhost widthClassName="w-10" />
-                    <AppearanceDropdownIcon
+                    <SortDropdown
+                      fields={sortFields}
+                      value={sortCriteria}
+                      onChange={setSortCriteria}
+                    />
+                    <AppearanceDropdown iconOnly
                       layout={layout}
                       onLayoutChange={setLayout}
                       cardSize={cardSize}
@@ -105,10 +102,14 @@ export function AssetsView({ assets, collections }: AssetsViewProps) {
                     title="Assets"
                     description="Browse shots, videos, images, and documents"
                   />
-                  {/* TODO: Placeholder ghosts for upcoming search/grouping controls; keeps header spacing stable. */}
+                  {/* TODO: Placeholder ghost for upcoming search control */}
                   <div className="hidden md:flex items-center gap-2">
                     <ControlGhost widthClassName="w-48" />
-                    <ControlGhost widthClassName="w-10" />
+                    <SortDropdown
+                      fields={sortFields}
+                      value={sortCriteria}
+                      onChange={setSortCriteria}
+                    />
                     <AppearanceDropdown
                       layout={layout}
                       onLayoutChange={setLayout}
@@ -118,18 +119,19 @@ export function AssetsView({ assets, collections }: AssetsViewProps) {
                   </div>
                 </div>
 
-                {filteredAssets.length > 0 ? (
+                {assets.length > 0 ? (
                   <CardGrid columns={getColumns()} gap="4">
-                    {filteredAssets.map((asset) => (
+                    {assets.map((asset) => (
                       <AssetCard
                         key={asset.id}
                         asset={asset}
                         selected={selectedIds.has(asset.id)}
                         primary={primaryId === asset.id}
-                        onClick={(a, e) => handleAssetClick(a, e, filteredAssets)}
+                        onClick={(a, e) => handleAssetClick(a, e, assets)}
                         onMenuClick={handleMenuClick}
                         loading={showAssetLoading}
                         forceEmptyPreview={forceEmptyPreview}
+                        processing={showProcessing}
                       />
                     ))}
                   </CardGrid>
@@ -151,40 +153,11 @@ export function AssetsView({ assets, collections }: AssetsViewProps) {
                 { value: 'loading' as const, label: 'Loading' },
                 { value: 'asis' as const, label: 'As Is' },
                 { value: 'no-preview' as const, label: 'No Preview' },
+                { value: 'processing' as const, label: 'Processing' },
               ]}
               value={assetCardState}
               onChange={(val) => setAssetCardState(val as AssetCardState)}
             />
-          </SettingGroup>
-
-          <SettingGroup label="Collection">
-            <SettingOption
-              label="All Collections"
-              value="all"
-              checked={selectedCollection === 'all'}
-              onChange={setSelectedCollection}
-            />
-            {collections.map((collection) => (
-              <SettingOption
-                key={collection.id}
-                label={collection.name}
-                value={collection.id}
-                checked={selectedCollection === collection.id}
-                onChange={setSelectedCollection}
-              />
-            ))}
-          </SettingGroup>
-
-          <SettingGroup label="Asset Type">
-            {ASSET_TYPE_OPTIONS.map(option => (
-              <SettingOption
-                key={option.value}
-                label={option.label}
-                value={option.value}
-                checked={selectedType === option.value}
-                onChange={(val) => setSelectedType(val as AssetType | 'all')}
-              />
-            ))}
           </SettingGroup>
         </SettingsPanel>
       </div>

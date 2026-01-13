@@ -7,6 +7,7 @@ import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
 import Image from 'next/image'
 import type { Collection, Asset } from '@/lib/data'
 import { ChevronRight, ChevronDown, MapPin, Clapperboard, Image as ImageIcon } from 'lucide-react'
+import { Tag } from './tag'
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule])
@@ -166,54 +167,32 @@ function ExpandThumbnailCellRenderer(
   )
 }
 
-// Custom cell renderer for type badge
+// Custom cell renderer for type badge using Tag component
 function TypeBadgeCellRenderer(params: ICellRendererParams<TreeRow>) {
   const row = params.data
   if (!row) return null
 
-  if (row.rowType === 'collection' && row.collectionType) {
-    const typeColors: Record<string, string> = {
-      character: 'bg-indigo-500 dark:bg-indigo-400',
-      location: 'bg-green-500 dark:bg-green-400',
-      scene: 'bg-blue-500 dark:bg-blue-400',
-    }
-    const typeLabels: Record<string, string> = {
-      character: 'Character',
-      location: 'Location',
-      scene: 'Scene',
-    }
-    return (
-      <div className="flex items-center justify-start h-full w-full">
-        <span className={`text-tag-small px-1 py-0 ${typeColors[row.collectionType]} text-white rounded`}>
-          {typeLabels[row.collectionType]}
-        </span>
-      </div>
-    )
+  const labelMap: Record<string, string> = {
+    // Collection types
+    character: 'Character',
+    location: 'Location',
+    scene: 'Scene',
+    // Asset types
+    shot: 'Shot',
+    video: 'Video',
+    image: 'Image',
+    text: 'Text',
   }
 
-  if (row.rowType === 'asset' && row.assetType) {
-    const assetColors: Record<string, string> = {
-      shot: 'bg-gray-600 dark:bg-gray-400',
-      video: 'bg-purple-500 dark:bg-purple-400',
-      image: 'bg-yellow-500 dark:bg-yellow-400',
-      text: 'bg-gray-500 dark:bg-gray-400',
-    }
-    const assetLabels: Record<string, string> = {
-      shot: 'Shot',
-      video: 'Video',
-      image: 'Image',
-      text: 'Text',
-    }
-    return (
-      <div className="flex items-center justify-start h-full w-full">
-        <span className={`text-tag-small px-1 py-0 ${assetColors[row.assetType]} text-white rounded`}>
-          {assetLabels[row.assetType]}
-        </span>
-      </div>
-    )
-  }
+  const typeKey = row.rowType === 'collection' ? row.collectionType : row.assetType
+  const label = typeKey ? labelMap[typeKey] : null
+  if (!label) return null
 
-  return null
+  return (
+    <div className="flex items-center justify-start h-full w-full">
+      <Tag size="standard">{label}</Tag>
+    </div>
+  )
 }
 
 // Custom cell renderer for name
@@ -540,7 +519,7 @@ export function CollectionsListView({
 
   return (
     <div
-      className="ag-theme-alpine w-full"
+      className="ag-theme-hawkins w-full"
     >
       <AgGridReact<TreeRow>
         ref={gridRef}
@@ -550,7 +529,7 @@ export function CollectionsListView({
         getRowId={getRowId}
         getRowClass={getRowClass}
         domLayout="autoHeight"
-        rowHeight={44}
+        rowHeight={40}
         headerHeight={40}
         suppressCellFocus
         suppressRowClickSelection

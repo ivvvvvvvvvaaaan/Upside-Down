@@ -290,17 +290,17 @@ const config: Config = {
           },
         },
         
-        // Border system
+        // Border system - references complete variables from globals.css
         border: {
           DEFAULT: 'hsl(var(--border))',
-          dim: 'rgb(var(--border-dim-rgb) / 0.2)',
-          elevation: 'rgb(var(--border-elevation-rgb) / 0.04)',
+          dim: 'var(--border-dim)',
+          elevation: 'var(--border-elevation)',
           inverse: {
             DEFAULT: 'rgb(var(--border-inverse))',
-            dim: 'rgb(var(--border-inverse-dim-rgb) / 0.2)',
-            subtle: 'rgb(var(--border-inverse-subtle-rgb) / 0.4)',
+            dim: 'var(--border-inverse-dim)',
+            subtle: 'var(--border-inverse-subtle)',
           },
-          subtle: 'rgb(var(--border-subtle-rgb) / 0.4)',
+          subtle: 'var(--border-subtle)',
           system: {
             error: 'rgb(var(--border-system-error))',
             focus: 'rgb(var(--border-system-focus))',
@@ -356,9 +356,8 @@ const config: Config = {
       },
       fontFamily: {
         sans: [
-          "Netflix Sans",
           "-apple-system",
-          "BlinkMacSystemFont",
+          "system-ui",
           "Segoe UI",
           "Roboto",
           "Helvetica",

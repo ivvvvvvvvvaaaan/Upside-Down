@@ -5,7 +5,9 @@ import type { ReactNode } from 'react'
 
 export interface ToggleButtonOption<T extends string = string> {
   value: T
-  label: string
+  /** Label text - optional for icon-only buttons */
+  label?: string
+  /** Icon - required for icon-only mode */
   icon?: ReactNode
 }
 
@@ -15,6 +17,8 @@ export interface ToggleButtonGroupProps<T extends string = string> {
   onChange: (value: T) => void
   /** Compact size for smaller UI contexts */
   compact?: boolean
+  /** Icon-only mode - hides labels, shows only icons */
+  iconOnly?: boolean
   /** Additional class names */
   className?: string
 }
@@ -25,31 +29,39 @@ export interface ToggleButtonGroupProps<T extends string = string> {
  * Figma: https://www.figma.com/design/8FNmhzKUqlr6MEo7pJINCd/?node-id=12-5626
  *
  * Design tokens used:
- * - Container bg: surface-highlight-rgb at 4%
- * - Container border: surface-highlight-rgb at 20%
- * - Selected: indigo-500 at 40%
- * - Text: foreground (90% in dark)
+ * - Container bg: surface-mid in light, white/8% in dark
+ * - Container border: border-dim (20% opacity)
+ * - Selected: indigo-500 solid
+ * - Text: white (selected), foreground (unselected)
  * - Typography: label-1-bold (12px/18px semibold)
+ *
+ * Sizes:
+ * - standard: h-9 (36px) buttons, 44px container total
+ * - compact: font 12/18, button py-0 px-2 gap-1, container p-1 gap-2
  */
 export function ToggleButtonGroup<T extends string = string>({
   options,
   value,
   onChange,
   compact = false,
+  iconOnly = false,
   className,
 }: ToggleButtonGroupProps<T>) {
   return (
     <div
       className={cn(
-        'inline-flex rounded p-1 gap-1',
-        'bg-surface-highlight',
-        'border border-[rgb(var(--surface-highlight-rgb)/0.2)]',
+        'inline-flex items-center rounded',
+        // Container height, padding and gap
+        compact ? 'h-10 px-1 gap-2' : 'h-11 p-1 gap-1',
+        'bg-surface-mid dark:bg-white/[0.08]',
+        'border border-border-dim',
         className
       )}
       role="radiogroup"
     >
       {options.map((option) => {
         const isSelected = option.value === value
+        const showLabel = !iconOnly && option.label
 
         return (
           <button
@@ -57,22 +69,28 @@ export function ToggleButtonGroup<T extends string = string>({
             type="button"
             role="radio"
             aria-checked={isSelected}
+            aria-label={option.label}
             onClick={() => onChange(option.value)}
             className={cn(
               'inline-flex items-center justify-center rounded transition-colors',
-              'text-label-1-bold text-foreground',
-              compact ? 'h-8 px-4' : 'h-10 px-4',
+              // Typography
+              compact ? 'text-label-1-bold' : 'text-label-1-bold',
+              // Size classes
+              compact
+                ? iconOnly ? 'size-8' : 'h-8 px-2 gap-1'
+                : iconOnly ? 'size-9' : 'h-9 px-4 gap-1',
+              // Color classes
               isSelected
-                ? 'bg-[rgb(var(--indigo-500)/0.4)]'
-                : 'bg-transparent hover:bg-surface-highlight'
+                ? 'bg-indigo-500 text-white'
+                : 'text-foreground bg-transparent hover:bg-white/[0.08] dark:hover:bg-white/[0.04]'
             )}
           >
             {option.icon && (
-              <span className={cn('flex-shrink-0', option.label ? 'mr-2' : '')}>
+              <span className="flex-shrink-0">
                 {option.icon}
               </span>
             )}
-            {option.label}
+            {showLabel && option.label}
           </button>
         )
       })}

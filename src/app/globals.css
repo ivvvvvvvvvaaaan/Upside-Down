@@ -2,77 +2,155 @@
 @tailwind components;
 @tailwind utilities;
 
-/* AG Grid Theme */
+/* AG Grid - Base styles only (no theme) */
 @import 'ag-grid-community/styles/ag-grid.css';
-@import 'ag-grid-community/styles/ag-theme-alpine.css';
 
-/* AG Grid - Hawkins Design System Overrides
+/*
+ * ===========================================
+ * AG GRID - HAWKINS THEME
+ * ===========================================
+ * Native Hawkins Design System theme for AG Grid
  * Figma ref: https://www.figma.com/design/8FNmhzKUqlr6MEo7pJINCd/?node-id=11-1624
- * Uses Hawkins tokens: surface-highlight (4%), surface-selected, border-selected
+ *
+ * Hawkins Table Tokens:
+ * - Header bg: rgba(0,0,0,0.02) | dark: rgba(255,255,255,0.02)
+ * - Header text: rgba(0,0,0,0.7) | dark: rgba(255,255,255,0.7)
+ * - Body text: rgba(0,0,0,0.9) | dark: rgba(255,255,255,0.9)
+ * - Border: rgba(128,128,128,0.2)
+ * - Hover: rgba(0,0,0,0.04) | dark: rgba(255,255,255,0.04)
  */
-.ag-theme-alpine {
-  /* Backgrounds - Hawkins surface tokens */
-  --ag-background-color: rgb(var(--surface-flat));
-  --ag-header-background-color: rgb(var(--surface-low));
-  --ag-odd-row-background-color: rgb(var(--surface-flat));
-  --ag-modal-overlay-background-color: rgb(var(--surface-overlay-rgb) / 0.7);
+.ag-theme-hawkins {
+  /*
+   * Typography - Hawkins tokens
+   * Header: label-1-bold (12px/18px/600)
+   * Body: body-0-regular (13px/20px/400)
+   */
+  --ag-font-family: inherit;
+  --ag-font-size: 13px;
+  --ag-icon-size: 16px;
 
-  /* Foreground - Hawkins foreground tokens */
+  /*
+   * Spacing - Hawkins table specs
+   * Row height: 40px (Hawkins standard)
+   * Cell padding: 16px horizontal
+   */
+  --ag-grid-size: 4px;
+  --ag-row-height: 40px;
+  --ag-header-height: 40px;
+  --ag-cell-horizontal-padding: 16px;
+
+  /*
+   * Backgrounds - Hawkins table tokens
+   * Header: 2% tint for subtle differentiation
+   * Body: transparent
+   * Hover: 4% tint
+   */
+  --ag-background-color: transparent;
+  --ag-header-background-color: rgb(var(--foreground-rgb) / 0.02);
+  --ag-odd-row-background-color: transparent;
+  --ag-even-row-background-color: transparent;
+  --ag-row-hover-color: rgb(var(--foreground-rgb) / 0.04);
+  --ag-selected-row-background-color: rgb(var(--surface-selected));
+  --ag-modal-overlay-background-color: rgb(var(--surface-overlay-rgb) / 0.5);
+
+  /*
+   * Foreground - Hawkins table tokens
+   * Header: 70% opacity
+   * Body: 90% opacity
+   */
   --ag-foreground-color: rgb(var(--foreground-rgb) / 0.9);
-  --ag-header-foreground-color: rgb(var(--foreground-rgb) / 0.9);
+  --ag-header-foreground-color: rgb(var(--foreground-rgb) / 0.7);
   --ag-secondary-foreground-color: rgb(var(--foreground-rgb) / 0.6);
   --ag-disabled-foreground-color: rgb(var(--foreground-rgb) / 0.4);
 
-  /* Borders - Hawkins border tokens (subtle=40%, dim=20%) */
-  --ag-border-color: rgb(var(--border-default) / 0.4);
-  --ag-secondary-border-color: rgb(var(--border-default) / 0.2);
-  --ag-row-border-color: rgb(var(--border-default) / 0.2);
-  --ag-header-column-separator-color: rgb(var(--border-default) / 0.2);
+  /*
+   * Borders - Hawkins table tokens
+   * Uses --border-dim (complete variable with 20% opacity)
+   */
+  --ag-border-color: var(--border-dim);
+  --ag-border-radius: 0;
+  --ag-wrapper-border-radius: 0;
+  --ag-row-border-color: var(--border-dim);
+  --ag-row-border-width: 1px;
+  --ag-row-border-style: solid;
+  --ag-header-column-separator-display: none;
+  --ag-header-column-resize-handle-display: none;
+  --ag-cell-horizontal-border: solid var(--border-dim);
 
-  /* Interactive - Hawkins surface-highlight (4%) and surface-selected tokens */
-  --ag-row-hover-color: rgb(var(--surface-highlight-rgb) / 0.04);
-  --ag-selected-row-background-color: rgb(var(--surface-selected));
-  --ag-range-selection-background-color: rgb(var(--surface-selected));
+  /*
+   * Selection - Hawkins selection tokens
+   */
   --ag-range-selection-border-color: rgb(var(--border-selected));
+  --ag-range-selection-background-color: rgb(var(--surface-selected));
 
-  /* Typography */
-  --ag-font-family: inherit;
-  --ag-font-size: 14px;
-
-  /* Spacing - Figma: 16px horizontal padding, 40px row height */
-  --ag-grid-size: 4px;
-  --ag-cell-horizontal-padding: 16px;
+  /*
+   * Focus - Hawkins system focus
+   */
+  --ag-input-focus-border-color: rgb(var(--border-system-focus));
 }
 
-/* AG Grid - Dark Mode: direct element styling with !important */
-.dark .ag-theme-alpine,
-.dark .ag-theme-alpine .ag-root-wrapper,
-.dark .ag-theme-alpine .ag-header,
-.dark .ag-theme-alpine .ag-body,
-.dark .ag-theme-alpine .ag-row {
-  --ag-background-color: rgb(22 22 22) !important;
-  --ag-header-background-color: rgb(35 35 35) !important;
-  --ag-odd-row-background-color: rgb(22 22 22) !important;
-  --ag-foreground-color: rgb(255 255 255 / 0.9) !important;
-  --ag-header-foreground-color: rgb(255 255 255 / 0.9) !important;
-  --ag-secondary-foreground-color: rgb(255 255 255 / 0.6) !important;
-  --ag-row-hover-color: rgb(255 255 255 / 0.04) !important;
-  --ag-border-color: rgb(255 255 255 / 0.4) !important;
-  --ag-row-border-color: rgb(255 255 255 / 0.2) !important;
-  background-color: rgb(22 22 22) !important;
-  color: rgb(255 255 255 / 0.9) !important;
+/* Header styling - separated from body */
+.ag-theme-hawkins .ag-header {
+  border: none;
+  margin-bottom: 8px;
 }
 
-.dark .ag-theme-alpine .ag-header {
-  background-color: rgb(35 35 35) !important;
+.ag-theme-hawkins .ag-header-row {
+  border: none;
 }
 
-.dark .ag-theme-alpine .ag-row {
-  background-color: rgb(22 22 22) !important;
+.ag-theme-hawkins .ag-header-cell {
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.dark .ag-theme-alpine .ag-cell {
-  color: rgb(255 255 255 / 0.9) !important;
+.ag-theme-hawkins .ag-header-cell-text {
+  color: rgb(var(--foreground-rgb) / 0.7);
+}
+
+/* Row styling */
+.ag-theme-hawkins .ag-row {
+  border-width: 0 0 1px 0;
+  border-color: var(--border-dim);
+}
+
+.ag-theme-hawkins .ag-row:last-child {
+  border-bottom: none;
+}
+
+.ag-theme-hawkins .ag-row-hover {
+  background-color: rgb(var(--surface-highlight-rgb) / 0.04);
+}
+
+/* Cell styling */
+.ag-theme-hawkins .ag-cell {
+  display: flex;
+  align-items: center;
+}
+
+/* Remove focus outlines (we handle focus differently) */
+.ag-theme-hawkins .ag-cell-focus,
+.ag-theme-hawkins .ag-cell:focus {
+  outline: none;
+}
+
+/* Force transparent backgrounds on body elements (header keeps its 2% tint) */
+.ag-theme-hawkins,
+.ag-theme-hawkins .ag-root-wrapper,
+.ag-theme-hawkins .ag-root-wrapper-body,
+.ag-theme-hawkins .ag-root,
+.ag-theme-hawkins .ag-body,
+.ag-theme-hawkins .ag-body-viewport,
+.ag-theme-hawkins .ag-body-clipper,
+.ag-theme-hawkins .ag-center-cols-viewport,
+.ag-theme-hawkins .ag-center-cols-container,
+.ag-theme-hawkins .ag-center-cols-clipper,
+.ag-theme-hawkins .ag-row,
+.ag-theme-hawkins .ag-row-odd,
+.ag-theme-hawkins .ag-row-even,
+.ag-theme-hawkins .ag-cell {
+  background-color: transparent !important;
 }
 
 /*
@@ -85,6 +163,11 @@
 
 :root {
   /* Light theme (default) */
+
+  /*
+   * Border tokens - Raw RGB values (internal use only)
+   * For usage, use the complete variables below (e.g., --border-dim)
+   */
   --border-default: 128 128 128;
   --border-dim-rgb: 128 128 128;
   --border-elevation-rgb: 0 0 0;
@@ -96,6 +179,17 @@
   --border-system-focus: 64 97 231;
   --border-system-success: 10 163 86;
   --border-system-warning: 195 131 14;
+
+  /*
+   * Border tokens - Complete colors (USE THESE)
+   * These include the correct opacity for each token.
+   * Usage: var(--border-dim) or Tailwind class border-border-dim
+   */
+  --border-dim: rgb(var(--border-dim-rgb) / 0.2);
+  --border-elevation: rgb(var(--border-elevation-rgb) / 0.04);
+  --border-subtle: rgb(var(--border-subtle-rgb) / 0.4);
+  --border-inverse-dim: rgb(var(--border-inverse-dim-rgb) / 0.2);
+  --border-inverse-subtle: rgb(var(--border-inverse-subtle-rgb) / 0.4);
 
   --foreground-rgb: 0 0 0;
   --foreground-dim-rgb: 0 0 0;
