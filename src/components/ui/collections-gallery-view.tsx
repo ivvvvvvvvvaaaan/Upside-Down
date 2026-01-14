@@ -203,10 +203,7 @@ export function CollectionsGalleryView({
     // Single image modes ('none'/'one')
     if (mode === 'none' || mode === 'one') {
       return (
-        <div className={cn(
-          'w-20 h-12 relative rounded overflow-hidden shrink-0 bg-surface-2 isolate',
-          mode === 'none' && 'border border-border-dim'
-        )}>
+        <div className="w-20 h-12 relative rounded overflow-hidden shrink-0 bg-surface-2 group-hover:bg-surface-3 transition-colors isolate">
           {mainImage && mode === 'one' ? (
             <Image src={mainImage} alt={collection.name} fill className="object-cover" />
           ) : (

@@ -174,7 +174,7 @@ export function CollectionCard({
       return (
         <div
           className={cn(
-            'relative rounded shrink-0 w-full border border-border-dim overflow-hidden bg-surface-2 isolate',
+            'relative rounded shrink-0 w-full overflow-hidden bg-surface-2 group-hover:bg-surface-3 transition-colors isolate',
             sizeStyles.thumbnail
           )}
         >

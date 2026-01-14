@@ -14,9 +14,12 @@ import { cn } from '@/lib/utils'
 
 export interface NavSidebarProps {
   className?: string
+  /** Width in pixels (controlled externally for resize) */
+  width?: number
+  style?: React.CSSProperties
 }
 
-export function NavSidebar({ className }: NavSidebarProps) {
+export function NavSidebar({ className, width, style }: NavSidebarProps) {
   const pathname = usePathname()
 
   const mainItems = [
@@ -50,7 +53,10 @@ export function NavSidebar({ className }: NavSidebarProps) {
   }
 
   return (
-    <nav className={cn('w-60 bg-surface-1 border-r border-border-dim flex-shrink-0 flex flex-col', className)}>
+    <nav
+      className={cn('bg-surface-1 flex-shrink-0 flex flex-col', className)}
+      style={{ width: width ? `${width}px` : '240px', ...style }}
+    >
       {/* Main Items (no header) */}
       <div className="pt-4 pb-2">
         <div className="px-3 space-y-1">
