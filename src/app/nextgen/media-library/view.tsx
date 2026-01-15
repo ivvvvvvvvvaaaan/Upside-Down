@@ -370,7 +370,6 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
 
                 {layout === 'list' ? (
                   <CollectionsListView
-                    key="list-view"
                     collections={enrichedCollections}
                     loading={isPreloading}
                     preloadedAssets={loadedAssets}
@@ -378,7 +377,6 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                   />
                 ) : layout === 'gallery' ? (
                   <CollectionsGalleryView
-                    key="gallery-view"
                     collections={enrichedCollections}
                     selectedIds={selectedIds}
                     primaryId={primaryId}

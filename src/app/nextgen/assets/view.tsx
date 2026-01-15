@@ -96,6 +96,7 @@ export function AssetsView({ assets }: AssetsViewProps) {
             onLayoutChange={setLayout}
             cardSize={cardSize}
             onCardSizeChange={setCardSize}
+            showLayoutOptions={false}
           />
 
           <div className="p-6">
@@ -125,6 +126,7 @@ export function AssetsView({ assets }: AssetsViewProps) {
                       onLayoutChange={setLayout}
                       cardSize={cardSize}
                       onCardSizeChange={setCardSize}
+                      showLayoutOptions={false}
                     />
                   </div>
                 </div>
@@ -149,6 +151,7 @@ export function AssetsView({ assets }: AssetsViewProps) {
                       onLayoutChange={setLayout}
                       cardSize={cardSize}
                       onCardSizeChange={setCardSize}
+                      showLayoutOptions={false}
                     />
                   </div>
                 </div>

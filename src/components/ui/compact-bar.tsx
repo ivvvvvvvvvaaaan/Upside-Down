@@ -48,6 +48,8 @@ export interface CompactBarProps {
   cardSize: CardSize
   /** Callback when card size changes */
   onCardSizeChange: (size: CardSize) => void
+  /** Show layout options in appearance dropdown */
+  showLayoutOptions?: boolean
 }
 
 export function CompactBar({
@@ -65,6 +67,7 @@ export function CompactBar({
   onLayoutChange,
   cardSize,
   onCardSizeChange,
+  showLayoutOptions = true,
 }: CompactBarProps) {
   const [searchExpanded, setSearchExpanded] = useState(false)
 
@@ -125,6 +128,7 @@ export function CompactBar({
                 onLayoutChange={onLayoutChange}
                 cardSize={cardSize}
                 onCardSizeChange={onCardSizeChange}
+                showLayoutOptions={showLayoutOptions}
               />
             </div>
           </div>
