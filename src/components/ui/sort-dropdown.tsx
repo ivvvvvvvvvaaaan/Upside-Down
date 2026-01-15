@@ -21,6 +21,8 @@ export interface SortDropdownProps {
   onChange: (criteria: SortCriterion[]) => void
   /** Trigger label */
   label?: string
+  /** Show only icon in trigger */
+  iconOnly?: boolean
 }
 
 export function SortDropdown({
@@ -28,6 +30,7 @@ export function SortDropdown({
   value,
   onChange,
   label = 'Sort',
+  iconOnly = false,
 }: SortDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -49,6 +52,7 @@ export function SortDropdown({
       width="xl"
       open={isOpen}
       onOpenChange={setIsOpen}
+      iconOnly={iconOnly}
     >
       <SortContent
         fields={fields}

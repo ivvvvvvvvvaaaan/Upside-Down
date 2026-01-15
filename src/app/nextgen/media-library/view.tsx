@@ -333,6 +333,7 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                       fields={sortFields}
                       value={sortCriteria}
                       onChange={setSortCriteria}
+                      iconOnly
                     />
                     <AppearanceDropdown iconOnly
                       layout={layout}

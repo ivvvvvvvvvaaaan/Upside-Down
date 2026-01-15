@@ -20,7 +20,9 @@ export function useCompactBar(): {
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setShowCompactBar(!entry.isIntersecting)
+        // Only show compact bar if actually scrolled (not just initial render race condition)
+        const isScrolled = scrollEl.scrollTop > 0
+        setShowCompactBar(!entry.isIntersecting && isScrolled)
       },
       { root: scrollEl, threshold: 0, rootMargin: '-8px 0px 0px 0px' }
     )

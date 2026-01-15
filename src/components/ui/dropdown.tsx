@@ -31,6 +31,8 @@ export interface DropdownProps {
   open?: boolean
   /** Callback when open state changes */
   onOpenChange?: (open: boolean) => void
+  /** Show only icon in trigger */
+  iconOnly?: boolean
 }
 
 export function Dropdown({
@@ -44,6 +46,7 @@ export function Dropdown({
   triggerClassName,
   open,
   onOpenChange,
+  iconOnly = false,
 }: DropdownProps) {
   const widthClasses = {
     auto: 'w-auto',
@@ -58,13 +61,14 @@ export function Dropdown({
       <PopoverTrigger asChild>
         <Button
           variant="secondary"
-          size={size === 'compact' ? 'compact' : 'default'}
-          icon={icon}
-          dropdown
+          size={iconOnly ? 'icon' : size === 'compact' ? 'compact' : 'default'}
+          icon={iconOnly ? undefined : icon}
+          dropdown={!iconOnly}
           disabled={disabled}
           className={triggerClassName}
+          aria-label={iconOnly ? label : undefined}
         >
-          {label}
+          {iconOnly ? icon : label}
         </Button>
       </PopoverTrigger>
       <PopoverContent

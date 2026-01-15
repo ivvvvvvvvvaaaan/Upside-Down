@@ -39,7 +39,8 @@ export function NavSidebar({ className, width, style }: NavSidebarProps) {
   const pathname = usePathname()
 
   const NavLink = ({ href, label, badge, icon }: NavLinkProps) => {
-    const isActive = pathname === href || (href !== '/nextgen' && pathname.startsWith(href))
+    // Exact match only
+    const isActive = pathname === href
     return (
       <Link
         href={href}

@@ -334,6 +334,7 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                       fields={sortFields}
                       value={sortCriteria}
                       onChange={setSortCriteria}
+                      iconOnly
                     />
                     <AppearanceDropdown iconOnly
                       layout={layout}

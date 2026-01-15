@@ -35,7 +35,7 @@ export function AppearanceDropdown({
       size="standard"
       align="end"
       width="auto"
-      triggerClassName={iconOnly ? "w-10 justify-center px-0 [&_span]:gap-0 [&_span]:text-[0px] [&>svg]:hidden" : undefined}
+      iconOnly={iconOnly}
     >
       <Card.Body padding="lg">
         <div className="space-y-3 min-w-56">

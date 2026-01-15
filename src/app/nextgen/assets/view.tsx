@@ -118,6 +118,7 @@ export function AssetsView({ assets }: AssetsViewProps) {
                       fields={sortFields}
                       value={sortCriteria}
                       onChange={setSortCriteria}
+                      iconOnly
                     />
                     <AppearanceDropdown iconOnly
                       layout={layout}
