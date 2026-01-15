@@ -6,3 +6,5 @@ export type { UseCollectionAssetsReturn } from './useCollectionAssets'
 
 export { useViewPreferences } from './useViewPreferences'
 export type { UseViewPreferencesReturn, CollectionViewType } from './useViewPreferences'
+
+export { useCompactBar } from './use-compact-bar'

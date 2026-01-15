@@ -86,7 +86,7 @@ export function SortContent({
 
           <div className="flex flex-col gap-3">
             {localCriteria.map((criterion, index) => (
-              <div key={index} className="flex items-center gap-1">
+              <div key={index} className="flex items-center gap-2">
                 <Button
                   variant="icon"
                   size="icon"
@@ -119,7 +119,7 @@ export function SortContent({
             ))}
 
             {canAdd && (
-              <div className="pl-7">
+              <div className="pl-12">
                 <Button variant="secondary" onClick={handleAdd} icon={<Plus className="w-4 h-4" />}>
                   Add
                 </Button>

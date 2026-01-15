@@ -12,12 +12,13 @@ import {
   PageHeader,
   EmptyState,
   AppearanceDropdown,
-    SortDropdown,
-  ControlGhost,
+  SortDropdown,
+  HawkinsSearch,
+  CompactBar,
 } from '@/components/ui'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import { AppLayout } from '@/components/layouts'
-import { useAssetSelection, useViewPreferences } from '@/hooks'
+import { useAssetSelection, useViewPreferences, useCompactBar } from '@/hooks'
 import type { Asset } from '@/lib/data'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
@@ -36,6 +37,7 @@ export function AssetsView({ assets }: AssetsViewProps) {
 
   const { selectedIds, primaryId, handleAssetClick } = useAssetSelection()
   const { layout, setLayout, cardSize, setCardSize } = useViewPreferences()
+  const { scrollRef, headerRef, showCompactBar } = useCompactBar()
 
   // Sort settings
   const sortFields = [
@@ -47,6 +49,14 @@ export function AssetsView({ assets }: AssetsViewProps) {
   const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
     { field: 'name', direction: 'asc' }
   ])
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Filter chips for assets view
+  const filterOptions = [
+    { id: 'file-type', label: 'File Type' },
+    { id: 'scene', label: 'Scene' },
+    { id: 'location', label: 'Location' },
+  ]
 
   // Asset card state
   const [assetCardState, setAssetCardState] = useState<AssetCardState>('asis')
@@ -70,7 +80,24 @@ export function AssetsView({ assets }: AssetsViewProps) {
   return (
     <AppLayout>
       <div className="h-full flex flex-col">
-        <div className="flex-1 min-h-0 overflow-auto">
+        <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto">
+          <CompactBar
+            visible={showCompactBar}
+            title="All Assets"
+            count={assets.length}
+            countLabel="asset"
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            filterOptions={filterOptions}
+            sortFields={sortFields}
+            sortCriteria={sortCriteria}
+            onSortChange={setSortCriteria}
+            layout={layout}
+            onLayoutChange={setLayout}
+            cardSize={cardSize}
+            onCardSizeChange={setCardSize}
+          />
+
           <div className="p-6">
             <div className="max-w-7xl mx-auto">
               <Stack spacing="lg">
@@ -81,9 +108,12 @@ export function AssetsView({ assets }: AssetsViewProps) {
                       <span className="sr-only">Menu</span>
                     </Link>
                   </Button>
-                  {/* TODO: Placeholder ghost for upcoming search control */}
                   <div className="flex items-center gap-2">
-                    <ControlGhost widthClassName="w-48" />
+                    <HawkinsSearch
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                      filters={filterOptions}
+                    />
                     <SortDropdown
                       fields={sortFields}
                       value={sortCriteria}
@@ -97,14 +127,17 @@ export function AssetsView({ assets }: AssetsViewProps) {
                     />
                   </div>
                 </div>
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div ref={headerRef} className="flex flex-col gap-3">
                   <PageHeader
-                    title="Assets"
+                    title="All Assets"
                     description="Browse shots, videos, images, and documents"
                   />
-                  {/* TODO: Placeholder ghost for upcoming search control */}
                   <div className="hidden md:flex items-center gap-2">
-                    <ControlGhost widthClassName="w-48" />
+                    <HawkinsSearch
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                      filters={filterOptions}
+                    />
                     <SortDropdown
                       fields={sortFields}
                       value={sortCriteria}

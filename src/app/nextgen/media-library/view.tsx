@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   Stack,
   Text,
@@ -14,10 +14,11 @@ import {
   PageHeader,
   EmptyState,
   AppearanceDropdown,
-    SortDropdown,
+  SortDropdown,
   CollectionsListView,
   CollectionsGalleryView,
-  ControlGhost,
+  HawkinsSearch,
+  CompactBar,
 } from '@/components/ui'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import type { GalleryThumbnailMode } from '@/components/ui/collections-gallery-view'
@@ -26,9 +27,8 @@ import { AppLayout } from '@/components/layouts'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAssetSelection, useCollectionAssets, useViewPreferences } from '@/hooks'
+import { useAssetSelection, useCollectionAssets, useViewPreferences, useCompactBar } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
-import { cn } from '@/lib/utils'
 
 // Collection card states: loading, real data (asis), or fake thumbnail variants
 type CollectionCardState = 'loading' | 'asis' | 'many' | 'two' | 'one' | 'none'
@@ -53,9 +53,7 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
     retry: retryLoad,
     goBack,
   } = useCollectionAssets({ onNavigate: clearSelection })
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const headerRef = useRef<HTMLDivElement>(null)
-  const [showCompactBar, setShowCompactBar] = useState(false)
+  const { scrollRef, headerRef, showCompactBar } = useCompactBar()
   const isCompactBarVisible = !selectedCollection && showCompactBar
 
   // Appearance settings - persisted globally
@@ -71,6 +69,13 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
   const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
     { field: 'name', direction: 'asc' }
   ])
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Filter chips for all collections view
+  const filterOptions = [
+    { id: 'type', label: 'Type' },
+    { id: 'modified', label: 'Modified' },
+  ]
 
   // Card state controls
   const [collectionCardState, setCollectionCardState] = useState<CollectionCardState>('asis')
@@ -125,22 +130,6 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
     fetchAllAssets()
   }, [collections])
 
-  useEffect(() => {
-    if (selectedCollection) return
-    const scrollEl = scrollRef.current
-    const headerEl = headerRef.current
-    if (!scrollEl || !headerEl) return
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setShowCompactBar(!entry.isIntersecting)
-      },
-      { root: scrollEl, threshold: 0, rootMargin: '-8px 0px 0px 0px' }
-    )
-
-    observer.observe(headerEl)
-    return () => observer.disconnect()
-  }, [selectedCollection])
 
   // Enrich collections with real or fake data based on thumbnail mode
   const enrichedCollections = useMemo(() => {
@@ -307,64 +296,22 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
     <AppLayout>
       <div className="h-full flex flex-col">
         <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto">
-          <div className="sticky top-0 z-20">
-            <div
-              className={cn(
-                'bg-surface-flat/90 backdrop-blur border-b px-6 flex flex-col gap-2 md:flex-row md:items-center md:justify-between transition-all overflow-hidden',
-                isCompactBarVisible
-                  ? 'opacity-100 max-h-24 md:max-h-16 py-2 border-border-dim'
-                  : 'opacity-0 max-h-0 py-0 border-transparent pointer-events-none'
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <Text variant="body-2" weight="semibold">
-                  All Collections
-                </Text>
-                <Text variant="caption" color="secondary">
-                  {collections.length} collection{collections.length !== 1 ? 's' : ''}
-                </Text>
-              </div>
-              {/* Mobile compact bar controls */}
-              <div className="flex items-center justify-between w-full md:hidden">
-                <Button asChild variant="icon" size="icon" aria-label="Menu">
-                  <Link href={menuHref}>
-                    <ArrowLeft className="w-4 h-4" />
-                    <span className="sr-only">Menu</span>
-                  </Link>
-                </Button>
-                {/* TODO: Placeholder ghost for upcoming search control */}
-                <div className="flex items-center gap-2">
-                  <ControlGhost widthClassName="w-48" />
-                  <SortDropdown
-                    fields={sortFields}
-                    value={sortCriteria}
-                    onChange={setSortCriteria}
-                  />
-                  <AppearanceDropdown iconOnly
-                    layout={layout}
-                    onLayoutChange={setLayout}
-                    cardSize={cardSize}
-                    onCardSizeChange={setCardSize}
-                  />
-                </div>
-              </div>
-              {/* Desktop compact bar controls */}
-              <div className="hidden md:flex items-center gap-2">
-                <ControlGhost widthClassName="w-48" />
-                <SortDropdown
-                  fields={sortFields}
-                  value={sortCriteria}
-                  onChange={setSortCriteria}
-                />
-                <AppearanceDropdown
-                  layout={layout}
-                  onLayoutChange={setLayout}
-                  cardSize={cardSize}
-                  onCardSizeChange={setCardSize}
-                />
-              </div>
-            </div>
-          </div>
+          <CompactBar
+            visible={isCompactBarVisible}
+            title="All Collections"
+            count={collections.length}
+            countLabel="collection"
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            filterOptions={filterOptions}
+            sortFields={sortFields}
+            sortCriteria={sortCriteria}
+            onSortChange={setSortCriteria}
+            layout={layout}
+            onLayoutChange={setLayout}
+            cardSize={cardSize}
+            onCardSizeChange={setCardSize}
+          />
 
           <div className="p-6">
             <div className="max-w-7xl mx-auto">
@@ -376,9 +323,12 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                       <span className="sr-only">Menu</span>
                     </Link>
                   </Button>
-                  {/* TODO: Placeholder ghost for upcoming search control */}
                   <div className="flex items-center gap-2">
-                    <ControlGhost widthClassName="w-48" />
+                    <HawkinsSearch
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                      filters={filterOptions}
+                    />
                     <SortDropdown
                       fields={sortFields}
                       value={sortCriteria}
@@ -392,14 +342,17 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                     />
                   </div>
                 </div>
-                <div ref={headerRef} className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div ref={headerRef} className="flex flex-col gap-3">
                   <PageHeader
                     title="All Collections"
                     description={`${collections.length} collection${collections.length !== 1 ? 's' : ''}`}
                   />
-                  {/* TODO: Placeholder ghost for upcoming search control */}
                   <div className="hidden md:flex items-center gap-2">
-                    <ControlGhost widthClassName="w-48" />
+                    <HawkinsSearch
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                      filters={filterOptions}
+                    />
                     <SortDropdown
                       fields={sortFields}
                       value={sortCriteria}

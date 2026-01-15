@@ -37,7 +37,7 @@ export function AppearanceDropdown({
       width="auto"
       triggerClassName={iconOnly ? "w-10 justify-center px-0 [&_span]:gap-0 [&_span]:text-[0px] [&>svg]:hidden" : undefined}
     >
-      <Card.Body padding="md">
+      <Card.Body padding="lg">
         <div className="space-y-3 min-w-56">
           {showLayoutOptions && (
             <ToggleButtonGroup

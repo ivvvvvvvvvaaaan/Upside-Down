@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Stack,
   Text,
@@ -14,23 +14,22 @@ import {
   PageHeader,
   EmptyState,
   AppearanceDropdown,
-    SortDropdown,
+  SortDropdown,
   CollectionsListView,
   CollectionsGalleryView,
-  ControlGhost,
+  HawkinsSearch,
+  CompactBar,
 } from '@/components/ui'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import type { GalleryThumbnailMode } from '@/components/ui/collections-gallery-view'
-import type { LayoutType, CardSize } from '@/components/ui/appearance-dropdown'
 import { AppLayout } from '@/components/layouts'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAssetSelection, useCollectionAssets, useViewPreferences } from '@/hooks'
+import { useAssetSelection, useCollectionAssets, useViewPreferences, useCompactBar } from '@/hooks'
 import type { CollectionViewType } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
 import type { CollectionCardAssetCount } from '@/components/ui/collection-card'
-import { cn } from '@/lib/utils'
 
 interface CollectionCardsViewProps {
   title: string
@@ -62,9 +61,7 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
     retry: retryLoad,
     goBack,
   } = useCollectionAssets({ onNavigate: clearSelection })
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const headerRef = useRef<HTMLDivElement>(null)
-  const [showCompactBar, setShowCompactBar] = useState(false)
+  const { scrollRef, headerRef, showCompactBar } = useCompactBar()
   const isCompactBarVisible = !selectedCollection && showCompactBar
 
   // Appearance settings - persisted globally
@@ -80,6 +77,30 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
   const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
     { field: 'name', direction: 'asc' }
   ])
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Contextual filter chips based on collection type
+  const filterOptions = useMemo(() => {
+    switch (collectionType) {
+      case 'character':
+        return [
+          { id: 'episode', label: 'Episode' },
+          { id: 'role', label: 'Role' },
+          { id: 'status', label: 'Status' },
+        ]
+      case 'scene':
+        return [
+          { id: 'episode', label: 'Episode' },
+          { id: 'location', label: 'Location' },
+          { id: 'time-of-day', label: 'Time of Day' },
+        ]
+      default: // 'all', 'location', and other types
+        return [
+          { id: 'type', label: 'Type' },
+          { id: 'modified', label: 'Modified' },
+        ]
+    }
+  }, [collectionType])
 
   // Separate display states for collection and asset cards
   const [collectionCardState, setCollectionCardState] = useState<CollectionCardState>('asis')
@@ -134,22 +155,6 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
     fetchAllAssets()
   }, [collections])
 
-  useEffect(() => {
-    if (selectedCollection) return
-    const scrollEl = scrollRef.current
-    const headerEl = headerRef.current
-    if (!scrollEl || !headerEl) return
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setShowCompactBar(!entry.isIntersecting)
-      },
-      { root: scrollEl, threshold: 0, rootMargin: '-8px 0px 0px 0px' }
-    )
-
-    observer.observe(headerEl)
-    return () => observer.disconnect()
-  }, [selectedCollection])
 
   // Enrich collections with real or fake data based on thumbnail mode
   const enrichedCollections = useMemo(() => {
@@ -292,63 +297,22 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
     <AppLayout>
       <div className="h-full flex flex-col">
         <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto">
-          <div className="sticky top-0 z-20">
-            <div
-              className={cn(
-                'bg-surface-flat/90 backdrop-blur border-b px-6 flex flex-col gap-2 md:flex-row md:items-center md:justify-between transition-all overflow-hidden',
-                isCompactBarVisible
-                  ? 'opacity-100 max-h-24 md:max-h-16 py-2 border-border-dim'
-                  : 'opacity-0 max-h-0 py-0 border-transparent pointer-events-none'
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <Text variant="body-2" weight="semibold">
-                  {title}
-                </Text>
-                <Text variant="caption" color="secondary">
-                  {collections.length} collection{collections.length !== 1 ? 's' : ''}
-                </Text>
-              </div>
-              <div className="flex items-center justify-between w-full md:hidden">
-                <Button asChild variant="icon" size="icon" aria-label="Menu">
-                  <Link href={menuHref}>
-                    <ArrowLeft className="w-4 h-4" />
-                    <span className="sr-only">Menu</span>
-                  </Link>
-                </Button>
-                {/* TODO: Placeholder ghost for upcoming search control */}
-                <div className="flex items-center gap-2">
-                  <ControlGhost widthClassName="w-48" />
-                  <SortDropdown
-                    fields={sortFields}
-                    value={sortCriteria}
-                    onChange={setSortCriteria}
-                  />
-                  <AppearanceDropdown iconOnly
-                    layout={layout}
-                    onLayoutChange={setLayout}
-                    cardSize={cardSize}
-                    onCardSizeChange={setCardSize}
-                  />
-                </div>
-              </div>
-              {/* TODO: Placeholder ghost for upcoming search control */}
-              <div className="hidden md:flex items-center gap-2">
-                <ControlGhost widthClassName="w-48" />
-                <SortDropdown
-                  fields={sortFields}
-                  value={sortCriteria}
-                  onChange={setSortCriteria}
-                />
-                <AppearanceDropdown
-                  layout={layout}
-                  onLayoutChange={setLayout}
-                  cardSize={cardSize}
-                  onCardSizeChange={setCardSize}
-                />
-              </div>
-            </div>
-          </div>
+          <CompactBar
+            visible={isCompactBarVisible}
+            title={title}
+            count={collections.length}
+            countLabel="collection"
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            filterOptions={filterOptions}
+            sortFields={sortFields}
+            sortCriteria={sortCriteria}
+            onSortChange={setSortCriteria}
+            layout={layout}
+            onLayoutChange={setLayout}
+            cardSize={cardSize}
+            onCardSizeChange={setCardSize}
+          />
 
           <div className="p-6">
             <div className="max-w-7xl mx-auto">
@@ -360,9 +324,12 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                       <span className="sr-only">Menu</span>
                     </Link>
                   </Button>
-                  {/* TODO: Placeholder ghost for upcoming search control */}
                   <div className="flex items-center gap-2">
-                    <ControlGhost widthClassName="w-48" />
+                    <HawkinsSearch
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                      filters={filterOptions}
+                    />
                     <SortDropdown
                       fields={sortFields}
                       value={sortCriteria}
@@ -376,14 +343,17 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                     />
                   </div>
                 </div>
-                <div ref={headerRef} className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div ref={headerRef} className="flex flex-col gap-3">
                   <PageHeader
                     title={title}
                     description="Browse collections by character, location, or scene"
                   />
-                  {/* TODO: Placeholder ghost for upcoming search control */}
                   <div className="hidden md:flex items-center gap-2">
-                    <ControlGhost widthClassName="w-48" />
+                    <HawkinsSearch
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                      filters={filterOptions}
+                    />
                     <SortDropdown
                       fields={sortFields}
                       value={sortCriteria}

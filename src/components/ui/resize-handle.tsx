@@ -56,7 +56,7 @@ export function ResizeHandle({
   return (
     <div
       className={cn(
-        'w-4 -ml-2 cursor-col-resize flex-shrink-0 flex justify-center group',
+        'w-4 -ml-2 -mr-2 cursor-col-resize flex-shrink-0 flex justify-center group z-30',
         className
       )}
       onMouseDown={handleMouseDown}
