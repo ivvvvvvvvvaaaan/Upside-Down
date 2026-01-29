@@ -56,7 +56,7 @@ function UserCellRenderer(params: ICellRendererParams<User>) {
       <Avatar name={user.name} src={user.avatar} size="sm" />
       <div className="flex flex-col">
         <span className="text-body-1-regular text-foreground">{user.name}</span>
-        <span className="text-label-0-regular text-foreground-subtle">{user.email}</span>
+        <span className="text-body-1-regular text-foreground-subtle">{user.email}</span>
       </div>
     </div>
   )
@@ -72,8 +72,8 @@ function StatusCellRenderer(params: ICellRendererParams<User>) {
 
   return (
     <div className="flex items-center h-full">
-      <Tag type={type} size="compact">
-        {user.status}
+      <Tag type={type} size="standard">
+        {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
       </Tag>
     </div>
   )
@@ -84,13 +84,13 @@ function PriorityCellRenderer(params: ICellRendererParams<User>) {
   const user = params.data
   if (!user) return null
 
-  const variant = user.priority === 'high' ? 'error' :
-                  user.priority === 'medium' ? 'warning' : 'default'
+  const color = user.priority === 'high' ? 'red' :
+                user.priority === 'medium' ? 'yellow' : 'gray'
 
   return (
     <div className="flex items-center h-full">
-      <Badge variant={variant} compact>
-        {user.priority}
+      <Badge color={color} compact interactive>
+        {user.priority.charAt(0).toUpperCase() + user.priority.slice(1)}
       </Badge>
     </div>
   )
@@ -204,7 +204,7 @@ export default function DashboardExample() {
                   <div className="flex items-center gap-2">
                     <span className="text-heading-2 text-foreground">{stat.value}</span>
                     <Badge
-                      variant={stat.trending === 'up' ? 'success' : 'error'}
+                      color={stat.trending === 'up' ? 'green' : 'red'}
                       compact
                     >
                       <span className="flex items-center gap-0.5">
@@ -271,7 +271,7 @@ export default function DashboardExample() {
                   </div>
 
                   {/* AG Grid Table */}
-                  <div className="ag-theme-alpine w-full" style={{ height: gridHeight }}>
+                  <div className="ag-theme-hawkins w-full" style={{ height: gridHeight }}>
                     <AgGridReact<User>
                       rowData={filteredUsers}
                       columnDefs={columnDefs}

@@ -50,7 +50,7 @@ export default function RootLayout({
 
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body>
+      <body className="antialiased">
         {/* Theme toggle - fixed position in bottom right corner */}
         <button
           onClick={toggleTheme}

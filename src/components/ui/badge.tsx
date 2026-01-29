@@ -3,76 +3,129 @@ import { cn } from '@/lib/utils'
 /**
  * Badge Component (Hawkins Design System)
  *
- * Displays status indicators and labels with semantic colors.
- * Updated to match Hawkins design patterns.
+ * A badge classifies and describes the status of a single entity.
+ * Follows official Hawkins Badge component patterns.
+ *
+ * Documentation: https://sites.google.com/netflix.com/hawkins-professional/components/badge
+ * Figma: https://www.figma.com/design/8FNmhzKUqlr6MEo7pJINCd/?node-id=43-9672
  *
  * SIZES:
- * - compact: text-label-0-bold (10px/15px/600), px-1 (4px), py-0 (0px)
- * - standard: text-body-0-bold (13px/20px/600), px-2 (8px), py-0 (0px)
+ * - compact: text-label-1-bold (12px/18px/600 semibold), px-1.5 (6px), py-px (1px)
+ * - standard: text-body-0-bold (13px/20px/600 semibold), px-2 (8px), py-0.5 (2px)
  *
- * VARIANTS (semantic colors):
- * - default: Gray background
- * - success: Green background
- * - warning: Yellow background
- * - error: Red background
- * - info: Blue background
+ * COLORS (direct):
+ * - gray, green, red, yellow, indigo, purple
  *
- * STYLES:
- * - fill: Colored background with white text (default)
- * - subtle: Light background with colored text
+ * COLORS (status - maps to colors):
+ * - new → indigo
+ * - in progress → yellow
+ * - complete → green
+ * - unknown → gray
+ * - failure → red
+ *
+ * STRUCTURE (per Figma):
+ * - Outlined style: colored border + colored dot + foreground text
+ * - Dot is always 8px (w-2 h-2), color matches the type
+ * - Border color matches the dot color
+ * - Text is always foreground (dark)
+ * - Gap between elements: 8px (gap-2)
+ * - Interactive: adds chevron dropdown indicator
  *
  * @example
- * <Badge variant="success">Active</Badge>
- * <Badge variant="error" compact>High</Badge>
- * <Badge variant="warning" style="subtle">Pending</Badge>
+ * <Badge color="green">Active</Badge>
+ * <Badge color="red" compact>High</Badge>
+ * <Badge color="failure">Error</Badge>
+ * <Badge color="in progress" interactive>Pending</Badge>
  */
 
-const FILL_COLORS = {
-  default: 'bg-gray-600 dark:bg-gray-400 text-white',
-  success: 'bg-green-500 text-white',
-  warning: 'bg-yellow-500 text-white',
-  error: 'bg-red-500 text-white',
-  info: 'bg-blue-500 text-white',
+// Direct color mappings
+const COLOR_STYLES = {
+  gray: {
+    border: 'border-gray-500',
+    dot: 'bg-gray-500',
+  },
+  green: {
+    border: 'border-green-500',
+    dot: 'bg-green-500',
+  },
+  red: {
+    border: 'border-red-500',
+    dot: 'bg-red-500',
+  },
+  yellow: {
+    border: 'border-yellow-600',
+    dot: 'bg-yellow-600',
+  },
+  indigo: {
+    border: 'border-indigo-500',
+    dot: 'bg-indigo-500',
+  },
+  purple: {
+    border: 'border-purple-500',
+    dot: 'bg-purple-500',
+  },
 } as const
 
-const SUBTLE_COLORS = {
-  default: 'bg-gray-600/10 text-foreground border border-gray-600/20',
-  success: 'bg-green-500/10 text-green-500 border border-green-500/20',
-  warning: 'bg-yellow-500/10 text-yellow-600 border border-yellow-500/20',
-  error: 'bg-red-500/10 text-red-500 border border-red-500/20',
-  info: 'bg-blue-500/10 text-blue-500 border border-blue-500/20',
-} as const
+// Status to color mappings
+const STATUS_TO_COLOR: Record<string, keyof typeof COLOR_STYLES> = {
+  'new': 'indigo',
+  'in progress': 'yellow',
+  'complete': 'green',
+  'unknown': 'gray',
+  'failure': 'red',
+}
+
+export type BadgeColor = keyof typeof COLOR_STYLES | keyof typeof STATUS_TO_COLOR
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  /** Semantic color variant */
-  variant?: 'default' | 'success' | 'warning' | 'error' | 'info'
-  /** Visual style: fill (solid bg) or subtle (light bg with border) */
-  badgeStyle?: 'fill' | 'subtle'
+  /** Color or status value */
+  color?: BadgeColor
   /** Reduced size for dense layouts */
   compact?: boolean
+  /** Show dropdown chevron for interactive badges */
+  interactive?: boolean
 }
 
 function Badge({
   className,
-  variant = 'default',
-  badgeStyle = 'fill',
+  color = 'gray',
   compact = false,
+  interactive = false,
   children,
   ...props
 }: BadgeProps) {
-  const colorClasses = badgeStyle === 'fill' ? FILL_COLORS[variant] : SUBTLE_COLORS[variant]
+  // Resolve status to color, or use direct color
+  const resolvedColor = STATUS_TO_COLOR[color] ?? color
+  const styles = COLOR_STYLES[resolvedColor as keyof typeof COLOR_STYLES] ?? COLOR_STYLES.gray
 
   return (
     <span
       className={cn(
-        'inline-flex items-center justify-center rounded',
-        colorClasses,
-        compact ? 'text-label-0-bold px-1 py-0' : 'text-body-0-bold px-2 py-0',
+        'inline-flex items-center gap-2 rounded-full border bg-transparent text-foreground',
+        styles.border,
+        compact ? 'text-label-1-bold px-1.5 py-px' : 'text-body-0-bold px-2 py-0.5',
+        interactive && 'cursor-pointer hover:bg-surface-interactive-hover',
         className
       )}
       {...props}
     >
+      <span
+        className={cn(
+          'w-2 h-2 rounded-full shrink-0',
+          styles.dot
+        )}
+        aria-hidden="true"
+      />
       {children}
+      {interactive && (
+        <svg
+          className="w-2 h-2 shrink-0 fill-foreground"
+          viewBox="0 0 8 8"
+          aria-hidden="true"
+        >
+          <path d="M0 2L4 6L8 2H0Z" />
+        </svg>
+      )}
     </span>
   )
 }

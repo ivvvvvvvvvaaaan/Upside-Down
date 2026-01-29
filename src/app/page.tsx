@@ -23,11 +23,6 @@ const examples = [
   },
 ]
 
-const resources = [
-  { name: 'Components', path: 'docs/COMPONENTS.md' },
-  { name: 'Patterns', path: 'docs/PATTERNS.md' },
-  { name: 'AI Prompts', path: 'docs/PROMPTS.md' },
-]
 
 // Auto-discover all user-created pages
 function getProjects() {
@@ -146,18 +141,6 @@ export default function Home() {
                     <span className="text-body-1-regular text-foreground-dim">{example.description}</span>
                   </div>
                 </Link>
-              ))}
-            </div>
-          </div>
-
-          {/* Resources */}
-          <div className="flex flex-col gap-3">
-            <h2 className="text-heading-2 text-foreground">Resources</h2>
-            <div className="flex gap-4">
-              {resources.map((resource) => (
-                <span key={resource.name} className="text-body-1-regular text-foreground-dim">
-                  {resource.name}
-                </span>
               ))}
             </div>
           </div>

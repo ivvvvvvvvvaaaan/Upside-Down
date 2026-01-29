@@ -28,14 +28,14 @@ async function main() {
     console.log(
       colors.cyan + colors.bright +
       `
-                          _    _           
-      /\\  /\\__ ___      _| | _(_)_ __  ___ 
+                          _    _
+      /\\  /\\__ ___      _| | _(_)_ __  ___
      / /_/ / _\` \\ \\ /\\ / / |/ / | '_ \\/ __|
     / __  / (_| |\\ V  V /|   <| | | | \\__ \\
     \\/ /_/ \\__,_| \\_/\\_/ |_|\\_\\_|_| |_|___/
-                                                 
+
       ` +
-      colors.reset + colors.dim + 'PROTOTYPE FACTORY v2.0' + colors.reset
+      colors.reset + colors.gray + 'PROTOTYPE FACTORY v2.0' + colors.reset
     );
     }
     console.log('');
@@ -55,47 +55,52 @@ async function main() {
   // 2. Ask Goal
   console.log('What would you like to do?')
   console.log('1. 👀 Just look around (Start server)')
-  console.log('2. 🎨 Create a new prototype page')
-  console.log('3. 💾 Deploy/Save changes')
+  console.log('2. 🎨 Create a new project (multi-page)')
+  console.log('3. 📄 Create a quick single page (legacy)')
+  console.log('4. 💾 Deploy/Save changes')
   console.log('')
 
-  const answer = await ask('Select (1-3) [1]: ')
+  const answer = await ask('Select (1-4) [1]: ')
   const choice = answer.trim() || '1'
 
   if (choice === '2') {
-    // Run the new page generator
+    // Run the new project generator
+    await runScript('node', ['scripts/new-project.mjs'])
+    process.exit(0)
+  } else if (choice === '3') {
+    // Run the legacy single page generator
     await runScript('node', ['scripts/new-page.mjs'])
-    
+
     // Ask if user wants to start server
     const startServer = await ask('\nStart development server to view your page? (Y/n): ')
     if (startServer.toLowerCase() === 'n') {
       console.log('\n✅ Page created! Run "npm run dev" when ready to view.')
       process.exit(0)
     }
-  } else if (choice === '3') {
+  } else if (choice === '4') {
     // Run the save script
     await runScript('npm', ['run', 'save'])
     process.exit(0)
   }
 
-  // 3. Start Server
+  // 3. Start Server (for choices 1 and 3-with-server)
   // Note: Next.js will auto-increment port (3001, 3002...) if 3000 is already in use
   console.log('\n🚀 Starting development server...')
   console.log('   (If port 3000 is busy, Next.js will use the next available port)\n')
-  
+
   const server = spawn('npm', ['run', 'dev'], { stdio: 'inherit' })
-  
+
   // Handle process signals to cleanup spawned server
   process.on('SIGINT', () => {
     server.kill('SIGINT')
     process.exit(0)
   })
-  
+
   process.on('SIGTERM', () => {
     server.kill('SIGTERM')
     process.exit(0)
   })
-  
+
   server.on('close', (code) => {
     process.exit(code)
   })
