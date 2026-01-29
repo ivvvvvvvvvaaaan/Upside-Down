@@ -32,6 +32,7 @@
     "type-check": "tsc --noEmit",
     "new:page": "node scripts/new-page.mjs",
     "new:project": "node scripts/new-project.mjs",
+    "manage": "node scripts/manage-projects.mjs",
     "save": "node scripts/save-changes.mjs",
     "publish": "node scripts/publish.mjs",
     "deploy": "npx vercel --yes"

@@ -57,10 +57,11 @@ async function main() {
   console.log('1. 👀 Just look around (Start server)')
   console.log('2. 🎨 Create a new project (multi-page)')
   console.log('3. 📄 Create a quick single page (legacy)')
-  console.log('4. 💾 Deploy/Save changes')
+  console.log('4. 🗂️  Manage projects (list/delete)')
+  console.log('5. 💾 Deploy/Save changes')
   console.log('')
 
-  const answer = await ask('Select (1-4) [1]: ')
+  const answer = await ask('Select (1-5) [1]: ')
   const choice = answer.trim() || '1'
 
   if (choice === '2') {
@@ -78,6 +79,10 @@ async function main() {
       process.exit(0)
     }
   } else if (choice === '4') {
+    // Run project management
+    await runScript('node', ['scripts/manage-projects.mjs'])
+    process.exit(0)
+  } else if (choice === '5') {
     // Run the save script
     await runScript('npm', ['run', 'save'])
     process.exit(0)

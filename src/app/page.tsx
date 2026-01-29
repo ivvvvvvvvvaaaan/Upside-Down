@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
+import { CopyCodeBox } from '@/components/ui'
 
 /*
  * ===========================================
@@ -81,16 +82,13 @@ export default function Home() {
 
           {/* Quick start */}
           <div className="flex flex-col gap-3">
-            <h2 className="text-heading-1 text-foreground">Quick Start</h2>
-            <div className="rounded border border-border-dim bg-surface-low p-4">
-              <code className="block text-body-mono-1-regular text-foreground">
-                <span className="text-foreground-subtle"># Run the interactive wizard</span>{'\n'}
-                npm run wizard
-              </code>
+            <div>
+              <h2 className="text-heading-1 text-foreground">Quick Start</h2>
+              <p className="text-body-1-regular text-foreground-dim">
+                Run the interactive wizard
+              </p>
             </div>
-            <p className="text-body-1-regular text-foreground-dim">
-              The wizard helps you create new pages, start the dev server, or deploy your changes.
-            </p>
+            <CopyCodeBox code="npm run wizard" />
           </div>
 
           {/* Projects */}
