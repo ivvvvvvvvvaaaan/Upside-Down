@@ -134,4 +134,6 @@ src/
 
 ---
 
-That's it. Run `npm run wizard` and follow the prompts.
+---
+
+**First time?** See the [Setup Guide](SETUP.md) for a complete walkthrough.
