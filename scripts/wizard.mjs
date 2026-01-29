@@ -54,7 +54,7 @@ async function main() {
 
   // 2. Ask Goal
   console.log('What would you like to do?')
-  console.log('1. 👀 Just look around (Start server)')
+  console.log('1. 🚀 Start dev server')
   console.log('2. 🎨 Create a new project (multi-page)')
   console.log('3. 📄 Create a quick single page (legacy)')
   console.log('4. 🗂️  Manage projects (list/delete)')
