@@ -118,6 +118,7 @@ This saves your work to GitHub. If you've set up Vercel, your site auto-deploys 
 - **Prototype not showing?** Make sure the server is running (option 1)
 - **Want to delete a project?** Use option 4 in the wizard
 - **Made a mistake?** Your components are safe — only project folders get deleted
+- **Publish not working?** Make sure you've set up Vercel (see above)
 
 ---
 
