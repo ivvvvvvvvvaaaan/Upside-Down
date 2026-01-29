@@ -33,6 +33,24 @@ Wait for it to finish (only needed once).
 
 ---
 
+## Set Up Publishing (One Time)
+
+To share your prototypes with a live URL, connect to Vercel (free):
+
+### 1. Create a Vercel Account
+
+Go to [vercel.com](https://vercel.com) and sign up with your GitHub account.
+
+### 2. Import Your Project
+
+- Click **"Add New Project"**
+- Select your GitHub repo
+- Click **"Deploy"**
+
+That's it. Now every time you use **option 5** in the wizard, your changes go live automatically.
+
+---
+
 ## Daily Workflow
 
 ### Step 1: Start the Wizard
@@ -69,7 +87,7 @@ The browser updates automatically when you save.
 
 Select **option 5** → "Deploy/Save changes"
 
-Your prototype is now live and shareable.
+This saves your work to GitHub. If you've set up Vercel, your site auto-deploys in ~1 minute.
 
 ---
 
@@ -100,6 +118,7 @@ Your prototype is now live and shareable.
 - **Prototype not showing?** Make sure the server is running (option 1)
 - **Want to delete a project?** Use option 4 in the wizard
 - **Made a mistake?** Your components are safe — only project folders get deleted
+- **Publish not working?** Make sure you've set up Vercel (see above)
 
 ---
 
