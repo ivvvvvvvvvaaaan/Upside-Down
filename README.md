@@ -55,7 +55,7 @@ Your prototype is created at `localhost:3000/my-prototype`
 
 ### Step 3: View Your Work
 
-Select **option 1** → "Just look around"
+Select **option 1** → "Start dev server"
 
 Opens your browser to see the prototype.
 
@@ -76,7 +76,7 @@ Your prototype is now live and shareable.
 ## Wizard Menu
 
 ```
-1. 👀 Just look around     — Start the dev server
+1. 🚀 Start dev server
 2. 🎨 Create new project   — Build a multi-page prototype
 3. 📄 Quick single page    — Create one page (legacy)
 4. 🗂️  Manage projects      — List or delete prototypes
