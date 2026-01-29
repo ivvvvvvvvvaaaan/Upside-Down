@@ -1,110 +1,118 @@
 # Hawkins AI
 
-Next.js template for building clickable prototypes with the Hawkins Design System. Optimized for designers who want to ship fast.
-
-## Quick Start
-
-```bash
-npm install
-npm run dev
-```
-
-Open http://localhost:3000 and start editing `src/app/page.tsx`
-
-## For Designers (Non-Technical)
-
-**👉 Read the [Complete Guide](DEPLOYMENT.md)** for step-by-step setup, deployment, and daily workflow.
-
-The guide covers:
-- Setting up GitHub & Vercel (one-time, 15 min)
-- Saving your work with one command
-- Creating version snapshots for client reviews
-- Adding real data persistence (optional)
-- Troubleshooting common issues
-
-## Creating Pages
-
-```bash
-npm run new:page feature-name
-```
-
-Creates `src/app/feature-name/page.tsx` with starter code.
-
-## Components
-
-Built-in components:
-```tsx
-import { Button, Card, Stack, Text, Input, Badge } from '@/components/ui'
-```
-
-Add more via shadcn/ui:
-```bash
-npx shadcn@latest add dialog
-npx shadcn@latest add dropdown-menu
-```
-
-Browse all: [ui.shadcn.com](https://ui.shadcn.com)
-
-## Daily Workflow
-
-**Save your work:**
-```bash
-npm run save
-```
-→ Commits, pushes to GitHub, auto-deploys to Vercel
-
-**Create a version snapshot:**
-```bash
-npm run publish
-```
-→ Creates a permanent URL for client reviews or user testing
-
-## Documentation
-
-- **[Deployment Guide](DEPLOYMENT.md)** - Complete setup & workflow (start here!)
-- **[Theme System](THEME_SYSTEM.md)** - Color tokens and design system
-- **[Components](docs/COMPONENTS.md)** - Component API reference
-- **[Patterns](docs/PATTERNS.md)** - Copy-paste UI patterns
-
-## Adding Real Data (Optional)
-
-By default, uses mock data. To enable real persistence:
-
-1. Create a [Supabase](https://supabase.com) project
-2. Add environment variables (see [Deployment Guide](DEPLOYMENT.md#setting-up-real-data-supabase))
-3. Create the database table (SQL provided in guide)
-
-Everything auto-falls back to mocks if Supabase isn't configured.
-
-## File Structure
-
-```
-src/
-├── app/              # Pages (Next.js App Router)
-│   ├── page.tsx      # Homepage
-│   └── examples/     # Example prototypes
-├── components/ui/    # Component library
-└── lib/
-    ├── data.ts       # Mock data + real data fetching
-    └── supabase/     # Database client (optional)
-```
-
-## Commands Reference
-
-| Command | What It Does |
-|---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Test production build |
-| `npm run save` | Save & deploy to live site |
-| `npm run publish` | Create version snapshot |
-| `npm run new:page` | Generate new page |
-
-## Resources
-
-- Icons: [lucide.dev/icons](https://lucide.dev/icons)
-- UI Components: [ui.shadcn.com](https://ui.shadcn.com)
-- Deployment: [vercel.com](https://vercel.com)
+Build clickable prototypes fast. No coding experience needed.
 
 ---
 
-**New to coding?** Start with the [Deployment Guide](DEPLOYMENT.md) - it assumes zero technical knowledge.
+## Getting Started (One Time)
+
+### 1. Install Node.js
+
+Download and install from [nodejs.org](https://nodejs.org/) (choose LTS version).
+
+### 2. Open Terminal
+
+- **Mac**: Press `Cmd + Space`, type "Terminal", press Enter
+- **Windows**: Press `Win + R`, type "cmd", press Enter
+
+### 3. Navigate to Project Folder
+
+```bash
+cd path/to/this/folder
+```
+
+Or drag the folder into Terminal and press Enter.
+
+### 4. Install Dependencies
+
+```bash
+npm install
+```
+
+Wait for it to finish (only needed once).
+
+---
+
+## Daily Workflow
+
+### Step 1: Start the Wizard
+
+```bash
+npm run wizard
+```
+
+### Step 2: Create Your Prototype
+
+Select **option 2** → "Create a new project"
+
+The wizard will ask you:
+- **Project name** — e.g., `my-prototype`
+- **Navigation** — Vertical sidebar, Horizontal top bar, or None
+- **Theme** — Dark or Light
+- **Pages** — Pick which pages you want (Gallery, Search, etc.)
+
+Your prototype is created at `localhost:3000/my-prototype`
+
+### Step 3: View Your Work
+
+Select **option 1** → "Just look around"
+
+Opens your browser to see the prototype.
+
+### Step 4: Make Changes
+
+Edit files in `src/app/your-project-name/` using any text editor.
+
+The browser updates automatically when you save.
+
+### Step 5: Publish
+
+Select **option 5** → "Deploy/Save changes"
+
+Your prototype is now live and shareable.
+
+---
+
+## Wizard Menu
+
+```
+1. 👀 Just look around     — Start the dev server
+2. 🎨 Create new project   — Build a multi-page prototype
+3. 📄 Quick single page    — Create one page (legacy)
+4. 🗂️  Manage projects      — List or delete prototypes
+5. 💾 Deploy/Save          — Publish your changes
+```
+
+---
+
+## Quick Commands
+
+| What you want | Command |
+|---------------|---------|
+| Start wizard | `npm run wizard` |
+| Start server directly | `npm run dev` |
+| Save & publish | `npm run save` |
+
+---
+
+## Need Help?
+
+- **Prototype not showing?** Make sure the server is running (option 1)
+- **Want to delete a project?** Use option 4 in the wizard
+- **Made a mistake?** Your components are safe — only project folders get deleted
+
+---
+
+## File Structure (For Reference)
+
+```
+src/
+├── app/                  ← Your prototypes live here
+│   ├── my-prototype/     ← Each project is a folder
+│   └── another-project/
+└── components/           ← Shared components (don't delete!)
+```
+
+---
+
+That's it. Run `npm run wizard` and follow the prompts.
