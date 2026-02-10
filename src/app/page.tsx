@@ -30,7 +30,7 @@ function getProjects() {
   const appDir = path.join(process.cwd(), 'src', 'app')
   const entries = fs.readdirSync(appDir, { withFileTypes: true })
 
-  const systemFolders = ['api', 'examples', 'fonts', 'favicon.ico']
+  const systemFolders = ['api', 'examples', 'fonts', 'favicon.ico', 'guide']
 
   const projects = entries
     .filter(entry => {
@@ -89,6 +89,12 @@ export default function Home() {
               </p>
             </div>
             <CopyCodeBox code="npm run wizard" />
+            <Link
+              href="/guide"
+              className="text-body-1-regular text-foreground-system-link hover:underline"
+            >
+              New here? Learn how it all works →
+            </Link>
           </div>
 
           {/* Projects */}
