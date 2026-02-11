@@ -12,5 +12,5 @@ import { getCollections } from '@/lib/data'
 export default async function CollectionCardsPage() {
   const collections = await getCollections()
 
-  return <CollectionCardsView title="Collections" initialCollections={collections} />
+  return <CollectionCardsView title="Collections" initialCollections={collections} collectionType="all" />
 }

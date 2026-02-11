@@ -45,7 +45,14 @@ export interface AssetCardProps {
   selected?: boolean
   /** Primary selection - the anchor card from initial click (has border) */
   primary?: boolean
+  /** Force showing empty preview placeholder for all assets */
+  forceEmptyPreview?: boolean
+  /** Asset is processing (uploaded but metadata/preview extraction in progress) */
+  processing?: boolean
 }
+
+// Placeholder image for assets without thumbnails
+const EMPTY_ASSET_PLACEHOLDER = '/assets/Asset-empty-img.png'
 
 export function AssetCard({
   asset,
@@ -55,10 +62,13 @@ export function AssetCard({
   loading = false,
   selected = false,
   primary = false,
+  forceEmptyPreview = false,
+  processing = false,
 }: AssetCardProps) {
   // Primary implies selected
   const isSelected = selected || primary
-  // Loading state with breathing animation
+
+  // Loading state with breathing animation (no asset data available)
   if (loading || !asset) {
     return (
       <div className={cn('flex flex-col w-full p-1 animate-breathe', className)}>
@@ -75,6 +85,62 @@ export function AssetCard({
               <div className="h-3 w-20 rounded bg-surface-3" />
             </div>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Processing state: asset uploaded but metadata/preview extraction in progress
+  // Shows skeleton thumbnail with "Processing" badge, asset name, and "Processing" tag
+  if (processing) {
+    return (
+      <div
+        onClick={(e) => onClick?.(asset, e)}
+        className={cn(
+          'group relative flex flex-col',
+          'w-full cursor-pointer',
+          'rounded p-1',
+          'transition-colors',
+          // Background states
+          !isSelected && 'bg-transparent hover:bg-surface-2',
+          // Selected: theme-adaptive selection background
+          isSelected && 'bg-surface-selected hover:bg-surface-selected-hover',
+          // Border: only primary selection gets the ring (theme-adaptive)
+          primary && 'ring-2 ring-border-selected',
+          className
+        )}
+      >
+        {/* Thumbnail skeleton - 16:9 aspect ratio */}
+        <div className="relative w-full aspect-video rounded overflow-hidden mb-2">
+          <div className="absolute inset-0 bg-surface-3 animate-breathe" />
+        </div>
+
+        {/* Content area */}
+        <div className="flex items-start justify-between gap-2">
+          {/* Left: Title + Processing tag */}
+          <div className="flex-1 min-w-0 flex flex-col gap-1">
+            {/* Title - body-0-bold */}
+            <div className="text-body-0-bold text-foreground truncate group-hover:text-foreground-system-link group-hover:underline">
+              {asset.name}
+            </div>
+            {/* Processing tag */}
+            <div className="flex items-center gap-2">
+              <Tag>Processing</Tag>
+            </div>
+          </div>
+
+          {/* Right: Menu button (appears on hover) */}
+          <Button
+            variant="icon"
+            compact
+            onClick={(e) => {
+              e.stopPropagation()
+              onMenuClick?.(asset)
+            }}
+            className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-1"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </Button>
         </div>
       </div>
     )
@@ -147,9 +213,12 @@ export function AssetCard({
     }
 
     // Single image for shot, video, text
-    return asset.thumbnail ? (
+    // forceEmptyPreview overrides to always show placeholder
+    const thumbnailSrc = forceEmptyPreview ? EMPTY_ASSET_PLACEHOLDER : asset.thumbnail
+
+    return thumbnailSrc ? (
       <Image
-        src={asset.thumbnail}
+        src={thumbnailSrc}
         alt={asset.name}
         fill
         className="object-cover"
@@ -168,7 +237,7 @@ export function AssetCard({
         'rounded p-1',
         'transition-colors',
         // Background states
-        !isSelected && 'bg-surface-flat hover:bg-surface-2',
+        !isSelected && 'bg-transparent hover:bg-surface-2',
         // Selected: theme-adaptive selection background
         isSelected && 'bg-surface-selected hover:bg-surface-selected-hover',
         // Border: only primary selection gets the ring (theme-adaptive)
@@ -202,6 +271,7 @@ export function AssetCard({
           {/* Tag + Metadata - 2nd line with 8px gap */}
           <div className="flex items-center gap-2">
             {renderTypeTag()}
+            {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
             {renderMetadata()}
           </div>
         </div>

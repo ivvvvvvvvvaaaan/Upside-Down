@@ -177,14 +177,13 @@ User representation with image or initials.
 ```
 
 ### Badge
-Status indicator or label.
+Status indicator with colored dot and border.
 
 ```tsx
 <Badge
-  variant="default" | "success" | "warning" | "error" | "info"
-  color="gray" | "blue" | "green" | "yellow" | "red"  // Direct color (takes precedence)
-  size="sm" | "md"  // Deprecated: use compact instead
-  compact={boolean}  // Preferred: compact spacing
+  color="gray" | "green" | "red" | "yellow" | "indigo" | "purple"  // Direct colors
+        | "new" | "in progress" | "complete" | "unknown" | "failure"  // Status values
+  compact={boolean}  // Compact spacing for dense layouts
 >
   {label}
 </Badge>
@@ -192,14 +191,18 @@ Status indicator or label.
 
 **Examples:**
 ```tsx
-// Semantic variant
-<Badge variant="success">Active</Badge>
-
-// Direct color (closer to Hawkins)
+// Direct colors
 <Badge color="green">Active</Badge>
+<Badge color="red">Error</Badge>
+<Badge color="yellow">Pending</Badge>
+
+// Status values (map to colors)
+<Badge color="complete">Done</Badge>
+<Badge color="failure">Failed</Badge>
+<Badge color="in progress">Working</Badge>
 
 // Compact variant
-<Badge compact>New</Badge>
+<Badge color="gray" compact>New</Badge>
 ```
 
 ---

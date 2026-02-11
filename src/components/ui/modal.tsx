@@ -1,93 +1,77 @@
 'use client'
 
+import * as React from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import { useEffect, useCallback } from 'react'
-import { X } from 'lucide-react'
+import { Card } from './card'
 
 /*
- * ===========================================
- * MODAL COMPONENT
- * ===========================================
- * Overlay dialog for focused interactions.
- * Handles escape key and backdrop click.
+ * Modal - Centered overlay with backdrop.
+ * Use Dropdown for trigger-attached panels.
  */
 
 export interface ModalProps {
-  isOpen: boolean
-  onClose: () => void
-  title?: string
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  /** Controlled open state */
+  open?: boolean
+  /** Callback when open state changes */
+  onOpenChange?: (open: boolean) => void
+  /** Width of the modal: xs=320px, sm=600px, md=980px, lg=1280px */
+  size?: 'xs' | 'sm' | 'md' | 'lg'
+  /** Custom width (overrides size) */
+  width?: number
+  /** Modal content */
   children: React.ReactNode
 }
 
-function Modal({ 
-  isOpen, 
-  onClose, 
-  title,
-  size = 'md',
-  children 
+function Modal({
+  open,
+  onOpenChange,
+  size = 'sm',
+  width,
+  children
 }: ModalProps) {
-  // Handle escape key
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isOpen = open ?? internalOpen
+  const setIsOpen = onOpenChange ?? setInternalOpen
+
+  const sizes = {
+    xs: 'w-[320px]',
+    sm: 'w-[600px]',
+    md: 'w-[980px]',
+    lg: 'w-[1280px]',
+  }
+
   const handleEscape = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') onClose()
-  }, [onClose])
-  
+    if (e.key === 'Escape') setIsOpen(false)
+  }, [setIsOpen])
+
   useEffect(() => {
     if (!isOpen) return
-    
-    // Only run setup when modal is actually open
+
     document.addEventListener('keydown', handleEscape)
     document.body.style.overflow = 'hidden'
-    
-    // ✅ Cleanup only runs if setup ran
+
     return () => {
       document.removeEventListener('keydown', handleEscape)
       document.body.style.overflow = 'unset'
     }
   }, [isOpen, handleEscape])
-  
+
   if (!isOpen) return null
-  
-  const sizes = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-lg',
-    xl: 'max-w-xl',
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/50 animate-fade-in"
-        onClick={onClose}
+      <div
+        className="absolute inset-0 bg-surface-overlay"
+        onClick={() => setIsOpen(false)}
       />
-      
-      {/* Modal content */}
-      <div 
-        className={cn(
-          'relative w-full mx-4 bg-surface-0 rounded-lg shadow-lg animate-slide-up',
-          sizes[size]
-        )}
+      <Card
+        variant="outlined"
+        className={cn('relative mx-4 shadow-high max-w-[calc(100vw-2rem)]', !width && sizes[size])}
+        style={width ? { width: `${width}px` } : undefined}
       >
-        {/* Header */}
-        {title && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-            <h2 className="text-headline-3 text-foreground">{title}</h2>
-            <button
-              onClick={onClose}
-              className="p-1 rounded-md text-foreground-dim hover:text-foreground hover:bg-surface-1 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        )}
-        
-        {/* Body */}
-        <div className="px-6 py-4">
-          {children}
-        </div>
-      </div>
+        {children}
+      </Card>
     </div>
   )
 }

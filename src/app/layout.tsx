@@ -50,14 +50,14 @@ export default function RootLayout({
 
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body>
-        {/* Theme toggle - fixed position on all pages */}
+      <body className="antialiased">
+        {/* Theme toggle - fixed position in bottom right corner */}
         <button
           onClick={toggleTheme}
-          className="fixed top-4 right-4 z-50 w-10 h-10 rounded-full bg-surface-1 border border-border flex items-center justify-center text-foreground-dim hover:text-foreground hover:bg-surface-2 transition-colors"
+          className="fixed bottom-4 right-4 z-50 bg-surface-low border border-border-subtle rounded-full p-2 shadow-high hover:bg-surface-highlight transition-colors"
           aria-label="Toggle theme"
         >
-          {theme === THEMES.LIGHT ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+          {theme === THEMES.LIGHT ? <Moon className="w-4 h-4 text-foreground-dim" /> : <Sun className="w-4 h-4 text-foreground-dim" />}
         </button>
         
         {/* Page content */}

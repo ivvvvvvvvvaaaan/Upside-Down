@@ -15,41 +15,18 @@ This document contains rules and guidelines for AI assistants (Claude) working o
    - ✅ Always use Hawkins tokens: `px-2`, `text-caption`, `bg-gray-600`
 
 2. **Use Design System Tokens**
-   - **Colors**: Use Hawkins color tokens from `globals.css` (see `COLORS.md` for complete reference)
-     - **Foreground (Text)**: `text-foreground`, `text-foreground-dim`, `text-foreground-subtle`
-       - System colors: `text-foreground-system-error`, `text-foreground-system-link`, `text-foreground-system-success`, `text-foreground-system-warning`
-       - Inverse (dark bg): `text-foreground-inverse`, `text-foreground-inverse-dim`
-     - **Surface (Backgrounds)**: `bg-surface-flat`, `bg-surface-low`, `bg-surface-mid`, `bg-surface-high`
-       - Interactive: `bg-surface-interactive`, `hover:bg-surface-interactive-hover`
-       - Selection: `bg-surface-selected`, `bg-surface-selected-subtle`
-       - System: `bg-surface-system-error`, `bg-surface-system-success`, `bg-surface-system-warning`
-     - **Border**: `border-border`, `border-border-subtle`, `border-border-dim`
-       - Interactive: `border-selected`, `hover:border-selected-hover`
-       - System: `border-system-error`, `border-system-focus`, `border-system-success`
-     - **Semantic Palette**: `gray-600`, `indigo-500`, `blue-500`, `red-500`, `green-500`, `yellow-500`
+   - **Colors**: See `COLORS.md` for complete reference
+     - Foreground: `text-foreground`, `text-foreground-dim`, `text-foreground-subtle`
+     - Surface: `bg-surface-flat`, `bg-surface-low`, `bg-surface-mid`, `bg-surface-high`
+     - Border: `border-border-dim`, `border-border-subtle`
+     - Use semantic tokens for theme support, palette colors (`gray-600`, `indigo-500`) for specific cases only
 
-     **Important**: Use semantic tokens (foreground/surface/border) for theme support. Use palette colors (gray/indigo/etc) for specific cases only.
+   - **Typography**: See `TYPOGRAPHY.md` for complete reference
+     - Pattern: `text-{category}-{size}-{weight}` (size: 0=small, 1=medium, 2=large)
+     - Common: `text-body-1-regular`, `text-heading-2`, `text-label-0-regular`
 
-   - **Typography**: Use Hawkins typography tokens from `globals.css` (see `TYPOGRAPHY.md` for complete reference)
-     - **Body Text**: `text-body-0-bold`, `text-body-0-regular`, `text-body-1-bold`, `text-body-1-regular`, `text-body-2-bold`, `text-body-2-regular`
-       - Example: `text-body-1-regular` (14px/21px/400) - Default body text
-     - **Headings**: `text-heading-0` through `text-heading-8` (18px to 88px, all bold)
-       - Example: `text-heading-2` (24px/30px/700) - Section titles
-     - **Labels**: `text-label-0-bold`, `text-label-0-regular`, `text-label-1-bold`, `text-label-1-regular`
-       - Example: `text-label-0-regular` (10px/15px/400) - Metadata, tags
-     - **Links**: `text-body-text-link-*` and `text-label-text-link-*` (automatically underlined)
-     - **Monospace**: `text-body-mono-*-{bold|regular}` - Code snippets
-     - **Tabular**: `text-body-tabular-*-{bold|regular}` - Aligned numbers in tables
-     - **Special**: `text-tag-small` (10px/15px/600) - Compact tags
-
-     **Important**: All tokens follow the pattern `text-{category}-{size}-{weight}` where size 0=small, 1=medium, 2=large
-
-   - **Spacing**: Use Hawkins spacing scale
-     - `gap-1` (4px), `gap-2` (8px), `px-1` (4px), `px-2` (8px)
-     - `py-0` (0px), `pb-2` (8px), `mb-2` (8px)
-
-   - **Border Radius**: Use standard tokens
-     - `rounded` (4px), `rounded-sm` (2px)
+   - **Spacing**: `gap-1` (4px), `gap-2` (8px), `px-1`, `px-2`, etc.
+   - **Border Radius**: `rounded` (4px), `rounded-sm` (2px)
 
 3. **Component Patterns**
    - Always use existing UI components from `src/components/ui/`
@@ -61,46 +38,46 @@ This document contains rules and guidelines for AI assistants (Claude) working o
    - Use theme-aware tokens that automatically adjust
    - When needed, use conditional classes: `dark:bg-gray-400`
 
+5. **CSS Variable Pattern for Custom CSS (AG Grid, etc.)**
+
+   When writing custom CSS that needs Hawkins tokens (e.g., AG Grid themes), use **complete variables** that include opacity:
+
+   ```css
+   /* ✅ CORRECT - Use complete variables */
+   --ag-border-color: var(--border-dim);
+   border-color: var(--border-dim);
+
+   /* ❌ WRONG - Don't construct opacity manually */
+   --ag-border-color: rgb(var(--border-dim-rgb) / 0.2);
+   ```
+
+   **Available complete border variables** (defined in `globals.css`):
+   - `--border-dim` - 20% opacity, standard borders
+   - `--border-subtle` - 40% opacity, subtle borders
+   - `--border-elevation` - 4% opacity, elevation shadows
+   - `--border-inverse-dim` - 20% opacity, for dark backgrounds
+   - `--border-inverse-subtle` - 40% opacity, for dark backgrounds
+
+   **Why this matters:**
+   - Single source of truth for opacity values
+   - Consistency between Tailwind classes and custom CSS
+   - Easier to maintain and update
+   - No confusion about what opacity to use
+
 #### Example - Good vs Bad:
 
 ```tsx
 // ❌ BAD - Hardcoded values
-<div
-  className="px-[14px] py-[2px] text-[#414141] bg-[#ffffff]"
-  style={{ fontSize: '10px', border: '1px solid #808080' }}
->
-  Content
-</div>
+<div className="px-[14px] text-[#414141]" style={{ fontSize: '10px' }}>
 
 // ✅ GOOD - Hawkins tokens
-<div className="px-2 py-0 text-foreground text-label-0-regular bg-surface-flat border border-border">
-  Content
-</div>
+<div className="px-2 text-foreground text-label-0-regular">
 
-// ❌ BAD - Direct palette colors without semantic meaning
+// ❌ BAD - Palette colors for semantic use
 <div className="text-indigo-500 bg-gray-100">
-  Interactive element
-</div>
 
-// ✅ GOOD - Semantic tokens with theme support
-<div className="text-foreground-system-link bg-surface-interactive hover:bg-surface-interactive-hover">
-  Interactive element
-</div>
-
-// Asset card title with hover state
-<div className="text-body-0-bold text-foreground group-hover:text-foreground-system-link group-hover:underline">
-  Asset Title
-</div>
-
-// Tag component with theme support
-<span className="text-tag-small px-1 py-0 bg-gray-600 dark:bg-gray-400 text-white rounded">
-  Shot
-</span>
-
-// Error state with system colors
-<div className="bg-surface-system-error-subtle border border-system-error p-2 rounded">
-  <span className="text-foreground-system-error text-body-1-regular">Error message</span>
-</div>
+// ✅ GOOD - Semantic tokens (theme-aware)
+<div className="text-foreground-system-link bg-surface-interactive">
 ```
 
 #### Reference Files:
@@ -114,15 +91,19 @@ This document contains rules and guidelines for AI assistants (Claude) working o
 
 #### Enforcement:
 
-If you find yourself about to use a hardcoded value, STOP and:
-1. **Check documentation**: Review `TYPOGRAPHY.md` and `COLORS.md` for available tokens
-2. **Check config**: Look in `tailwind.config.ts` for the appropriate token
-3. **Check existing patterns**: Review similar components for established patterns
-4. **Consult Figma**: Verify design specs match Hawkins tokens
-5. **Use semantic tokens**: Prefer `text-foreground` over `text-gray-900` for theme support
-6. **Ask if unclear**: Request clarification if the appropriate token is ambiguous
+If you're about to use a hardcoded value, STOP and:
+1. Check `COLORS.md`, `TYPOGRAPHY.md`, or existing components for the right token
+2. Prefer semantic tokens (`text-foreground`) over palette colors (`text-gray-900`)
+3. Ask if unclear - consistency matters more than pixel-perfect accuracy
 
-**Remember:** Consistency with the Hawkins Design System is more important than pixel-perfect accuracy with arbitrary values.
+---
+
+## Development Workflow
+
+### Running the Project
+- **NEVER run `npm run dev`, `npm run build`, or `npm start`** - The user runs the project locally in the background
+- Use `npx tsc --noEmit` for type checking only
+- The user will see changes via hot reload
 
 ---
 
@@ -146,4 +127,4 @@ If you find yourself about to use a hardcoded value, STOP and:
 
 ---
 
-*Last updated: 2026-01-06*
+*Last updated: 2026-01-12*

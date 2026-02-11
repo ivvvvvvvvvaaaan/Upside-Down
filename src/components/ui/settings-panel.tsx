@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Settings, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Text } from './text'
 
 /*
  * ===========================================
@@ -21,20 +20,17 @@ export function SettingsPanel({ children, defaultOpen = false }: SettingsPanelPr
   const [isOpen, setIsOpen] = useState(defaultOpen)
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="fixed bottom-4 right-16 z-50">
       {isOpen ? (
-        <div className="bg-surface-low border border-border-subtle rounded shadow-high p-3 w-[240px]">
+        <div className="bg-surface-low rounded shadow-high p-3 w-[320px]">
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-1">
-              <Settings className="w-3 h-3 text-foreground-dim" />
-              <span className="text-body-0-bold text-foreground">Settings</span>
-            </div>
+            <span className="text-body-0-bold text-foreground">Settings</span>
             <button
               onClick={() => setIsOpen(false)}
               className="p-1 hover:bg-surface-highlight rounded transition-colors"
             >
-              <X className="w-3 h-3 text-foreground-dim" />
+              <X className="w-3 h-3 text-foreground" />
             </button>
           </div>
 
@@ -63,7 +59,7 @@ export interface SettingGroupProps {
 export function SettingGroup({ label, children }: SettingGroupProps) {
   return (
     <div className="space-y-1">
-      <span className="text-label-0-bold text-foreground-subtle uppercase tracking-wide">
+      <span className="text-label-0-bold text-foreground uppercase tracking-wide">
         {label}
       </span>
       <div className="space-y-1">
@@ -90,14 +86,7 @@ export function SettingOption({ label, value, checked, onChange }: SettingOption
         onChange={() => onChange(value)}
         className="w-3 h-3 text-primary bg-surface-0 border-border-subtle focus:ring-1 focus:ring-primary"
       />
-      <span
-        className={cn(
-          'group-hover:text-foreground transition-colors',
-          checked && 'text-foreground',
-          !checked && 'text-foreground-dim',
-          'text-body-0-regular'
-        )}
-      >
+      <span className="text-body-0-regular text-foreground">
         {label}
       </span>
     </label>
@@ -113,12 +102,7 @@ export interface SettingToggleProps {
 export function SettingToggle({ label, checked, onChange }: SettingToggleProps) {
   return (
     <label className="flex items-center justify-between cursor-pointer group">
-      <span
-        className={cn(
-          'text-body-0-regular group-hover:text-foreground transition-colors',
-          checked ? 'text-foreground' : 'text-foreground-dim'
-        )}
-      >
+      <span className="text-body-0-regular text-foreground">
         {label}
       </span>
       <input
@@ -148,17 +132,17 @@ export function SettingBoolean({
 }: SettingBooleanProps) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-body-0-regular text-foreground-dim">
+      <span className="text-body-0-regular text-foreground">
         {label}
       </span>
       <div className="flex rounded overflow-hidden border border-border-subtle text-label-0-regular">
         <button
           onClick={() => onChange(false)}
           className={cn(
-            'px-1 py-0 transition-colors',
+            'px-2 py-1 transition-colors',
             !value
               ? 'bg-gray-500 text-white'
-              : 'bg-surface-flat text-foreground-dim hover:bg-surface-highlight'
+              : 'bg-surface-flat text-foreground hover:bg-surface-highlight'
           )}
         >
           {offLabel}
@@ -166,14 +150,54 @@ export function SettingBoolean({
         <button
           onClick={() => onChange(true)}
           className={cn(
-            'px-1 py-0 transition-colors',
+            'px-2 py-1 transition-colors',
             value
               ? 'bg-indigo-600 text-white'
-              : 'bg-surface-flat text-foreground-dim hover:bg-surface-highlight'
+              : 'bg-surface-flat text-foreground hover:bg-surface-highlight'
           )}
         >
           {onLabel}
         </button>
+      </div>
+    </div>
+  )
+}
+
+export interface SettingSegmentedProps<T extends string> {
+  label?: string
+  options: { value: T; label: string }[]
+  value: T
+  onChange: (value: T) => void
+}
+
+export function SettingSegmented<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: SettingSegmentedProps<T>) {
+  return (
+    <div className={cn('flex items-center', label ? 'justify-between' : '')}>
+      {label && (
+        <span className="text-body-0-regular text-foreground">
+          {label}
+        </span>
+      )}
+      <div className="flex rounded overflow-hidden border border-border-subtle text-label-0-regular">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => onChange(option.value)}
+            className={cn(
+              'px-2 py-1 transition-colors',
+              value === option.value
+                ? 'bg-gray-500 text-white'
+                : 'bg-surface-flat text-foreground hover:bg-surface-highlight'
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
       </div>
     </div>
   )

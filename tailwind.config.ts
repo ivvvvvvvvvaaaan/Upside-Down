@@ -92,6 +92,11 @@ const config: Config = {
     'bg-surface-selected-hover',
     'hover:bg-surface-selected-hover',
     'ring-border-selected',
+    'border-border-selected',
+    'border-b-2',
+
+    // Tab typography
+    'text-tab',
   ],
   theme: {
     extend: {
@@ -101,11 +106,11 @@ const config: Config = {
         background: 'rgb(var(--background-rgb) / <alpha-value>)',
         foreground: {
           DEFAULT: 'rgb(var(--foreground-rgb) / 0.9)',
-          dim: 'rgb(var(--foreground-dim-rgb) / 0.6)',
+          dim: 'rgb(var(--foreground-dim-rgb) / 0.5)',
           subtle: 'rgb(var(--foreground-subtle-rgb) / 0.7)',
           inverse: {
-            DEFAULT: 'rgb(var(--foreground-inverse))',
-            dim: 'rgb(var(--foreground-inverse-dim-rgb) / 0.5)',
+            DEFAULT: 'rgb(var(--foreground-inverse) / 0.9)',
+            dim: 'rgb(var(--foreground-inverse-dim-rgb) / 0.6)',
             subtle: 'rgb(var(--foreground-inverse-subtle-rgb) / 0.7)',
           },
           product: {
@@ -285,17 +290,17 @@ const config: Config = {
           },
         },
         
-        // Border system
+        // Border system - references complete variables from globals.css
         border: {
           DEFAULT: 'hsl(var(--border))',
-          dim: 'rgb(var(--border-dim-rgb) / 0.2)',
-          elevation: 'rgb(var(--border-elevation-rgb) / 0.04)',
+          dim: 'var(--border-dim)',
+          elevation: 'var(--border-elevation)',
           inverse: {
             DEFAULT: 'rgb(var(--border-inverse))',
-            dim: 'rgb(var(--border-inverse-dim-rgb) / 0.2)',
-            subtle: 'rgb(var(--border-inverse-subtle-rgb) / 0.4)',
+            dim: 'var(--border-inverse-dim)',
+            subtle: 'var(--border-inverse-subtle)',
           },
-          subtle: 'rgb(var(--border-subtle-rgb) / 0.4)',
+          subtle: 'var(--border-subtle)',
           system: {
             error: 'rgb(var(--border-system-error))',
             focus: 'rgb(var(--border-system-focus))',
@@ -351,9 +356,8 @@ const config: Config = {
       },
       fontFamily: {
         sans: [
-          "Netflix Sans",
           "-apple-system",
-          "BlinkMacSystemFont",
+          "system-ui",
           "Segoe UI",
           "Roboto",
           "Helvetica",

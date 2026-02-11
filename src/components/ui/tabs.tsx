@@ -3,12 +3,18 @@
 import { cn } from '@/lib/utils'
 import { createContext, useContext, useState } from 'react'
 
-/*
- * ===========================================
- * TABS COMPONENT
- * ===========================================
- * Content organization with tabbed navigation.
- * 
+/**
+ * Tabs Component (Hawkins TabbedInterface)
+ *
+ * Content organization with horizontal tabbed navigation.
+ *
+ * TOKENS USED (Hawkins):
+ * - text-tab: Tab text (14px/21px/600)
+ * - text-foreground: Active tab text color
+ * - text-foreground-dim: Inactive tab text color
+ * - border-border-dim: Divider line under tabs
+ * - border-border-selected: Active tab underline (blue)
+ *
  * Usage:
  * <Tabs defaultValue="tab1">
  *   <TabsList>
@@ -45,7 +51,7 @@ export interface TabsProps {
 function Tabs({ defaultValue, value, onValueChange, children, className }: TabsProps) {
   const [internalValue, setInternalValue] = useState(defaultValue)
   const currentValue = value ?? internalValue
-  
+
   const handleChange = (newValue: string) => {
     setInternalValue(newValue)
     onValueChange?.(newValue)
@@ -53,17 +59,17 @@ function Tabs({ defaultValue, value, onValueChange, children, className }: TabsP
 
   return (
     <TabsContext.Provider value={{ value: currentValue, onChange: handleChange }}>
-      <div className={className}>{children}</div>
+      <div className={cn('flex flex-col', className)}>{children}</div>
     </TabsContext.Provider>
   )
 }
 
-// Tab List
+// Tab List - horizontal container with bottom divider
 function TabsList({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div 
+    <div
       className={cn(
-        'flex gap-1 border-b border-border',
+        'flex items-stretch border-b border-border-dim',
         className
       )}
       role="tablist"
@@ -78,9 +84,10 @@ export interface TabProps {
   value: string
   children: React.ReactNode
   className?: string
+  disabled?: boolean
 }
 
-function Tab({ value, children, className }: TabProps) {
+function Tab({ value, children, className, disabled = false }: TabProps) {
   const { value: currentValue, onChange } = useTabs()
   const isActive = currentValue === value
 
@@ -88,13 +95,20 @@ function Tab({ value, children, className }: TabProps) {
     <button
       role="tab"
       aria-selected={isActive}
-      onClick={() => onChange(value)}
+      disabled={disabled}
+      onClick={() => !disabled && onChange(value)}
       className={cn(
-        'px-4 py-2 text-body-2 font-medium transition-colors -mb-px',
-        'border-b-2 border-transparent',
-        isActive 
-          ? 'text-primary border-primary' 
-          : 'text-foreground-dim hover:text-foreground',
+        // Base styles
+        'relative px-4 py-3 text-tab transition-colors',
+        // Bottom border indicator positioning
+        '-mb-px',
+        // Active state: foreground text + blue underline
+        isActive && 'text-foreground border-b-2 border-border-selected',
+        // Inactive state: dim text, no underline
+        !isActive && 'text-foreground-dim hover:text-foreground',
+        // Disabled state
+        disabled && 'opacity-50 cursor-not-allowed',
+        !disabled && 'cursor-pointer',
         className
       )}
     >
@@ -112,13 +126,13 @@ export interface TabsContentProps {
 
 function TabsContent({ value, children, className }: TabsContentProps) {
   const { value: currentValue } = useTabs()
-  
+
   if (currentValue !== value) return null
 
   return (
-    <div 
-      role="tabpanel" 
-      className={cn('py-4', className)}
+    <div
+      role="tabpanel"
+      className={cn('pt-4', className)}
     >
       {children}
     </div>

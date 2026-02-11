@@ -1,48 +1,32 @@
+import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 /*
- * ===========================================
- * CARD COMPONENT
- * ===========================================
- * Container with background and optional elevation.
- * 
- * Variants:
- * - default: Subtle background
- * - elevated: With shadow
- * - outlined: With border
+ * Card - Composable container with Card.Body and Card.Footer
  */
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Visual variant */
   variant?: 'default' | 'elevated' | 'outlined'
-  padding?: 'none' | 'sm' | 'md' | 'lg'
 }
 
-function Card({ 
-  className, 
-  variant = 'default', 
-  padding = 'md',
+function Card({
+  className,
+  variant = 'default',
   children,
-  ...props 
+  ...props
 }: CardProps) {
   const variants = {
-    default: 'bg-surface-1',
-    elevated: 'bg-surface-0 shadow-mid',
-    outlined: 'bg-surface-0 border border-border',
-  }
-  
-  const paddings = {
-    none: '',
-    sm: 'p-3',
-    md: 'p-4',
-    lg: 'p-6',
+    default: 'bg-surface-low',
+    elevated: 'bg-surface-mid shadow-mid',
+    outlined: 'bg-surface-low border border-border-dim',
   }
 
   return (
     <div
       className={cn(
-        'rounded-lg',
+        'rounded',
         variants[variant],
-        paddings[padding],
         className
       )}
       {...props}
@@ -52,4 +36,53 @@ function Card({
   )
 }
 
-export { Card }
+export interface CardBodyProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Padding size */
+  padding?: 'sm' | 'md' | 'lg'
+}
+
+function CardBody({
+  className,
+  padding = 'lg',
+  children,
+  ...props
+}: CardBodyProps) {
+  const paddings = {
+    sm: 'p-3',
+    md: 'p-4',
+    lg: 'p-6',
+  }
+
+  return (
+    <div className={cn(paddings[padding], className)} {...props}>
+      {children}
+    </div>
+  )
+}
+
+export interface CardFooterProps extends React.HTMLAttributes<HTMLDivElement> {}
+
+function CardFooter({
+  className,
+  children,
+  ...props
+}: CardFooterProps) {
+  return (
+    <div
+      className={cn(
+        'px-6 py-4',
+        'flex justify-end gap-2',
+        'bg-surface-highlight rounded-b',
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+}
+
+Card.Body = CardBody
+Card.Footer = CardFooter
+
+export { Card, CardBody, CardFooter }
