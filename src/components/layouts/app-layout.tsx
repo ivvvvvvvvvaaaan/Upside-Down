@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { NavSidebar, PrimaryNavRail, ResizeHandle, ProjectBreadcrumb } from '@/components/ui'
+import { NavSidebar, PrimaryNavRail, ResizeHandle, ProjectBreadcrumb, NewCollectionModal } from '@/components/ui'
 
 /**
  * App Layout
@@ -22,6 +22,7 @@ export interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH)
   const [isDragging, setIsDragging] = useState(false)
+  const [showNewCollectionModal, setShowNewCollectionModal] = useState(false)
   const startWidthRef = useRef(SIDEBAR_DEFAULT_WIDTH)
   const currentWidthRef = useRef(SIDEBAR_DEFAULT_WIDTH)
 
@@ -60,7 +61,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     <div className="h-screen bg-surface-flat flex overflow-hidden">
       <div className="hidden md:flex">
         <PrimaryNavRail />
-        <NavSidebar width={sidebarWidth} />
+        <NavSidebar width={sidebarWidth} onNewCollection={() => setShowNewCollectionModal(true)} />
         <ResizeHandle
           isDragging={isDragging}
           onDragStart={handleDragStart}
@@ -76,6 +77,15 @@ export function AppLayout({ children }: AppLayoutProps) {
           {children}
         </div>
       </div>
+
+      <NewCollectionModal
+        open={showNewCollectionModal}
+        onOpenChange={setShowNewCollectionModal}
+        onCreateCollection={(name) => {
+          console.log('Create collection from sidebar:', name)
+          setShowNewCollectionModal(false)
+        }}
+      />
     </div>
   )
 }

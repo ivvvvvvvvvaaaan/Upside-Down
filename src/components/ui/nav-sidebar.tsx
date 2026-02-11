@@ -60,6 +60,8 @@ export interface NavSidebarProps {
   style?: React.CSSProperties
   /** Dynamic navigation configuration */
   navConfig?: NavConfig
+  /** Callback when "New Collection" is clicked */
+  onNewCollection?: () => void
 }
 
 interface NavLinkProps {
@@ -177,7 +179,7 @@ function DynamicNavigation({ navConfig }: { navConfig: NavConfig }) {
   )
 }
 
-function HardcodedNavigation() {
+function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
   return (
     <>
       {/* All Assets - Top Level */}
@@ -207,7 +209,10 @@ function HardcodedNavigation() {
       {/* My Collections Section */}
       <CollapsibleSection title="My Collections">
         <p className="px-3 py-1 text-label-0-regular text-foreground-dim">No collections yet</p>
-        <button className="flex items-center gap-2 px-3 py-2 text-body-0-bold text-foreground-dim hover:text-foreground-subtle transition-colors min-w-0">
+        <button
+          onClick={onNewCollection}
+          className="flex items-center gap-2 px-3 py-2 text-body-0-bold text-foreground-dim hover:text-foreground-subtle transition-colors min-w-0"
+        >
           <Plus className="w-4 h-4 flex-shrink-0" />
           <span className="truncate">New Collection</span>
         </button>
@@ -235,7 +240,7 @@ function HardcodedNavigation() {
   )
 }
 
-export function NavSidebar({ className, width, style, navConfig }: NavSidebarProps) {
+export function NavSidebar({ className, width, style, navConfig, onNewCollection }: NavSidebarProps) {
   return (
     <nav
       className={cn('bg-surface-1 flex-shrink-0 flex flex-col overflow-y-auto', className)}
@@ -244,7 +249,7 @@ export function NavSidebar({ className, width, style, navConfig }: NavSidebarPro
       {navConfig ? (
         <DynamicNavigation navConfig={navConfig} />
       ) : (
-        <HardcodedNavigation />
+        <HardcodedNavigation onNewCollection={onNewCollection} />
       )}
     </nav>
   )

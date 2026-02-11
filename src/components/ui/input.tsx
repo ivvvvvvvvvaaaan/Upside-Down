@@ -46,9 +46,9 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label 
+          <label
             htmlFor={inputId}
-            className="block text-body-2 font-medium text-foreground mb-1.5"
+            className="block text-label-1-bold text-foreground mb-1.5"
           >
             {label}
           </label>
@@ -63,13 +63,13 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             className={cn(
-              'w-full h-10 rounded-md text-body-1',
-              'bg-surface-0 border border-border',
-              'text-foreground placeholder:text-foreground-subtle',
+              'w-full h-10 rounded text-body-0-regular',
+              'bg-surface-flat dark:bg-white/[0.04] border border-border-dim',
+              'text-foreground placeholder:text-foreground-dim',
               'transition-colors',
-              'focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
+              'focus:outline-none focus:border-border-system-focus focus:ring-1 focus:ring-inset focus:ring-border-system-focus',
               'disabled:opacity-50 disabled:cursor-not-allowed',
-              error && 'border-error focus:ring-error',
+              error && 'border-error focus:border-error focus:ring-error',
               icon && iconPosition === 'left' ? 'pl-10 pr-3' : icon && iconPosition === 'right' ? 'pl-3 pr-10' : 'px-3',
               className
             )}
@@ -83,8 +83,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         </div>
         {(error || helperText) && (
           <p className={cn(
-            'mt-1.5 text-caption',
-            error ? 'text-error' : 'text-foreground-dim'
+            'mt-1.5 text-label-0-regular',
+            error ? 'text-foreground-system-negative' : 'text-foreground-dim'
           )}>
             {error || helperText}
           </p>

@@ -1,11 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { Modal } from './modal'
 import { Card } from './card'
 import { Input } from './input'
 import { Button } from './button'
+import { Tooltip } from './tooltip'
 import type { Asset } from '@/lib/data'
+
+const PLACEHOLDER_IMAGE = '/assets/Asset-empty-img.png'
 
 interface NewCollectionModalProps {
   open: boolean
@@ -36,7 +40,7 @@ export function NewCollectionModal({
   }
 
   return (
-    <Modal open={open} onOpenChange={onOpenChange} size="sm">
+    <Modal open={open} onOpenChange={onOpenChange} width={420}>
       <Card.Body>
         <div className="flex flex-col gap-6">
           <p className="text-body-2-bold text-foreground">
@@ -59,16 +63,27 @@ export function NewCollectionModal({
               <p className="text-label-1-bold text-foreground-subtle">
                 {selectedAssets.length} item{selectedAssets.length !== 1 ? 's' : ''} to add
               </p>
-              <ul className="flex flex-col gap-1 max-h-40 overflow-y-auto">
-                {selectedAssets.map((asset) => (
-                  <li
-                    key={asset.id}
-                    className="text-body-0-regular text-foreground truncate"
-                  >
-                    {asset.name}
-                  </li>
-                ))}
-              </ul>
+              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
+                {selectedAssets.map((asset) => {
+                  const typeTag = asset.type === 'shot' ? 'Shot'
+                    : asset.type === 'video' ? (asset.videoMeta?.typeTag || 'Video')
+                    : asset.type === 'image' ? (asset.imageMeta?.typeTag || 'Image')
+                    : (asset.textMeta?.typeTag || 'Document')
+
+                  return (
+                    <Tooltip key={asset.id} label={asset.name} description={typeTag}>
+                      <div className="relative w-16 h-12 rounded overflow-hidden bg-surface-2 flex-shrink-0">
+                        <Image
+                          src={asset.thumbnail || PLACEHOLDER_IMAGE}
+                          alt={asset.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    </Tooltip>
+                  )
+                })}
+              </div>
             </div>
           )}
         </div>
