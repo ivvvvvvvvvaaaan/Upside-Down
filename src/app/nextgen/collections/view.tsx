@@ -19,6 +19,7 @@ import {
   CollectionsGalleryView,
   HawkinsSearch,
   CompactBar,
+  SelectionBar,
 } from '@/components/ui'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import type { GalleryThumbnailMode } from '@/components/ui/collections-gallery-view'
@@ -293,6 +294,13 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
               />
             </SettingGroup>
           </SettingsPanel>
+
+          <SelectionBar
+            selectedCount={selectedIds.size}
+            onClear={clearSelection}
+            onAddToCollection={() => console.log('Add to collection:', Array.from(selectedIds))}
+            onShare={() => console.log('Share:', Array.from(selectedIds))}
+          />
         </div>
       </AppLayout>
     )
@@ -497,6 +505,13 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
             </SettingGroup>
           )}
         </SettingsPanel>
+
+        <SelectionBar
+          selectedCount={selectedIds.size}
+          onClear={clearSelection}
+          onAddToCollection={() => console.log('Add to collection:', Array.from(selectedIds))}
+          onShare={() => console.log('Share:', Array.from(selectedIds))}
+        />
       </div>
     </AppLayout>
   )

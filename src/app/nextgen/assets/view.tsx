@@ -15,6 +15,7 @@ import {
   SortDropdown,
   HawkinsSearch,
   CompactBar,
+  SelectionBar,
 } from '@/components/ui'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import { AppLayout } from '@/components/layouts'
@@ -35,7 +36,7 @@ export function AssetsView({ assets }: AssetsViewProps) {
   const pathname = usePathname()
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
 
-  const { selectedIds, primaryId, handleAssetClick } = useAssetSelection()
+  const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const { layout, setLayout, cardSize, setCardSize } = useViewPreferences()
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
 
@@ -197,6 +198,13 @@ export function AssetsView({ assets }: AssetsViewProps) {
             />
           </SettingGroup>
         </SettingsPanel>
+
+        <SelectionBar
+          selectedCount={selectedIds.size}
+          onClear={clearSelection}
+          onAddToCollection={() => console.log('Add to collection:', Array.from(selectedIds))}
+          onShare={() => console.log('Share:', Array.from(selectedIds))}
+        />
       </div>
     </AppLayout>
   )
