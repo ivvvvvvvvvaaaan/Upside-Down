@@ -22,15 +22,15 @@ export function SelectionBar({
   if (selectedCount === 0) return null
 
   return (
-    <div
-      className={cn(
-        'fixed bottom-6 left-1/2 -translate-x-1/2 z-50',
-        'flex items-center gap-3 px-4 py-3 rounded-lg',
-        'bg-indigo-600 text-white shadow-high',
-        'animate-in slide-in-from-bottom-4 fade-in duration-200',
-        className
-      )}
-    >
+    <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center pointer-events-none">
+      <div
+        className={cn(
+          'flex items-center gap-3 px-4 py-3 rounded-lg pointer-events-auto',
+          'bg-indigo-600 text-white shadow-high',
+          'animate-in slide-in-from-bottom-4 fade-in duration-200',
+          className
+        )}
+      >
       {/* Selection count */}
       <div className="flex items-center gap-2">
         <span className="text-body-1-bold">
@@ -68,6 +68,7 @@ export function SelectionBar({
         >
           Share
         </Button>
+      </div>
       </div>
     </div>
   )
