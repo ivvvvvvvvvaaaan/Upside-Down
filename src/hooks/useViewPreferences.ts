@@ -8,11 +8,13 @@ export type CollectionViewType = 'all' | 'character' | 'location' | 'scene'
 interface ViewPreferences {
   layout: LayoutType
   cardSize: CardSize
+  hideEmptyCollections: boolean
 }
 
 const DEFAULT_PREFERENCES: ViewPreferences = {
   layout: 'grid',
   cardSize: 'md',
+  hideEmptyCollections: false,
 }
 
 const VALID_LAYOUTS: LayoutType[] = ['grid', 'list', 'gallery']
@@ -30,6 +32,7 @@ function getStoredPreferences(): ViewPreferences {
     return {
       layout: VALID_LAYOUTS.includes(parsed.layout) ? parsed.layout : DEFAULT_PREFERENCES.layout,
       cardSize: VALID_CARD_SIZES.includes(parsed.cardSize) ? parsed.cardSize : DEFAULT_PREFERENCES.cardSize,
+      hideEmptyCollections: typeof parsed.hideEmptyCollections === 'boolean' ? parsed.hideEmptyCollections : DEFAULT_PREFERENCES.hideEmptyCollections,
     }
   } catch (error) {
     console.warn('Failed to read view preferences from localStorage:', error)
@@ -49,14 +52,17 @@ function savePreferences(preferences: ViewPreferences): void {
 export interface UseViewPreferencesReturn {
   layout: LayoutType
   cardSize: CardSize
+  hideEmptyCollections: boolean
   setLayout: (layout: LayoutType) => void
   setCardSize: (cardSize: CardSize) => void
+  setHideEmptyCollections: (hide: boolean) => void
 }
 
 export function useViewPreferences(): UseViewPreferencesReturn {
   const [mounted, setMounted] = useState(false)
   const [layout, setLayoutState] = useState<LayoutType>(DEFAULT_PREFERENCES.layout)
   const [cardSize, setCardSizeState] = useState<CardSize>(DEFAULT_PREFERENCES.cardSize)
+  const [hideEmptyCollections, setHideEmptyCollectionsState] = useState<boolean>(DEFAULT_PREFERENCES.hideEmptyCollections)
 
   // Load preferences on mount
   useEffect(() => {
@@ -64,6 +70,7 @@ export function useViewPreferences(): UseViewPreferencesReturn {
     const prefs = getStoredPreferences()
     setLayoutState(prefs.layout)
     setCardSizeState(prefs.cardSize)
+    setHideEmptyCollectionsState(prefs.hideEmptyCollections)
   }, [])
 
   // Save layout preference
@@ -84,10 +91,21 @@ export function useViewPreferences(): UseViewPreferencesReturn {
     }
   }, [mounted])
 
+  // Save hideEmptyCollections preference
+  const setHideEmptyCollections = useCallback((hide: boolean) => {
+    setHideEmptyCollectionsState(hide)
+    if (mounted) {
+      const current = getStoredPreferences()
+      savePreferences({ ...current, hideEmptyCollections: hide })
+    }
+  }, [mounted])
+
   return {
     layout,
     cardSize,
+    hideEmptyCollections,
     setLayout,
     setCardSize,
+    setHideEmptyCollections,
   }
 }

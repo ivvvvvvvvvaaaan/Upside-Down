@@ -46,7 +46,7 @@ export type Asset = {
 export type Collection = {
   id: string
   name: string
-  type: 'character' | 'location' | 'scene'
+  type: 'character' | 'location' | 'scene' | 'art-type'
   assetCount: number
   mainImage?: string
   thumbnailImages?: string[]
@@ -285,6 +285,125 @@ const MOCK_COLLECTIONS: Collection[] = [
   },
 ]
 
+// Art Department Collections
+const MOCK_ART_COLLECTIONS: Collection[] = [
+  // Art Type collections
+  {
+    id: 'art-1',
+    name: 'Concept Art',
+    type: 'art-type',
+    assetCount: 156,
+    mainImage: 'https://picsum.photos/seed/concept1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/concept2/400/300',
+      'https://picsum.photos/seed/concept3/400/300',
+    ],
+  },
+  {
+    id: 'art-2',
+    name: 'Storyboards',
+    type: 'art-type',
+    assetCount: 342,
+    mainImage: 'https://picsum.photos/seed/storyboard1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/storyboard2/400/300',
+      'https://picsum.photos/seed/storyboard3/400/300',
+    ],
+  },
+  {
+    id: 'art-3',
+    name: 'Set Design',
+    type: 'art-type',
+    assetCount: 89,
+    mainImage: 'https://picsum.photos/seed/setdesign1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/setdesign2/400/300',
+      'https://picsum.photos/seed/setdesign3/400/300',
+    ],
+  },
+  {
+    id: 'art-4',
+    name: 'Set Blueprints',
+    type: 'art-type',
+    assetCount: 67,
+    mainImage: 'https://picsum.photos/seed/blueprint1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/blueprint2/400/300',
+      'https://picsum.photos/seed/blueprint3/400/300',
+    ],
+  },
+  {
+    id: 'art-5',
+    name: 'Reference Photography',
+    type: 'art-type',
+    assetCount: 213,
+    mainImage: 'https://picsum.photos/seed/reference1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/reference2/400/300',
+      'https://picsum.photos/seed/reference3/400/300',
+    ],
+  },
+  {
+    id: 'art-6',
+    name: 'Prop Design',
+    type: 'art-type',
+    assetCount: 78,
+    mainImage: 'https://picsum.photos/seed/prop1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/prop2/400/300',
+      'https://picsum.photos/seed/prop3/400/300',
+    ],
+  },
+  {
+    id: 'art-7',
+    name: 'Costume Design',
+    type: 'art-type',
+    assetCount: 95,
+    mainImage: 'https://picsum.photos/seed/costume1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/costume2/400/300',
+      'https://picsum.photos/seed/costume3/400/300',
+    ],
+  },
+  // Character collections for Art Department
+  {
+    id: 'art-char-1',
+    name: 'Hopper',
+    type: 'character',
+    assetCount: 45,
+    mainImage: 'https://picsum.photos/seed/hopperart1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/hopperart2/400/300',
+      'https://picsum.photos/seed/hopperart3/400/300',
+    ],
+    avatarSrc: 'https://i.pravatar.cc/150?img=68',
+  },
+  {
+    id: 'art-char-2',
+    name: 'Eleven',
+    type: 'character',
+    assetCount: 62,
+    mainImage: 'https://picsum.photos/seed/elevenart1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/elevenart2/400/300',
+      'https://picsum.photos/seed/elevenart3/400/300',
+    ],
+    avatarSrc: 'https://i.pravatar.cc/150?img=5',
+  },
+  {
+    id: 'art-char-3',
+    name: 'Demogorgon',
+    type: 'character',
+    assetCount: 87,
+    mainImage: 'https://picsum.photos/seed/demoart1/400/300',
+    thumbnailImages: [
+      'https://picsum.photos/seed/demoart2/400/300',
+      'https://picsum.photos/seed/demoart3/400/300',
+    ],
+    avatarSrc: 'https://i.pravatar.cc/150?img=70',
+  },
+]
+
 const MOCK_ASSETS: Asset[] = [
   // SHOT examples
   {
@@ -440,6 +559,164 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['scene-1'],
     created_at: '2024-03-04T08:15:00Z',
   },
+
+  // Art Department assets
+  {
+    id: 'art-asset-1',
+    name: 'upside_down_environment_concept.jpg',
+    type: 'image',
+    thumbnail: 'https://picsum.photos/seed/artconcept1/800/450',
+    imageMeta: {
+      typeTag: 'Concept Art',
+      imageCount: 1,
+    },
+    collectionIds: ['art-1'],
+    created_at: '2024-02-15T09:00:00Z',
+  },
+  {
+    id: 'art-asset-2',
+    name: 'demogorgon_creature_design.jpg',
+    type: 'image',
+    thumbnail: 'https://picsum.photos/seed/artconcept2/800/450',
+    imageMeta: {
+      typeTag: 'Concept Art',
+      imageCount: 4,
+    },
+    collectionIds: ['art-1', 'art-char-3'],
+    created_at: '2024-02-14T11:30:00Z',
+  },
+  {
+    id: 'art-asset-3',
+    name: 'hawkins_lab_interior_concept.jpg',
+    type: 'image',
+    thumbnail: 'https://picsum.photos/seed/artconcept3/800/450',
+    imageMeta: {
+      typeTag: 'Concept Art',
+      imageCount: 3,
+    },
+    collectionIds: ['art-1'],
+    created_at: '2024-02-13T14:00:00Z',
+  },
+  {
+    id: 'art-asset-4',
+    name: 'episode_01_storyboard_sequence.pdf',
+    type: 'image',
+    thumbnail: 'https://picsum.photos/seed/artstory1/800/450',
+    imageMeta: {
+      typeTag: 'Storyboards',
+      imageCount: 24,
+    },
+    collectionIds: ['art-2'],
+    created_at: '2024-02-12T10:00:00Z',
+  },
+  {
+    id: 'art-asset-5',
+    name: 'chase_scene_boards.pdf',
+    type: 'image',
+    thumbnail: 'https://picsum.photos/seed/artstory2/800/450',
+    imageMeta: {
+      typeTag: 'Storyboards',
+      imageCount: 18,
+    },
+    collectionIds: ['art-2'],
+    created_at: '2024-02-11T15:30:00Z',
+  },
+  {
+    id: 'art-asset-6',
+    name: 'byers_house_floor_plan.pdf',
+    type: 'image',
+    thumbnail: 'https://picsum.photos/seed/artblue1/800/450',
+    imageMeta: {
+      typeTag: 'Blueprint',
+      imageCount: 2,
+    },
+    collectionIds: ['art-4', 'art-3'],
+    created_at: '2024-02-10T09:00:00Z',
+  },
+  {
+    id: 'art-asset-7',
+    name: 'starcourt_mall_blueprints.pdf',
+    type: 'image',
+    thumbnail: 'https://picsum.photos/seed/artblue2/800/450',
+    imageMeta: {
+      typeTag: 'Blueprint',
+      imageCount: 6,
+    },
+    collectionIds: ['art-4', 'art-3'],
+    created_at: '2024-02-09T13:00:00Z',
+  },
+  {
+    id: 'art-asset-8',
+    name: '1980s_hawkins_reference_photos.zip',
+    type: 'image',
+    thumbnail: 'https://picsum.photos/seed/artref1/800/450',
+    imageMeta: {
+      typeTag: 'Reference',
+      imageCount: 156,
+    },
+    collectionIds: ['art-5'],
+    created_at: '2024-02-08T10:00:00Z',
+  },
+  {
+    id: 'art-asset-9',
+    name: 'arcade_reference_collection.zip',
+    type: 'image',
+    thumbnail: 'https://picsum.photos/seed/artref2/800/450',
+    imageMeta: {
+      typeTag: 'Reference',
+      imageCount: 42,
+    },
+    collectionIds: ['art-5'],
+    created_at: '2024-02-07T11:30:00Z',
+  },
+  {
+    id: 'art-asset-10',
+    name: 'hopper_uniform_design.png',
+    type: 'image',
+    thumbnail: 'https://picsum.photos/seed/artcostume1/800/450',
+    imageMeta: {
+      typeTag: 'Costume Design',
+      imageCount: 3,
+    },
+    collectionIds: ['art-7', 'art-char-1'],
+    created_at: '2024-02-06T09:00:00Z',
+  },
+  {
+    id: 'art-asset-11',
+    name: 'eleven_hospital_gown_design.png',
+    type: 'image',
+    thumbnail: 'https://picsum.photos/seed/artcostume2/800/450',
+    imageMeta: {
+      typeTag: 'Costume Design',
+      imageCount: 2,
+    },
+    collectionIds: ['art-7', 'art-char-2'],
+    created_at: '2024-02-05T14:00:00Z',
+  },
+  {
+    id: 'art-asset-12',
+    name: 'walkie_talkie_prop_design.png',
+    type: 'image',
+    thumbnail: 'https://picsum.photos/seed/artprop1/800/450',
+    imageMeta: {
+      typeTag: 'Prop Design',
+      imageCount: 4,
+    },
+    collectionIds: ['art-6'],
+    created_at: '2024-02-04T10:00:00Z',
+  },
+  {
+    id: 'art-asset-13',
+    name: 'christmas_lights_props.png',
+    type: 'image',
+    thumbnail: 'https://picsum.photos/seed/artprop2/800/450',
+    imageMeta: {
+      typeTag: 'Prop Design',
+      imageCount: 6,
+    },
+    collectionIds: ['art-6'],
+    created_at: '2024-02-03T15:00:00Z',
+  },
 ]
 
 export async function getAssets(): Promise<Asset[]> {
@@ -518,4 +795,18 @@ export async function getAssetsByCollection(collectionId: string): Promise<Asset
   return MOCK_ASSETS.filter(asset =>
     asset.collectionIds?.includes(collectionId)
   )
+}
+
+export async function getArtCollections(): Promise<Collection[]> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const isLive = supabaseUrl && supabaseUrl.startsWith('http')
+
+  if (!isLive) {
+    // Simulate network delay for realism
+    await new Promise(resolve => setTimeout(resolve, 500))
+    return MOCK_ART_COLLECTIONS
+  }
+
+  // TODO: Implement Supabase art collections query when schema is ready
+  return MOCK_ART_COLLECTIONS
 }

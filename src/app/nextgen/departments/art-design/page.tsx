@@ -1,5 +1,14 @@
-import { PlaceholderView } from '@/components/layouts/placeholder-view'
+import { getArtCollections } from '@/lib/data'
+import { CollectionCardsView } from '../../collections/view'
 
-export default function ArtDesignPage() {
-  return <PlaceholderView title="Art & Design" section="Departments" />
+export default async function ArtDesignPage() {
+  const collections = await getArtCollections()
+
+  return (
+    <CollectionCardsView
+      title="Art & Design"
+      initialCollections={collections}
+      collectionType="all"
+    />
+  )
 }

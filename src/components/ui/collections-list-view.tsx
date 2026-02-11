@@ -6,7 +6,7 @@ import type { ColDef, ICellRendererParams } from 'ag-grid-community'
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
 import Image from 'next/image'
 import type { Collection, Asset } from '@/lib/data'
-import { ChevronRight, ChevronDown, MapPin, Clapperboard, Image as ImageIcon } from 'lucide-react'
+import { ChevronRight, ChevronDown, MapPin, Clapperboard, Image as ImageIcon, Palette } from 'lucide-react'
 import { Tag } from './tag'
 
 // Register AG Grid modules
@@ -21,7 +21,7 @@ type TreeRow = {
   name: string
   rowType: 'collection' | 'asset'
   // Collection fields
-  collectionType?: 'character' | 'location' | 'scene'
+  collectionType?: 'character' | 'location' | 'scene' | 'art-type'
   assetCount?: number
   mainImage?: string
   avatarSrc?: string
@@ -64,6 +64,7 @@ function ExpandThumbnailCellRenderer(
   // Icon fallback for non-character collections
   const CollectionIcon = row.collectionType === 'location' ? MapPin
     : row.collectionType === 'scene' ? Clapperboard
+    : row.collectionType === 'art-type' ? Palette
     : ImageIcon
 
   // Render preview based on type

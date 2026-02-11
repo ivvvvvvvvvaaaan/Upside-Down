@@ -18,6 +18,12 @@ const SceneIcon = () => (
   </svg>
 )
 
+const ArtTypeIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path fillRule="evenodd" clipRule="evenodd" d="M12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20C12.5523 20 13 19.5523 13 19C13 18.7347 12.8946 18.4804 12.7071 18.2929C12.5196 18.1054 12.4142 17.8511 12.4142 17.5858C12.4142 17.0335 12.8619 16.5858 13.4142 16.5858H15C17.7614 16.5858 20 14.3472 20 11.5858C20 7.39572 16.4183 4 12 4ZM6.5 12C6.5 11.1716 7.17157 10.5 8 10.5C8.82843 10.5 9.5 11.1716 9.5 12C9.5 12.8284 8.82843 13.5 8 13.5C7.17157 13.5 6.5 12.8284 6.5 12ZM10 7.5C9.17157 7.5 8.5 8.17157 8.5 9C8.5 9.82843 9.17157 10.5 10 10.5C10.8284 10.5 11.5 9.82843 11.5 9C11.5 8.17157 10.8284 7.5 10 7.5ZM14 7.5C13.1716 7.5 12.5 8.17157 12.5 9C12.5 9.82843 13.1716 10.5 14 10.5C14.8284 10.5 15.5 9.82843 15.5 9C15.5 8.17157 14.8284 7.5 14 7.5ZM15.5 12C15.5 11.1716 16.1716 10.5 17 10.5C17.8284 10.5 18.5 11.1716 18.5 12C18.5 12.8284 17.8284 13.5 17 13.5C16.1716 13.5 15.5 12.8284 15.5 12Z" fill="currentColor"/>
+  </svg>
+)
+
 /*
  * ===========================================
  * COLLECTION CARD COMPONENT
@@ -58,7 +64,7 @@ export type CollectionCardState =
 
 export type CollectionCardAssetCount = 'Many' | 'Two' | 'One' | 'None'
 
-export type CollectionCardType = 'character' | 'location' | 'scene'
+export type CollectionCardType = 'character' | 'location' | 'scene' | 'art-type'
 
 export type CollectionCardSize = 'sm' | 'md' | 'lg'
 
@@ -362,6 +368,31 @@ export function CollectionCard({
       )
     }
 
+    if (type === 'art-type') {
+      return (
+        <div className="flex gap-2 items-center w-full">
+          <div className="flex items-center shrink-0 text-foreground-dim">
+            <ArtTypeIcon />
+          </div>
+          <div className="flex flex-col items-start flex-1 min-w-0">
+            <div
+              className={cn(
+                titleClass,
+                'text-foreground break-words',
+                linkClass,
+                isHovered && 'underline text-foreground-system-link'
+              )}
+            >
+              {title}
+            </div>
+            <div className={cn(metaClass, assetCount === 0 ? 'text-foreground-dim' : 'text-foreground-subtle')}>
+              {assetCount === 0 ? 'No assets' : `${assetCount} assets`}
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     // Character type (default) - uses Avatar
     return (
       <div className="flex gap-4 items-center w-full">
@@ -395,7 +426,7 @@ export function CollectionCard({
   }
 
   // Determine alignment based on type
-  const isCentered = type === 'location' || type === 'scene'
+  const isCentered = type === 'location' || type === 'scene' || type === 'art-type'
   
   return (
     <div

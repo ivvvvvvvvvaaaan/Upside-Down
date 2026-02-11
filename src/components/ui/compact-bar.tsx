@@ -50,6 +50,10 @@ export interface CompactBarProps {
   onCardSizeChange: (size: CardSize) => void
   /** Show layout options in appearance dropdown */
   showLayoutOptions?: boolean
+  /** Hide empty collections */
+  hideEmptyCollections?: boolean
+  /** Callback when hide empty collections changes */
+  onHideEmptyCollectionsChange?: (hide: boolean) => void
 }
 
 export function CompactBar({
@@ -68,6 +72,8 @@ export function CompactBar({
   cardSize,
   onCardSizeChange,
   showLayoutOptions = true,
+  hideEmptyCollections,
+  onHideEmptyCollectionsChange,
 }: CompactBarProps) {
   const [searchExpanded, setSearchExpanded] = useState(false)
 
@@ -129,6 +135,8 @@ export function CompactBar({
                 cardSize={cardSize}
                 onCardSizeChange={onCardSizeChange}
                 showLayoutOptions={showLayoutOptions}
+                hideEmptyCollections={hideEmptyCollections}
+                onHideEmptyCollectionsChange={onHideEmptyCollectionsChange}
               />
             </div>
           </div>

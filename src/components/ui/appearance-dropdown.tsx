@@ -17,6 +17,9 @@ export interface AppearanceDropdownProps {
   label?: string
   /** Show only icon in trigger */
   iconOnly?: boolean
+  /** Hide empty collections toggle */
+  hideEmptyCollections?: boolean
+  onHideEmptyCollectionsChange?: (hide: boolean) => void
 }
 
 export function AppearanceDropdown({
@@ -27,6 +30,8 @@ export function AppearanceDropdown({
   showLayoutOptions = true,
   label = 'Appearance',
   iconOnly = false,
+  hideEmptyCollections,
+  onHideEmptyCollectionsChange,
 }: AppearanceDropdownProps) {
   return (
     <Dropdown
@@ -63,6 +68,21 @@ export function AppearanceDropdown({
                 ]}
                 value={cardSize}
                 onChange={onCardSizeChange}
+                compact
+              />
+            </div>
+          )}
+
+          {onHideEmptyCollectionsChange && (
+            <div className="flex items-center justify-between">
+              <span className="text-body-0-regular text-foreground">Empty Collections</span>
+              <ToggleButtonGroup
+                options={[
+                  { value: 'show' as const, label: 'Show' },
+                  { value: 'hide' as const, label: 'Hide' },
+                ]}
+                value={hideEmptyCollections ? 'hide' : 'show'}
+                onChange={(val) => onHideEmptyCollectionsChange(val === 'hide')}
                 compact
               />
             </div>

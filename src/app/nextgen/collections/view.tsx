@@ -65,7 +65,7 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
   const isCompactBarVisible = !selectedCollection && showCompactBar
 
   // Appearance settings - persisted globally
-  const { layout, setLayout, cardSize, setCardSize } = useViewPreferences()
+  const { layout, setLayout, cardSize, setCardSize, hideEmptyCollections, setHideEmptyCollections } = useViewPreferences()
 
   // Sort settings
   const sortFields = [
@@ -187,6 +187,12 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
     })
   }, [collections, loadedAssets, isPreloading, thumbnailMode])
 
+  // Filter out empty collections if preference is enabled
+  const filteredCollections = useMemo(() => {
+    if (!hideEmptyCollections) return enrichedCollections
+    return enrichedCollections.filter((collection) => collection.assetCount > 0)
+  }, [enrichedCollections, hideEmptyCollections])
+
   const handleMenuClick = (asset: Asset) => {
     console.log('Menu clicked for:', asset.name)
   }
@@ -300,7 +306,7 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
           <CompactBar
             visible={isCompactBarVisible}
             title={title}
-            count={collections.length}
+            count={filteredCollections.length}
             countLabel="collection"
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
@@ -312,6 +318,8 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
             onLayoutChange={setLayout}
             cardSize={cardSize}
             onCardSizeChange={setCardSize}
+            hideEmptyCollections={hideEmptyCollections}
+            onHideEmptyCollectionsChange={setHideEmptyCollections}
           />
 
           <div className="p-6">
@@ -341,6 +349,8 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                       onLayoutChange={setLayout}
                       cardSize={cardSize}
                       onCardSizeChange={setCardSize}
+                      hideEmptyCollections={hideEmptyCollections}
+                      onHideEmptyCollectionsChange={setHideEmptyCollections}
                     />
                   </div>
                 </div>
@@ -365,20 +375,22 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                       onLayoutChange={setLayout}
                       cardSize={cardSize}
                       onCardSizeChange={setCardSize}
+                      hideEmptyCollections={hideEmptyCollections}
+                      onHideEmptyCollectionsChange={setHideEmptyCollections}
                     />
                   </div>
                 </div>
 
                 {layout === 'list' ? (
                   <CollectionsListView
-                    collections={enrichedCollections}
+                    collections={filteredCollections}
                     loading={isPreloading}
                     preloadedAssets={loadedAssets}
                     preloadFailures={preloadFailures}
                   />
                 ) : layout === 'gallery' ? (
                   <CollectionsGalleryView
-                    collections={enrichedCollections}
+                    collections={filteredCollections}
                     selectedIds={selectedIds}
                     primaryId={primaryId}
                     onAssetClick={handleAssetClick}
@@ -407,7 +419,7 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                   </CardGrid>
                 ) : (
                   <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
-                    {enrichedCollections.map((collection) => {
+                    {filteredCollections.map((collection) => {
                       // Derive numberOfAssets based on thumbnailMode and real asset count
                       const getNumberOfAssets = (): CollectionCardAssetCount => {
                         if (thumbnailMode === 'asis') {
