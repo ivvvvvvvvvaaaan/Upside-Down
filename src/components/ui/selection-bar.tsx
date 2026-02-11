@@ -1,13 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { X, FolderPlus, Share2 } from 'lucide-react'
+import { X } from 'lucide-react'
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { NewCollectionModal } from './new-collection-modal'
+import type { Asset } from '@/lib/data'
 
 interface SelectionBarProps {
   selectedCount: number
+  selectedAssets?: Asset[]
   onClear: () => void
   onCreateCollection?: (name: string) => void
   onShare?: () => void
@@ -16,6 +19,7 @@ interface SelectionBarProps {
 
 export function SelectionBar({
   selectedCount,
+  selectedAssets = [],
   onClear,
   onCreateCollection,
   onShare,
@@ -66,7 +70,7 @@ export function SelectionBar({
             <Button
               variant="tertiary"
               compact
-              icon={<FolderPlus className="w-4 h-4" />}
+              icon={<Image src="/Icons/Icon-new.svg" alt="" width={16} height={16} />}
               onClick={() => setShowNewCollectionModal(true)}
               className="text-white hover:bg-white/20 hover:text-white"
             >
@@ -75,7 +79,7 @@ export function SelectionBar({
             <Button
               variant="tertiary"
               compact
-              icon={<Share2 className="w-4 h-4" />}
+              icon={<Image src="/Icons/Icons-share.svg" alt="" width={16} height={16} />}
               onClick={onShare}
               className="text-white hover:bg-white/20 hover:text-white"
             >
@@ -88,8 +92,8 @@ export function SelectionBar({
       <NewCollectionModal
         open={showNewCollectionModal}
         onOpenChange={setShowNewCollectionModal}
-        selectedCount={selectedCount}
         onCreateCollection={handleCreateCollection}
+        selectedAssets={selectedAssets}
       />
     </>
   )

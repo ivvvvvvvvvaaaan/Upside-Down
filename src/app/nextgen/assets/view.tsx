@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Stack,
   AssetCard,
@@ -68,6 +68,11 @@ export function AssetsView({ assets }: AssetsViewProps) {
   const handleMenuClick = (asset: Asset) => {
     console.log('Menu clicked for:', asset.name)
   }
+
+  // Get selected assets for the modal
+  const selectedAssets = useMemo(() => {
+    return assets.filter((asset) => selectedIds.has(asset.id))
+  }, [assets, selectedIds])
 
   // Determine grid columns based on card size
   const getColumns = () => {
@@ -201,6 +206,7 @@ export function AssetsView({ assets }: AssetsViewProps) {
 
         <SelectionBar
           selectedCount={selectedIds.size}
+          selectedAssets={selectedAssets}
           onClear={clearSelection}
           onCreateCollection={(name) => console.log('Create collection:', name, 'with assets:', Array.from(selectedIds))}
           onShare={() => console.log('Share:', Array.from(selectedIds))}

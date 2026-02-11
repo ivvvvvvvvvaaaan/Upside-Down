@@ -15,8 +15,10 @@ export interface ModalProps {
   open?: boolean
   /** Callback when open state changes */
   onOpenChange?: (open: boolean) => void
-  /** Width of the modal */
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  /** Width of the modal: xs=320px, sm=600px, md=980px, lg=1280px */
+  size?: 'xs' | 'sm' | 'md' | 'lg'
+  /** Custom width (overrides size) */
+  width?: number
   /** Modal content */
   children: React.ReactNode
 }
@@ -24,7 +26,8 @@ export interface ModalProps {
 function Modal({
   open,
   onOpenChange,
-  size = 'md',
+  size = 'sm',
+  width,
   children
 }: ModalProps) {
   const [internalOpen, setInternalOpen] = useState(false)
@@ -32,10 +35,10 @@ function Modal({
   const setIsOpen = onOpenChange ?? setInternalOpen
 
   const sizes = {
-    sm: 'w-72',
-    md: 'w-80',
-    lg: 'w-96',
-    xl: 'w-[420px]',
+    xs: 'w-[320px]',
+    sm: 'w-[600px]',
+    md: 'w-[980px]',
+    lg: 'w-[1280px]',
   }
 
   const handleEscape = useCallback((e: KeyboardEvent) => {
@@ -64,7 +67,8 @@ function Modal({
       />
       <Card
         variant="outlined"
-        className={cn('relative mx-4 shadow-high', sizes[size])}
+        className={cn('relative mx-4 shadow-high max-w-[calc(100vw-2rem)]', !width && sizes[size])}
+        style={width ? { width: `${width}px` } : undefined}
       >
         {children}
       </Card>

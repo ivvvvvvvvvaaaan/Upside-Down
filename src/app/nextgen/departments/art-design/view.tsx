@@ -190,6 +190,12 @@ export function ArtDesignView({ initialCollections }: ArtDesignViewProps) {
     console.log('Menu clicked for:', asset.name)
   }
 
+  // Get selected assets for the modal (from either flattened assets or collection assets)
+  const selectedAssets = useMemo(() => {
+    const sourceAssets = selectedCollection ? collectionAssets : flattenedAssets
+    return sourceAssets.filter((asset) => selectedIds.has(asset.id))
+  }, [flattenedAssets, collectionAssets, selectedCollection, selectedIds])
+
   const isCompactBarVisible = !selectedCollection && showCompactBar
 
   // Collection detail view (when a collection is selected)
@@ -292,6 +298,7 @@ export function ArtDesignView({ initialCollections }: ArtDesignViewProps) {
           {/* Selection action bar */}
           <SelectionBar
             selectedCount={selectedIds.size}
+            selectedAssets={selectedAssets}
             onClear={clearSelection}
             onCreateCollection={(name) => console.log('Create collection:', name, 'with assets:', Array.from(selectedIds))}
             onShare={() => console.log('Share:', Array.from(selectedIds))}
@@ -551,6 +558,7 @@ export function ArtDesignView({ initialCollections }: ArtDesignViewProps) {
         {/* Selection action bar */}
         <SelectionBar
           selectedCount={selectedIds.size}
+          selectedAssets={selectedAssets}
           onClear={clearSelection}
           onCreateCollection={(name) => console.log('Create collection:', name, 'with assets:', Array.from(selectedIds))}
           onShare={() => console.log('Share:', Array.from(selectedIds))}

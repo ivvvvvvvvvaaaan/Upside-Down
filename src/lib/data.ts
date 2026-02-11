@@ -782,6 +782,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Costume Design',
     },
     collectionIds: ['art-7', 'art-char-1'],
+    isKeyArt: true,
     created_at: '2024-02-06T09:00:00Z',
   },
   {
@@ -793,6 +794,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Costume Design',
     },
     collectionIds: ['art-7', 'art-char-2'],
+    isKeyArt: true,
     created_at: '2024-02-05T14:00:00Z',
   },
   {

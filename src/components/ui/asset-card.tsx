@@ -271,6 +271,7 @@ export function AssetCard({
           {/* Tag + Metadata - 2nd line with 8px gap */}
           <div className="flex items-center gap-2">
             {renderTypeTag()}
+            {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
             {renderMetadata()}
           </div>
         </div>

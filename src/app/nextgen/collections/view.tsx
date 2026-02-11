@@ -198,6 +198,27 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
     console.log('Menu clicked for:', asset.name)
   }
 
+  // Get all flattened assets for selection
+  const allAssets = useMemo(() => {
+    const seen = new Set<string>()
+    const assets: Asset[] = []
+    for (const collectionAssets of Object.values(loadedAssets)) {
+      for (const asset of collectionAssets) {
+        if (!seen.has(asset.id)) {
+          seen.add(asset.id)
+          assets.push(asset)
+        }
+      }
+    }
+    return assets
+  }, [loadedAssets])
+
+  // Get selected assets for the modal (from either all assets or collection assets)
+  const selectedAssets = useMemo(() => {
+    const sourceAssets = selectedCollection ? collectionAssets : allAssets
+    return sourceAssets.filter((asset) => selectedIds.has(asset.id))
+  }, [allAssets, collectionAssets, selectedCollection, selectedIds])
+
   // Collection detail view
   if (selectedCollection) {
     return (
@@ -297,6 +318,7 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
 
           <SelectionBar
             selectedCount={selectedIds.size}
+            selectedAssets={selectedAssets}
             onClear={clearSelection}
             onCreateCollection={(name) => console.log('Create collection:', name, 'with assets:', Array.from(selectedIds))}
             onShare={() => console.log('Share:', Array.from(selectedIds))}
@@ -508,6 +530,7 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
 
         <SelectionBar
           selectedCount={selectedIds.size}
+          selectedAssets={selectedAssets}
           onClear={clearSelection}
           onCreateCollection={(name) => console.log('Create collection:', name, 'with assets:', Array.from(selectedIds))}
           onShare={() => console.log('Share:', Array.from(selectedIds))}

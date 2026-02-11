@@ -2,22 +2,23 @@
 
 import { useState } from 'react'
 import { Modal } from './modal'
+import { Card } from './card'
 import { Input } from './input'
 import { Button } from './button'
-import { FolderPlus } from 'lucide-react'
+import type { Asset } from '@/lib/data'
 
 interface NewCollectionModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  selectedCount: number
   onCreateCollection: (name: string) => void
+  selectedAssets?: Asset[]
 }
 
 export function NewCollectionModal({
   open,
   onOpenChange,
-  selectedCount,
   onCreateCollection,
+  selectedAssets = [],
 }: NewCollectionModalProps) {
   const [collectionName, setCollectionName] = useState('')
 
@@ -35,23 +36,13 @@ export function NewCollectionModal({
   }
 
   return (
-    <Modal open={open} onOpenChange={onOpenChange} size="md">
-      <div className="p-4">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-            <FolderPlus className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-          </div>
-          <div>
-            <h2 className="text-body-1-bold text-foreground">New Collection</h2>
-            <p className="text-label-1-regular text-foreground-subtle">
-              {selectedCount} asset{selectedCount !== 1 ? 's' : ''} selected
-            </p>
-          </div>
-        </div>
+    <Modal open={open} onOpenChange={onOpenChange} size="sm">
+      <Card.Body>
+        <div className="flex flex-col gap-6">
+          <p className="text-body-2-bold text-foreground">
+            Create new collection
+          </p>
 
-        {/* Input */}
-        <div className="mb-4">
           <Input
             label="Collection name"
             placeholder="Enter collection name"
@@ -62,22 +53,39 @@ export function NewCollectionModal({
             }}
             autoFocus
           />
-        </div>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={handleClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleCreate}
-            disabled={!collectionName.trim()}
-          >
-            Create Collection
-          </Button>
+          {selectedAssets.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <p className="text-label-1-bold text-foreground-subtle">
+                {selectedAssets.length} item{selectedAssets.length !== 1 ? 's' : ''} to add
+              </p>
+              <ul className="flex flex-col gap-1 max-h-40 overflow-y-auto">
+                {selectedAssets.map((asset) => (
+                  <li
+                    key={asset.id}
+                    className="text-body-0-regular text-foreground truncate"
+                  >
+                    {asset.name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
-      </div>
+      </Card.Body>
+
+      <Card.Footer>
+        <Button variant="secondary" onClick={handleClose}>
+          Cancel
+        </Button>
+        <Button
+          variant="primary"
+          onClick={handleCreate}
+          disabled={!collectionName.trim()}
+        >
+          Create
+        </Button>
+      </Card.Footer>
     </Modal>
   )
 }
