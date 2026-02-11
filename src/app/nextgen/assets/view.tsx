@@ -202,7 +202,7 @@ export function AssetsView({ assets }: AssetsViewProps) {
         <SelectionBar
           selectedCount={selectedIds.size}
           onClear={clearSelection}
-          onAddToCollection={() => console.log('Add to collection:', Array.from(selectedIds))}
+          onCreateCollection={(name) => console.log('Create collection:', name, 'with assets:', Array.from(selectedIds))}
           onShare={() => console.log('Share:', Array.from(selectedIds))}
         />
       </div>

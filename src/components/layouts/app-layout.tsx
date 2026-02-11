@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { NavSidebar, PrimaryNavRail, ResizeHandle } from '@/components/ui'
+import { NavSidebar, PrimaryNavRail, ResizeHandle, ProjectBreadcrumb } from '@/components/ui'
 
 /**
  * App Layout
@@ -70,8 +70,11 @@ export function AppLayout({ children }: AppLayoutProps) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 min-h-0 overflow-hidden">
-        {children}
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        <ProjectBreadcrumb />
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {children}
+        </div>
       </div>
     </div>
   )

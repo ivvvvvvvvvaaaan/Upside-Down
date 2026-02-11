@@ -39,6 +39,9 @@ export type Asset = {
   // Collection relationships
   collectionIds?: string[]  // Which collections this asset appears in
 
+  // Special flags
+  isKeyArt?: boolean  // Mark asset as key art (hero imagery for the project)
+
   created_at?: string
 }
 
@@ -678,6 +681,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Concept Art',
     },
     collectionIds: ['art-1'],
+    isKeyArt: true,
     created_at: '2024-02-15T09:00:00Z',
   },
   {
@@ -689,6 +693,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Concept Art',
     },
     collectionIds: ['art-1', 'art-char-3'],
+    isKeyArt: true,
     created_at: '2024-02-14T11:30:00Z',
   },
   {
