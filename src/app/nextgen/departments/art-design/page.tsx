@@ -1,14 +1,8 @@
 import { getArtCollections } from '@/lib/data'
-import { CollectionCardsView } from '../../collections/view'
+import { ArtDesignView } from './view'
 
 export default async function ArtDesignPage() {
   const collections = await getArtCollections()
 
-  return (
-    <CollectionCardsView
-      title="Art & Design"
-      initialCollections={collections}
-      collectionType="all"
-    />
-  )
+  return <ArtDesignView initialCollections={collections} />
 }
