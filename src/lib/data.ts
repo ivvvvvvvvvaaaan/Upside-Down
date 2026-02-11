@@ -404,6 +404,114 @@ const MOCK_ART_COLLECTIONS: Collection[] = [
   },
 ]
 
+// VFX Department Collections
+const MOCK_VFX_COLLECTIONS: Collection[] = [
+  // VFX Type collections
+  {
+    id: 'vfx-1',
+    name: 'Creature FX',
+    type: 'art-type',
+    assetCount: 124,
+    mainImage: '/images/dept/Rectangle 16688-3.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-4.png',
+      '/images/dept/Rectangle 16688-6.png',
+    ],
+  },
+  {
+    id: 'vfx-2',
+    name: 'Environment FX',
+    type: 'art-type',
+    assetCount: 89,
+    mainImage: '/images/dept/Rectangle 16688-7.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-8.png',
+      '/images/dept/Rectangle 16688-9.png',
+    ],
+  },
+  {
+    id: 'vfx-3',
+    name: 'Particle Systems',
+    type: 'art-type',
+    assetCount: 156,
+    mainImage: '/images/dept/Rectangle 16688.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-1.png',
+      '/images/dept/Rectangle 16688-2.png',
+    ],
+  },
+  {
+    id: 'vfx-4',
+    name: 'Compositing',
+    type: 'art-type',
+    assetCount: 203,
+    mainImage: '/images/dept/Rectangle 16688-11.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16679.png',
+      '/images/dept/Rectangle 16678.png',
+    ],
+  },
+  {
+    id: 'vfx-5',
+    name: 'Matte Paintings',
+    type: 'art-type',
+    assetCount: 67,
+    mainImage: '/images/dept/Rectangle 16678.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688.png',
+      '/images/dept/Rectangle 16688-1.png',
+    ],
+  },
+  {
+    id: 'vfx-6',
+    name: '3D Assets',
+    type: 'art-type',
+    assetCount: 178,
+    mainImage: '/images/dept/Rectangle 16688-2.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-3.png',
+      '/images/dept/Rectangle 16688-4.png',
+    ],
+  },
+  // Character collections for VFX
+  {
+    id: 'vfx-char-1',
+    name: 'Demogorgon',
+    type: 'character',
+    assetCount: 94,
+    mainImage: '/images/dept/Rectangle 16688-6.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-7.png',
+      '/images/dept/Rectangle 16688-8.png',
+    ],
+    avatarSrc: 'https://i.pravatar.cc/150?img=70',
+  },
+  {
+    id: 'vfx-char-2',
+    name: 'Mind Flayer',
+    type: 'character',
+    assetCount: 112,
+    mainImage: '/images/dept/Rectangle 16688-9.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-11.png',
+      '/images/dept/Rectangle 16679.png',
+    ],
+    avatarSrc: 'https://i.pravatar.cc/150?img=62',
+  },
+  {
+    id: 'vfx-char-3',
+    name: 'Eleven',
+    type: 'character',
+    assetCount: 78,
+    mainImage: '/images/dept/Rectangle 16688.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-1.png',
+      '/images/dept/Rectangle 16688-2.png',
+    ],
+    avatarSrc: 'https://i.pravatar.cc/150?img=5',
+  },
+]
+
 const MOCK_ASSETS: Asset[] = [
   // SHOT examples
   {
@@ -704,6 +812,149 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['art-6'],
     created_at: '2024-02-03T15:00:00Z',
   },
+
+  // VFX Department assets
+  {
+    id: 'vfx-asset-1',
+    name: 'demogorgon_rig_v3.mb',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-3.png',
+    videoMeta: {
+      duration: '00:45',
+      typeTag: 'VFX Preview',
+    },
+    collectionIds: ['vfx-1', 'vfx-char-1'],
+    created_at: '2024-02-20T09:00:00Z',
+  },
+  {
+    id: 'vfx-asset-2',
+    name: 'demogorgon_texture_maps.zip',
+    type: 'image',
+    thumbnail: '/images/dept/Rectangle 16688-4.png',
+    imageMeta: {
+      typeTag: 'Creature FX',
+    },
+    collectionIds: ['vfx-1', 'vfx-char-1'],
+    created_at: '2024-02-19T14:30:00Z',
+  },
+  {
+    id: 'vfx-asset-3',
+    name: 'upside_down_fog_sim.hip',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-6.png',
+    videoMeta: {
+      duration: '01:23',
+      typeTag: 'VFX Preview',
+    },
+    collectionIds: ['vfx-2', 'vfx-3'],
+    created_at: '2024-02-18T10:00:00Z',
+  },
+  {
+    id: 'vfx-asset-4',
+    name: 'portal_particles_v2.hip',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-7.png',
+    videoMeta: {
+      duration: '00:32',
+      typeTag: 'VFX Preview',
+    },
+    collectionIds: ['vfx-3'],
+    created_at: '2024-02-17T11:00:00Z',
+  },
+  {
+    id: 'vfx-asset-5',
+    name: 'eleven_powers_comp_v4.nk',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-8.png',
+    videoMeta: {
+      duration: '00:58',
+      typeTag: 'VFX Preview',
+    },
+    collectionIds: ['vfx-4', 'vfx-char-3'],
+    created_at: '2024-02-16T09:30:00Z',
+  },
+  {
+    id: 'vfx-asset-6',
+    name: 'hawkins_lab_destruction_comp.nk',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-9.png',
+    videoMeta: {
+      duration: '02:15',
+      typeTag: 'VFX Preview',
+    },
+    collectionIds: ['vfx-4'],
+    created_at: '2024-02-15T15:00:00Z',
+  },
+  {
+    id: 'vfx-asset-7',
+    name: 'upside_down_matte_v3.psd',
+    type: 'image',
+    thumbnail: '/images/dept/Rectangle 16688-11.png',
+    imageMeta: {
+      typeTag: 'Matte Painting',
+    },
+    collectionIds: ['vfx-5'],
+    created_at: '2024-02-14T10:00:00Z',
+  },
+  {
+    id: 'vfx-asset-8',
+    name: 'hawkins_skyline_matte.psd',
+    type: 'image',
+    thumbnail: '/images/dept/Rectangle 16679.png',
+    imageMeta: {
+      typeTag: 'Matte Painting',
+    },
+    collectionIds: ['vfx-5'],
+    created_at: '2024-02-13T11:30:00Z',
+  },
+  {
+    id: 'vfx-asset-9',
+    name: 'mind_flayer_model_v5.mb',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16678.png',
+    videoMeta: {
+      duration: '01:05',
+      typeTag: 'VFX Preview',
+    },
+    collectionIds: ['vfx-6', 'vfx-char-2'],
+    created_at: '2024-02-12T09:00:00Z',
+  },
+  {
+    id: 'vfx-asset-10',
+    name: 'starcourt_mall_destruction.mb',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688.png',
+    videoMeta: {
+      duration: '01:45',
+      typeTag: 'VFX Preview',
+    },
+    collectionIds: ['vfx-6'],
+    created_at: '2024-02-11T14:00:00Z',
+  },
+  {
+    id: 'vfx-asset-11',
+    name: 'demodogs_pack_rig.mb',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-1.png',
+    videoMeta: {
+      duration: '00:52',
+      typeTag: 'VFX Preview',
+    },
+    collectionIds: ['vfx-1', 'vfx-6'],
+    created_at: '2024-02-10T10:30:00Z',
+  },
+  {
+    id: 'vfx-asset-12',
+    name: 'eleven_nosebleed_effect.nk',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-2.png',
+    videoMeta: {
+      duration: '00:18',
+      typeTag: 'VFX Preview',
+    },
+    collectionIds: ['vfx-4', 'vfx-char-3'],
+    created_at: '2024-02-09T16:00:00Z',
+  },
 ]
 
 export async function getAssets(): Promise<Asset[]> {
@@ -796,4 +1047,18 @@ export async function getArtCollections(): Promise<Collection[]> {
 
   // TODO: Implement Supabase art collections query when schema is ready
   return MOCK_ART_COLLECTIONS
+}
+
+export async function getVfxCollections(): Promise<Collection[]> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const isLive = supabaseUrl && supabaseUrl.startsWith('http')
+
+  if (!isLive) {
+    // Simulate network delay for realism
+    await new Promise(resolve => setTimeout(resolve, 500))
+    return MOCK_VFX_COLLECTIONS
+  }
+
+  // TODO: Implement Supabase VFX collections query when schema is ready
+  return MOCK_VFX_COLLECTIONS
 }
