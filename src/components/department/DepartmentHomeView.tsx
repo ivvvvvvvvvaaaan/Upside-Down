@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react'
 import {
   Stack,
   Text,
-  CollectionCard,
   AssetCard,
   Button,
   CardGrid,
@@ -15,16 +14,22 @@ import {
   HawkinsSearch,
   CompactBar,
   SelectionBar,
+  Facepile,
+  FileExplorer,
+  SettingsPanel,
+  SettingGroup,
+  SettingToggle,
 } from '@/components/ui'
+import type { FacepileUser } from '@/components/ui/facepile'
+import type { FileNode } from '@/components/ui/file-explorer'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import { AppLayout } from '@/components/layouts'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAssetSelection, useCollectionAssets, useViewPreferences, useCompactBar } from '@/hooks'
+import { useAssetSelection, useCollectionAssets, useViewPreferences, useCompactBar, useDepartmentAccess } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
-import type { CollectionCardAssetCount } from '@/components/ui/collection-card'
-import type { DepartmentConfig, EnrichedCollection } from './types'
+import type { DepartmentConfig } from './types'
 
 interface DepartmentHomeViewProps {
   config: DepartmentConfig
@@ -33,11 +38,85 @@ interface DepartmentHomeViewProps {
 
 const SKELETON_ASSET_COUNT = 12
 
+// Mock department members
+const MOCK_DEPARTMENT_MEMBERS: FacepileUser[] = [
+  { id: '1', name: 'Sarah Chen', avatarSrc: 'https://i.pravatar.cc/150?img=1' },
+  { id: '2', name: 'Marcus Johnson', avatarSrc: 'https://i.pravatar.cc/150?img=3' },
+  { id: '3', name: 'Emily Rodriguez', avatarSrc: 'https://i.pravatar.cc/150?img=5' },
+  { id: '4', name: 'David Kim', avatarSrc: 'https://i.pravatar.cc/150?img=8' },
+  { id: '5', name: 'Lisa Wang', avatarSrc: 'https://i.pravatar.cc/150?img=9' },
+  { id: '6', name: 'James Miller', avatarSrc: 'https://i.pravatar.cc/150?img=11' },
+  { id: '7', name: 'Anna Thompson', avatarSrc: 'https://i.pravatar.cc/150?img=16' },
+]
+
+// Mock file structure
+const MOCK_FILES: FileNode[] = [
+  {
+    id: 'f1',
+    name: 'Concept Art',
+    type: 'folder',
+    modifiedAt: '2024-03-15T10:30:00Z',
+    children: [
+      {
+        id: 'f1-1',
+        name: 'Characters',
+        type: 'folder',
+        modifiedAt: '2024-03-14T09:00:00Z',
+        children: [
+          { id: 'f1-1-1', name: 'eleven_concept_v3.psd', type: 'file', extension: 'psd', size: 45000000, modifiedAt: '2024-03-14T09:00:00Z', assetized: true },
+          { id: 'f1-1-2', name: 'hopper_uniform_final.psd', type: 'file', extension: 'psd', size: 38000000, modifiedAt: '2024-03-13T14:30:00Z', assetized: true },
+          { id: 'f1-1-3', name: 'demogorgon_iterations.psd', type: 'file', extension: 'psd', size: 120000000, modifiedAt: '2024-03-12T11:00:00Z', assetized: false },
+        ],
+      },
+      {
+        id: 'f1-2',
+        name: 'Environments',
+        type: 'folder',
+        modifiedAt: '2024-03-10T16:00:00Z',
+        children: [
+          { id: 'f1-2-1', name: 'upside_down_forest.psd', type: 'file', extension: 'psd', size: 85000000, modifiedAt: '2024-03-10T16:00:00Z', assetized: true },
+          { id: 'f1-2-2', name: 'hawkins_lab_interior.psd', type: 'file', extension: 'psd', size: 62000000, modifiedAt: '2024-03-09T10:00:00Z', assetized: true },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'f2',
+    name: 'Storyboards',
+    type: 'folder',
+    modifiedAt: '2024-03-12T14:00:00Z',
+    children: [
+      { id: 'f2-1', name: 'ep01_seq12_boards.pdf', type: 'file', extension: 'pdf', size: 15000000, modifiedAt: '2024-03-12T14:00:00Z', assetized: true },
+      { id: 'f2-2', name: 'ep01_seq15_boards.pdf', type: 'file', extension: 'pdf', size: 12000000, modifiedAt: '2024-03-11T09:30:00Z', assetized: false },
+      { id: 'f2-3', name: 'chase_sequence_rough.pdf', type: 'file', extension: 'pdf', size: 8000000, modifiedAt: '2024-03-10T11:00:00Z', assetized: false },
+    ],
+  },
+  {
+    id: 'f3',
+    name: 'Reference',
+    type: 'folder',
+    modifiedAt: '2024-03-08T09:00:00Z',
+    children: [
+      { id: 'f3-1', name: '1980s_mall_photos.zip', type: 'file', extension: 'zip', size: 250000000, modifiedAt: '2024-03-08T09:00:00Z', assetized: false },
+      { id: 'f3-2', name: 'retro_arcade_ref.zip', type: 'file', extension: 'zip', size: 180000000, modifiedAt: '2024-03-07T15:00:00Z', assetized: false },
+    ],
+  },
+  { id: 'f4', name: 'color_palette_s5.ai', type: 'file', extension: 'ai', size: 2500000, modifiedAt: '2024-03-06T10:00:00Z', assetized: false },
+  { id: 'f5', name: 'asset_naming_conventions.pdf', type: 'file', extension: 'pdf', size: 500000, modifiedAt: '2024-02-28T14:00:00Z', assetized: false },
+]
+
+// Department labels for settings panel
+const DEPARTMENT_LABELS: Record<string, string> = {
+  'art-design': 'Art & Design',
+  'vfx': 'VFX',
+}
+
 export function DepartmentHomeView({ config, initialCollections }: DepartmentHomeViewProps) {
   const [collections] = useState<Collection[]>(initialCollections)
   const pathname = usePathname()
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
+  const { hasAccess, setAccess, allDepartments, accessSettings } = useDepartmentAccess()
   const {
     selectedCollection,
     assets: collectionAssets,
@@ -120,36 +199,17 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
     return assets
   }, [loadedAssets])
 
-  // Enrich collections with thumbnails
-  const enrichedCollections = useMemo((): EnrichedCollection[] => {
-    if (isPreloading) return collections
+  // Recent assets (sorted by date, limited)
+  const recentAssets = useMemo(() => {
+    return [...flattenedAssets]
+      .sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
+        return dateB - dateA
+      })
+      .slice(0, 12)
+  }, [flattenedAssets])
 
-    return collections.map((collection) => {
-      const assets = loadedAssets[collection.id] || []
-      const realAssetCount = assets.length
-      const assetThumbnails = assets
-        .map((a) => a.thumbnail)
-        .filter((t): t is string => !!t)
-
-      return {
-        ...collection,
-        assetCount: realAssetCount,
-        mainImage: assetThumbnails[0] || undefined,
-        thumbnailImages: assetThumbnails.slice(1, 3),
-      }
-    })
-  }, [collections, loadedAssets, isPreloading])
-
-  // Group collections by type
-  const collectionsByType = useMemo(() => {
-    const grouped: Record<string, EnrichedCollection[]> = {}
-    for (const type of config.smartCollectionTypes) {
-      grouped[type] = enrichedCollections.filter(c => c.type === type)
-    }
-    // User collections
-    grouped['user'] = enrichedCollections.filter(c => c.type === config.userCollectionType)
-    return grouped
-  }, [enrichedCollections, config.smartCollectionTypes, config.userCollectionType])
 
   const handleMenuClick = (asset: Asset) => {
     console.log('Menu clicked for:', asset.name)
@@ -163,18 +223,44 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
 
   const isCompactBarVisible = !selectedCollection && showCompactBar
 
-  const getNumberOfAssets = (count: number): CollectionCardAssetCount => {
-    if (count === 0) return 'None'
-    if (count === 1) return 'One'
-    if (count === 2) return 'Two'
-    return 'Many'
-  }
 
-  const typeLabels: Record<string, string> = {
-    character: 'Characters',
-    location: 'Locations',
-    scene: 'Scenes',
-    user: 'My Collections',
+  // Check department access
+  const hasDepartmentAccess = hasAccess(config.id)
+
+  // Access denied view
+  if (!hasDepartmentAccess) {
+    return (
+      <AppLayout>
+        <div className="h-full flex flex-col">
+          <div className="flex-1 min-h-0 overflow-auto">
+            <div className="p-6">
+              <div className="max-w-7xl mx-auto">
+                <div className="flex items-center justify-center h-96">
+                  <EmptyState
+                    title="Access Restricted"
+                    message={`You don't have access to the ${config.name} department. Contact your administrator to request access.`}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Settings Panel - still visible to toggle access */}
+          <SettingsPanel>
+            <SettingGroup label="Department Access">
+              {allDepartments.map((deptId) => (
+                <SettingToggle
+                  key={deptId}
+                  label={DEPARTMENT_LABELS[deptId] || deptId}
+                  checked={accessSettings[deptId] ?? true}
+                  onChange={(checked) => setAccess(deptId, checked)}
+                />
+              ))}
+            </SettingGroup>
+          </SettingsPanel>
+        </div>
+      </AppLayout>
+    )
   }
 
   // Collection detail view
@@ -322,12 +408,15 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
                   </div>
                 </div>
 
-                {/* Header */}
+                {/* Header with facepile */}
                 <div ref={headerRef} className="flex flex-col gap-3">
-                  <PageHeader
-                    title={config.name}
-                    description={config.description}
-                  />
+                  <div className="flex items-start justify-between gap-4">
+                    <PageHeader
+                      title={config.name}
+                      description={config.description}
+                    />
+                    <Facepile users={MOCK_DEPARTMENT_MEMBERS} max={5} size="sm" />
+                  </div>
                   <div className="hidden md:flex items-center gap-2">
                     <HawkinsSearch
                       value={searchQuery}
@@ -348,20 +437,20 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
                   </div>
                 </div>
 
-                {/* Recent Assets */}
+                {/* Recent Assets - one row */}
                 <section>
                   <Text variant="headline-2" weight="bold" className="mb-4">
                     Recent
                   </Text>
                   {isPreloading ? (
                     <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
-                      {[...Array(6)].map((_, i) => (
+                      {[...Array(cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4)].map((_, i) => (
                         <AssetCard key={i} loading />
                       ))}
                     </CardGrid>
                   ) : recentAssets.length > 0 ? (
                     <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
-                      {recentAssets.map((asset) => (
+                      {recentAssets.slice(0, cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4).map((asset) => (
                         <AssetCard
                           key={asset.id}
                           asset={asset}
@@ -377,106 +466,33 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
                   )}
                 </section>
 
-                {/* Collections grouped by type */}
-                {config.smartCollectionTypes.map((type) => {
-                  const typeCollections = collectionsByType[type] || []
-                  if (typeCollections.length === 0 && !isPreloading) return null
-
-                  return (
-                    <section key={type}>
-                      <Text variant="headline-2" weight="bold" className="mb-4">
-                        {typeLabels[type]}
-                      </Text>
-                      {isPreloading ? (
-                        <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
-                          {[...Array(4)].map((_, i) => (
-                            <CollectionCard
-                              key={i}
-                              title=""
-                              assetCount={0}
-                              type={type}
-                              state="Loading"
-                              numberOfAssets="None"
-                              size={cardSize}
-                            />
-                          ))}
-                        </CardGrid>
-                      ) : (
-                        <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
-                          {typeCollections.map((collection) => (
-                            <CollectionCard
-                              key={collection.id}
-                              title={collection.name}
-                              assetCount={collection.assetCount}
-                              type={collection.type}
-                              mainImage={collection.mainImage}
-                              thumbnailImages={collection.thumbnailImages}
-                              avatarSrc={collection.avatarSrc}
-                              avatarName={collection.name}
-                              state="Normal"
-                              numberOfAssets={getNumberOfAssets(collection.assetCount)}
-                              size={cardSize}
-                              onClick={() => loadCollection(collection)}
-                            />
-                          ))}
-                        </CardGrid>
-                      )}
-                    </section>
-                  )
-                })}
-
-                {/* User collections */}
-                {(collectionsByType['user']?.length > 0 || isPreloading) && (
-                  <section>
-                    <Text variant="headline-2" weight="bold" className="mb-4">
-                      {typeLabels['user']}
-                    </Text>
-                    {isPreloading ? (
-                      <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
-                        {[...Array(4)].map((_, i) => (
-                          <CollectionCard
-                            key={i}
-                            title=""
-                            assetCount={0}
-                            type={config.userCollectionType}
-                            state="Loading"
-                            numberOfAssets="None"
-                            size={cardSize}
-                          />
-                        ))}
-                      </CardGrid>
-                    ) : (
-                      <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
-                        {collectionsByType['user'].map((collection) => (
-                          <CollectionCard
-                            key={collection.id}
-                            title={collection.name}
-                            assetCount={collection.assetCount}
-                            type={collection.type}
-                            mainImage={collection.mainImage}
-                            thumbnailImages={collection.thumbnailImages}
-                            state="Normal"
-                            numberOfAssets={getNumberOfAssets(collection.assetCount)}
-                            size={cardSize}
-                            onClick={() => loadCollection(collection)}
-                          />
-                        ))}
-                      </CardGrid>
-                    )}
-                  </section>
-                )}
-
-                {/* Empty state if no collections */}
-                {!isPreloading && enrichedCollections.length === 0 && (
-                  <EmptyState
-                    title="No collections found"
-                    message={`No collections available in ${config.name}`}
+                {/* Files */}
+                <section>
+                  <FileExplorer
+                    title="Files"
+                    files={MOCK_FILES}
+                    onFileClick={(file) => console.log('File clicked:', file.name)}
+                    onFolderClick={(folder) => console.log('Folder clicked:', folder.name)}
                   />
-                )}
+                </section>
               </Stack>
             </div>
           </div>
         </div>
+
+        {/* Settings Panel */}
+        <SettingsPanel>
+          <SettingGroup label="Department Access">
+            {allDepartments.map((deptId) => (
+              <SettingToggle
+                key={deptId}
+                label={DEPARTMENT_LABELS[deptId] || deptId}
+                checked={accessSettings[deptId] ?? true}
+                onChange={(checked) => setAccess(deptId, checked)}
+              />
+            ))}
+          </SettingGroup>
+        </SettingsPanel>
 
         <SelectionBar
           selectedCount={selectedIds.size}

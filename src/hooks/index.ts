@@ -8,3 +8,6 @@ export { useViewPreferences } from './useViewPreferences'
 export type { UseViewPreferencesReturn, CollectionViewType } from './useViewPreferences'
 
 export { useCompactBar } from './use-compact-bar'
+
+export { useDepartmentAccess } from './useDepartmentAccess'
+export type { UseDepartmentAccessReturn } from './useDepartmentAccess'
