@@ -182,9 +182,10 @@ function DynamicNavigation({ navConfig }: { navConfig: NavConfig }) {
 function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
   return (
     <>
-      {/* All Assets - Top Level */}
+      {/* Top Level Items */}
       <div className="pt-4 pb-2">
-        <div className="px-3">
+        <div className="px-3 space-y-1">
+          <NavLink href="/nextgen" label="Search" />
           <NavLink href="/nextgen/assets" label="All Assets" />
         </div>
       </div>
