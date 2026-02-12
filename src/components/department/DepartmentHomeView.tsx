@@ -25,7 +25,7 @@ import type { FacepileUser } from '@/components/ui/facepile'
 import type { FileNode } from '@/components/ui/file-explorer'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import { AppLayout } from '@/components/layouts'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAssetSelection, useCollectionAssets, useViewPreferences, useCompactBar, useDepartmentAccess } from '@/hooks'
@@ -111,6 +111,9 @@ const MOCK_FILES: FileNode[] = [
 const DEPARTMENT_LABELS: Record<string, string> = {
   'art-design': 'Art & Design',
   'vfx': 'VFX',
+  'camera': 'Camera',
+  'editorial': 'Editorial',
+  'audio-sound': 'Audio & Sound',
 }
 
 // Access level options for settings
@@ -151,6 +154,7 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
     { field: 'name', direction: 'asc' }
   ])
   const [searchQuery, setSearchQuery] = useState('')
+  const [recentExpanded, setRecentExpanded] = useState(false)
 
   const filterOptions = [
     { id: 'type', label: 'Type' },
@@ -528,11 +532,23 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
                   </div>
                 </div>
 
-                {/* Recent Assets - one row */}
+                {/* Recent Assets - expandable */}
                 <section>
-                  <Text variant="headline-2" weight="bold" className="mb-4">
-                    Recent
-                  </Text>
+                  <div className="flex items-center justify-between mb-4">
+                    <Text variant="headline-2" weight="bold">
+                      Recent
+                    </Text>
+                    {recentAssets.length > (cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4) && (
+                      <Button
+                        variant="tertiary"
+                        compact
+                        onClick={() => setRecentExpanded(!recentExpanded)}
+                        icon={recentExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      >
+                        {recentExpanded ? 'Show Less' : `See All (${recentAssets.length})`}
+                      </Button>
+                    )}
+                  </div>
                   {isPreloading ? (
                     <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
                       {[...Array(cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4)].map((_, i) => (
@@ -541,7 +557,10 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
                     </CardGrid>
                   ) : recentAssets.length > 0 ? (
                     <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
-                      {recentAssets.slice(0, cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4).map((asset) => (
+                      {(recentExpanded
+                        ? recentAssets
+                        : recentAssets.slice(0, cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4)
+                      ).map((asset) => (
                         <AssetCard
                           key={asset.id}
                           asset={asset}
