@@ -1,6 +1,6 @@
 import type { Collection } from '@/lib/data'
 
-export type DepartmentId = 'art-design' | 'vfx'
+export type DepartmentId = 'art-design' | 'vfx' | 'camera' | 'editorial' | 'audio-sound'
 
 export type SmartCollectionType = 'character' | 'location' | 'scene'
 

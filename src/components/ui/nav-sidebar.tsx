@@ -20,8 +20,11 @@ import {
   Music,
   Database,
   Layout,
+  Lock,
   type LucideIcon,
 } from 'lucide-react'
+import { useDepartmentAccess } from '@/hooks'
+import type { DepartmentId } from '@/components/department/types'
 import { cn } from '@/lib/utils'
 import { Tag } from './tag'
 import type { NavConfig, NavSection, NavItem } from '@/types/navigation'
@@ -64,11 +67,14 @@ export interface NavSidebarProps {
   onNewCollection?: () => void
 }
 
+type AccessIndicator = 'none' | 'partial' | 'full'
+
 interface NavLinkProps {
   href: string
   label: string
   badge?: number
   icon?: React.ReactNode
+  accessLevel?: AccessIndicator
 }
 
 interface CollapsibleSectionProps {
@@ -77,7 +83,7 @@ interface CollapsibleSectionProps {
   children: React.ReactNode
 }
 
-function NavLink({ href, label, badge, icon }: NavLinkProps) {
+function NavLink({ href, label, badge, icon, accessLevel = 'full' }: NavLinkProps) {
   const pathname = usePathname()
   const isActive = pathname === href
 
@@ -95,9 +101,17 @@ function NavLink({ href, label, badge, icon }: NavLinkProps) {
         {icon}
         <span className="truncate">{label}</span>
       </span>
-      {badge !== undefined && badge > 0 && (
-        <Tag size="compact" type="announcement">{badge}</Tag>
-      )}
+      <span className="flex items-center gap-1.5">
+        {accessLevel === 'none' && (
+          <Lock className="w-3 h-3 text-foreground-dim flex-shrink-0" />
+        )}
+        {accessLevel === 'partial' && (
+          <Users className="w-3 h-3 text-foreground-dim flex-shrink-0" />
+        )}
+        {badge !== undefined && badge > 0 && (
+          <Tag size="compact" type="announcement">{badge}</Tag>
+        )}
+      </span>
     </Link>
   )
 }
@@ -189,7 +203,18 @@ function SectionHeader({ title }: { title: string }) {
   )
 }
 
+// Department info for nav items
+const DEPARTMENT_NAV_ITEMS: { href: string; label: string; id: DepartmentId }[] = [
+  { href: '/nextgen/departments/art-design', label: 'Art & Design', id: 'art-design' },
+  { href: '/nextgen/departments/camera', label: 'Camera', id: 'camera' },
+  { href: '/nextgen/departments/editorial', label: 'Editorial', id: 'editorial' },
+  { href: '/nextgen/departments/vfx', label: 'VFX', id: 'vfx' },
+  { href: '/nextgen/departments/audio-sound', label: 'Audio & Sound', id: 'audio-sound' },
+]
+
 function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
+  const { getAccessLevel } = useDepartmentAccess()
+
   return (
     <>
       {/* Top Level Items */}
@@ -204,11 +229,14 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
       <div className="py-2">
         <SectionHeader title="Departments" />
         <div className="px-3 space-y-1">
-          <NavLink href="/nextgen/departments/art-design" label="Art & Design" />
-          <NavLink href="/nextgen/departments/camera" label="Camera" />
-          <NavLink href="/nextgen/departments/editorial" label="Editorial" />
-          <NavLink href="/nextgen/departments/vfx" label="VFX" />
-          <NavLink href="/nextgen/departments/audio-sound" label="Audio & Sound" />
+          {DEPARTMENT_NAV_ITEMS.map((item) => (
+            <NavLink
+              key={item.href}
+              href={item.href}
+              label={item.label}
+              accessLevel={getAccessLevel(item.id)}
+            />
+          ))}
         </div>
       </div>
 

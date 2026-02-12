@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 
 // Asset Types
-export type AssetType = 'shot' | 'video' | 'image' | 'text'
+export type AssetType = 'shot' | 'video' | 'image' | 'text' | 'audio'
 
 export type ShotMetadata = {
   scene?: string      // e.g., "Scene 07-01"
@@ -24,6 +24,11 @@ export type TextMetadata = {
   typeTag?: string    // e.g., "Virtual Art", "Script"
 }
 
+export type AudioMetadata = {
+  duration?: string   // e.g., "02:37"
+  typeTag?: string    // e.g., "Production", "SFX", "Foley", "Score"
+}
+
 export type Asset = {
   id: string
   name: string
@@ -35,6 +40,7 @@ export type Asset = {
   videoMeta?: VideoMetadata
   imageMeta?: ImageMetadata
   textMeta?: TextMetadata
+  audioMeta?: AudioMetadata
 
   // Collection relationships
   collectionIds?: string[]  // Which collections this asset appears in
@@ -515,6 +521,216 @@ const MOCK_VFX_COLLECTIONS: Collection[] = [
   },
 ]
 
+// Camera Department Collections
+const MOCK_CAMERA_COLLECTIONS: Collection[] = [
+  {
+    id: 'cam-1',
+    name: 'Dailies',
+    type: 'art-type',
+    assetCount: 234,
+    mainImage: '/images/dept/Rectangle 16688.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-1.png',
+      '/images/dept/Rectangle 16688-2.png',
+    ],
+  },
+  {
+    id: 'cam-2',
+    name: 'Camera Tests',
+    type: 'art-type',
+    assetCount: 45,
+    mainImage: '/images/dept/Rectangle 16688-3.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-4.png',
+      '/images/dept/Rectangle 16688-6.png',
+    ],
+  },
+  {
+    id: 'cam-3',
+    name: 'Lens Tests',
+    type: 'art-type',
+    assetCount: 28,
+    mainImage: '/images/dept/Rectangle 16688-7.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-8.png',
+      '/images/dept/Rectangle 16688-9.png',
+    ],
+  },
+  {
+    id: 'cam-4',
+    name: 'B-Roll',
+    type: 'art-type',
+    assetCount: 156,
+    mainImage: '/images/dept/Rectangle 16688-11.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16679.png',
+      '/images/dept/Rectangle 16678.png',
+    ],
+  },
+  {
+    id: 'cam-5',
+    name: 'Aerial Footage',
+    type: 'art-type',
+    assetCount: 67,
+    mainImage: '/images/dept/Rectangle 16678.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688.png',
+      '/images/dept/Rectangle 16688-1.png',
+    ],
+  },
+  {
+    id: 'cam-6',
+    name: 'Steadicam',
+    type: 'art-type',
+    assetCount: 89,
+    mainImage: '/images/dept/Rectangle 16688-2.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-3.png',
+      '/images/dept/Rectangle 16688-4.png',
+    ],
+  },
+]
+
+// Editorial Department Collections
+const MOCK_EDITORIAL_COLLECTIONS: Collection[] = [
+  {
+    id: 'edit-1',
+    name: 'Rough Cuts',
+    type: 'art-type',
+    assetCount: 24,
+    mainImage: '/images/dept/Rectangle 16688-6.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-7.png',
+      '/images/dept/Rectangle 16688-8.png',
+    ],
+  },
+  {
+    id: 'edit-2',
+    name: 'Assembly Edits',
+    type: 'art-type',
+    assetCount: 18,
+    mainImage: '/images/dept/Rectangle 16688-9.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-11.png',
+      '/images/dept/Rectangle 16679.png',
+    ],
+  },
+  {
+    id: 'edit-3',
+    name: 'Fine Cuts',
+    type: 'art-type',
+    assetCount: 12,
+    mainImage: '/images/dept/Rectangle 16678.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688.png',
+      '/images/dept/Rectangle 16688-1.png',
+    ],
+  },
+  {
+    id: 'edit-4',
+    name: 'Color Passes',
+    type: 'art-type',
+    assetCount: 36,
+    mainImage: '/images/dept/Rectangle 16688-2.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-3.png',
+      '/images/dept/Rectangle 16688-4.png',
+    ],
+  },
+  {
+    id: 'edit-5',
+    name: 'VFX Temp',
+    type: 'art-type',
+    assetCount: 42,
+    mainImage: '/images/dept/Rectangle 16688-6.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-7.png',
+      '/images/dept/Rectangle 16688-8.png',
+    ],
+  },
+  {
+    id: 'edit-6',
+    name: 'Final Delivery',
+    type: 'art-type',
+    assetCount: 8,
+    mainImage: '/images/dept/Rectangle 16688-9.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-11.png',
+      '/images/dept/Rectangle 16679.png',
+    ],
+  },
+]
+
+// Audio & Sound Department Collections
+const MOCK_AUDIO_COLLECTIONS: Collection[] = [
+  {
+    id: 'audio-1',
+    name: 'Production Sound',
+    type: 'art-type',
+    assetCount: 189,
+    mainImage: '/images/dept/Rectangle 16688.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-1.png',
+      '/images/dept/Rectangle 16688-2.png',
+    ],
+  },
+  {
+    id: 'audio-2',
+    name: 'Sound Effects',
+    type: 'art-type',
+    assetCount: 312,
+    mainImage: '/images/dept/Rectangle 16688-3.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-4.png',
+      '/images/dept/Rectangle 16688-6.png',
+    ],
+  },
+  {
+    id: 'audio-3',
+    name: 'Foley',
+    type: 'art-type',
+    assetCount: 156,
+    mainImage: '/images/dept/Rectangle 16688-7.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-8.png',
+      '/images/dept/Rectangle 16688-9.png',
+    ],
+  },
+  {
+    id: 'audio-4',
+    name: 'Ambient/Atmos',
+    type: 'art-type',
+    assetCount: 78,
+    mainImage: '/images/dept/Rectangle 16688-11.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16679.png',
+      '/images/dept/Rectangle 16678.png',
+    ],
+  },
+  {
+    id: 'audio-5',
+    name: 'Music Score',
+    type: 'art-type',
+    assetCount: 45,
+    mainImage: '/images/dept/Rectangle 16678.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688.png',
+      '/images/dept/Rectangle 16688-1.png',
+    ],
+  },
+  {
+    id: 'audio-6',
+    name: 'ADR/Dialogue',
+    type: 'art-type',
+    assetCount: 234,
+    mainImage: '/images/dept/Rectangle 16688-2.png',
+    thumbnailImages: [
+      '/images/dept/Rectangle 16688-3.png',
+      '/images/dept/Rectangle 16688-4.png',
+    ],
+  },
+]
+
 const MOCK_ASSETS: Asset[] = [
   // SHOT examples
   {
@@ -962,6 +1178,408 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['vfx-4', 'vfx-char-3'],
     created_at: '2024-02-09T16:00:00Z',
   },
+
+  // Camera Department assets
+  {
+    id: 'cam-asset-1',
+    name: 'ep01_scene12_take3.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688.png',
+    videoMeta: {
+      duration: '02:15',
+      typeTag: 'Dailies',
+    },
+    collectionIds: ['cam-1'],
+    created_at: '2024-03-01T09:00:00Z',
+  },
+  {
+    id: 'cam-asset-2',
+    name: 'ep01_scene08_take1.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-1.png',
+    videoMeta: {
+      duration: '03:42',
+      typeTag: 'Dailies',
+    },
+    collectionIds: ['cam-1'],
+    created_at: '2024-03-01T10:30:00Z',
+  },
+  {
+    id: 'cam-asset-3',
+    name: 'arri_alexa_mini_test.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-2.png',
+    videoMeta: {
+      duration: '01:30',
+      typeTag: 'Camera Test',
+    },
+    collectionIds: ['cam-2'],
+    created_at: '2024-02-28T14:00:00Z',
+  },
+  {
+    id: 'cam-asset-4',
+    name: 'cooke_anamorphic_35mm_test.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-3.png',
+    videoMeta: {
+      duration: '00:45',
+      typeTag: 'Lens Test',
+    },
+    collectionIds: ['cam-3'],
+    created_at: '2024-02-28T11:00:00Z',
+  },
+  {
+    id: 'cam-asset-5',
+    name: 'zeiss_master_prime_50mm_test.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-4.png',
+    videoMeta: {
+      duration: '01:12',
+      typeTag: 'Lens Test',
+    },
+    collectionIds: ['cam-3'],
+    created_at: '2024-02-28T11:30:00Z',
+  },
+  {
+    id: 'cam-asset-6',
+    name: 'hawkins_town_square_broll.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-6.png',
+    videoMeta: {
+      duration: '05:20',
+      typeTag: 'B-Roll',
+    },
+    collectionIds: ['cam-4'],
+    created_at: '2024-02-27T15:00:00Z',
+  },
+  {
+    id: 'cam-asset-7',
+    name: 'forest_atmosphere_broll.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-7.png',
+    videoMeta: {
+      duration: '04:15',
+      typeTag: 'B-Roll',
+    },
+    collectionIds: ['cam-4'],
+    created_at: '2024-02-27T16:30:00Z',
+  },
+  {
+    id: 'cam-asset-8',
+    name: 'hawkins_aerial_dawn.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-8.png',
+    videoMeta: {
+      duration: '02:45',
+      typeTag: 'Aerial',
+    },
+    collectionIds: ['cam-5'],
+    created_at: '2024-02-26T06:00:00Z',
+  },
+  {
+    id: 'cam-asset-9',
+    name: 'quarry_aerial_orbit.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-9.png',
+    videoMeta: {
+      duration: '03:30',
+      typeTag: 'Aerial',
+    },
+    collectionIds: ['cam-5'],
+    created_at: '2024-02-26T07:00:00Z',
+  },
+  {
+    id: 'cam-asset-10',
+    name: 'chase_scene_steadicam_take2.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-11.png',
+    videoMeta: {
+      duration: '01:58',
+      typeTag: 'Steadicam',
+    },
+    collectionIds: ['cam-6'],
+    created_at: '2024-02-25T14:00:00Z',
+  },
+  {
+    id: 'cam-asset-11',
+    name: 'hallway_tracking_shot.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16679.png',
+    videoMeta: {
+      duration: '02:12',
+      typeTag: 'Steadicam',
+    },
+    collectionIds: ['cam-6'],
+    created_at: '2024-02-25T15:30:00Z',
+  },
+  {
+    id: 'cam-asset-12',
+    name: 'ep01_scene15_take1.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16678.png',
+    videoMeta: {
+      duration: '04:05',
+      typeTag: 'Dailies',
+    },
+    collectionIds: ['cam-1'],
+    created_at: '2024-03-01T11:00:00Z',
+  },
+
+  // Editorial Department assets
+  {
+    id: 'edit-asset-1',
+    name: 'ep01_rough_cut_v3.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688.png',
+    videoMeta: {
+      duration: '42:30',
+      typeTag: 'Rough Cut',
+    },
+    collectionIds: ['edit-1'],
+    created_at: '2024-03-05T09:00:00Z',
+  },
+  {
+    id: 'edit-asset-2',
+    name: 'ep02_rough_cut_v1.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-1.png',
+    videoMeta: {
+      duration: '45:15',
+      typeTag: 'Rough Cut',
+    },
+    collectionIds: ['edit-1'],
+    created_at: '2024-03-06T10:00:00Z',
+  },
+  {
+    id: 'edit-asset-3',
+    name: 'ep01_assembly_v1.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-2.png',
+    videoMeta: {
+      duration: '52:00',
+      typeTag: 'Assembly',
+    },
+    collectionIds: ['edit-2'],
+    created_at: '2024-03-03T14:00:00Z',
+  },
+  {
+    id: 'edit-asset-4',
+    name: 'ep01_fine_cut_v2.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-3.png',
+    videoMeta: {
+      duration: '41:45',
+      typeTag: 'Fine Cut',
+    },
+    collectionIds: ['edit-3'],
+    created_at: '2024-03-08T11:00:00Z',
+  },
+  {
+    id: 'edit-asset-5',
+    name: 'ep01_color_pass_v1.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-4.png',
+    videoMeta: {
+      duration: '41:45',
+      typeTag: 'Color Pass',
+    },
+    collectionIds: ['edit-4'],
+    created_at: '2024-03-10T09:00:00Z',
+  },
+  {
+    id: 'edit-asset-6',
+    name: 'ep01_color_pass_v2.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-6.png',
+    videoMeta: {
+      duration: '41:45',
+      typeTag: 'Color Pass',
+    },
+    collectionIds: ['edit-4'],
+    created_at: '2024-03-11T10:00:00Z',
+  },
+  {
+    id: 'edit-asset-7',
+    name: 'ep01_vfx_temp_v3.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-7.png',
+    videoMeta: {
+      duration: '41:45',
+      typeTag: 'VFX Temp',
+    },
+    collectionIds: ['edit-5'],
+    created_at: '2024-03-09T15:00:00Z',
+  },
+  {
+    id: 'edit-asset-8',
+    name: 'ep02_vfx_temp_v1.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-8.png',
+    videoMeta: {
+      duration: '44:20',
+      typeTag: 'VFX Temp',
+    },
+    collectionIds: ['edit-5'],
+    created_at: '2024-03-09T16:00:00Z',
+  },
+  {
+    id: 'edit-asset-9',
+    name: 'ep01_final_master.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-9.png',
+    videoMeta: {
+      duration: '41:30',
+      typeTag: 'Final',
+    },
+    collectionIds: ['edit-6'],
+    created_at: '2024-03-15T09:00:00Z',
+  },
+  {
+    id: 'edit-asset-10',
+    name: 'ep01_textless_master.mov',
+    type: 'video',
+    thumbnail: '/images/dept/Rectangle 16688-11.png',
+    videoMeta: {
+      duration: '41:30',
+      typeTag: 'Final',
+    },
+    collectionIds: ['edit-6'],
+    created_at: '2024-03-15T10:00:00Z',
+  },
+
+  // Audio & Sound Department assets
+  {
+    id: 'audio-asset-1',
+    name: 'ep01_scene12_production_mix.wav',
+    type: 'audio',
+    audioMeta: {
+      duration: '02:15',
+      typeTag: 'Production',
+    },
+    collectionIds: ['audio-1'],
+    created_at: '2024-03-01T09:00:00Z',
+  },
+  {
+    id: 'audio-asset-2',
+    name: 'ep01_scene08_production_mix.wav',
+    type: 'audio',
+    audioMeta: {
+      duration: '03:42',
+      typeTag: 'Production',
+    },
+    collectionIds: ['audio-1'],
+    created_at: '2024-03-01T10:00:00Z',
+  },
+  {
+    id: 'audio-asset-3',
+    name: 'demogorgon_growl_sfx.wav',
+    type: 'audio',
+    audioMeta: {
+      duration: '00:08',
+      typeTag: 'SFX',
+    },
+    collectionIds: ['audio-2'],
+    created_at: '2024-02-28T14:00:00Z',
+  },
+  {
+    id: 'audio-asset-4',
+    name: 'portal_opening_sfx.wav',
+    type: 'audio',
+    audioMeta: {
+      duration: '00:15',
+      typeTag: 'SFX',
+    },
+    collectionIds: ['audio-2'],
+    created_at: '2024-02-28T14:30:00Z',
+  },
+  {
+    id: 'audio-asset-5',
+    name: 'eleven_powers_sfx.wav',
+    type: 'audio',
+    audioMeta: {
+      duration: '00:12',
+      typeTag: 'SFX',
+    },
+    collectionIds: ['audio-2'],
+    created_at: '2024-02-28T15:00:00Z',
+  },
+  {
+    id: 'audio-asset-6',
+    name: 'footsteps_wood_floor_foley.wav',
+    type: 'audio',
+    audioMeta: {
+      duration: '01:30',
+      typeTag: 'Foley',
+    },
+    collectionIds: ['audio-3'],
+    created_at: '2024-02-27T11:00:00Z',
+  },
+  {
+    id: 'audio-asset-7',
+    name: 'bike_chain_foley.wav',
+    type: 'audio',
+    audioMeta: {
+      duration: '00:45',
+      typeTag: 'Foley',
+    },
+    collectionIds: ['audio-3'],
+    created_at: '2024-02-27T12:00:00Z',
+  },
+  {
+    id: 'audio-asset-8',
+    name: 'upside_down_ambience.wav',
+    type: 'audio',
+    audioMeta: {
+      duration: '05:00',
+      typeTag: 'Ambient',
+    },
+    collectionIds: ['audio-4'],
+    created_at: '2024-02-26T09:00:00Z',
+  },
+  {
+    id: 'audio-asset-9',
+    name: 'hawkins_night_atmos.wav',
+    type: 'audio',
+    audioMeta: {
+      duration: '10:00',
+      typeTag: 'Ambient',
+    },
+    collectionIds: ['audio-4'],
+    created_at: '2024-02-26T10:00:00Z',
+  },
+  {
+    id: 'audio-asset-10',
+    name: 'main_theme_score_v2.wav',
+    type: 'audio',
+    audioMeta: {
+      duration: '03:45',
+      typeTag: 'Score',
+    },
+    collectionIds: ['audio-5'],
+    created_at: '2024-02-25T14:00:00Z',
+  },
+  {
+    id: 'audio-asset-11',
+    name: 'chase_scene_cue.wav',
+    type: 'audio',
+    audioMeta: {
+      duration: '02:30',
+      typeTag: 'Score',
+    },
+    collectionIds: ['audio-5'],
+    created_at: '2024-02-25T15:00:00Z',
+  },
+  {
+    id: 'audio-asset-12',
+    name: 'eleven_adr_session_01.wav',
+    type: 'audio',
+    audioMeta: {
+      duration: '15:00',
+      typeTag: 'ADR',
+    },
+    collectionIds: ['audio-6'],
+    created_at: '2024-02-24T10:00:00Z',
+  },
 ]
 
 export async function getAssets(): Promise<Asset[]> {
@@ -1068,4 +1686,46 @@ export async function getVfxCollections(): Promise<Collection[]> {
 
   // TODO: Implement Supabase VFX collections query when schema is ready
   return MOCK_VFX_COLLECTIONS
+}
+
+export async function getCameraCollections(): Promise<Collection[]> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const isLive = supabaseUrl && supabaseUrl.startsWith('http')
+
+  if (!isLive) {
+    // Simulate network delay for realism
+    await new Promise(resolve => setTimeout(resolve, 500))
+    return MOCK_CAMERA_COLLECTIONS
+  }
+
+  // TODO: Implement Supabase Camera collections query when schema is ready
+  return MOCK_CAMERA_COLLECTIONS
+}
+
+export async function getEditorialCollections(): Promise<Collection[]> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const isLive = supabaseUrl && supabaseUrl.startsWith('http')
+
+  if (!isLive) {
+    // Simulate network delay for realism
+    await new Promise(resolve => setTimeout(resolve, 500))
+    return MOCK_EDITORIAL_COLLECTIONS
+  }
+
+  // TODO: Implement Supabase Editorial collections query when schema is ready
+  return MOCK_EDITORIAL_COLLECTIONS
+}
+
+export async function getAudioCollections(): Promise<Collection[]> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const isLive = supabaseUrl && supabaseUrl.startsWith('http')
+
+  if (!isLive) {
+    // Simulate network delay for realism
+    await new Promise(resolve => setTimeout(resolve, 500))
+    return MOCK_AUDIO_COLLECTIONS
+  }
+
+  // TODO: Implement Supabase Audio collections query when schema is ready
+  return MOCK_AUDIO_COLLECTIONS
 }

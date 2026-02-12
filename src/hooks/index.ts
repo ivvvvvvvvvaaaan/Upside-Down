@@ -10,4 +10,4 @@ export type { UseViewPreferencesReturn, CollectionViewType } from './useViewPref
 export { useCompactBar } from './use-compact-bar'
 
 export { useDepartmentAccess } from './useDepartmentAccess'
-export type { UseDepartmentAccessReturn } from './useDepartmentAccess'
+export type { UseDepartmentAccessReturn, DepartmentAccessLevel } from './useDepartmentAccess'

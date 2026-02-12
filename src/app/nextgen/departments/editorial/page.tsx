@@ -1,5 +1,8 @@
-import { PlaceholderView } from '@/components/layouts/placeholder-view'
+import { getEditorialCollections } from '@/lib/data'
+import { EditorialView } from './view'
 
-export default function EditorialPage() {
-  return <PlaceholderView title="Editorial" section="Departments" />
+export default async function EditorialPage() {
+  const collections = await getEditorialCollections()
+
+  return <EditorialView initialCollections={collections} />
 }

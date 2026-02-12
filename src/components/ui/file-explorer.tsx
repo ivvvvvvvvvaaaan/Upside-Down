@@ -425,25 +425,11 @@ export function FileExplorer({
                 onClick={() => handleViewModeChange('list')}
               />
               <ViewModeButton
-                mode="icons"
-                currentMode={viewMode}
-                icon={LayoutGrid}
-                label="Icons"
-                onClick={() => handleViewModeChange('icons')}
-              />
-              <ViewModeButton
                 mode="columns"
                 currentMode={viewMode}
                 icon={Columns}
                 label="Columns"
                 onClick={() => handleViewModeChange('columns')}
-              />
-              <ViewModeButton
-                mode="gallery"
-                currentMode={viewMode}
-                icon={GalleryHorizontal}
-                label="Gallery"
-                onClick={() => handleViewModeChange('gallery')}
               />
             </div>
           )}

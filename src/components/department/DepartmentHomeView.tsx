@@ -18,7 +18,8 @@ import {
   FileExplorer,
   SettingsPanel,
   SettingGroup,
-  SettingToggle,
+  SettingSegmented,
+  Tag,
 } from '@/components/ui'
 import type { FacepileUser } from '@/components/ui/facepile'
 import type { FileNode } from '@/components/ui/file-explorer'
@@ -28,6 +29,7 @@ import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAssetSelection, useCollectionAssets, useViewPreferences, useCompactBar, useDepartmentAccess } from '@/hooks'
+import type { DepartmentAccessLevel } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
 import type { DepartmentConfig } from './types'
 
@@ -111,12 +113,20 @@ const DEPARTMENT_LABELS: Record<string, string> = {
   'vfx': 'VFX',
 }
 
+// Access level options for settings
+const ACCESS_LEVEL_OPTIONS: { value: DepartmentAccessLevel; label: string }[] = [
+  { value: 'full', label: 'Full' },
+  { value: 'partial', label: 'Partial' },
+  { value: 'none', label: 'Locked' },
+]
+
+
 export function DepartmentHomeView({ config, initialCollections }: DepartmentHomeViewProps) {
   const [collections] = useState<Collection[]>(initialCollections)
   const pathname = usePathname()
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
-  const { hasAccess, setAccess, allDepartments, accessSettings } = useDepartmentAccess()
+  const { getAccessLevel, setAccessLevel, allDepartments, accessLevels } = useDepartmentAccess()
   const {
     selectedCollection,
     assets: collectionAssets,
@@ -225,10 +235,27 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
 
 
   // Check department access
-  const hasDepartmentAccess = hasAccess(config.id)
+  const accessLevel = getAccessLevel(config.id)
 
-  // Access denied view
-  if (!hasDepartmentAccess) {
+  // Settings panel component (shared across all views)
+  const settingsPanel = (
+    <SettingsPanel>
+      <SettingGroup label="Department Access">
+        {allDepartments.map((deptId) => (
+          <SettingSegmented
+            key={deptId}
+            label={DEPARTMENT_LABELS[deptId] || deptId}
+            options={ACCESS_LEVEL_OPTIONS}
+            value={accessLevels[deptId] ?? 'full'}
+            onChange={(level) => setAccessLevel(deptId, level)}
+          />
+        ))}
+      </SettingGroup>
+    </SettingsPanel>
+  )
+
+  // Full locked view - no access at all
+  if (accessLevel === 'none') {
     return (
       <AppLayout>
         <div className="h-full flex flex-col">
@@ -244,20 +271,84 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
               </div>
             </div>
           </div>
+          {settingsPanel}
+        </div>
+      </AppLayout>
+    )
+  }
 
-          {/* Settings Panel - still visible to toggle access */}
-          <SettingsPanel>
-            <SettingGroup label="Department Access">
-              {allDepartments.map((deptId) => (
-                <SettingToggle
-                  key={deptId}
-                  label={DEPARTMENT_LABELS[deptId] || deptId}
-                  checked={accessSettings[deptId] ?? true}
-                  onChange={(checked) => setAccess(deptId, checked)}
-                />
-              ))}
-            </SettingGroup>
-          </SettingsPanel>
+  // Partial access view - shared collections only
+  if (accessLevel === 'partial') {
+    return (
+      <AppLayout>
+        <div className="h-full flex flex-col">
+          <div className="flex-1 min-h-0 overflow-auto">
+            <div className="p-6">
+              <div className="max-w-7xl mx-auto">
+                <Stack spacing="lg">
+                  {/* Mobile menu button */}
+                  <div className="md:hidden">
+                    <Button asChild variant="icon" size="icon" aria-label="Menu">
+                      <Link href={menuHref}>
+                        <ArrowLeft className="w-4 h-4" />
+                        <span className="sr-only">Menu</span>
+                      </Link>
+                    </Button>
+                  </div>
+
+                  {/* Header */}
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <PageHeader title={config.name} />
+                        <Tag type="notice" size="compact">Limited Access</Tag>
+                      </div>
+                      <Facepile users={MOCK_DEPARTMENT_MEMBERS} max={5} size="sm" />
+                    </div>
+                  </div>
+
+                  {/* Shared Assets */}
+                  <section>
+                    <Text variant="headline-2" weight="bold" className="mb-4">
+                      Shared
+                    </Text>
+                    {isPreloading ? (
+                      <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
+                        {[...Array(6)].map((_, i) => (
+                          <AssetCard key={i} loading />
+                        ))}
+                      </CardGrid>
+                    ) : flattenedAssets.length > 0 ? (
+                      <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
+                        {flattenedAssets.slice(0, 12).map((asset) => (
+                          <AssetCard
+                            key={asset.id}
+                            asset={asset}
+                            selected={selectedIds.has(asset.id)}
+                            primary={primaryId === asset.id}
+                            onClick={(a, e) => handleAssetClick(a, e, flattenedAssets)}
+                            onMenuClick={handleMenuClick}
+                          />
+                        ))}
+                      </CardGrid>
+                    ) : (
+                      <Text variant="body-1" color="secondary">No shared assets</Text>
+                    )}
+                  </section>
+                </Stack>
+              </div>
+            </div>
+          </div>
+
+          {settingsPanel}
+
+          <SelectionBar
+            selectedCount={selectedIds.size}
+            selectedAssets={selectedAssets}
+            onClear={clearSelection}
+            onCreateCollection={(name) => console.log('Create collection:', name, 'with assets:', Array.from(selectedIds))}
+            onShare={() => console.log('Share:', Array.from(selectedIds))}
+          />
         </div>
       </AppLayout>
     )
@@ -481,18 +572,7 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
         </div>
 
         {/* Settings Panel */}
-        <SettingsPanel>
-          <SettingGroup label="Department Access">
-            {allDepartments.map((deptId) => (
-              <SettingToggle
-                key={deptId}
-                label={DEPARTMENT_LABELS[deptId] || deptId}
-                checked={accessSettings[deptId] ?? true}
-                onChange={(checked) => setAccess(deptId, checked)}
-              />
-            ))}
-          </SettingGroup>
-        </SettingsPanel>
+        {settingsPanel}
 
         <SelectionBar
           selectedCount={selectedIds.size}

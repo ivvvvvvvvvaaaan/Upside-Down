@@ -17,6 +17,30 @@ export const departmentConfigs: Record<DepartmentId, DepartmentConfig> = {
     smartCollectionTypes: ['character', 'location', 'scene'],
     userCollectionType: 'art-type',
   },
+  camera: {
+    id: 'camera',
+    name: 'Camera',
+    shortName: 'Camera',
+    description: 'Dailies, camera tests, and production footage',
+    smartCollectionTypes: ['scene'],
+    userCollectionType: 'art-type',
+  },
+  editorial: {
+    id: 'editorial',
+    name: 'Editorial',
+    shortName: 'Editorial',
+    description: 'Cuts, color passes, and delivery masters',
+    smartCollectionTypes: ['scene'],
+    userCollectionType: 'art-type',
+  },
+  'audio-sound': {
+    id: 'audio-sound',
+    name: 'Audio & Sound',
+    shortName: 'Audio',
+    description: 'Production sound, SFX, foley, and music',
+    smartCollectionTypes: ['scene'],
+    userCollectionType: 'art-type',
+  },
 }
 
 export function getDepartmentConfig(id: DepartmentId): DepartmentConfig {

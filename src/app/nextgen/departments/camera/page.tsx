@@ -1,5 +1,8 @@
-import { PlaceholderView } from '@/components/layouts/placeholder-view'
+import { getCameraCollections } from '@/lib/data'
+import { CameraView } from './view'
 
-export default function CameraPage() {
-  return <PlaceholderView title="Camera" section="Departments" />
+export default async function CameraPage() {
+  const collections = await getCameraCollections()
+
+  return <CameraView initialCollections={collections} />
 }

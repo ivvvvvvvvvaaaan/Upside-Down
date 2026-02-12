@@ -1,5 +1,8 @@
-import { PlaceholderView } from '@/components/layouts/placeholder-view'
+import { getAudioCollections } from '@/lib/data'
+import { AudioSoundView } from './view'
 
-export default function AudioSoundPage() {
-  return <PlaceholderView title="Audio & Sound" section="Departments" />
+export default async function AudioSoundPage() {
+  const collections = await getAudioCollections()
+
+  return <AudioSoundView initialCollections={collections} />
 }

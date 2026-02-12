@@ -26,7 +26,7 @@ type TreeRow = {
   mainImage?: string
   avatarSrc?: string
   // Asset fields
-  assetType?: 'shot' | 'video' | 'image' | 'text'
+  assetType?: 'shot' | 'video' | 'image' | 'text' | 'audio'
   thumbnail?: string
   // Tree structure
   parentId?: string

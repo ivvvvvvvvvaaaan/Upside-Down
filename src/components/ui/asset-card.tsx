@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { Tag } from './tag'
 import { Text } from './text'
-import { MoreVertical } from 'lucide-react'
+import { MoreVertical, Music } from 'lucide-react'
 import Image from 'next/image'
 import type { Asset } from '@/lib/data'
 
@@ -145,9 +145,11 @@ export function AssetCard({
       </div>
     )
   }
-  const hasDuration = asset.type === 'shot' || asset.type === 'video'
+  const hasDuration = asset.type === 'shot' || asset.type === 'video' || asset.type === 'audio'
   const duration = asset.type === 'shot'
     ? asset.shotMeta?.duration
+    : asset.type === 'audio'
+    ? asset.audioMeta?.duration
     : asset.videoMeta?.duration
 
   // Render type tag
@@ -166,6 +168,9 @@ export function AssetCard({
         break
       case 'text':
         tagLabel = asset.textMeta?.typeTag || 'Document'
+        break
+      case 'audio':
+        tagLabel = asset.audioMeta?.typeTag || 'Audio'
         break
     }
 
@@ -190,6 +195,15 @@ export function AssetCard({
 
   // Render thumbnail based on type
   const renderThumbnail = () => {
+    // Audio assets get icon placeholder
+    if (asset.type === 'audio') {
+      return (
+        <div className="absolute inset-0 bg-surface-2 flex items-center justify-center">
+          <Music className="w-10 h-10 text-foreground-dim" />
+        </div>
+      )
+    }
+
     if (asset.type === 'image' && asset.imageMeta?.imageCount) {
       // Multi-image grid
       return (
