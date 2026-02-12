@@ -179,6 +179,16 @@ function DynamicNavigation({ navConfig }: { navConfig: NavConfig }) {
   )
 }
 
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <div className="px-3 py-2">
+      <span className="text-label-0-bold uppercase text-foreground-dim">
+        {title}
+      </span>
+    </div>
+  )
+}
+
 function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
   return (
     <>
@@ -191,37 +201,47 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
       </div>
 
       {/* Departments Section */}
-      <CollapsibleSection title="Departments">
-        <NavLink href="/nextgen/departments/art-design" label="Art & Design" />
-        <NavLink href="/nextgen/departments/camera" label="Camera" />
-        <NavLink href="/nextgen/departments/editorial" label="Editorial" />
-        <NavLink href="/nextgen/departments/vfx" label="VFX" />
-        <NavLink href="/nextgen/departments/audio-sound" label="Audio & Sound" />
-      </CollapsibleSection>
+      <div className="py-2">
+        <SectionHeader title="Departments" />
+        <div className="px-3 space-y-1">
+          <NavLink href="/nextgen/departments/art-design" label="Art & Design" />
+          <NavLink href="/nextgen/departments/camera" label="Camera" />
+          <NavLink href="/nextgen/departments/editorial" label="Editorial" />
+          <NavLink href="/nextgen/departments/vfx" label="VFX" />
+          <NavLink href="/nextgen/departments/audio-sound" label="Audio & Sound" />
+        </div>
+      </div>
 
       {/* Smart Collections Section */}
-      <CollapsibleSection title="Smart Collections">
-        <NavLink href="/nextgen/collections" label="All Collections" />
-        <NavLink href="/nextgen/collections/characters" label="Characters" />
-        <NavLink href="/nextgen/collections/locations" label="Locations" />
-        <NavLink href="/nextgen/collections/scenes" label="Scenes" />
-      </CollapsibleSection>
+      <div className="py-2">
+        <SectionHeader title="Smart Collections" />
+        <div className="px-3 space-y-1">
+          <NavLink href="/nextgen/collections" label="All Collections" />
+          <NavLink href="/nextgen/collections/characters" label="Characters" />
+          <NavLink href="/nextgen/collections/locations" label="Locations" />
+          <NavLink href="/nextgen/collections/scenes" label="Scenes" />
+        </div>
+      </div>
 
       {/* My Collections Section */}
-      <CollapsibleSection title="My Collections">
-        <p className="px-3 py-1 text-label-0-regular text-foreground-dim">No collections yet</p>
-        <button
-          onClick={onNewCollection}
-          className="flex items-center gap-2 px-3 py-2 text-body-0-bold text-foreground-dim hover:text-foreground-subtle transition-colors min-w-0"
-        >
-          <Plus className="w-4 h-4 flex-shrink-0" />
-          <span className="truncate">New Collection</span>
-        </button>
-      </CollapsibleSection>
+      <div className="py-2">
+        <SectionHeader title="My Collections" />
+        <div className="px-3 space-y-1">
+          <p className="px-3 py-1 text-label-0-regular text-foreground-dim">No collections yet</p>
+          <button
+            onClick={onNewCollection}
+            className="flex items-center gap-2 px-3 py-2 text-body-0-bold text-foreground-dim hover:text-foreground-subtle transition-colors min-w-0"
+          >
+            <Plus className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">New Collection</span>
+          </button>
+        </div>
+      </div>
 
       {/* Sharing Section */}
-      <CollapsibleSection title="Sharing">
-        <div className="pl-3">
+      <div className="py-2">
+        <SectionHeader title="Sharing" />
+        <div className="px-3 space-y-1">
           <div className="flex items-center gap-2 px-3 py-1.5 min-w-0">
             <ArrowUpRight className="w-3 h-3 text-foreground-dim flex-shrink-0" />
             <span className="text-label-0-bold uppercase text-foreground-dim truncate">Sent</span>
@@ -232,11 +252,9 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
             <ArrowDownLeft className="w-3 h-3 text-foreground-dim flex-shrink-0" />
             <span className="text-label-0-bold uppercase text-foreground-dim truncate">Incoming</span>
           </div>
-          <div className="pl-3">
-            <NavLink href="/nextgen/sharing/incoming/1" label="Project Assets" badge={4} />
-          </div>
+          <NavLink href="/nextgen/sharing/incoming/1" label="Project Assets" badge={4} />
         </div>
-      </CollapsibleSection>
+      </div>
     </>
   )
 }
