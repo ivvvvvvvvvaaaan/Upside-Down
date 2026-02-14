@@ -62,8 +62,12 @@ interface FileNode {
   isLocked?: boolean
 }
 
-// LocalStorage key for workspace files
+// LocalStorage keys
 const WORKSPACE_FILES_STORAGE_KEY = 'desktop-workspace-files'
+const EXPANDED_FOLDERS_STORAGE_KEY = 'desktop-expanded-folders'
+
+// Default expanded folders
+const DEFAULT_EXPANDED_FOLDERS = ['1', '2', '3', 'ws-my', 'ws-my-wip', 'ws-my-refs', 'ws-shared', 'ws-sts6', 'ws-art', 'ws-vfx', 'ws-camera', 'ws-editorial', 'ws-audio']
 
 // Workspaces - Department folder structures (default)
 const defaultWorkspaceFiles: FileNode[] = [
@@ -381,6 +385,106 @@ const defaultWorkspaceFiles: FileNode[] = [
         children: [
           { id: 'ws-cam-spec-1', name: 'ARRI_ALEXA35_specs.pdf', type: 'file', extension: 'pdf', size: 4194304, modifiedAt: '2026-02-08' },
           { id: 'ws-cam-spec-2', name: 'shooting_format_guide.pdf', type: 'file', extension: 'pdf', size: 2097152, modifiedAt: '2026-02-07' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'ws-editorial',
+    name: 'Editorial',
+    type: 'folder',
+    modifiedAt: '2026-02-14',
+    children: [
+      {
+        id: 'ws-edit-cuts',
+        name: 'Cuts',
+        type: 'folder',
+        modifiedAt: '2026-02-14',
+        children: [
+          { id: 'ws-edit-cut-1', name: 'EP301_Directors_Cut_v4.prproj', type: 'file', extension: 'prproj', size: 52428800, modifiedAt: '2026-02-14' },
+          { id: 'ws-edit-cut-2', name: 'EP301_Assembly_v2.prproj', type: 'file', extension: 'prproj', size: 41943040, modifiedAt: '2026-02-12' },
+          { id: 'ws-edit-cut-3', name: 'EP302_Rough_Cut_v1.prproj', type: 'file', extension: 'prproj', size: 36700160, modifiedAt: '2026-02-10' },
+        ],
+      },
+      {
+        id: 'ws-edit-exports',
+        name: 'Exports',
+        type: 'folder',
+        modifiedAt: '2026-02-13',
+        children: [
+          { id: 'ws-edit-exp-1', name: 'EP301_DC_v4_ProRes.mov', type: 'file', extension: 'mov', size: 8589934592, modifiedAt: '2026-02-13' },
+          { id: 'ws-edit-exp-2', name: 'EP301_DC_v4_H264_Review.mp4', type: 'file', extension: 'mp4', size: 524288000, modifiedAt: '2026-02-13' },
+        ],
+      },
+      {
+        id: 'ws-edit-vfx-pulls',
+        name: 'VFX Pulls',
+        type: 'folder',
+        modifiedAt: '2026-02-12',
+        children: [
+          { id: 'ws-edit-vfx-1', name: 'EP301_VFX_Pulls_v2.xlsx', type: 'file', extension: 'xlsx', size: 1048576, modifiedAt: '2026-02-12' },
+          { id: 'ws-edit-vfx-2', name: 'SEQ010_SH020_plate.mov', type: 'file', extension: 'mov', size: 2147483648, modifiedAt: '2026-02-11' },
+        ],
+      },
+      {
+        id: 'ws-edit-scripts',
+        name: 'Scripts',
+        type: 'folder',
+        modifiedAt: '2026-02-10',
+        children: [
+          { id: 'ws-edit-script-1', name: 'EP301_Shooting_Script.pdf', type: 'file', extension: 'pdf', size: 2097152, modifiedAt: '2026-02-10' },
+          { id: 'ws-edit-script-2', name: 'EP301_Lined_Script.pdf', type: 'file', extension: 'pdf', size: 4194304, modifiedAt: '2026-02-09' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'ws-audio',
+    name: 'Audio & Sound',
+    type: 'folder',
+    modifiedAt: '2026-02-14',
+    children: [
+      {
+        id: 'ws-audio-production',
+        name: 'Production Audio',
+        type: 'folder',
+        modifiedAt: '2026-02-14',
+        children: [
+          { id: 'ws-audio-prod-1', name: 'Day01_Sound_Report.pdf', type: 'file', extension: 'pdf', size: 524288, modifiedAt: '2026-02-14' },
+          { id: 'ws-audio-prod-2', name: 'Scene12_TakeB_ISO.wav', type: 'file', extension: 'wav', size: 157286400, modifiedAt: '2026-02-14' },
+          { id: 'ws-audio-prod-3', name: 'Scene12_TakeB_MIX.wav', type: 'file', extension: 'wav', size: 52428800, modifiedAt: '2026-02-14' },
+        ],
+      },
+      {
+        id: 'ws-audio-sfx',
+        name: 'Sound Effects',
+        type: 'folder',
+        modifiedAt: '2026-02-12',
+        children: [
+          { id: 'ws-audio-sfx-1', name: 'upside_down_ambience_v3.wav', type: 'file', extension: 'wav', size: 104857600, modifiedAt: '2026-02-12' },
+          { id: 'ws-audio-sfx-2', name: 'demogorgon_growl_collection.wav', type: 'file', extension: 'wav', size: 78643200, modifiedAt: '2026-02-11' },
+          { id: 'ws-audio-sfx-3', name: 'portal_whoosh_layers.wav', type: 'file', extension: 'wav', size: 52428800, modifiedAt: '2026-02-10' },
+        ],
+      },
+      {
+        id: 'ws-audio-music',
+        name: 'Music',
+        type: 'folder',
+        modifiedAt: '2026-02-11',
+        children: [
+          { id: 'ws-audio-music-1', name: 'EP301_Score_Cue01_Tension.wav', type: 'file', extension: 'wav', size: 41943040, modifiedAt: '2026-02-11' },
+          { id: 'ws-audio-music-2', name: 'EP301_Score_Cue02_Chase.wav', type: 'file', extension: 'wav', size: 62914560, modifiedAt: '2026-02-10' },
+          { id: 'ws-audio-music-3', name: '80s_needle_drop_options.zip', type: 'file', extension: 'zip', size: 314572800, modifiedAt: '2026-02-09' },
+        ],
+      },
+      {
+        id: 'ws-audio-mix',
+        name: 'Mix Sessions',
+        type: 'folder',
+        modifiedAt: '2026-02-10',
+        children: [
+          { id: 'ws-audio-mix-1', name: 'EP301_5.1_Mix_v2.ptx', type: 'file', extension: 'ptx', size: 209715200, modifiedAt: '2026-02-10' },
+          { id: 'ws-audio-mix-2', name: 'EP301_Atmos_Mix_v1.ptx', type: 'file', extension: 'ptx', size: 262144000, modifiedAt: '2026-02-09' },
         ],
       },
     ],
@@ -760,7 +864,18 @@ export function FinderWindow({
 }: FinderWindowProps) {
   const [selectedSidebar, setSelectedSidebar] = useState('workspace')
   const [viewMode, setViewMode] = useState<'icons' | 'list' | 'columns'>('list')
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['1', '2', '3', 'ws-my', 'ws-my-wip', 'ws-my-refs', 'ws-shared', 'ws-sts6', 'ws-art', 'ws-vfx', 'ws-camera']))
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set(DEFAULT_EXPANDED_FOLDERS)
+    const saved = localStorage.getItem(EXPANDED_FOLDERS_STORAGE_KEY)
+    if (saved) {
+      try {
+        return new Set(JSON.parse(saved))
+      } catch {
+        return new Set(DEFAULT_EXPANDED_FOLDERS)
+      }
+    }
+    return new Set(DEFAULT_EXPANDED_FOLDERS)
+  })
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
 
   // Folder navigation state (for icons view) - stores folder IDs to avoid stale references
@@ -785,10 +900,14 @@ export function FinderWindow({
   const [renameValue, setRenameValue] = useState('')
   const renameInputRef = useRef<HTMLInputElement>(null)
 
-  // Persist workspace files to localStorage
-  useEffect(() => {
-    localStorage.setItem(WORKSPACE_FILES_STORAGE_KEY, JSON.stringify(workspaceFiles))
-  }, [workspaceFiles])
+  // Update workspace files and persist to localStorage
+  const updateWorkspaceFiles = useCallback((updater: (prev: FileNode[]) => FileNode[]) => {
+    setWorkspaceFiles((prev) => {
+      const next = updater(prev)
+      localStorage.setItem(WORKSPACE_FILES_STORAGE_KEY, JSON.stringify(next))
+      return next
+    })
+  }, [])
 
   // Focus rename input when it appears
   useEffect(() => {
@@ -843,15 +962,19 @@ export function FinderWindow({
       modifiedAt: getTodayDate(),
       children: [],
     }
-    setWorkspaceFiles((prev) => addFolderToTree(prev, parentId, newFolder))
-    setExpandedFolders((prev) => new Set([...Array.from(prev), parentId]))
+    updateWorkspaceFiles((prev) => addFolderToTree(prev, parentId, newFolder))
+    setExpandedFolders((prev) => {
+      const next = new Set([...Array.from(prev), parentId])
+      localStorage.setItem(EXPANDED_FOLDERS_STORAGE_KEY, JSON.stringify(Array.from(next)))
+      return next
+    })
     setContextMenu(null)
     // Start renaming the new folder immediately
     setTimeout(() => {
       setRenamingId(newFolder.id)
       setRenameValue(newFolder.name)
     }, 50)
-  }, [])
+  }, [updateWorkspaceFiles])
 
   // Start renaming an item
   const handleStartRename = useCallback((item: FileNode) => {
@@ -863,11 +986,11 @@ export function FinderWindow({
   // Finish renaming (save)
   const handleFinishRename = useCallback(() => {
     if (renamingId && renameValue.trim()) {
-      setWorkspaceFiles((prev) => renameItemInTree(prev, renamingId, renameValue.trim()))
+      updateWorkspaceFiles((prev) => renameItemInTree(prev, renamingId, renameValue.trim()))
     }
     setRenamingId(null)
     setRenameValue('')
-  }, [renamingId, renameValue])
+  }, [renamingId, renameValue, updateWorkspaceFiles])
 
   // Cancel renaming
   const handleCancelRename = useCallback(() => {
@@ -877,12 +1000,12 @@ export function FinderWindow({
 
   // Delete an item
   const handleDeleteItem = useCallback((itemId: string) => {
-    setWorkspaceFiles((prev) => deleteItemFromTree(prev, itemId))
+    updateWorkspaceFiles((prev) => deleteItemFromTree(prev, itemId))
     setContextMenu(null)
     if (selectedFile === itemId) {
       setSelectedFile(null)
     }
-  }, [selectedFile])
+  }, [selectedFile, updateWorkspaceFiles])
 
   // Get root files based on selected sidebar location, filtering out hidden folders
   const rootFilesUnfiltered = selectedSidebar === 'workspace' ? workspaceFiles : mockFiles
@@ -930,6 +1053,7 @@ export function FinderWindow({
       } else {
         next.add(id)
       }
+      localStorage.setItem(EXPANDED_FOLDERS_STORAGE_KEY, JSON.stringify(Array.from(next)))
       return next
     })
   }

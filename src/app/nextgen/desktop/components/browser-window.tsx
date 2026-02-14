@@ -33,11 +33,20 @@ export function BrowserWindow({
       onMinimize={onMinimize}
       onMaximize={onMaximize}
     >
-      <iframe
-        src="/nextgen"
-        className="w-full h-full border-0"
-        title="NextGen Prototype"
-      />
+      <div className="relative w-full h-full">
+        <iframe
+          src="/nextgen"
+          className="w-full h-full border-0"
+          title="NextGen Prototype"
+        />
+        {/* Overlay to capture clicks when window is inactive */}
+        {!isActive && (
+          <div
+            className="absolute inset-0 cursor-default"
+            onMouseDown={onFocus}
+          />
+        )}
+      </div>
     </DesktopWindow>
   )
 }

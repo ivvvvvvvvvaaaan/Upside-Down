@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { Settings, Lock, Unlock, Cloud, CloudOff, AlertTriangle, Loader2, WifiOff, RotateCcw, Eye, EyeOff } from 'lucide-react'
 import { MenuBar } from './components/menu-bar'
 import { BrowserWindow } from './components/browser-window'
@@ -56,6 +56,8 @@ export const LOCKABLE_FOLDERS = [
   { id: 'ws-art', name: 'Art Department' },
   { id: 'ws-vfx', name: 'VFX' },
   { id: 'ws-camera', name: 'Camera' },
+  { id: 'ws-editorial', name: 'Editorial' },
+  { id: 'ws-audio', name: 'Audio & Sound' },
 ] as const
 
 // Sync status options
@@ -115,26 +117,6 @@ export function DesktopView() {
   })
   const [showSettings, setShowSettings] = useState(false)
 
-  // Persist locked folders to localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.LOCKED_FOLDERS, JSON.stringify(Array.from(lockedFolderIds)))
-  }, [lockedFolderIds])
-
-  // Persist hidden folders to localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.HIDDEN_FOLDERS, JSON.stringify(Array.from(hiddenFolderIds)))
-  }, [hiddenFolderIds])
-
-  // Persist cloud sync to localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CLOUD_SYNC, String(cloudSyncEnabled))
-  }, [cloudSyncEnabled])
-
-  // Persist sync status to localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SYNC_STATUS, syncStatus)
-  }, [syncStatus])
-
   // Toggle folder lock
   const toggleFolderLock = useCallback((folderId: string) => {
     setLockedFolderIds((prev) => {
@@ -144,6 +126,7 @@ export function DesktopView() {
       } else {
         next.add(folderId)
       }
+      localStorage.setItem(STORAGE_KEYS.LOCKED_FOLDERS, JSON.stringify(Array.from(next)))
       return next
     })
   }, [])
@@ -157,13 +140,24 @@ export function DesktopView() {
       } else {
         next.add(folderId)
       }
+      localStorage.setItem(STORAGE_KEYS.HIDDEN_FOLDERS, JSON.stringify(Array.from(next)))
       return next
     })
   }, [])
 
   // Toggle cloud sync for all
   const toggleCloudSync = useCallback(() => {
-    setCloudSyncEnabled((prev) => !prev)
+    setCloudSyncEnabled((prev) => {
+      const next = !prev
+      localStorage.setItem(STORAGE_KEYS.CLOUD_SYNC, String(next))
+      return next
+    })
+  }, [])
+
+  // Update sync status
+  const updateSyncStatus = useCallback((status: SyncStatus) => {
+    setSyncStatus(status)
+    localStorage.setItem(STORAGE_KEYS.SYNC_STATUS, status)
   }, [])
 
   // Get active app name for menu bar
@@ -347,7 +341,7 @@ export function DesktopView() {
                     {SYNC_STATUS_OPTIONS.map((option) => (
                       <button
                         key={option.value}
-                        onClick={() => setSyncStatus(option.value)}
+                        onClick={() => updateSyncStatus(option.value)}
                         className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-surface-selected-subtle transition-colors"
                       >
                         <span className="text-body-0-regular text-foreground">{option.label}</span>
