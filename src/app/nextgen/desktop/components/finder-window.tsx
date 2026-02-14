@@ -41,7 +41,7 @@ const sidebarItems: SidebarItem[] = [
   { id: 'documents', name: 'Documents', icon: Folder, type: 'favorite' },
   { id: 'downloads', name: 'Downloads', icon: Download, type: 'favorite' },
   { id: 'macintosh', name: 'Macintosh HD', icon: HardDrive, type: 'location' },
-  { id: 'workspace', name: 'Workspace', icon: Briefcase, type: 'location' },
+  { id: 'workspace', name: 'Workspaces', icon: Briefcase, type: 'location' },
 ]
 
 // File node type
@@ -234,15 +234,15 @@ function getFileIcon(node: FileNode, sizeClass: string = 'w-4 h-4') {
 
   const ext = node.extension?.toLowerCase()
   if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'psd', 'ai'].includes(ext || '')) {
-    return <Image className={cn(sizeClass, 'text-foreground-dim')} />
+    return <Image className={cn(sizeClass, 'text-foreground/70')} />
   }
   if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext || '')) {
-    return <FileVideo className={cn(sizeClass, 'text-foreground-dim')} />
+    return <FileVideo className={cn(sizeClass, 'text-foreground/70')} />
   }
   if (['pdf', 'doc', 'docx', 'txt', 'md'].includes(ext || '')) {
-    return <FileText className={cn(sizeClass, 'text-foreground-dim')} />
+    return <FileText className={cn(sizeClass, 'text-foreground/70')} />
   }
-  return <File className={cn(sizeClass, 'text-foreground-dim')} />
+  return <File className={cn(sizeClass, 'text-foreground/70')} />
 }
 
 function formatFileSize(bytes?: number): string {
