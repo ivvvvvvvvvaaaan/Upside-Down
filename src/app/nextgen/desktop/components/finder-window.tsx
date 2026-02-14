@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { DesktopWindow } from './desktop-window'
 import { cn } from '@/lib/utils'
 import type { WindowState, SyncStatus } from '../view'
@@ -62,22 +62,63 @@ interface FileNode {
   isLocked?: boolean
 }
 
-// Workspaces - Department folder structures
-const workspaceFiles: FileNode[] = [
+// LocalStorage key for workspace files
+const WORKSPACE_FILES_STORAGE_KEY = 'desktop-workspace-files'
+
+// Workspaces - Department folder structures (default)
+const defaultWorkspaceFiles: FileNode[] = [
   {
-    id: 'ws-sts6',
-    name: 'Stranger Things S6',
+    id: 'ws-my',
+    name: 'My Workspace',
     type: 'folder',
     modifiedAt: '2026-02-14',
     children: [
       {
-        id: 'ws-art',
-        name: 'Art Department',
+        id: 'ws-my-wip',
+        name: 'Work in Progress',
+        type: 'folder',
+        modifiedAt: '2026-02-14',
+        children: [
+          { id: 'ws-my-wip-1', name: 'eleven_portrait_v4_WIP.psd', type: 'file', extension: 'psd', size: 89128960, modifiedAt: '2026-02-14' },
+          { id: 'ws-my-wip-2', name: 'hawkins_lab_exterior_sketch.psd', type: 'file', extension: 'psd', size: 52428800, modifiedAt: '2026-02-13' },
+          { id: 'ws-my-wip-3', name: 'upside_down_color_test.psd', type: 'file', extension: 'psd', size: 67108864, modifiedAt: '2026-02-12' },
+        ],
+      },
+      {
+        id: 'ws-my-refs',
+        name: 'My References',
+        type: 'folder',
+        modifiedAt: '2026-02-13',
+        children: [
+          { id: 'ws-my-refs-1', name: '80s_typography_inspo.png', type: 'file', extension: 'png', size: 4194304, modifiedAt: '2026-02-13' },
+          { id: 'ws-my-refs-2', name: 'neon_lighting_examples.jpg', type: 'file', extension: 'jpg', size: 3145728, modifiedAt: '2026-02-12' },
+          { id: 'ws-my-refs-3', name: 'creature_anatomy_ref.pdf', type: 'file', extension: 'pdf', size: 15728640, modifiedAt: '2026-02-11' },
+        ],
+      },
+      { id: 'ws-my-notes', name: 'episode_3_notes.txt', type: 'file', extension: 'txt', size: 8192, modifiedAt: '2026-02-14' },
+      { id: 'ws-my-todo', name: 'deliverables_checklist.docx', type: 'file', extension: 'docx', size: 32768, modifiedAt: '2026-02-13' },
+    ],
+  },
+  {
+    id: 'ws-shared',
+    name: 'Shared Workspaces',
+    type: 'folder',
+    modifiedAt: '2026-02-14',
+    children: [
+      {
+        id: 'ws-sts6',
+        name: 'Stranger Things S6',
         type: 'folder',
         modifiedAt: '2026-02-14',
         children: [
           {
-            id: 'ws-art-concept',
+            id: 'ws-art',
+            name: 'Art Department',
+            type: 'folder',
+            modifiedAt: '2026-02-14',
+            children: [
+              {
+                id: 'ws-art-concept',
         name: 'Concept Art',
         type: 'folder',
         modifiedAt: '2026-02-13',
@@ -150,14 +191,8 @@ const workspaceFiles: FileNode[] = [
         ],
       },
       {
-        id: 'ws-shared',
-        name: 'Shared',
-        type: 'folder',
-        modifiedAt: '2026-02-14',
-        children: [
-          {
-            id: 'ws-vfx',
-            name: 'VFX',
+        id: 'ws-vfx',
+        name: 'VFX',
     type: 'folder',
     modifiedAt: '2026-02-14',
     children: [
@@ -528,6 +563,93 @@ const mockFiles: FileNode[] = [
   },
 ]
 
+// Helper function to generate unique IDs
+function generateId(): string {
+  return `ws-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+}
+
+// Helper function to get today's date in YYYY-MM-DD format
+function getTodayDate(): string {
+  return new Date().toISOString().split('T')[0]
+}
+
+// Helper function to add a folder to the tree
+function addFolderToTree(nodes: FileNode[], parentId: string, newFolder: FileNode): FileNode[] {
+  return nodes.map((node) => {
+    if (node.id === parentId) {
+      return {
+        ...node,
+        children: [...(node.children || []), newFolder],
+      }
+    }
+    if (node.children) {
+      return {
+        ...node,
+        children: addFolderToTree(node.children, parentId, newFolder),
+      }
+    }
+    return node
+  })
+}
+
+// Helper function to rename an item in the tree
+function renameItemInTree(nodes: FileNode[], itemId: string, newName: string): FileNode[] {
+  return nodes.map((node) => {
+    if (node.id === itemId) {
+      return { ...node, name: newName, modifiedAt: getTodayDate() }
+    }
+    if (node.children) {
+      return {
+        ...node,
+        children: renameItemInTree(node.children, itemId, newName),
+      }
+    }
+    return node
+  })
+}
+
+// Helper function to delete an item from the tree
+function deleteItemFromTree(nodes: FileNode[], itemId: string): FileNode[] {
+  return nodes
+    .filter((node) => node.id !== itemId)
+    .map((node) => {
+      if (node.children) {
+        return {
+          ...node,
+          children: deleteItemFromTree(node.children, itemId),
+        }
+      }
+      return node
+    })
+}
+
+// Helper function to find a node by ID
+function findNodeById(nodes: FileNode[], id: string): FileNode | null {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    if (node.children) {
+      const found = findNodeById(node.children, id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+// Helper function to filter out hidden folders from tree
+function filterHiddenFolders(nodes: FileNode[], hiddenIds: Set<string>): FileNode[] {
+  return nodes
+    .filter((node) => !hiddenIds.has(node.id))
+    .map((node) => {
+      if (node.children) {
+        return {
+          ...node,
+          children: filterHiddenFolders(node.children, hiddenIds),
+        }
+      }
+      return node
+    })
+}
+
 function getFileIcon(node: FileNode, sizeClass: string = 'w-4 h-4') {
   if (node.type === 'folder') {
     return <Folder className={cn(sizeClass, 'text-blue-500')} />
@@ -571,15 +693,15 @@ function FolderIndicators({
   const getSyncIcon = () => {
     switch (syncStatus) {
       case 'synced':
-        return <Cloud className="w-3.5 h-3.5 text-blue-500" />
+        return <Cloud className="w-3.5 h-3.5 text-foreground-dim" />
       case 'syncing':
-        return <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />
+        return <Loader2 className="w-3.5 h-3.5 text-foreground-dim animate-spin" />
       case 'error':
         return <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
       case 'offline':
         return <CloudOff className="w-3.5 h-3.5 text-foreground-dim" />
       default:
-        return <Cloud className="w-3.5 h-3.5 text-blue-500" />
+        return <Cloud className="w-3.5 h-3.5 text-foreground-dim" />
     }
   }
 
@@ -617,6 +739,7 @@ interface FinderWindowProps {
   onMaximize: () => void
   onClose: () => void
   lockedFolderIds: Set<string>
+  hiddenFolderIds: Set<string>
   cloudSyncEnabled: boolean
   syncStatus: SyncStatus
 }
@@ -631,16 +754,49 @@ export function FinderWindow({
   onMaximize,
   onClose,
   lockedFolderIds,
+  hiddenFolderIds,
   cloudSyncEnabled,
   syncStatus,
 }: FinderWindowProps) {
   const [selectedSidebar, setSelectedSidebar] = useState('workspace')
   const [viewMode, setViewMode] = useState<'icons' | 'list' | 'columns'>('list')
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['1', '2', '3', 'ws-sts6', 'ws-art', 'ws-vfx', 'ws-camera']))
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['1', '2', '3', 'ws-my', 'ws-my-wip', 'ws-my-refs', 'ws-shared', 'ws-sts6', 'ws-art', 'ws-vfx', 'ws-camera']))
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
 
-  // Folder navigation state (for icons view)
-  const [folderPath, setFolderPath] = useState<FileNode[]>([])
+  // Folder navigation state (for icons view) - stores folder IDs to avoid stale references
+  const [folderPathIds, setFolderPathIds] = useState<string[]>([])
+
+  // Editable workspace files state
+  const [workspaceFiles, setWorkspaceFiles] = useState<FileNode[]>(() => {
+    if (typeof window === 'undefined') return defaultWorkspaceFiles
+    const saved = localStorage.getItem(WORKSPACE_FILES_STORAGE_KEY)
+    if (saved) {
+      try {
+        return JSON.parse(saved)
+      } catch {
+        return defaultWorkspaceFiles
+      }
+    }
+    return defaultWorkspaceFiles
+  })
+
+  // Rename state
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const renameInputRef = useRef<HTMLInputElement>(null)
+
+  // Persist workspace files to localStorage
+  useEffect(() => {
+    localStorage.setItem(WORKSPACE_FILES_STORAGE_KEY, JSON.stringify(workspaceFiles))
+  }, [workspaceFiles])
+
+  // Focus rename input when it appears
+  useEffect(() => {
+    if (renamingId && renameInputRef.current) {
+      renameInputRef.current.focus()
+      renameInputRef.current.select()
+    }
+  }, [renamingId])
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -678,8 +834,62 @@ export function FinderWindow({
     })
   }, [])
 
-  // Get root files based on selected sidebar location
-  const rootFiles = selectedSidebar === 'workspace' ? workspaceFiles : mockFiles
+  // Create a new folder inside the specified parent folder
+  const handleCreateFolder = useCallback((parentId: string) => {
+    const newFolder: FileNode = {
+      id: generateId(),
+      name: 'untitled folder',
+      type: 'folder',
+      modifiedAt: getTodayDate(),
+      children: [],
+    }
+    setWorkspaceFiles((prev) => addFolderToTree(prev, parentId, newFolder))
+    setExpandedFolders((prev) => new Set([...Array.from(prev), parentId]))
+    setContextMenu(null)
+    // Start renaming the new folder immediately
+    setTimeout(() => {
+      setRenamingId(newFolder.id)
+      setRenameValue(newFolder.name)
+    }, 50)
+  }, [])
+
+  // Start renaming an item
+  const handleStartRename = useCallback((item: FileNode) => {
+    setRenamingId(item.id)
+    setRenameValue(item.name)
+    setContextMenu(null)
+  }, [])
+
+  // Finish renaming (save)
+  const handleFinishRename = useCallback(() => {
+    if (renamingId && renameValue.trim()) {
+      setWorkspaceFiles((prev) => renameItemInTree(prev, renamingId, renameValue.trim()))
+    }
+    setRenamingId(null)
+    setRenameValue('')
+  }, [renamingId, renameValue])
+
+  // Cancel renaming
+  const handleCancelRename = useCallback(() => {
+    setRenamingId(null)
+    setRenameValue('')
+  }, [])
+
+  // Delete an item
+  const handleDeleteItem = useCallback((itemId: string) => {
+    setWorkspaceFiles((prev) => deleteItemFromTree(prev, itemId))
+    setContextMenu(null)
+    if (selectedFile === itemId) {
+      setSelectedFile(null)
+    }
+  }, [selectedFile])
+
+  // Get root files based on selected sidebar location, filtering out hidden folders
+  const rootFilesUnfiltered = selectedSidebar === 'workspace' ? workspaceFiles : mockFiles
+  const rootFiles = filterHiddenFolders(rootFilesUnfiltered, hiddenFolderIds)
+
+  // Build folder path from IDs (to get fresh references from current state)
+  const folderPath = folderPathIds.map(id => findNodeById(rootFiles, id)).filter((n): n is FileNode => n !== null)
 
   // Get current files based on folder path (for icons view navigation)
   const currentFiles = folderPath.length > 0
@@ -689,14 +899,14 @@ export function FinderWindow({
   // Navigate into a folder (for icons view) - blocked if folder is locked
   const navigateIntoFolder = useCallback((folder: FileNode) => {
     if (folder.type === 'folder' && folder.children && !lockedFolderIds.has(folder.id)) {
-      setFolderPath((prev) => [...prev, folder])
+      setFolderPathIds((prev) => [...prev, folder.id])
       setSelectedFile(null)
     }
   }, [lockedFolderIds])
 
   // Navigate back one folder
   const navigateBack = useCallback(() => {
-    setFolderPath((prev) => prev.slice(0, -1))
+    setFolderPathIds((prev) => prev.slice(0, -1))
     setSelectedFile(null)
   }, [])
 
@@ -772,10 +982,30 @@ export function FinderWindow({
           {/* Icon */}
           {getFileIcon(node)}
 
-          {/* Name */}
-          <span className="flex-1 text-body-0-regular text-foreground truncate">
-            {node.name}
-          </span>
+          {/* Name - with inline rename support */}
+          {renamingId === node.id ? (
+            <input
+              ref={renameInputRef}
+              type="text"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onBlur={handleFinishRename}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleFinishRename()
+                } else if (e.key === 'Escape') {
+                  handleCancelRename()
+                }
+                e.stopPropagation()
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="flex-1 text-body-0-regular text-foreground bg-surface-high border border-border-subtle rounded px-1 py-0 outline-none focus:border-blue-500"
+            />
+          ) : (
+            <span className="flex-1 text-body-0-regular text-foreground truncate">
+              {node.name}
+            </span>
+          )}
 
           {/* Folder indicators */}
           <div className="w-12 flex justify-end">
@@ -822,9 +1052,29 @@ export function FinderWindow({
           )}
         >
           {getFileIcon(node, 'w-12 h-12')}
-          <span className="text-body-0-regular text-foreground text-center truncate w-full">
-            {node.name}
-          </span>
+          {renamingId === node.id ? (
+            <input
+              ref={renameInputRef}
+              type="text"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onBlur={handleFinishRename}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleFinishRename()
+                } else if (e.key === 'Escape') {
+                  handleCancelRename()
+                }
+                e.stopPropagation()
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="text-body-0-regular text-foreground text-center bg-surface-high border border-border-subtle rounded px-1 py-0 outline-none focus:border-blue-500 w-full"
+            />
+          ) : (
+            <span className="text-body-0-regular text-foreground text-center truncate w-full">
+              {node.name}
+            </span>
+          )}
         </div>
       ))}
     </div>
@@ -871,9 +1121,29 @@ export function FinderWindow({
                   )}
                 >
                   {getFileIcon(node)}
-                  <span className="flex-1 text-body-0-regular text-foreground truncate">
-                    {node.name}
-                  </span>
+                  {renamingId === node.id ? (
+                    <input
+                      ref={renameInputRef}
+                      type="text"
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onBlur={handleFinishRename}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleFinishRename()
+                        } else if (e.key === 'Escape') {
+                          handleCancelRename()
+                        }
+                        e.stopPropagation()
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex-1 text-body-0-regular text-foreground bg-surface-high border border-border-subtle rounded px-1 py-0 outline-none focus:border-blue-500"
+                    />
+                  ) : (
+                    <span className="flex-1 text-body-0-regular text-foreground truncate">
+                      {node.name}
+                    </span>
+                  )}
                   <FolderIndicators node={node} lockedFolderIds={lockedFolderIds} cloudSyncEnabled={cloudSyncEnabled} syncStatus={syncStatus} />
                   {node.type === 'folder' && node.children && node.children.length > 0 && (
                     <ChevronRightSmall className="w-3 h-3 text-foreground-dim" />
@@ -1003,7 +1273,7 @@ export function FinderWindow({
                       onClick={() => {
                         setSelectedSidebar(item.id)
                         setColumnPath([])
-                        setFolderPath([])
+                        setFolderPathIds([])
                       }}
                       className={cn(
                         'w-full flex items-center gap-2 px-3 py-1 text-left transition-colors',
@@ -1033,7 +1303,7 @@ export function FinderWindow({
                       onClick={() => {
                         setSelectedSidebar(item.id)
                         setColumnPath([])
-                        setFolderPath([])
+                        setFolderPathIds([])
                       }}
                       className={cn(
                         'w-full flex items-center gap-2 px-3 py-1 text-left transition-colors',
@@ -1078,27 +1348,38 @@ export function FinderWindow({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Menu items */}
-          <ContextMenuItem label="Open" shortcut="⌘O" />
+          <ContextMenuItem label="Open" shortcut="⌘O" onClick={() => setContextMenu(null)} />
           <ContextMenuItem label="Open With" hasSubmenu />
           <ContextMenuDivider />
-          <ContextMenuItem label="Get Info" shortcut="⌘I" />
-          <ContextMenuItem label="Rename" />
+          <ContextMenuItem label="Get Info" shortcut="⌘I" onClick={() => setContextMenu(null)} />
+          <ContextMenuItem
+            label="Rename"
+            onClick={() => handleStartRename(contextMenu.item)}
+          />
           <ContextMenuDivider />
-          <ContextMenuItem label="Compress" />
-          <ContextMenuItem label="Duplicate" shortcut="⌘D" />
-          <ContextMenuItem label="Make Alias" shortcut="⌘L" />
-          <ContextMenuItem label="Quick Look" shortcut="Space" />
+          <ContextMenuItem label="Compress" onClick={() => setContextMenu(null)} />
+          <ContextMenuItem label="Duplicate" shortcut="⌘D" onClick={() => setContextMenu(null)} />
+          <ContextMenuItem label="Make Alias" shortcut="⌘L" onClick={() => setContextMenu(null)} />
+          <ContextMenuItem label="Quick Look" shortcut="Space" onClick={() => setContextMenu(null)} />
           <ContextMenuDivider />
-          <ContextMenuItem label="Copy" shortcut="⌘C" />
+          <ContextMenuItem label="Copy" shortcut="⌘C" onClick={() => setContextMenu(null)} />
           <ContextMenuItem label="Share" hasSubmenu />
           <ContextMenuDivider />
           {contextMenu.item.type === 'folder' && (
             <>
-              <ContextMenuItem label="New Folder" shortcut="⇧⌘N" />
+              <ContextMenuItem
+                label="New Folder"
+                shortcut="⇧⌘N"
+                onClick={() => handleCreateFolder(contextMenu.item.id)}
+              />
               <ContextMenuDivider />
             </>
           )}
-          <ContextMenuItem label="Move to Trash" shortcut="⌘⌫" />
+          <ContextMenuItem
+            label="Move to Trash"
+            shortcut="⌘⌫"
+            onClick={() => handleDeleteItem(contextMenu.item.id)}
+          />
         </div>
       )}
     </DesktopWindow>
@@ -1111,15 +1392,18 @@ function ContextMenuItem({
   shortcut,
   hasSubmenu,
   disabled,
+  onClick,
 }: {
   label: string
   shortcut?: string
   hasSubmenu?: boolean
   disabled?: boolean
+  onClick?: () => void
 }) {
   return (
     <button
       disabled={disabled}
+      onClick={onClick}
       className={cn(
         'w-full flex items-center justify-between px-3 py-1 text-left transition-colors rounded-sm mx-1',
         disabled

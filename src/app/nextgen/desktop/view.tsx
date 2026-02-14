@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { Settings, Lock, Unlock, Cloud, CloudOff, AlertTriangle, Loader2, WifiOff } from 'lucide-react'
+import { Settings, Lock, Unlock, Cloud, CloudOff, AlertTriangle, Loader2, WifiOff, RotateCcw, Eye, EyeOff } from 'lucide-react'
 import { MenuBar } from './components/menu-bar'
 import { BrowserWindow } from './components/browser-window'
 import { FinderWindow } from './components/finder-window'
@@ -71,6 +71,7 @@ export const SYNC_STATUS_OPTIONS: { value: SyncStatus; label: string }[] = [
 // LocalStorage keys
 const STORAGE_KEYS = {
   LOCKED_FOLDERS: 'desktop-locked-folders',
+  HIDDEN_FOLDERS: 'desktop-hidden-folders',
   CLOUD_SYNC: 'desktop-cloud-sync',
   SYNC_STATUS: 'desktop-sync-status',
 } as const
@@ -90,6 +91,18 @@ export function DesktopView() {
     }
     return new Set(['ws-vfx'])
   })
+  const [hiddenFolderIds, setHiddenFolderIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set()
+    const saved = localStorage.getItem(STORAGE_KEYS.HIDDEN_FOLDERS)
+    if (saved) {
+      try {
+        return new Set(JSON.parse(saved))
+      } catch {
+        return new Set()
+      }
+    }
+    return new Set()
+  })
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(() => {
     if (typeof window === 'undefined') return true
     const saved = localStorage.getItem(STORAGE_KEYS.CLOUD_SYNC)
@@ -107,6 +120,11 @@ export function DesktopView() {
     localStorage.setItem(STORAGE_KEYS.LOCKED_FOLDERS, JSON.stringify(Array.from(lockedFolderIds)))
   }, [lockedFolderIds])
 
+  // Persist hidden folders to localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.HIDDEN_FOLDERS, JSON.stringify(Array.from(hiddenFolderIds)))
+  }, [hiddenFolderIds])
+
   // Persist cloud sync to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.CLOUD_SYNC, String(cloudSyncEnabled))
@@ -120,6 +138,19 @@ export function DesktopView() {
   // Toggle folder lock
   const toggleFolderLock = useCallback((folderId: string) => {
     setLockedFolderIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(folderId)) {
+        next.delete(folderId)
+      } else {
+        next.add(folderId)
+      }
+      return next
+    })
+  }, [])
+
+  // Toggle folder hidden
+  const toggleFolderHidden = useCallback((folderId: string) => {
+    setHiddenFolderIds((prev) => {
       const next = new Set(prev)
       if (next.has(folderId)) {
         next.delete(folderId)
@@ -274,6 +305,7 @@ export function DesktopView() {
             onMaximize={() => toggleMaximize('finder')}
             onClose={() => closeWindow('finder')}
             lockedFolderIds={lockedFolderIds}
+            hiddenFolderIds={hiddenFolderIds}
             cloudSyncEnabled={cloudSyncEnabled}
             syncStatus={syncStatus}
           />
@@ -327,27 +359,60 @@ export function DesktopView() {
                   </div>
                 )}
 
-                {/* Folder locks */}
+                {/* Folder options */}
                 <div className="px-3 py-1.5 text-label-0-bold text-foreground-dim border-b border-border-dim mt-2 mb-1">
-                  Folder Locks
+                  Folder Options
                 </div>
                 {LOCKABLE_FOLDERS.map((folder) => {
                   const isLocked = lockedFolderIds.has(folder.id)
+                  const isHidden = hiddenFolderIds.has(folder.id)
                   return (
-                    <button
+                    <div
                       key={folder.id}
-                      onClick={() => toggleFolderLock(folder.id)}
-                      className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-surface-selected-subtle transition-colors"
+                      className="flex items-center justify-between px-3 py-1.5"
                     >
                       <span className="text-body-0-regular text-foreground">{folder.name}</span>
-                      {isLocked ? (
-                        <Lock className="w-4 h-4 text-orange-500" />
-                      ) : (
-                        <Unlock className="w-4 h-4 text-foreground-dim" />
-                      )}
-                    </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => toggleFolderHidden(folder.id)}
+                          className="p-1 rounded hover:bg-surface-selected-subtle transition-colors"
+                          title={isHidden ? 'Show folder' : 'Hide folder'}
+                        >
+                          {isHidden ? (
+                            <EyeOff className="w-4 h-4 text-red-500" />
+                          ) : (
+                            <Eye className="w-4 h-4 text-foreground-dim" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => toggleFolderLock(folder.id)}
+                          className="p-1 rounded hover:bg-surface-selected-subtle transition-colors"
+                          title={isLocked ? 'Unlock folder' : 'Lock folder'}
+                        >
+                          {isLocked ? (
+                            <Lock className="w-4 h-4 text-orange-500" />
+                          ) : (
+                            <Unlock className="w-4 h-4 text-foreground-dim" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   )
                 })}
+
+                {/* Reset folders */}
+                <div className="mt-2 pt-2 border-t border-border-dim">
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem('desktop-workspace-files')
+                      window.location.reload()
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-surface-selected-subtle transition-colors"
+                  >
+                    <span className="text-body-0-regular text-foreground">Reset Folders</span>
+                    <RotateCcw className="w-4 h-4 text-foreground-dim" />
+                  </button>
+                </div>
               </div>
             )}
           </div>
