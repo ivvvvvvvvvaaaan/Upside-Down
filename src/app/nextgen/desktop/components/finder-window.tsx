@@ -22,6 +22,7 @@ import {
   Download,
   FileIcon,
   FolderOpen,
+  Briefcase,
 } from 'lucide-react'
 
 // Sidebar items for Finder
@@ -40,6 +41,7 @@ const sidebarItems: SidebarItem[] = [
   { id: 'documents', name: 'Documents', icon: Folder, type: 'favorite' },
   { id: 'downloads', name: 'Downloads', icon: Download, type: 'favorite' },
   { id: 'macintosh', name: 'Macintosh HD', icon: HardDrive, type: 'location' },
+  { id: 'workspace', name: 'Workspace', icon: Briefcase, type: 'location' },
 ]
 
 // File node type
@@ -295,6 +297,19 @@ export function FinderWindow({
     })
   }
 
+  // Flatten all files for icons view
+  const getAllFiles = (nodes: FileNode[]): FileNode[] => {
+    const result: FileNode[] = []
+    for (const node of nodes) {
+      result.push(node)
+      if (node.type === 'folder' && node.children) {
+        result.push(...getAllFiles(node.children))
+      }
+    }
+    return result
+  }
+
+  // List view row
   const renderFileRow = (node: FileNode, depth: number = 0) => {
     const isExpanded = expandedFolders.has(node.id)
     const isSelected = selectedFile === node.id
@@ -354,6 +369,103 @@ export function FinderWindow({
       </div>
     )
   }
+
+  // Icons view
+  const renderIconsView = () => (
+    <div className="grid grid-cols-4 gap-4 p-4">
+      {mockFiles.map((node) => (
+        <div
+          key={node.id}
+          onClick={() => setSelectedFile(node.id)}
+          className={cn(
+            'flex flex-col items-center gap-2 p-3 rounded cursor-pointer transition-colors',
+            selectedFile === node.id ? 'bg-surface-selected' : 'hover:bg-surface-2'
+          )}
+        >
+          {getFileIcon(node, 'w-12 h-12')}
+          <span className="text-body-0-regular text-foreground text-center truncate w-full">
+            {node.name}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+
+  // Columns view
+  const [columnPath, setColumnPath] = useState<FileNode[]>([])
+
+  const renderColumnsView = () => {
+    const columns: FileNode[][] = [mockFiles]
+
+    // Build columns from selected path
+    for (const node of columnPath) {
+      if (node.type === 'folder' && node.children) {
+        columns.push(node.children)
+      }
+    }
+
+    return (
+      <div className="flex h-full overflow-x-auto">
+        {columns.map((columnFiles, colIndex) => (
+          <div
+            key={colIndex}
+            className="min-w-[180px] max-w-[200px] border-r border-border-dim flex-shrink-0 overflow-y-auto"
+          >
+            {columnFiles.map((node) => {
+              const isSelected = columnPath[colIndex]?.id === node.id
+              return (
+                <div
+                  key={node.id}
+                  onClick={() => {
+                    setSelectedFile(node.id)
+                    // Update column path
+                    const newPath = columnPath.slice(0, colIndex)
+                    if (node.type === 'folder') {
+                      newPath.push(node)
+                    }
+                    setColumnPath(newPath)
+                  }}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-colors',
+                    isSelected ? 'bg-surface-selected' : 'hover:bg-surface-2'
+                  )}
+                >
+                  {getFileIcon(node)}
+                  <span className="flex-1 text-body-0-regular text-foreground truncate">
+                    {node.name}
+                  </span>
+                  {node.type === 'folder' && node.children && node.children.length > 0 && (
+                    <ChevronRightSmall className="w-3 h-3 text-foreground-dim" />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        ))}
+        {/* Empty column for visual balance */}
+        <div className="flex-1 min-w-[100px]" />
+      </div>
+    )
+  }
+
+  // List view
+  const renderListView = () => (
+    <>
+      {/* Column headers */}
+      <div className="flex items-center gap-2 px-2 py-1.5 bg-surface-2 border-b border-border-dim sticky top-0">
+        <div className="w-3 flex-shrink-0" />
+        <div className="w-4 flex-shrink-0" />
+        <span className="flex-1 text-label-0-bold text-foreground-dim">Name</span>
+        <span className="w-24 text-right text-label-0-bold text-foreground-dim">Date Modified</span>
+        <span className="w-16 text-right text-label-0-bold text-foreground-dim">Size</span>
+      </div>
+
+      {/* Files */}
+      <div className="py-1">
+        {mockFiles.map((node) => renderFileRow(node))}
+      </div>
+    </>
+  )
 
   return (
     <DesktopWindow
@@ -476,19 +588,9 @@ export function FinderWindow({
 
           {/* File list */}
           <div className="flex-1 overflow-auto bg-surface-flat">
-            {/* Column headers */}
-            <div className="flex items-center gap-2 px-2 py-1.5 bg-surface-2 border-b border-border-dim sticky top-0">
-              <div className="w-3 flex-shrink-0" />
-              <div className="w-4 flex-shrink-0" />
-              <span className="flex-1 text-label-0-bold text-foreground-dim">Name</span>
-              <span className="w-24 text-right text-label-0-bold text-foreground-dim">Date Modified</span>
-              <span className="w-16 text-right text-label-0-bold text-foreground-dim">Size</span>
-            </div>
-
-            {/* Files */}
-            <div className="py-1">
-              {mockFiles.map((node) => renderFileRow(node))}
-            </div>
+            {viewMode === 'list' && renderListView()}
+            {viewMode === 'icons' && renderIconsView()}
+            {viewMode === 'columns' && renderColumnsView()}
           </div>
         </div>
 
