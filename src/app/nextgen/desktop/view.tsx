@@ -154,6 +154,8 @@ export function DesktopView() {
 
   return (
     <div className="fixed inset-0 bg-surface-1 overflow-hidden">
+      {/* Subtle gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-pink-500/5 pointer-events-none" />
       {/* Menu Bar */}
       <MenuBar activeApp={getActiveAppName()} />
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Apple, Wifi, Battery, Search } from 'lucide-react'
+import { Wifi, Battery, Search } from 'lucide-react'
 
 interface MenuBarProps {
   activeApp: string
@@ -49,13 +49,8 @@ export function MenuBar({ activeApp }: MenuBarProps) {
 
   return (
     <div className="h-6 bg-surface-high/90 backdrop-blur-md flex items-center justify-between px-4 text-label-0-regular text-foreground select-none z-50 border-b border-border-dim">
-      {/* Left side - Apple logo and menus */}
+      {/* Left side - App name and menus */}
       <div className="flex items-center gap-4">
-        {/* Apple logo */}
-        <button className="hover:bg-surface-selected-subtle px-1 py-0.5 rounded transition-colors">
-          <Apple className="w-3.5 h-3.5" />
-        </button>
-
         {/* App name (bold) */}
         <button className="font-semibold hover:bg-surface-selected-subtle px-1.5 py-0.5 rounded transition-colors">
           {activeApp}
