@@ -55,6 +55,284 @@ interface FileNode {
   children?: FileNode[]
 }
 
+// Workspaces - Department folder structures
+const workspaceFiles: FileNode[] = [
+  {
+    id: 'ws-art',
+    name: 'Art Department',
+    type: 'folder',
+    modifiedAt: '2026-02-14',
+    children: [
+      {
+        id: 'ws-art-concept',
+        name: 'Concept Art',
+        type: 'folder',
+        modifiedAt: '2026-02-13',
+        children: [
+          { id: 'ws-art-concept-1', name: 'hero_pose_v3.psd', type: 'file', extension: 'psd', size: 45678592, modifiedAt: '2026-02-13' },
+          { id: 'ws-art-concept-2', name: 'villain_design_final.psd', type: 'file', extension: 'psd', size: 38912000, modifiedAt: '2026-02-12' },
+        ],
+      },
+      {
+        id: 'ws-art-storyboards',
+        name: 'Storyboards',
+        type: 'folder',
+        modifiedAt: '2026-02-12',
+        children: [
+          { id: 'ws-art-sb-1', name: 'Act1_Seq01_boards.pdf', type: 'file', extension: 'pdf', size: 12582912, modifiedAt: '2026-02-12' },
+          { id: 'ws-art-sb-2', name: 'Act1_Seq02_boards.pdf', type: 'file', extension: 'pdf', size: 15728640, modifiedAt: '2026-02-11' },
+          { id: 'ws-art-sb-3', name: 'Act2_Seq01_boards.pdf', type: 'file', extension: 'pdf', size: 18874368, modifiedAt: '2026-02-10' },
+        ],
+      },
+      {
+        id: 'ws-art-characters',
+        name: 'Character Designs',
+        type: 'folder',
+        modifiedAt: '2026-02-11',
+        children: [
+          { id: 'ws-art-char-1', name: 'protagonist_turnaround.png', type: 'file', extension: 'png', size: 8388608, modifiedAt: '2026-02-11' },
+          { id: 'ws-art-char-2', name: 'supporting_cast_lineup.png', type: 'file', extension: 'png', size: 12582912, modifiedAt: '2026-02-10' },
+        ],
+      },
+      {
+        id: 'ws-art-environments',
+        name: 'Environment Designs',
+        type: 'folder',
+        modifiedAt: '2026-02-10',
+        children: [
+          { id: 'ws-art-env-1', name: 'downtown_night_v2.psd', type: 'file', extension: 'psd', size: 67108864, modifiedAt: '2026-02-10' },
+          { id: 'ws-art-env-2', name: 'warehouse_interior.psd', type: 'file', extension: 'psd', size: 52428800, modifiedAt: '2026-02-09' },
+        ],
+      },
+      {
+        id: 'ws-art-props',
+        name: 'Props',
+        type: 'folder',
+        modifiedAt: '2026-02-09',
+        children: [
+          { id: 'ws-art-props-1', name: 'hero_weapon_designs.ai', type: 'file', extension: 'ai', size: 15728640, modifiedAt: '2026-02-09' },
+          { id: 'ws-art-props-2', name: 'vehicle_concepts.ai', type: 'file', extension: 'ai', size: 20971520, modifiedAt: '2026-02-08' },
+        ],
+      },
+      {
+        id: 'ws-art-colorscripts',
+        name: 'Color Scripts',
+        type: 'folder',
+        modifiedAt: '2026-02-08',
+        children: [
+          { id: 'ws-art-cs-1', name: 'act1_color_script.png', type: 'file', extension: 'png', size: 5242880, modifiedAt: '2026-02-08' },
+          { id: 'ws-art-cs-2', name: 'act2_color_script.png', type: 'file', extension: 'png', size: 4718592, modifiedAt: '2026-02-07' },
+        ],
+      },
+      {
+        id: 'ws-art-reference',
+        name: 'Reference',
+        type: 'folder',
+        modifiedAt: '2026-02-07',
+        children: [
+          { id: 'ws-art-ref-1', name: 'architecture_refs.zip', type: 'file', extension: 'zip', size: 104857600, modifiedAt: '2026-02-07' },
+          { id: 'ws-art-ref-2', name: 'costume_research.pdf', type: 'file', extension: 'pdf', size: 31457280, modifiedAt: '2026-02-06' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'ws-vfx',
+    name: 'VFX',
+    type: 'folder',
+    modifiedAt: '2026-02-14',
+    children: [
+      {
+        id: 'ws-vfx-shots',
+        name: 'Shots',
+        type: 'folder',
+        modifiedAt: '2026-02-14',
+        children: [
+          {
+            id: 'ws-vfx-shots-seq10',
+            name: 'SEQ010',
+            type: 'folder',
+            modifiedAt: '2026-02-14',
+            children: [
+              { id: 'ws-vfx-010-010', name: 'SEQ010_SH010_comp_v12.exr', type: 'file', extension: 'exr', size: 157286400, modifiedAt: '2026-02-14' },
+              { id: 'ws-vfx-010-020', name: 'SEQ010_SH020_comp_v08.exr', type: 'file', extension: 'exr', size: 134217728, modifiedAt: '2026-02-13' },
+              { id: 'ws-vfx-010-030', name: 'SEQ010_SH030_comp_v05.exr', type: 'file', extension: 'exr', size: 125829120, modifiedAt: '2026-02-12' },
+            ],
+          },
+          {
+            id: 'ws-vfx-shots-seq20',
+            name: 'SEQ020',
+            type: 'folder',
+            modifiedAt: '2026-02-13',
+            children: [
+              { id: 'ws-vfx-020-010', name: 'SEQ020_SH010_comp_v03.exr', type: 'file', extension: 'exr', size: 146800640, modifiedAt: '2026-02-13' },
+              { id: 'ws-vfx-020-020', name: 'SEQ020_SH020_comp_v01.exr', type: 'file', extension: 'exr', size: 115343360, modifiedAt: '2026-02-12' },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'ws-vfx-assets',
+        name: 'Assets',
+        type: 'folder',
+        modifiedAt: '2026-02-12',
+        children: [
+          {
+            id: 'ws-vfx-assets-3d',
+            name: '3D Models',
+            type: 'folder',
+            modifiedAt: '2026-02-12',
+            children: [
+              { id: 'ws-vfx-3d-1', name: 'hero_vehicle_rigged.mb', type: 'file', extension: 'mb', size: 89128960, modifiedAt: '2026-02-12' },
+              { id: 'ws-vfx-3d-2', name: 'building_destruction_sim.hip', type: 'file', extension: 'hip', size: 209715200, modifiedAt: '2026-02-11' },
+            ],
+          },
+          {
+            id: 'ws-vfx-assets-tex',
+            name: 'Textures',
+            type: 'folder',
+            modifiedAt: '2026-02-11',
+            children: [
+              { id: 'ws-vfx-tex-1', name: 'concrete_damaged_4k.tx', type: 'file', extension: 'tx', size: 67108864, modifiedAt: '2026-02-11' },
+              { id: 'ws-vfx-tex-2', name: 'metal_scratched_4k.tx', type: 'file', extension: 'tx', size: 58720256, modifiedAt: '2026-02-10' },
+            ],
+          },
+          {
+            id: 'ws-vfx-assets-hdri',
+            name: 'HDRIs',
+            type: 'folder',
+            modifiedAt: '2026-02-10',
+            children: [
+              { id: 'ws-vfx-hdri-1', name: 'downtown_night_16k.exr', type: 'file', extension: 'exr', size: 314572800, modifiedAt: '2026-02-10' },
+              { id: 'ws-vfx-hdri-2', name: 'studio_soft_8k.exr', type: 'file', extension: 'exr', size: 125829120, modifiedAt: '2026-02-09' },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'ws-vfx-elements',
+        name: 'Elements',
+        type: 'folder',
+        modifiedAt: '2026-02-09',
+        children: [
+          { id: 'ws-vfx-elem-1', name: 'dust_hits_collection.mov', type: 'file', extension: 'mov', size: 524288000, modifiedAt: '2026-02-09' },
+          { id: 'ws-vfx-elem-2', name: 'sparks_4k_prores.mov', type: 'file', extension: 'mov', size: 419430400, modifiedAt: '2026-02-08' },
+          { id: 'ws-vfx-elem-3', name: 'smoke_plumes.mov', type: 'file', extension: 'mov', size: 367001600, modifiedAt: '2026-02-07' },
+        ],
+      },
+      {
+        id: 'ws-vfx-scripts',
+        name: 'Scripts & Tools',
+        type: 'folder',
+        modifiedAt: '2026-02-08',
+        children: [
+          { id: 'ws-vfx-script-1', name: 'auto_comp_setup.py', type: 'file', extension: 'py', size: 15360, modifiedAt: '2026-02-08' },
+          { id: 'ws-vfx-script-2', name: 'render_submitter.py', type: 'file', extension: 'py', size: 28672, modifiedAt: '2026-02-07' },
+        ],
+      },
+      {
+        id: 'ws-vfx-reference',
+        name: 'Reference',
+        type: 'folder',
+        modifiedAt: '2026-02-07',
+        children: [
+          { id: 'ws-vfx-ref-1', name: 'explosion_reference.mp4', type: 'file', extension: 'mp4', size: 157286400, modifiedAt: '2026-02-07' },
+          { id: 'ws-vfx-ref-2', name: 'fluid_sim_lookdev.mp4', type: 'file', extension: 'mp4', size: 104857600, modifiedAt: '2026-02-06' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'ws-camera',
+    name: 'Camera',
+    type: 'folder',
+    modifiedAt: '2026-02-14',
+    children: [
+      {
+        id: 'ws-cam-dailies',
+        name: 'Dailies',
+        type: 'folder',
+        modifiedAt: '2026-02-14',
+        children: [
+          {
+            id: 'ws-cam-dailies-0214',
+            name: '2026-02-14',
+            type: 'folder',
+            modifiedAt: '2026-02-14',
+            children: [
+              { id: 'ws-cam-daily-1', name: 'A001_C001_0214_001.mov', type: 'file', extension: 'mov', size: 2147483648, modifiedAt: '2026-02-14' },
+              { id: 'ws-cam-daily-2', name: 'A001_C002_0214_001.mov', type: 'file', extension: 'mov', size: 1879048192, modifiedAt: '2026-02-14' },
+              { id: 'ws-cam-daily-3', name: 'A001_C003_0214_001.mov', type: 'file', extension: 'mov', size: 2415919104, modifiedAt: '2026-02-14' },
+            ],
+          },
+          {
+            id: 'ws-cam-dailies-0213',
+            name: '2026-02-13',
+            type: 'folder',
+            modifiedAt: '2026-02-13',
+            children: [
+              { id: 'ws-cam-daily-4', name: 'A001_C001_0213_001.mov', type: 'file', extension: 'mov', size: 1610612736, modifiedAt: '2026-02-13' },
+              { id: 'ws-cam-daily-5', name: 'A001_C002_0213_001.mov', type: 'file', extension: 'mov', size: 2013265920, modifiedAt: '2026-02-13' },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'ws-cam-selects',
+        name: 'Selects',
+        type: 'folder',
+        modifiedAt: '2026-02-13',
+        children: [
+          { id: 'ws-cam-sel-1', name: 'Scene12_TakeB_SELECTED.mov', type: 'file', extension: 'mov', size: 943718400, modifiedAt: '2026-02-13' },
+          { id: 'ws-cam-sel-2', name: 'Scene15_TakeD_SELECTED.mov', type: 'file', extension: 'mov', size: 1073741824, modifiedAt: '2026-02-12' },
+        ],
+      },
+      {
+        id: 'ws-cam-luts',
+        name: 'LUTs',
+        type: 'folder',
+        modifiedAt: '2026-02-10',
+        children: [
+          { id: 'ws-cam-lut-1', name: 'ARRI_LogC4_to_Rec709.cube', type: 'file', extension: 'cube', size: 2097152, modifiedAt: '2026-02-10' },
+          { id: 'ws-cam-lut-2', name: 'Show_Look_v3.cube', type: 'file', extension: 'cube', size: 1572864, modifiedAt: '2026-02-09' },
+          { id: 'ws-cam-lut-3', name: 'Day_Exterior_Grade.cube', type: 'file', extension: 'cube', size: 1048576, modifiedAt: '2026-02-08' },
+        ],
+      },
+      {
+        id: 'ws-cam-reports',
+        name: 'Camera Reports',
+        type: 'folder',
+        modifiedAt: '2026-02-14',
+        children: [
+          { id: 'ws-cam-rpt-1', name: 'Day01_Camera_Report.pdf', type: 'file', extension: 'pdf', size: 524288, modifiedAt: '2026-02-14' },
+          { id: 'ws-cam-rpt-2', name: 'Day02_Camera_Report.pdf', type: 'file', extension: 'pdf', size: 491520, modifiedAt: '2026-02-13' },
+        ],
+      },
+      {
+        id: 'ws-cam-lensmaps',
+        name: 'Lens Data',
+        type: 'folder',
+        modifiedAt: '2026-02-09',
+        children: [
+          { id: 'ws-cam-lens-1', name: 'MasterPrime_25mm_distortion.nk', type: 'file', extension: 'nk', size: 32768, modifiedAt: '2026-02-09' },
+          { id: 'ws-cam-lens-2', name: 'MasterPrime_50mm_distortion.nk', type: 'file', extension: 'nk', size: 32768, modifiedAt: '2026-02-08' },
+          { id: 'ws-cam-lens-3', name: 'lens_grid_charts.pdf', type: 'file', extension: 'pdf', size: 8388608, modifiedAt: '2026-02-07' },
+        ],
+      },
+      {
+        id: 'ws-cam-techspecs',
+        name: 'Tech Specs',
+        type: 'folder',
+        modifiedAt: '2026-02-08',
+        children: [
+          { id: 'ws-cam-spec-1', name: 'ARRI_ALEXA35_specs.pdf', type: 'file', extension: 'pdf', size: 4194304, modifiedAt: '2026-02-08' },
+          { id: 'ws-cam-spec-2', name: 'shooting_format_guide.pdf', type: 'file', extension: 'pdf', size: 2097152, modifiedAt: '2026-02-07' },
+        ],
+      },
+    ],
+  },
+]
+
 // Mock file tree data representing local file system
 const mockFiles: FileNode[] = [
   {
@@ -282,8 +560,17 @@ export function FinderWindow({
 }: FinderWindowProps) {
   const [selectedSidebar, setSelectedSidebar] = useState('downloads')
   const [viewMode, setViewMode] = useState<'icons' | 'list' | 'columns'>('list')
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['1', '2', '3']))
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['1', '2', '3', 'ws-art', 'ws-vfx', 'ws-camera']))
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
+
+  // Get files based on selected sidebar location
+  const currentFiles = selectedSidebar === 'workspace' ? workspaceFiles : mockFiles
+
+  // Get display name for current location
+  const getLocationName = () => {
+    const item = sidebarItems.find((i) => i.id === selectedSidebar)
+    return item?.name || 'Finder'
+  }
 
   const toggleFolder = (id: string) => {
     setExpandedFolders((prev) => {
@@ -373,7 +660,7 @@ export function FinderWindow({
   // Icons view
   const renderIconsView = () => (
     <div className="grid grid-cols-4 gap-4 p-4">
-      {mockFiles.map((node) => (
+      {currentFiles.map((node) => (
         <div
           key={node.id}
           onClick={() => setSelectedFile(node.id)}
@@ -395,7 +682,7 @@ export function FinderWindow({
   const [columnPath, setColumnPath] = useState<FileNode[]>([])
 
   const renderColumnsView = () => {
-    const columns: FileNode[][] = [mockFiles]
+    const columns: FileNode[][] = [currentFiles]
 
     // Build columns from selected path
     for (const node of columnPath) {
@@ -462,7 +749,7 @@ export function FinderWindow({
 
       {/* Files */}
       <div className="py-1">
-        {mockFiles.map((node) => renderFileRow(node))}
+        {currentFiles.map((node) => renderFileRow(node))}
       </div>
     </>
   )
@@ -494,7 +781,7 @@ export function FinderWindow({
 
           {/* Current folder name */}
           <span className="flex-1 text-body-0-bold text-foreground text-center">
-            {selectedSidebar === 'downloads' ? 'Downloads' : 'Macintosh HD'}
+            {getLocationName()}
           </span>
 
           {/* View mode buttons */}
@@ -597,7 +884,7 @@ export function FinderWindow({
         {/* Status bar */}
         <div className="h-6 flex items-center justify-between px-3 bg-surface-mid border-t border-border-dim flex-shrink-0">
           <span className="text-label-0-regular text-foreground-dim">
-            {mockFiles.length} items
+            {currentFiles.length} items
           </span>
           <span className="text-label-0-regular text-foreground-dim">
             2.5 GB available
