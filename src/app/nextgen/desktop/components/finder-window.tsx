@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { DesktopWindow } from './desktop-window'
 import { cn } from '@/lib/utils'
-import type { WindowState } from '../view'
+import type { WindowState, SyncStatus } from '../view'
 import {
   ChevronLeft,
   ChevronRight,
@@ -13,16 +13,20 @@ import {
   ChevronRight as ChevronRightSmall,
   Folder,
   File,
-  Image,
+  Image as ImageIcon,
   FileVideo,
   FileText,
   HardDrive,
   Monitor,
   Cloud,
+  CloudOff,
   Download,
   FileIcon,
   FolderOpen,
   Briefcase,
+  Lock,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react'
 
 // Sidebar items for Finder
@@ -53,18 +57,27 @@ interface FileNode {
   size?: number
   modifiedAt?: string
   children?: FileNode[]
+  // Folder indicators
+  isCloud?: boolean
+  isLocked?: boolean
 }
 
 // Workspaces - Department folder structures
 const workspaceFiles: FileNode[] = [
   {
-    id: 'ws-art',
-    name: 'Art Department',
+    id: 'ws-sts6',
+    name: 'Stranger Things S6',
     type: 'folder',
     modifiedAt: '2026-02-14',
     children: [
       {
-        id: 'ws-art-concept',
+        id: 'ws-art',
+        name: 'Art Department',
+        type: 'folder',
+        modifiedAt: '2026-02-14',
+        children: [
+          {
+            id: 'ws-art-concept',
         name: 'Concept Art',
         type: 'folder',
         modifiedAt: '2026-02-13',
@@ -134,11 +147,17 @@ const workspaceFiles: FileNode[] = [
           { id: 'ws-art-ref-2', name: 'costume_research.pdf', type: 'file', extension: 'pdf', size: 31457280, modifiedAt: '2026-02-06' },
         ],
       },
-    ],
-  },
-  {
-    id: 'ws-vfx',
-    name: 'VFX',
+        ],
+      },
+      {
+        id: 'ws-shared',
+        name: 'Shared',
+        type: 'folder',
+        modifiedAt: '2026-02-14',
+        children: [
+          {
+            id: 'ws-vfx',
+            name: 'VFX',
     type: 'folder',
     modifiedAt: '2026-02-14',
     children: [
@@ -331,6 +350,10 @@ const workspaceFiles: FileNode[] = [
       },
     ],
   },
+        ],
+      },
+    ],
+  },
 ]
 
 // Mock file tree data representing local file system
@@ -512,7 +535,7 @@ function getFileIcon(node: FileNode, sizeClass: string = 'w-4 h-4') {
 
   const ext = node.extension?.toLowerCase()
   if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'psd', 'ai'].includes(ext || '')) {
-    return <Image className={cn(sizeClass, 'text-foreground/70')} />
+    return <ImageIcon className={cn(sizeClass, 'text-foreground/70')} />
   }
   if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext || '')) {
     return <FileVideo className={cn(sizeClass, 'text-foreground/70')} />
@@ -521,6 +544,53 @@ function getFileIcon(node: FileNode, sizeClass: string = 'w-4 h-4') {
     return <FileText className={cn(sizeClass, 'text-foreground/70')} />
   }
   return <File className={cn(sizeClass, 'text-foreground/70')} />
+}
+
+// Render folder status indicators (cloud, locked)
+function FolderIndicators({
+  node,
+  className,
+  lockedFolderIds,
+  cloudSyncEnabled,
+  syncStatus,
+}: {
+  node: FileNode
+  className?: string
+  lockedFolderIds?: Set<string>
+  cloudSyncEnabled?: boolean
+  syncStatus?: SyncStatus
+}) {
+  const isLocked = lockedFolderIds?.has(node.id) ?? false
+  const showSyncStatus = cloudSyncEnabled && node.type === 'folder'
+
+  if (node.type !== 'folder' || (!showSyncStatus && !isLocked)) {
+    return null
+  }
+
+  // Get sync icon based on status
+  const getSyncIcon = () => {
+    switch (syncStatus) {
+      case 'synced':
+        return <Cloud className="w-3.5 h-3.5 text-blue-500" />
+      case 'syncing':
+        return <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />
+      case 'error':
+        return <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+      case 'offline':
+        return <CloudOff className="w-3.5 h-3.5 text-foreground-dim" />
+      default:
+        return <Cloud className="w-3.5 h-3.5 text-blue-500" />
+    }
+  }
+
+  return (
+    <div className={cn('flex items-center gap-1', className)}>
+      {showSyncStatus && getSyncIcon()}
+      {isLocked && (
+        <Lock className="w-3.5 h-3.5 text-orange-500" />
+      )}
+    </div>
+  )
 }
 
 function formatFileSize(bytes?: number): string {
@@ -546,6 +616,9 @@ interface FinderWindowProps {
   onMinimize: () => void
   onMaximize: () => void
   onClose: () => void
+  lockedFolderIds: Set<string>
+  cloudSyncEnabled: boolean
+  syncStatus: SyncStatus
 }
 
 export function FinderWindow({
@@ -557,17 +630,84 @@ export function FinderWindow({
   onMinimize,
   onMaximize,
   onClose,
+  lockedFolderIds,
+  cloudSyncEnabled,
+  syncStatus,
 }: FinderWindowProps) {
-  const [selectedSidebar, setSelectedSidebar] = useState('downloads')
+  const [selectedSidebar, setSelectedSidebar] = useState('workspace')
   const [viewMode, setViewMode] = useState<'icons' | 'list' | 'columns'>('list')
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['1', '2', '3', 'ws-art', 'ws-vfx', 'ws-camera']))
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['1', '2', '3', 'ws-sts6', 'ws-art', 'ws-vfx', 'ws-camera']))
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
 
-  // Get files based on selected sidebar location
-  const currentFiles = selectedSidebar === 'workspace' ? workspaceFiles : mockFiles
+  // Folder navigation state (for icons view)
+  const [folderPath, setFolderPath] = useState<FileNode[]>([])
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+    item: FileNode
+  } | null>(null)
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null)
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setContextMenu(null)
+    }
+
+    if (contextMenu) {
+      document.addEventListener('click', handleClick)
+      document.addEventListener('keydown', handleEscape)
+      return () => {
+        document.removeEventListener('click', handleClick)
+        document.removeEventListener('keydown', handleEscape)
+      }
+    }
+  }, [contextMenu])
+
+  // Handle right-click on file/folder
+  const handleContextMenu = useCallback((e: React.MouseEvent, item: FileNode) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setSelectedFile(item.id)
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      item,
+    })
+  }, [])
+
+  // Get root files based on selected sidebar location
+  const rootFiles = selectedSidebar === 'workspace' ? workspaceFiles : mockFiles
+
+  // Get current files based on folder path (for icons view navigation)
+  const currentFiles = folderPath.length > 0
+    ? folderPath[folderPath.length - 1].children || []
+    : rootFiles
+
+  // Navigate into a folder (for icons view) - blocked if folder is locked
+  const navigateIntoFolder = useCallback((folder: FileNode) => {
+    if (folder.type === 'folder' && folder.children && !lockedFolderIds.has(folder.id)) {
+      setFolderPath((prev) => [...prev, folder])
+      setSelectedFile(null)
+    }
+  }, [lockedFolderIds])
+
+  // Navigate back one folder
+  const navigateBack = useCallback(() => {
+    setFolderPath((prev) => prev.slice(0, -1))
+    setSelectedFile(null)
+  }, [])
+
+  // Check if we can go back
+  const canGoBack = folderPath.length > 0
 
   // Get display name for current location
   const getLocationName = () => {
+    if (folderPath.length > 0) {
+      return folderPath[folderPath.length - 1].name
+    }
     const item = sidebarItems.find((i) => i.id === selectedSidebar)
     return item?.name || 'Finder'
   }
@@ -610,6 +750,7 @@ export function FinderWindow({
               toggleFolder(node.id)
             }
           }}
+          onContextMenu={(e) => handleContextMenu(e, node)}
           className={cn(
             'flex items-center gap-2 px-2 py-1 cursor-pointer transition-colors',
             isSelected ? 'bg-surface-selected' : 'hover:bg-surface-2'
@@ -636,6 +777,11 @@ export function FinderWindow({
             {node.name}
           </span>
 
+          {/* Folder indicators */}
+          <div className="w-12 flex justify-end">
+            <FolderIndicators node={node} lockedFolderIds={lockedFolderIds} cloudSyncEnabled={cloudSyncEnabled} syncStatus={syncStatus} />
+          </div>
+
           {/* Date modified */}
           <span className="w-24 text-right text-label-0-regular text-foreground-dim">
             {formatDate(node.modifiedAt)}
@@ -647,8 +793,8 @@ export function FinderWindow({
           </span>
         </div>
 
-        {/* Children */}
-        {node.type === 'folder' && isExpanded && node.children && (
+        {/* Children - hidden if folder is locked */}
+        {node.type === 'folder' && isExpanded && node.children && !lockedFolderIds.has(node.id) && (
           <>
             {node.children.map((child) => renderFileRow(child, depth + 1))}
           </>
@@ -664,6 +810,12 @@ export function FinderWindow({
         <div
           key={node.id}
           onClick={() => setSelectedFile(node.id)}
+          onDoubleClick={() => {
+            if (node.type === 'folder') {
+              navigateIntoFolder(node)
+            }
+          }}
+          onContextMenu={(e) => handleContextMenu(e, node)}
           className={cn(
             'flex flex-col items-center gap-2 p-3 rounded cursor-pointer transition-colors',
             selectedFile === node.id ? 'bg-surface-selected' : 'hover:bg-surface-2'
@@ -684,9 +836,9 @@ export function FinderWindow({
   const renderColumnsView = () => {
     const columns: FileNode[][] = [currentFiles]
 
-    // Build columns from selected path
+    // Build columns from selected path - skip locked folders
     for (const node of columnPath) {
-      if (node.type === 'folder' && node.children) {
+      if (node.type === 'folder' && node.children && !lockedFolderIds.has(node.id)) {
         columns.push(node.children)
       }
     }
@@ -705,13 +857,14 @@ export function FinderWindow({
                   key={node.id}
                   onClick={() => {
                     setSelectedFile(node.id)
-                    // Update column path
+                    // Update column path - don't navigate into locked folders
                     const newPath = columnPath.slice(0, colIndex)
-                    if (node.type === 'folder') {
+                    if (node.type === 'folder' && !lockedFolderIds.has(node.id)) {
                       newPath.push(node)
                     }
                     setColumnPath(newPath)
                   }}
+                  onContextMenu={(e) => handleContextMenu(e, node)}
                   className={cn(
                     'flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-colors',
                     isSelected ? 'bg-surface-selected' : 'hover:bg-surface-2'
@@ -721,6 +874,7 @@ export function FinderWindow({
                   <span className="flex-1 text-body-0-regular text-foreground truncate">
                     {node.name}
                   </span>
+                  <FolderIndicators node={node} lockedFolderIds={lockedFolderIds} cloudSyncEnabled={cloudSyncEnabled} syncStatus={syncStatus} />
                   {node.type === 'folder' && node.children && node.children.length > 0 && (
                     <ChevronRightSmall className="w-3 h-3 text-foreground-dim" />
                   )}
@@ -743,6 +897,7 @@ export function FinderWindow({
         <div className="w-3 flex-shrink-0" />
         <div className="w-4 flex-shrink-0" />
         <span className="flex-1 text-label-0-bold text-foreground-dim">Name</span>
+        <span className="w-12 text-right text-label-0-bold text-foreground-dim">Status</span>
         <span className="w-24 text-right text-label-0-bold text-foreground-dim">Date Modified</span>
         <span className="w-16 text-right text-label-0-bold text-foreground-dim">Size</span>
       </div>
@@ -750,6 +905,66 @@ export function FinderWindow({
       {/* Files */}
       <div className="py-1">
         {currentFiles.map((node) => renderFileRow(node))}
+      </div>
+    </>
+  )
+
+  // Title bar content with navigation and view toggles
+  const titleBarContent = (
+    <>
+      {/* Navigation buttons */}
+      <div className="flex items-center gap-1" onMouseDown={(e) => e.stopPropagation()}>
+        <button
+          onClick={navigateBack}
+          disabled={!canGoBack}
+          className={cn(
+            'p-1 rounded transition-colors',
+            canGoBack
+              ? 'text-foreground-dim hover:bg-surface-selected-subtle'
+              : 'text-foreground-subtle cursor-not-allowed'
+          )}
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <button className="p-1 rounded hover:bg-surface-selected-subtle text-foreground-dim">
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Current folder name */}
+      <span className="flex-1 text-body-0-bold text-foreground text-center">
+        {getLocationName()}
+      </span>
+
+      {/* View mode buttons */}
+      <div className="flex items-center gap-0.5 bg-surface-2 rounded p-0.5" onMouseDown={(e) => e.stopPropagation()}>
+        <button
+          onClick={() => setViewMode('icons')}
+          className={cn(
+            'p-1 rounded transition-colors',
+            viewMode === 'icons' ? 'bg-surface-selected text-foreground' : 'text-foreground-dim hover:text-foreground'
+          )}
+        >
+          <LayoutGrid className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={() => setViewMode('list')}
+          className={cn(
+            'p-1 rounded transition-colors',
+            viewMode === 'list' ? 'bg-surface-selected text-foreground' : 'text-foreground-dim hover:text-foreground'
+          )}
+        >
+          <List className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={() => setViewMode('columns')}
+          className={cn(
+            'p-1 rounded transition-colors',
+            viewMode === 'columns' ? 'bg-surface-selected text-foreground' : 'text-foreground-dim hover:text-foreground'
+          )}
+        >
+          <Columns className="w-3.5 h-3.5" />
+        </button>
       </div>
     </>
   )
@@ -765,57 +980,9 @@ export function FinderWindow({
       onMinimize={onMinimize}
       onMaximize={onMaximize}
       onClose={onClose}
+      titleBarContent={titleBarContent}
     >
       <div className="h-full flex flex-col bg-surface-low">
-        {/* Toolbar */}
-        <div className="h-10 flex items-center gap-2 px-3 bg-surface-mid border-b border-border-dim flex-shrink-0">
-          {/* Navigation buttons */}
-          <div className="flex items-center gap-1">
-            <button className="p-1 rounded hover:bg-surface-selected-subtle text-foreground-dim">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button className="p-1 rounded hover:bg-surface-selected-subtle text-foreground-dim">
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Current folder name */}
-          <span className="flex-1 text-body-0-bold text-foreground text-center">
-            {getLocationName()}
-          </span>
-
-          {/* View mode buttons */}
-          <div className="flex items-center gap-0.5 bg-surface-2 rounded p-0.5">
-            <button
-              onClick={() => setViewMode('icons')}
-              className={cn(
-                'p-1 rounded transition-colors',
-                viewMode === 'icons' ? 'bg-surface-selected text-foreground' : 'text-foreground-dim hover:text-foreground'
-              )}
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={cn(
-                'p-1 rounded transition-colors',
-                viewMode === 'list' ? 'bg-surface-selected text-foreground' : 'text-foreground-dim hover:text-foreground'
-              )}
-            >
-              <List className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setViewMode('columns')}
-              className={cn(
-                'p-1 rounded transition-colors',
-                viewMode === 'columns' ? 'bg-surface-selected text-foreground' : 'text-foreground-dim hover:text-foreground'
-              )}
-            >
-              <Columns className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-
         {/* Main content area with sidebar */}
         <div className="flex-1 flex min-h-0">
           {/* Sidebar */}
@@ -833,7 +1000,11 @@ export function FinderWindow({
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setSelectedSidebar(item.id)}
+                      onClick={() => {
+                        setSelectedSidebar(item.id)
+                        setColumnPath([])
+                        setFolderPath([])
+                      }}
                       className={cn(
                         'w-full flex items-center gap-2 px-3 py-1 text-left transition-colors',
                         isSelected ? 'bg-surface-selected text-foreground' : 'text-foreground-dim hover:bg-surface-2'
@@ -859,7 +1030,11 @@ export function FinderWindow({
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setSelectedSidebar(item.id)}
+                      onClick={() => {
+                        setSelectedSidebar(item.id)
+                        setColumnPath([])
+                        setFolderPath([])
+                      }}
                       className={cn(
                         'w-full flex items-center gap-2 px-3 py-1 text-left transition-colors',
                         isSelected ? 'bg-surface-selected text-foreground' : 'text-foreground-dim hover:bg-surface-2'
@@ -891,6 +1066,80 @@ export function FinderWindow({
           </span>
         </div>
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-[9999] min-w-[200px] py-1 rounded-lg border shadow-high backdrop-blur-2xl backdrop-saturate-150 bg-[rgba(30,30,30,0.65)] border-white/20"
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Menu items */}
+          <ContextMenuItem label="Open" shortcut="⌘O" />
+          <ContextMenuItem label="Open With" hasSubmenu />
+          <ContextMenuDivider />
+          <ContextMenuItem label="Get Info" shortcut="⌘I" />
+          <ContextMenuItem label="Rename" />
+          <ContextMenuDivider />
+          <ContextMenuItem label="Compress" />
+          <ContextMenuItem label="Duplicate" shortcut="⌘D" />
+          <ContextMenuItem label="Make Alias" shortcut="⌘L" />
+          <ContextMenuItem label="Quick Look" shortcut="Space" />
+          <ContextMenuDivider />
+          <ContextMenuItem label="Copy" shortcut="⌘C" />
+          <ContextMenuItem label="Share" hasSubmenu />
+          <ContextMenuDivider />
+          {contextMenu.item.type === 'folder' && (
+            <>
+              <ContextMenuItem label="New Folder" shortcut="⇧⌘N" />
+              <ContextMenuDivider />
+            </>
+          )}
+          <ContextMenuItem label="Move to Trash" shortcut="⌘⌫" />
+        </div>
+      )}
     </DesktopWindow>
   )
+}
+
+// Context menu item component
+function ContextMenuItem({
+  label,
+  shortcut,
+  hasSubmenu,
+  disabled,
+}: {
+  label: string
+  shortcut?: string
+  hasSubmenu?: boolean
+  disabled?: boolean
+}) {
+  return (
+    <button
+      disabled={disabled}
+      className={cn(
+        'w-full flex items-center justify-between px-3 py-1 text-left transition-colors rounded-sm mx-1',
+        disabled
+          ? 'text-black/30 dark:text-white/30 cursor-not-allowed'
+          : 'text-gray-900 dark:text-white hover:bg-blue-500 hover:text-white'
+      )}
+      style={{ width: 'calc(100% - 8px)' }}
+    >
+      <span className="text-body-0-regular">{label}</span>
+      {shortcut && (
+        <span className="text-label-0-regular text-black/40 dark:text-white/50 ml-4">{shortcut}</span>
+      )}
+      {hasSubmenu && (
+        <ChevronRightSmall className="w-3 h-3 text-black/40 dark:text-white/50" />
+      )}
+    </button>
+  )
+}
+
+// Context menu divider
+function ContextMenuDivider() {
+  return <div className="my-1 border-t border-black/10 dark:border-white/10 mx-2" />
 }

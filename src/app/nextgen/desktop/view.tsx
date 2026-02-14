@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { Settings, Lock, Unlock, Cloud, CloudOff, AlertTriangle, Loader2, WifiOff } from 'lucide-react'
 import { MenuBar } from './components/menu-bar'
 import { BrowserWindow } from './components/browser-window'
 import { FinderWindow } from './components/finder-window'
@@ -50,9 +51,89 @@ const initialWindows: WindowState[] = [
   },
 ]
 
+// Folder IDs that can be locked (main department folders)
+export const LOCKABLE_FOLDERS = [
+  { id: 'ws-art', name: 'Art Department' },
+  { id: 'ws-vfx', name: 'VFX' },
+  { id: 'ws-camera', name: 'Camera' },
+] as const
+
+// Sync status options
+export type SyncStatus = 'synced' | 'syncing' | 'error' | 'offline'
+
+export const SYNC_STATUS_OPTIONS: { value: SyncStatus; label: string }[] = [
+  { value: 'synced', label: 'Synced' },
+  { value: 'syncing', label: 'Syncing...' },
+  { value: 'error', label: 'Sync Error' },
+  { value: 'offline', label: 'Offline' },
+]
+
+// LocalStorage keys
+const STORAGE_KEYS = {
+  LOCKED_FOLDERS: 'desktop-locked-folders',
+  CLOUD_SYNC: 'desktop-cloud-sync',
+  SYNC_STATUS: 'desktop-sync-status',
+} as const
+
 export function DesktopView() {
   const [windows, setWindows] = useState<WindowState[]>(initialWindows)
   const [activeWindowId, setActiveWindowId] = useState<string | null>('finder')
+  const [lockedFolderIds, setLockedFolderIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set(['ws-vfx'])
+    const saved = localStorage.getItem(STORAGE_KEYS.LOCKED_FOLDERS)
+    if (saved) {
+      try {
+        return new Set(JSON.parse(saved))
+      } catch {
+        return new Set(['ws-vfx'])
+      }
+    }
+    return new Set(['ws-vfx'])
+  })
+  const [cloudSyncEnabled, setCloudSyncEnabled] = useState(() => {
+    if (typeof window === 'undefined') return true
+    const saved = localStorage.getItem(STORAGE_KEYS.CLOUD_SYNC)
+    return saved !== null ? saved === 'true' : true
+  })
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => {
+    if (typeof window === 'undefined') return 'synced'
+    const saved = localStorage.getItem(STORAGE_KEYS.SYNC_STATUS) as SyncStatus | null
+    return saved && ['synced', 'syncing', 'error', 'offline'].includes(saved) ? saved : 'synced'
+  })
+  const [showSettings, setShowSettings] = useState(false)
+
+  // Persist locked folders to localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.LOCKED_FOLDERS, JSON.stringify(Array.from(lockedFolderIds)))
+  }, [lockedFolderIds])
+
+  // Persist cloud sync to localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CLOUD_SYNC, String(cloudSyncEnabled))
+  }, [cloudSyncEnabled])
+
+  // Persist sync status to localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.SYNC_STATUS, syncStatus)
+  }, [syncStatus])
+
+  // Toggle folder lock
+  const toggleFolderLock = useCallback((folderId: string) => {
+    setLockedFolderIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(folderId)) {
+        next.delete(folderId)
+      } else {
+        next.add(folderId)
+      }
+      return next
+    })
+  }, [])
+
+  // Toggle cloud sync for all
+  const toggleCloudSync = useCallback(() => {
+    setCloudSyncEnabled((prev) => !prev)
+  }, [])
 
   // Get active app name for menu bar
   const getActiveAppName = () => {
@@ -192,8 +273,85 @@ export function DesktopView() {
             onMinimize={() => minimizeWindow('finder')}
             onMaximize={() => toggleMaximize('finder')}
             onClose={() => closeWindow('finder')}
+            lockedFolderIds={lockedFolderIds}
+            cloudSyncEnabled={cloudSyncEnabled}
+            syncStatus={syncStatus}
           />
         )}
+
+        {/* Settings button - bottom right corner of desktop, next to theme toggle */}
+        <div className="absolute bottom-4 right-14 z-[9999]">
+          <div className="relative">
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="bg-surface-low border border-border-subtle rounded-full p-2 shadow-high hover:bg-surface-highlight transition-colors"
+              aria-label="Folder settings"
+            >
+              <Settings className="w-4 h-4 text-foreground-dim" />
+            </button>
+
+            {/* Settings panel */}
+            {showSettings && (
+              <div className="absolute bottom-12 right-0 w-56 py-2 bg-surface-high/95 backdrop-blur-xl rounded-lg border border-border-dim shadow-high">
+                {/* Cloud sync toggle */}
+                <div className="px-3 py-1.5 text-label-0-bold text-foreground-dim border-b border-border-dim mb-1">
+                  Cloud Sync
+                </div>
+                <button
+                  onClick={toggleCloudSync}
+                  className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-surface-selected-subtle transition-colors"
+                >
+                  <span className="text-body-0-regular text-foreground">Sync Enabled</span>
+                  {cloudSyncEnabled ? (
+                    <Cloud className="w-4 h-4 text-blue-500" />
+                  ) : (
+                    <CloudOff className="w-4 h-4 text-foreground-dim" />
+                  )}
+                </button>
+
+                {/* Sync status options */}
+                {cloudSyncEnabled && (
+                  <div className="mt-1 border-t border-border-dim pt-1">
+                    {SYNC_STATUS_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setSyncStatus(option.value)}
+                        className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-surface-selected-subtle transition-colors"
+                      >
+                        <span className="text-body-0-regular text-foreground">{option.label}</span>
+                        {syncStatus === option.value && (
+                          <div className="w-2 h-2 rounded-full bg-blue-500" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Folder locks */}
+                <div className="px-3 py-1.5 text-label-0-bold text-foreground-dim border-b border-border-dim mt-2 mb-1">
+                  Folder Locks
+                </div>
+                {LOCKABLE_FOLDERS.map((folder) => {
+                  const isLocked = lockedFolderIds.has(folder.id)
+                  return (
+                    <button
+                      key={folder.id}
+                      onClick={() => toggleFolderLock(folder.id)}
+                      className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-surface-selected-subtle transition-colors"
+                    >
+                      <span className="text-body-0-regular text-foreground">{folder.name}</span>
+                      {isLocked ? (
+                        <Lock className="w-4 h-4 text-orange-500" />
+                      ) : (
+                        <Unlock className="w-4 h-4 text-foreground-dim" />
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

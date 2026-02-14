@@ -24,6 +24,8 @@ interface DesktopWindowProps {
   onMaximize: () => void
   onClose?: () => void
   children: ReactNode
+  /** Custom content to render in the title bar instead of the window title */
+  titleBarContent?: ReactNode
 }
 
 export function DesktopWindow({
@@ -37,6 +39,7 @@ export function DesktopWindow({
   onMaximize,
   onClose,
   children,
+  titleBarContent,
 }: DesktopWindowProps) {
   const windowRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -209,13 +212,20 @@ export function DesktopWindow({
           />
         </div>
 
-        {/* Window Title */}
-        <span className="flex-1 text-body-0-bold text-foreground text-center truncate select-none">
-          {window.title}
-        </span>
-
-        {/* Spacer to balance traffic lights */}
-        <div className="w-14" />
+        {/* Window Title or Custom Content */}
+        {titleBarContent ? (
+          <div className="flex-1 flex items-center">
+            {titleBarContent}
+          </div>
+        ) : (
+          <>
+            <span className="flex-1 text-body-0-bold text-foreground text-center truncate select-none">
+              {window.title}
+            </span>
+            {/* Spacer to balance traffic lights */}
+            <div className="w-14" />
+          </>
+        )}
       </div>
 
       {/* Window Content */}
