@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { MenuBar } from './components/menu-bar'
 import { BrowserWindow } from './components/browser-window'
 import { FinderWindow } from './components/finder-window'
 
 // Constants
 const MIN_WIDTH = 400
 const MIN_HEIGHT = 300
+const MENU_BAR_HEIGHT = 24
 
 export interface WindowState {
   id: string
@@ -27,9 +29,9 @@ const initialWindows: WindowState[] = [
     title: 'NextGen Media Library - Chrome',
     type: 'browser',
     x: 50,
-    y: 50,
+    y: MENU_BAR_HEIGHT + 30,
     width: 1024,
-    height: 700,
+    height: 680,
     zIndex: 10,
     isMaximized: false,
     isMinimized: false,
@@ -39,8 +41,8 @@ const initialWindows: WindowState[] = [
     title: 'Finder',
     type: 'finder',
     x: 500,
-    y: 120,
-    width: 600,
+    y: MENU_BAR_HEIGHT + 80,
+    width: 700,
     height: 500,
     zIndex: 11,
     isMaximized: false,
@@ -51,6 +53,13 @@ const initialWindows: WindowState[] = [
 export function DesktopView() {
   const [windows, setWindows] = useState<WindowState[]>(initialWindows)
   const [activeWindowId, setActiveWindowId] = useState<string | null>('finder')
+
+  // Get active app name for menu bar
+  const getActiveAppName = () => {
+    if (activeWindowId === 'finder') return 'Finder'
+    if (activeWindowId === 'browser') return 'Chrome'
+    return 'Finder'
+  }
 
   // Get the next z-index (max + 1)
   const getNextZIndex = useCallback(() => {
@@ -113,19 +122,19 @@ export function DesktopView() {
             ...w,
             isMaximized: false,
             x: 50,
-            y: 50,
-            width: w.type === 'browser' ? 1024 : 600,
-            height: w.type === 'browser' ? 700 : 500,
+            y: MENU_BAR_HEIGHT + 30,
+            width: w.type === 'browser' ? 1024 : 700,
+            height: w.type === 'browser' ? 680 : 500,
           }
         } else {
-          // Maximize to fill desktop
+          // Maximize to fill desktop (below menu bar)
           return {
             ...w,
             isMaximized: true,
             x: 0,
-            y: 0,
+            y: MENU_BAR_HEIGHT,
             width: typeof window !== 'undefined' ? window.innerWidth : 1920,
-            height: typeof window !== 'undefined' ? window.innerHeight : 1080,
+            height: typeof window !== 'undefined' ? window.innerHeight - MENU_BAR_HEIGHT : 1056,
           }
         }
       })
@@ -144,33 +153,46 @@ export function DesktopView() {
   const finderWindow = getWindow('finder')
 
   return (
-    <div className="fixed inset-0 bg-surface-flat overflow-hidden">
-      {/* Browser Window */}
-      {browserWindow && !browserWindow.isMinimized && (
-        <BrowserWindow
-          window={browserWindow}
-          isActive={activeWindowId === 'browser'}
-          onFocus={() => focusWindow('browser')}
-          onMove={(x, y) => updateWindowPosition('browser', x, y)}
-          onResize={(w, h, x, y) => updateWindowSize('browser', w, h, x, y)}
-          onMinimize={() => minimizeWindow('browser')}
-          onMaximize={() => toggleMaximize('browser')}
-        />
-      )}
+    <div className="fixed inset-0 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 overflow-hidden">
+      {/* Menu Bar */}
+      <MenuBar activeApp={getActiveAppName()} />
 
-      {/* Finder Window */}
-      {finderWindow && !finderWindow.isMinimized && (
-        <FinderWindow
-          window={finderWindow}
-          isActive={activeWindowId === 'finder'}
-          onFocus={() => focusWindow('finder')}
-          onMove={(x, y) => updateWindowPosition('finder', x, y)}
-          onResize={(w, h, x, y) => updateWindowSize('finder', w, h, x, y)}
-          onMinimize={() => minimizeWindow('finder')}
-          onMaximize={() => toggleMaximize('finder')}
-          onClose={() => closeWindow('finder')}
-        />
-      )}
+      {/* Desktop Area */}
+      <div
+        className="absolute inset-0 overflow-hidden"
+        style={{ top: MENU_BAR_HEIGHT }}
+      >
+        {/* Browser Window */}
+        {browserWindow && !browserWindow.isMinimized && (
+          <BrowserWindow
+            window={{ ...browserWindow, y: browserWindow.y - MENU_BAR_HEIGHT }}
+            isActive={activeWindowId === 'browser'}
+            onFocus={() => focusWindow('browser')}
+            onMove={(x, y) => updateWindowPosition('browser', x, y + MENU_BAR_HEIGHT)}
+            onResize={(w, h, x, y) =>
+              updateWindowSize('browser', w, h, x, y !== undefined ? y + MENU_BAR_HEIGHT : undefined)
+            }
+            onMinimize={() => minimizeWindow('browser')}
+            onMaximize={() => toggleMaximize('browser')}
+          />
+        )}
+
+        {/* Finder Window */}
+        {finderWindow && !finderWindow.isMinimized && (
+          <FinderWindow
+            window={{ ...finderWindow, y: finderWindow.y - MENU_BAR_HEIGHT }}
+            isActive={activeWindowId === 'finder'}
+            onFocus={() => focusWindow('finder')}
+            onMove={(x, y) => updateWindowPosition('finder', x, y + MENU_BAR_HEIGHT)}
+            onResize={(w, h, x, y) =>
+              updateWindowSize('finder', w, h, x, y !== undefined ? y + MENU_BAR_HEIGHT : undefined)
+            }
+            onMinimize={() => minimizeWindow('finder')}
+            onMaximize={() => toggleMaximize('finder')}
+            onClose={() => closeWindow('finder')}
+          />
+        )}
+      </div>
     </div>
   )
 }
