@@ -153,7 +153,7 @@ export function DesktopView() {
   const finderWindow = getWindow('finder')
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 overflow-hidden">
+    <div className="fixed inset-0 bg-surface-1 overflow-hidden">
       {/* Menu Bar */}
       <MenuBar activeApp={getActiveAppName()} />
 

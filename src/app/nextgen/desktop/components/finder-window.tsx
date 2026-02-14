@@ -227,7 +227,7 @@ const mockFiles: FileNode[] = [
 
 function getFileIcon(node: FileNode, sizeClass: string = 'w-4 h-4') {
   if (node.type === 'folder') {
-    return <Folder className={cn(sizeClass, 'text-blue-400')} />
+    return <Folder className={cn(sizeClass, 'text-blue-500')} />
   }
 
   const ext = node.extension?.toLowerCase()
@@ -310,7 +310,7 @@ export function FinderWindow({
           }}
           className={cn(
             'flex items-center gap-2 px-2 py-1 cursor-pointer transition-colors',
-            isSelected ? 'bg-blue-500/20' : 'hover:bg-white/5'
+            isSelected ? 'bg-surface-selected' : 'hover:bg-surface-2'
           )}
           style={{ paddingLeft: `${8 + depth * 16}px` }}
         >
@@ -367,15 +367,15 @@ export function FinderWindow({
       onMaximize={onMaximize}
       onClose={onClose}
     >
-      <div className="h-full flex flex-col bg-gray-800">
+      <div className="h-full flex flex-col bg-surface-low">
         {/* Toolbar */}
-        <div className="h-10 flex items-center gap-2 px-3 bg-gray-700/50 border-b border-white/10 flex-shrink-0">
+        <div className="h-10 flex items-center gap-2 px-3 bg-surface-mid border-b border-border-dim flex-shrink-0">
           {/* Navigation buttons */}
           <div className="flex items-center gap-1">
-            <button className="p-1 rounded hover:bg-white/10 text-foreground-dim">
+            <button className="p-1 rounded hover:bg-surface-selected-subtle text-foreground-dim">
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <button className="p-1 rounded hover:bg-white/10 text-foreground-dim">
+            <button className="p-1 rounded hover:bg-surface-selected-subtle text-foreground-dim">
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -386,12 +386,12 @@ export function FinderWindow({
           </span>
 
           {/* View mode buttons */}
-          <div className="flex items-center gap-0.5 bg-white/5 rounded p-0.5">
+          <div className="flex items-center gap-0.5 bg-surface-2 rounded p-0.5">
             <button
               onClick={() => setViewMode('icons')}
               className={cn(
                 'p-1 rounded transition-colors',
-                viewMode === 'icons' ? 'bg-white/20 text-foreground' : 'text-foreground-dim hover:text-foreground'
+                viewMode === 'icons' ? 'bg-surface-selected text-foreground' : 'text-foreground-dim hover:text-foreground'
               )}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
@@ -400,7 +400,7 @@ export function FinderWindow({
               onClick={() => setViewMode('list')}
               className={cn(
                 'p-1 rounded transition-colors',
-                viewMode === 'list' ? 'bg-white/20 text-foreground' : 'text-foreground-dim hover:text-foreground'
+                viewMode === 'list' ? 'bg-surface-selected text-foreground' : 'text-foreground-dim hover:text-foreground'
               )}
             >
               <List className="w-3.5 h-3.5" />
@@ -409,7 +409,7 @@ export function FinderWindow({
               onClick={() => setViewMode('columns')}
               className={cn(
                 'p-1 rounded transition-colors',
-                viewMode === 'columns' ? 'bg-white/20 text-foreground' : 'text-foreground-dim hover:text-foreground'
+                viewMode === 'columns' ? 'bg-surface-selected text-foreground' : 'text-foreground-dim hover:text-foreground'
               )}
             >
               <Columns className="w-3.5 h-3.5" />
@@ -420,7 +420,7 @@ export function FinderWindow({
         {/* Main content area with sidebar */}
         <div className="flex-1 flex min-h-0">
           {/* Sidebar */}
-          <div className="w-40 flex-shrink-0 bg-gray-800/80 border-r border-white/10 overflow-y-auto">
+          <div className="w-40 flex-shrink-0 bg-surface-1 border-r border-border-dim overflow-y-auto">
             {/* Favorites section */}
             <div className="py-2">
               <div className="px-3 py-1 text-label-0-bold text-foreground-dim uppercase tracking-wider">
@@ -437,10 +437,10 @@ export function FinderWindow({
                       onClick={() => setSelectedSidebar(item.id)}
                       className={cn(
                         'w-full flex items-center gap-2 px-3 py-1 text-left transition-colors',
-                        isSelected ? 'bg-blue-500/30 text-foreground' : 'text-foreground-dim hover:bg-white/5'
+                        isSelected ? 'bg-surface-selected text-foreground' : 'text-foreground-dim hover:bg-surface-2'
                       )}
                     >
-                      <Icon className="w-4 h-4 text-blue-400" />
+                      <Icon className="w-4 h-4 text-blue-500" />
                       <span className="text-body-0-regular truncate">{item.name}</span>
                     </button>
                   )
@@ -463,10 +463,10 @@ export function FinderWindow({
                       onClick={() => setSelectedSidebar(item.id)}
                       className={cn(
                         'w-full flex items-center gap-2 px-3 py-1 text-left transition-colors',
-                        isSelected ? 'bg-blue-500/30 text-foreground' : 'text-foreground-dim hover:bg-white/5'
+                        isSelected ? 'bg-surface-selected text-foreground' : 'text-foreground-dim hover:bg-surface-2'
                       )}
                     >
-                      <Icon className="w-4 h-4" />
+                      <Icon className="w-4 h-4 text-foreground-dim" />
                       <span className="text-body-0-regular truncate">{item.name}</span>
                     </button>
                   )
@@ -475,9 +475,9 @@ export function FinderWindow({
           </div>
 
           {/* File list */}
-          <div className="flex-1 overflow-auto bg-gray-900/50">
+          <div className="flex-1 overflow-auto bg-surface-flat">
             {/* Column headers */}
-            <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-800/50 border-b border-white/10 sticky top-0">
+            <div className="flex items-center gap-2 px-2 py-1.5 bg-surface-2 border-b border-border-dim sticky top-0">
               <div className="w-3 flex-shrink-0" />
               <div className="w-4 flex-shrink-0" />
               <span className="flex-1 text-label-0-bold text-foreground-dim">Name</span>
@@ -493,7 +493,7 @@ export function FinderWindow({
         </div>
 
         {/* Status bar */}
-        <div className="h-6 flex items-center justify-between px-3 bg-gray-700/50 border-t border-white/10 flex-shrink-0">
+        <div className="h-6 flex items-center justify-between px-3 bg-surface-mid border-t border-border-dim flex-shrink-0">
           <span className="text-label-0-regular text-foreground-dim">
             {mockFiles.length} items
           </span>

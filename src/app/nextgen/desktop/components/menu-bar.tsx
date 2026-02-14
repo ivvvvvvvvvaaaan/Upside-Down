@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { Apple, Wifi, Battery, Search } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 interface MenuBarProps {
   activeApp: string
@@ -11,7 +10,7 @@ interface MenuBarProps {
 export function MenuBar({ activeApp }: MenuBarProps) {
   const [time, setTime] = useState<string>('')
 
-  // Update time every minute
+  // Update time every second
   useEffect(() => {
     const updateTime = () => {
       const now = new Date()
@@ -49,16 +48,16 @@ export function MenuBar({ activeApp }: MenuBarProps) {
   }
 
   return (
-    <div className="h-6 bg-gray-900/80 backdrop-blur-md flex items-center justify-between px-4 text-label-0-regular text-white/90 select-none z-50">
+    <div className="h-6 bg-surface-high/90 backdrop-blur-md flex items-center justify-between px-4 text-label-0-regular text-foreground select-none z-50 border-b border-border-dim">
       {/* Left side - Apple logo and menus */}
       <div className="flex items-center gap-4">
         {/* Apple logo */}
-        <button className="hover:bg-white/10 px-1 py-0.5 rounded transition-colors">
+        <button className="hover:bg-surface-selected-subtle px-1 py-0.5 rounded transition-colors">
           <Apple className="w-3.5 h-3.5" />
         </button>
 
         {/* App name (bold) */}
-        <button className="font-semibold hover:bg-white/10 px-1.5 py-0.5 rounded transition-colors">
+        <button className="font-semibold hover:bg-surface-selected-subtle px-1.5 py-0.5 rounded transition-colors">
           {activeApp}
         </button>
 
@@ -66,7 +65,7 @@ export function MenuBar({ activeApp }: MenuBarProps) {
         {getAppMenus().map((menu) => (
           <button
             key={menu}
-            className="hover:bg-white/10 px-1.5 py-0.5 rounded transition-colors"
+            className="hover:bg-surface-selected-subtle px-1.5 py-0.5 rounded transition-colors"
           >
             {menu}
           </button>
@@ -74,7 +73,7 @@ export function MenuBar({ activeApp }: MenuBarProps) {
       </div>
 
       {/* Right side - Status icons and time */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 text-foreground-dim">
         {/* Battery */}
         <div className="flex items-center gap-1">
           <span className="text-[10px]">100%</span>
@@ -88,7 +87,7 @@ export function MenuBar({ activeApp }: MenuBarProps) {
         <Search className="w-3.5 h-3.5" />
 
         {/* Date and Time */}
-        <span className="text-label-0-regular">
+        <span className="text-label-0-regular text-foreground">
           {getDate()} {time}
         </span>
       </div>
