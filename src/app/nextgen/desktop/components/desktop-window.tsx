@@ -9,7 +9,6 @@ import type { WindowState } from '../view'
 const TRAFFIC_LIGHT_CLOSE = '#FF5F57'
 const TRAFFIC_LIGHT_MINIMIZE = '#FFBD2E'
 const TRAFFIC_LIGHT_MAXIMIZE = '#28C840'
-const TRAFFIC_LIGHT_DISABLED = '#4D4D4D'
 
 type ResizeCorner = 'ne' | 'se' | 'sw' | 'nw'
 
@@ -26,6 +25,8 @@ interface DesktopWindowProps {
   children: ReactNode
   /** Custom content to render in the title bar instead of the window title */
   titleBarContent?: ReactNode
+  /** Additional class names for the window container */
+  className?: string
 }
 
 export function DesktopWindow({
@@ -40,6 +41,7 @@ export function DesktopWindow({
   onClose,
   children,
   titleBarContent,
+  className,
 }: DesktopWindowProps) {
   const windowRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -166,7 +168,8 @@ export function DesktopWindow({
         'absolute flex flex-col bg-surface-low rounded-lg overflow-hidden',
         'border border-border-dim',
         isActive ? 'shadow-high' : 'shadow-mid',
-        (isDragging || isResizing) && 'will-change-transform'
+        (isDragging || isResizing) && 'will-change-transform',
+        className
       )}
       style={{
         left: window.x,
@@ -190,12 +193,11 @@ export function DesktopWindow({
         <div className="flex items-center gap-2" onMouseDown={(e) => e.stopPropagation()}>
           <button
             onClick={() => canClose && onClose?.()}
-            disabled={!canClose}
             className={cn(
               'w-3 h-3 rounded-full transition-opacity',
-              canClose ? 'hover:opacity-80' : 'cursor-not-allowed'
+              canClose ? 'hover:opacity-80 cursor-default' : 'cursor-not-allowed'
             )}
-            style={{ backgroundColor: canClose ? TRAFFIC_LIGHT_CLOSE : TRAFFIC_LIGHT_DISABLED }}
+            style={{ backgroundColor: TRAFFIC_LIGHT_CLOSE }}
             aria-label="Close"
           />
           <button

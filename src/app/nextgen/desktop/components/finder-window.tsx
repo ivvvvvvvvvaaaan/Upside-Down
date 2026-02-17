@@ -1375,6 +1375,7 @@ export function FinderWindow({
       onMaximize={onMaximize}
       onClose={onClose}
       titleBarContent={titleBarContent}
+      className="rounded-xl"
     >
       <div className="h-full flex flex-col bg-surface-low">
         {/* Main content area with sidebar */}
