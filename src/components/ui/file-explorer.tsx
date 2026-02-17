@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { Folder, File, Image, FileVideo, FileText, ChevronRight, LayoutGrid, List, Columns, GalleryHorizontal } from 'lucide-react'
+import { Folder, File, Image as ImageIcon, FileVideo, FileText, ChevronRight, LayoutGrid, List, Columns, GalleryHorizontal } from 'lucide-react'
 
 /**
  * File Explorer Component
@@ -59,7 +59,7 @@ function getFileIcon(node: FileNode, sizeClass: string = 'w-4 h-4') {
 
   const ext = node.extension?.toLowerCase()
   if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'psd', 'ai'].includes(ext || '')) {
-    return <Image className={cn(sizeClass, 'text-foreground-dim')} />
+    return <ImageIcon className={cn(sizeClass, 'text-foreground-dim')} />
   }
   if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext || '')) {
     return <FileVideo className={cn(sizeClass, 'text-foreground-dim')} />
