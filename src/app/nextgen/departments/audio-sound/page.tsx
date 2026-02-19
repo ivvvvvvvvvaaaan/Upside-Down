@@ -1,8 +1,9 @@
-import { getAudioCollections } from '@/lib/data'
+import { getCollections } from '@/lib/data'
 import { AudioSoundView } from './view'
 
 export default async function AudioSoundPage() {
-  const collections = await getAudioCollections()
+  // Pass global collections for metadata lookup (names, types, avatars)
+  const collections = await getCollections()
 
   return <AudioSoundView initialCollections={collections} />
 }

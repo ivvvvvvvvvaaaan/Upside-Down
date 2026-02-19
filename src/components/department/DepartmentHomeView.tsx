@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   Stack,
   Text,
@@ -15,26 +15,26 @@ import {
   CompactBar,
   SelectionBar,
   Facepile,
-  FileExplorer,
   SettingsPanel,
   SettingGroup,
   SettingSegmented,
   Tag,
+  CollectionCard,
 } from '@/components/ui'
 import type { FacepileUser } from '@/components/ui/facepile'
-import type { FileNode } from '@/components/ui/file-explorer'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import { AppLayout } from '@/components/layouts'
-import { ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAssetSelection, useCollectionAssets, useViewPreferences, useCompactBar, useDepartmentAccess } from '@/hooks'
+import { useAssetSelection, useViewPreferences, useCompactBar, useDepartmentAccess, useUserCollections } from '@/hooks'
 import type { DepartmentAccessLevel } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
 import type { DepartmentConfig } from './types'
 
 interface DepartmentHomeViewProps {
   config: DepartmentConfig
+  /** Global collections for metadata lookup (names, types, avatars) */
   initialCollections: Collection[]
 }
 
@@ -51,61 +51,9 @@ const MOCK_DEPARTMENT_MEMBERS: FacepileUser[] = [
   { id: '7', name: 'Anna Thompson', avatarSrc: 'https://i.pravatar.cc/150?img=16' },
 ]
 
-// Mock file structure
-const MOCK_FILES: FileNode[] = [
-  {
-    id: 'f1',
-    name: 'Concept Art',
-    type: 'folder',
-    modifiedAt: '2024-03-15T10:30:00Z',
-    children: [
-      {
-        id: 'f1-1',
-        name: 'Characters',
-        type: 'folder',
-        modifiedAt: '2024-03-14T09:00:00Z',
-        children: [
-          { id: 'f1-1-1', name: 'eleven_concept_v3.psd', type: 'file', extension: 'psd', size: 45000000, modifiedAt: '2024-03-14T09:00:00Z', assetized: true },
-          { id: 'f1-1-2', name: 'hopper_uniform_final.psd', type: 'file', extension: 'psd', size: 38000000, modifiedAt: '2024-03-13T14:30:00Z', assetized: true },
-          { id: 'f1-1-3', name: 'demogorgon_iterations.psd', type: 'file', extension: 'psd', size: 120000000, modifiedAt: '2024-03-12T11:00:00Z', assetized: false },
-        ],
-      },
-      {
-        id: 'f1-2',
-        name: 'Environments',
-        type: 'folder',
-        modifiedAt: '2024-03-10T16:00:00Z',
-        children: [
-          { id: 'f1-2-1', name: 'upside_down_forest.psd', type: 'file', extension: 'psd', size: 85000000, modifiedAt: '2024-03-10T16:00:00Z', assetized: true },
-          { id: 'f1-2-2', name: 'hawkins_lab_interior.psd', type: 'file', extension: 'psd', size: 62000000, modifiedAt: '2024-03-09T10:00:00Z', assetized: true },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'f2',
-    name: 'Storyboards',
-    type: 'folder',
-    modifiedAt: '2024-03-12T14:00:00Z',
-    children: [
-      { id: 'f2-1', name: 'ep01_seq12_boards.pdf', type: 'file', extension: 'pdf', size: 15000000, modifiedAt: '2024-03-12T14:00:00Z', assetized: true },
-      { id: 'f2-2', name: 'ep01_seq15_boards.pdf', type: 'file', extension: 'pdf', size: 12000000, modifiedAt: '2024-03-11T09:30:00Z', assetized: false },
-      { id: 'f2-3', name: 'chase_sequence_rough.pdf', type: 'file', extension: 'pdf', size: 8000000, modifiedAt: '2024-03-10T11:00:00Z', assetized: false },
-    ],
-  },
-  {
-    id: 'f3',
-    name: 'Reference',
-    type: 'folder',
-    modifiedAt: '2024-03-08T09:00:00Z',
-    children: [
-      { id: 'f3-1', name: '1980s_mall_photos.zip', type: 'file', extension: 'zip', size: 250000000, modifiedAt: '2024-03-08T09:00:00Z', assetized: false },
-      { id: 'f3-2', name: 'retro_arcade_ref.zip', type: 'file', extension: 'zip', size: 180000000, modifiedAt: '2024-03-07T15:00:00Z', assetized: false },
-    ],
-  },
-  { id: 'f4', name: 'color_palette_s5.ai', type: 'file', extension: 'ai', size: 2500000, modifiedAt: '2024-03-06T10:00:00Z', assetized: false },
-  { id: 'f5', name: 'asset_naming_conventions.pdf', type: 'file', extension: 'pdf', size: 500000, modifiedAt: '2024-02-28T14:00:00Z', assetized: false },
-]
+// Minimum assets needed to show a suggested collection
+// Using 1 for prototype since mock data has limited assets per collection
+const MIN_ASSETS_FOR_SUGGESTION = 1
 
 // Department labels for settings panel
 const DEPARTMENT_LABELS: Record<string, string> = {
@@ -125,21 +73,29 @@ const ACCESS_LEVEL_OPTIONS: { value: DepartmentAccessLevel; label: string }[] = 
 
 
 export function DepartmentHomeView({ config, initialCollections }: DepartmentHomeViewProps) {
-  const [collections] = useState<Collection[]>(initialCollections)
+  // Collection metadata lookup map (for getting names, types, avatars from global collections)
+  const collectionsMap = useMemo(() => {
+    const map = new Map<string, Collection>()
+    for (const c of initialCollections) {
+      map.set(c.id, c)
+    }
+    return map
+  }, [initialCollections])
+
   const pathname = usePathname()
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const { getAccessLevel, setAccessLevel, allDepartments, accessLevels } = useDepartmentAccess()
-  const {
-    selectedCollection,
-    assets: collectionAssets,
-    loading: loadingAssets,
-    error: loadError,
-    loadCollection,
-    retry: retryLoad,
-    goBack,
-  } = useCollectionAssets({ onNavigate: () => {} })
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
+  const { createCollection } = useUserCollections()
+
+  // Department assets - single source of truth for this department's assets
+  const [departmentAssets, setDepartmentAssets] = useState<Asset[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<Error | null>(null)
+
+  // Collection drilldown state (department-scoped)
+  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null)
 
   // Appearance settings
   const { layout, setLayout, cardSize, setCardSize } = useViewPreferences()
@@ -154,75 +110,93 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
     { field: 'name', direction: 'asc' }
   ])
   const [searchQuery, setSearchQuery] = useState('')
-  const [recentExpanded, setRecentExpanded] = useState(false)
 
   const filterOptions = [
     { id: 'type', label: 'Type' },
     { id: 'modified', label: 'Modified' },
   ]
 
-  // Pre-loaded asset data
-  const [loadedAssets, setLoadedAssets] = useState<Record<string, Asset[]>>({})
-  const [isPreloading, setIsPreloading] = useState(true)
-
-  // Pre-fetch all collection assets on mount
+  // Fetch all department assets on mount (single API call)
   useEffect(() => {
-    const fetchAllAssets = async () => {
-      setIsPreloading(true)
+    const fetchDepartmentAssets = async () => {
+      setIsLoading(true)
+      setLoadError(null)
 
-      const fetchPromises = collections.map(async (collection) => {
-        try {
-          const response = await fetch(`/api/collections/${collection.id}/assets`)
-          if (!response.ok) throw new Error(`HTTP ${response.status}`)
-          const assets = await response.json()
-          return { id: collection.id, assets, failed: false }
-        } catch (error) {
-          console.error('Failed to pre-fetch assets:', error)
-          return { id: collection.id, assets: [], failed: true }
-        }
-      })
-
-      const results = await Promise.all(fetchPromises)
-      const assetsMap: Record<string, Asset[]> = {}
-
-      for (const result of results) {
-        assetsMap[result.id] = result.assets
-      }
-
-      setLoadedAssets(assetsMap)
-      setIsPreloading(false)
-    }
-
-    fetchAllAssets()
-  }, [collections])
-
-  // Flatten all assets (deduplicated)
-  const flattenedAssets = useMemo(() => {
-    const seen = new Set<string>()
-    const assets: Asset[] = []
-
-    for (const collectionAssets of Object.values(loadedAssets)) {
-      for (const asset of collectionAssets) {
-        if (!seen.has(asset.id)) {
-          seen.add(asset.id)
-          assets.push(asset)
-        }
+      try {
+        const response = await fetch(`/api/departments/${config.id}/assets`)
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const assets = await response.json()
+        setDepartmentAssets(assets)
+      } catch (error) {
+        console.error('Failed to fetch department assets:', error)
+        setLoadError(error instanceof Error ? error : new Error('Failed to fetch assets'))
+      } finally {
+        setIsLoading(false)
       }
     }
 
-    return assets
-  }, [loadedAssets])
+    fetchDepartmentAssets()
+  }, [config.id])
 
-  // Recent assets (sorted by date, limited)
-  const recentAssets = useMemo(() => {
-    return [...flattenedAssets]
-      .sort((a, b) => {
-        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
-        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
-        return dateB - dateA
+  // All assets sorted by date (newest first)
+  const sortedAssets = useMemo(() => {
+    return [...departmentAssets].sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
+      return dateB - dateA
+    })
+  }, [departmentAssets])
+
+  // Assets for current collection view (filtered from department assets)
+  const collectionAssets = useMemo(() => {
+    if (!selectedCollection) return []
+    return departmentAssets.filter((a) => a.collectionIds?.includes(selectedCollection.id))
+  }, [departmentAssets, selectedCollection])
+
+  // Derive suggested collections from department assets
+  // Group by collectionIds, count assets, filter to smart collection types
+  const suggestedCollections = useMemo(() => {
+    const smartTypes = ['character', 'location']
+
+    // Count assets per collection (only collections this department has assets for)
+    const collectionCounts = new Map<string, number>()
+    for (const asset of departmentAssets) {
+      for (const collectionId of asset.collectionIds || []) {
+        collectionCounts.set(collectionId, (collectionCounts.get(collectionId) || 0) + 1)
+      }
+    }
+
+    // Build suggested collections with metadata
+    const suggestions: Array<Collection & { departmentAssetCount: number }> = []
+
+    collectionCounts.forEach((count, collectionId) => {
+      if (count < MIN_ASSETS_FOR_SUGGESTION) return
+
+      // Look up collection metadata from global collections
+      const metadata = collectionsMap.get(collectionId)
+      if (!metadata) return
+      if (!smartTypes.includes(metadata.type)) return
+
+      suggestions.push({
+        ...metadata,
+        departmentAssetCount: count,
       })
-      .slice(0, 12)
-  }, [flattenedAssets])
+    })
+
+    // Sort by asset count descending, take top 8
+    return suggestions
+      .sort((a, b) => b.departmentAssetCount - a.departmentAssetCount)
+      .slice(0, 8)
+  }, [departmentAssets, collectionsMap])
+
+  // Collection navigation handlers
+  const loadCollection = useCallback((collection: Collection) => {
+    setSelectedCollection(collection)
+  }, [])
+
+  const goBack = useCallback(() => {
+    setSelectedCollection(null)
+  }, [])
 
 
   const handleMenuClick = (asset: Asset) => {
@@ -231,9 +205,14 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
 
   // Get selected assets
   const selectedAssets = useMemo(() => {
-    const sourceAssets = selectedCollection ? collectionAssets : flattenedAssets
+    const sourceAssets = selectedCollection ? collectionAssets : departmentAssets
     return sourceAssets.filter((asset) => selectedIds.has(asset.id))
-  }, [flattenedAssets, collectionAssets, selectedCollection, selectedIds])
+  }, [departmentAssets, collectionAssets, selectedCollection, selectedIds])
+
+  const handleCreateCollection = (name: string) => {
+    createCollection(name, selectedAssets.map(a => a.id))
+    clearSelection()
+  }
 
   const isCompactBarVisible = !selectedCollection && showCompactBar
 
@@ -316,21 +295,29 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
                     <Text variant="headline-2" weight="bold" className="mb-4">
                       Shared
                     </Text>
-                    {isPreloading ? (
-                      <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
+                    {isLoading ? (
+                      <CardGrid
+                        gap="4"
+                        columns={layout === 'gallery' ? 3 : cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}
+                        layout={layout === 'list' ? 'list' : 'grid'}
+                      >
                         {[...Array(6)].map((_, i) => (
                           <AssetCard key={i} loading />
                         ))}
                       </CardGrid>
-                    ) : flattenedAssets.length > 0 ? (
-                      <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
-                        {flattenedAssets.slice(0, 12).map((asset) => (
+                    ) : departmentAssets.length > 0 ? (
+                      <CardGrid
+                        gap="4"
+                        columns={layout === 'gallery' ? 3 : cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}
+                        layout={layout === 'list' ? 'list' : 'grid'}
+                      >
+                        {departmentAssets.slice(0, 12).map((asset) => (
                           <AssetCard
                             key={asset.id}
                             asset={asset}
                             selected={selectedIds.has(asset.id)}
                             primary={primaryId === asset.id}
-                            onClick={(a, e) => handleAssetClick(a, e, flattenedAssets)}
+                            onClick={(a, e) => handleAssetClick(a, e, departmentAssets)}
                             onMenuClick={handleMenuClick}
                           />
                         ))}
@@ -350,7 +337,7 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
             selectedCount={selectedIds.size}
             selectedAssets={selectedAssets}
             onClear={clearSelection}
-            onCreateCollection={(name) => console.log('Create collection:', name, 'with assets:', Array.from(selectedIds))}
+            onCreateCollection={handleCreateCollection}
             onShare={() => console.log('Share:', Array.from(selectedIds))}
           />
         </div>
@@ -389,32 +376,19 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
                       {selectedCollection.name}
                     </Text>
                     <Text variant="body-2" color="secondary">
-                      {loadingAssets
-                        ? 'Loading assets...'
-                        : collectionAssets.length === 0
-                        ? 'No assets'
-                        : `${collectionAssets.length} asset${collectionAssets.length !== 1 ? 's' : ''}`
+                      {collectionAssets.length === 0
+                        ? 'No assets in this department'
+                        : `${collectionAssets.length} asset${collectionAssets.length !== 1 ? 's' : ''} from ${config.shortName}`
                       }
                     </Text>
                   </div>
 
-                  {loadingAssets ? (
-                    <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
-                      {[...Array(SKELETON_ASSET_COUNT)].map((_, i) => (
-                        <AssetCard key={i} loading />
-                      ))}
-                    </CardGrid>
-                  ) : loadError ? (
-                    <EmptyState
-                      title="Failed to load assets"
-                      message={loadError.message}
+                  {collectionAssets.length > 0 ? (
+                    <CardGrid
+                      gap="4"
+                      columns={layout === 'gallery' ? 3 : cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}
+                      layout={layout === 'list' ? 'list' : 'grid'}
                     >
-                      <Button variant="secondary" onClick={retryLoad} className="mt-4">
-                        Try Again
-                      </Button>
-                    </EmptyState>
-                  ) : collectionAssets.length > 0 ? (
-                    <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
                       {collectionAssets.map((asset) => (
                         <AssetCard
                           key={asset.id}
@@ -441,7 +415,7 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
             selectedCount={selectedIds.size}
             selectedAssets={selectedAssets}
             onClear={clearSelection}
-            onCreateCollection={(name) => console.log('Create collection:', name, 'with assets:', Array.from(selectedIds))}
+            onCreateCollection={handleCreateCollection}
             onShare={() => console.log('Share:', Array.from(selectedIds))}
           />
         </div>
@@ -457,7 +431,7 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
           <CompactBar
             visible={isCompactBarVisible}
             title={config.name}
-            count={flattenedAssets.length}
+            count={departmentAssets.length}
             countLabel="asset"
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
@@ -532,58 +506,97 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
                   </div>
                 </div>
 
-                {/* Recent Assets - expandable */}
+                {/* Suggested Collections - horizontal scroll */}
+                {suggestedCollections.length > 0 && (
+                  <section>
+                    <Text variant="headline-2" weight="bold" className="mb-4">
+                      Suggested
+                    </Text>
+                    <div className="flex gap-3 overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide">
+                      {suggestedCollections.map((collection) => {
+                        // Get department's assets for this collection to build thumbnails
+                        const deptCollectionAssets = departmentAssets.filter(
+                          (a) => a.collectionIds?.includes(collection.id)
+                        )
+                        const mainImage = deptCollectionAssets[0]?.thumbnail || collection.mainImage
+                        const thumbnailImages = deptCollectionAssets
+                          .slice(1, 3)
+                          .map((a) => a.thumbnail)
+                          .filter(Boolean) as string[]
+                        const assetCount = collection.departmentAssetCount
+
+                        return (
+                          <div key={collection.id} className="flex-shrink-0 w-48">
+                            <CollectionCard
+                              title={collection.name}
+                              assetCount={assetCount}
+                              type={collection.type}
+                              mainImage={mainImage}
+                              thumbnailImages={thumbnailImages.length > 0 ? thumbnailImages : collection.thumbnailImages}
+                              avatarSrc={collection.avatarSrc}
+                              avatarName={collection.name}
+                              numberOfAssets={
+                                assetCount === 0
+                                  ? 'None'
+                                  : assetCount === 1
+                                  ? 'One'
+                                  : assetCount === 2
+                                  ? 'Two'
+                                  : 'Many'
+                              }
+                              size="sm"
+                              onClick={() => loadCollection(collection)}
+                            />
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </section>
+                )}
+
+                {/* All Assets Stream */}
                 <section>
                   <div className="flex items-center justify-between mb-4">
                     <Text variant="headline-2" weight="bold">
-                      Recent
+                      All Assets
                     </Text>
-                    {recentAssets.length > (cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4) && (
-                      <Button
-                        variant="tertiary"
-                        compact
-                        onClick={() => setRecentExpanded(!recentExpanded)}
-                        icon={recentExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      >
-                        {recentExpanded ? 'Show Less' : `See All (${recentAssets.length})`}
-                      </Button>
-                    )}
+                    <Text variant="body-1" color="secondary">
+                      {sortedAssets.length} {sortedAssets.length === 1 ? 'asset' : 'assets'}
+                    </Text>
                   </div>
-                  {isPreloading ? (
-                    <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
-                      {[...Array(cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4)].map((_, i) => (
+                  {isLoading ? (
+                    <CardGrid
+                      gap="4"
+                      columns={layout === 'gallery' ? 3 : cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}
+                      layout={layout === 'list' ? 'list' : 'grid'}
+                    >
+                      {[...Array(12)].map((_, i) => (
                         <AssetCard key={i} loading />
                       ))}
                     </CardGrid>
-                  ) : recentAssets.length > 0 ? (
-                    <CardGrid gap="4" columns={cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}>
-                      {(recentExpanded
-                        ? recentAssets
-                        : recentAssets.slice(0, cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4)
-                      ).map((asset) => (
+                  ) : sortedAssets.length > 0 ? (
+                    <CardGrid
+                      gap="4"
+                      columns={layout === 'gallery' ? 3 : cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}
+                      layout={layout === 'list' ? 'list' : 'grid'}
+                    >
+                      {sortedAssets.map((asset) => (
                         <AssetCard
                           key={asset.id}
                           asset={asset}
                           selected={selectedIds.has(asset.id)}
                           primary={primaryId === asset.id}
-                          onClick={(a, e) => handleAssetClick(a, e, flattenedAssets)}
+                          onClick={(a, e) => handleAssetClick(a, e, departmentAssets)}
                           onMenuClick={handleMenuClick}
                         />
                       ))}
                     </CardGrid>
                   ) : (
-                    <Text variant="body-1" color="secondary">No recent assets</Text>
+                    <EmptyState
+                      title="No assets yet"
+                      message="Assets uploaded to your department folder will appear here"
+                    />
                   )}
-                </section>
-
-                {/* Files */}
-                <section>
-                  <FileExplorer
-                    title="Files"
-                    files={MOCK_FILES}
-                    onFileClick={(file) => console.log('File clicked:', file.name)}
-                    onFolderClick={(folder) => console.log('Folder clicked:', folder.name)}
-                  />
                 </section>
               </Stack>
             </div>
@@ -597,7 +610,7 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
           selectedCount={selectedIds.size}
           selectedAssets={selectedAssets}
           onClear={clearSelection}
-          onCreateCollection={(name) => console.log('Create collection:', name, 'with assets:', Array.from(selectedIds))}
+          onCreateCollection={handleCreateCollection}
           onShare={() => console.log('Share:', Array.from(selectedIds))}
         />
       </div>

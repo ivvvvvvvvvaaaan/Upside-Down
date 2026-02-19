@@ -1,8 +1,9 @@
-import { getArtCollections } from '@/lib/data'
+import { getCollections } from '@/lib/data'
 import { ArtDesignView } from './view'
 
 export default async function ArtDesignPage() {
-  const collections = await getArtCollections()
+  // Pass global collections for metadata lookup (names, types, avatars)
+  const collections = await getCollections()
 
   return <ArtDesignView initialCollections={collections} />
 }

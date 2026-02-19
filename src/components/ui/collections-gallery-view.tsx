@@ -389,6 +389,7 @@ export function CollectionsGalleryView({
                         loading={showAssetLoading}
                         forceEmptyPreview={forceEmptyPreview}
                         processing={showProcessing}
+                        showDepartment
                       />
                     ))}
                   </CardGrid>

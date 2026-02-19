@@ -1287,7 +1287,7 @@ export function FinderWindow({
   const renderListView = () => (
     <>
       {/* Column headers */}
-      <div className="flex items-center gap-2 px-2 py-1.5 bg-surface-2 border-b border-border-dim sticky top-0">
+      <div className="flex items-center gap-2 px-2 py-1.5 bg-surface-2 dark:bg-[#232829] border-b border-border-dim sticky top-0">
         <div className="w-3 flex-shrink-0" />
         <div className="w-4 flex-shrink-0" />
         <span className="flex-1 text-label-0-bold text-foreground-dim">Name</span>
@@ -1331,7 +1331,7 @@ export function FinderWindow({
       </span>
 
       {/* View mode buttons */}
-      <div className="flex items-center gap-0.5 bg-surface-2 rounded p-0.5" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-0.5 bg-surface-2 dark:bg-[#232829] rounded p-0.5" onMouseDown={(e) => e.stopPropagation()}>
         <button
           onClick={() => setViewMode('icons')}
           className={cn(
@@ -1375,13 +1375,14 @@ export function FinderWindow({
       onMaximize={onMaximize}
       onClose={onClose}
       titleBarContent={titleBarContent}
-      className="rounded-xl"
+      className="rounded-xl dark:bg-[#1D2123]"
+      titleBarClassName="dark:bg-[#1D2123]"
     >
-      <div className="h-full flex flex-col bg-surface-low">
+      <div className="h-full flex flex-col bg-surface-low dark:bg-[#1D2123]">
         {/* Main content area with sidebar */}
         <div className="flex-1 flex min-h-0">
           {/* Sidebar */}
-          <div className="w-40 flex-shrink-0 bg-surface-1 border-r border-border-dim overflow-y-auto">
+          <div className="w-40 flex-shrink-0 bg-surface-1 dark:bg-[#1A1E20] border-r border-border-dim overflow-y-auto">
             {/* Favorites section */}
             <div className="py-2">
               <div className="px-3 py-1 text-label-0-bold text-foreground-dim uppercase tracking-wider">
@@ -1444,7 +1445,7 @@ export function FinderWindow({
           </div>
 
           {/* File list */}
-          <div className="flex-1 overflow-auto bg-surface-flat">
+          <div className="flex-1 overflow-auto bg-surface-flat dark:bg-[#181B1C]">
             {viewMode === 'list' && renderListView()}
             {viewMode === 'icons' && renderIconsView()}
             {viewMode === 'columns' && renderColumnsView()}
@@ -1452,7 +1453,7 @@ export function FinderWindow({
         </div>
 
         {/* Status bar */}
-        <div className="h-6 flex items-center justify-between px-3 bg-surface-mid border-t border-border-dim flex-shrink-0">
+        <div className="h-6 flex items-center justify-between px-3 bg-surface-mid dark:bg-[#1D2123] border-t border-border-dim flex-shrink-0">
           <span className="text-label-0-regular text-foreground-dim">
             {currentFiles.length} items
           </span>

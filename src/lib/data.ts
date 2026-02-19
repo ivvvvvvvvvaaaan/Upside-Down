@@ -29,6 +29,8 @@ export type AudioMetadata = {
   typeTag?: string    // e.g., "Production", "SFX", "Foley", "Score"
 }
 
+export type DepartmentId = 'art-design' | 'vfx' | 'camera' | 'editorial' | 'audio-sound'
+
 export type Asset = {
   id: string
   name: string
@@ -45,8 +47,12 @@ export type Asset = {
   // Collection relationships
   collectionIds?: string[]  // Which collections this asset appears in
 
+  // Department ownership
+  department?: DepartmentId  // Which department this asset belongs to
+
   // Special flags
   isKeyArt?: boolean  // Mark asset as key art (hero imagery for the project)
+  isFinal?: boolean   // Mark asset as final/approved version
 
   created_at?: string
 }
@@ -745,6 +751,7 @@ const MOCK_ASSETS: Asset[] = [
       duration: '02:37',
     },
     collectionIds: ['char-1'],
+    department: 'camera',
     created_at: '2024-03-15T10:30:00Z',
   },
   {
@@ -759,6 +766,7 @@ const MOCK_ASSETS: Asset[] = [
       duration: '01:45',
     },
     collectionIds: ['char-2', 'scene-1'],
+    department: 'camera',
     created_at: '2024-03-14T14:20:00Z',
   },
   {
@@ -773,6 +781,7 @@ const MOCK_ASSETS: Asset[] = [
       duration: '03:12',
     },
     collectionIds: ['loc-1', 'scene-1'],
+    department: 'camera',
     created_at: '2024-03-13T09:15:00Z',
   },
 
@@ -782,6 +791,7 @@ const MOCK_ASSETS: Asset[] = [
     name: 'season_3_animatic_v2.mov',
     type: 'video',
     thumbnail: 'https://picsum.photos/seed/video1/800/450',
+    department: 'art-design',
     videoMeta: {
       duration: '05:23',
       typeTag: 'Animatic',
@@ -791,14 +801,15 @@ const MOCK_ASSETS: Asset[] = [
   },
   {
     id: 'asset-5',
-    name: 'rough_cut_episode_07.mov',
+    name: 'locked_cut_episode_07.mov',
     type: 'video',
     thumbnail: 'https://picsum.photos/seed/video2/800/450',
     videoMeta: {
       duration: '42:15',
-      typeTag: 'Rough Cut',
+      typeTag: 'Locked Cut',
     },
     collectionIds: ['char-1', 'char-2', 'scene-1'],
+    department: 'editorial',
     created_at: '2024-03-11T11:30:00Z',
   },
   {
@@ -811,6 +822,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'VFX Preview',
     },
     collectionIds: ['loc-1'],
+    department: 'vfx',
     created_at: '2024-03-10T13:00:00Z',
   },
 
@@ -825,6 +837,7 @@ const MOCK_ASSETS: Asset[] = [
       imageCount: 8,
     },
     collectionIds: ['scene-1'],
+    department: 'art-design',
     created_at: '2024-03-09T10:00:00Z',
   },
   {
@@ -837,6 +850,7 @@ const MOCK_ASSETS: Asset[] = [
       imageCount: 1,
     },
     collectionIds: ['loc-1'],
+    department: 'art-design',
     created_at: '2024-03-08T15:30:00Z',
   },
   {
@@ -849,6 +863,7 @@ const MOCK_ASSETS: Asset[] = [
       imageCount: 6,
     },
     collectionIds: ['char-1'],
+    department: 'art-design',
     created_at: '2024-03-07T09:45:00Z',
   },
 
@@ -862,6 +877,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Virtual Art',
     },
     collectionIds: ['loc-1'],
+    department: 'vfx',
     created_at: '2024-03-06T12:00:00Z',
   },
   {
@@ -873,6 +889,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Script',
     },
     collectionIds: ['char-1', 'char-2', 'scene-1'],
+    department: 'editorial',
     created_at: '2024-03-05T14:30:00Z',
   },
   {
@@ -884,6 +901,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Shot List',
     },
     collectionIds: ['scene-1'],
+    department: 'camera',
     created_at: '2024-03-04T08:15:00Z',
   },
 
@@ -897,6 +915,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Concept Art',
     },
     collectionIds: ['art-1'],
+    department: 'art-design',
     isKeyArt: true,
     created_at: '2024-02-15T09:00:00Z',
   },
@@ -909,6 +928,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Concept Art',
     },
     collectionIds: ['art-1', 'art-char-3'],
+    department: 'art-design',
     isKeyArt: true,
     created_at: '2024-02-14T11:30:00Z',
   },
@@ -921,6 +941,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Concept Art',
     },
     collectionIds: ['art-1'],
+    department: 'art-design',
     created_at: '2024-02-13T14:00:00Z',
   },
   {
@@ -932,6 +953,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Storyboards',
     },
     collectionIds: ['art-2'],
+    department: 'art-design',
     created_at: '2024-02-12T10:00:00Z',
   },
   {
@@ -943,6 +965,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Storyboards',
     },
     collectionIds: ['art-2'],
+    department: 'art-design',
     created_at: '2024-02-11T15:30:00Z',
   },
   {
@@ -954,6 +977,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Blueprint',
     },
     collectionIds: ['art-4', 'art-3'],
+    department: 'art-design',
     created_at: '2024-02-10T09:00:00Z',
   },
   {
@@ -965,6 +989,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Blueprint',
     },
     collectionIds: ['art-4', 'art-3'],
+    department: 'art-design',
     created_at: '2024-02-09T13:00:00Z',
   },
   {
@@ -976,6 +1001,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Reference',
     },
     collectionIds: ['art-5'],
+    department: 'art-design',
     created_at: '2024-02-08T10:00:00Z',
   },
   {
@@ -987,6 +1013,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Reference',
     },
     collectionIds: ['art-5'],
+    department: 'art-design',
     created_at: '2024-02-07T11:30:00Z',
   },
   {
@@ -998,6 +1025,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Costume Design',
     },
     collectionIds: ['art-7', 'art-char-1'],
+    department: 'art-design',
     isKeyArt: true,
     created_at: '2024-02-06T09:00:00Z',
   },
@@ -1010,6 +1038,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Costume Design',
     },
     collectionIds: ['art-7', 'art-char-2'],
+    department: 'art-design',
     isKeyArt: true,
     created_at: '2024-02-05T14:00:00Z',
   },
@@ -1022,6 +1051,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Prop Design',
     },
     collectionIds: ['art-6'],
+    department: 'art-design',
     created_at: '2024-02-04T10:00:00Z',
   },
   {
@@ -1033,6 +1063,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Prop Design',
     },
     collectionIds: ['art-6'],
+    department: 'art-design',
     created_at: '2024-02-03T15:00:00Z',
   },
 
@@ -1047,6 +1078,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'VFX Preview',
     },
     collectionIds: ['vfx-1', 'vfx-char-1'],
+    department: 'vfx',
     created_at: '2024-02-20T09:00:00Z',
   },
   {
@@ -1058,6 +1090,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Creature FX',
     },
     collectionIds: ['vfx-1', 'vfx-char-1'],
+    department: 'vfx',
     created_at: '2024-02-19T14:30:00Z',
   },
   {
@@ -1070,6 +1103,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'VFX Preview',
     },
     collectionIds: ['vfx-2', 'vfx-3'],
+    department: 'vfx',
     created_at: '2024-02-18T10:00:00Z',
   },
   {
@@ -1082,6 +1116,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'VFX Preview',
     },
     collectionIds: ['vfx-3'],
+    department: 'vfx',
     created_at: '2024-02-17T11:00:00Z',
   },
   {
@@ -1094,6 +1129,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'VFX Preview',
     },
     collectionIds: ['vfx-4', 'vfx-char-3'],
+    department: 'vfx',
     created_at: '2024-02-16T09:30:00Z',
   },
   {
@@ -1106,6 +1142,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'VFX Preview',
     },
     collectionIds: ['vfx-4'],
+    department: 'vfx',
     created_at: '2024-02-15T15:00:00Z',
   },
   {
@@ -1117,6 +1154,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Matte Painting',
     },
     collectionIds: ['vfx-5'],
+    department: 'vfx',
     created_at: '2024-02-14T10:00:00Z',
   },
   {
@@ -1128,6 +1166,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Matte Painting',
     },
     collectionIds: ['vfx-5'],
+    department: 'vfx',
     created_at: '2024-02-13T11:30:00Z',
   },
   {
@@ -1140,6 +1179,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'VFX Preview',
     },
     collectionIds: ['vfx-6', 'vfx-char-2'],
+    department: 'vfx',
     created_at: '2024-02-12T09:00:00Z',
   },
   {
@@ -1152,6 +1192,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'VFX Preview',
     },
     collectionIds: ['vfx-6'],
+    department: 'vfx',
     created_at: '2024-02-11T14:00:00Z',
   },
   {
@@ -1164,6 +1205,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'VFX Preview',
     },
     collectionIds: ['vfx-1', 'vfx-6'],
+    department: 'vfx',
     created_at: '2024-02-10T10:30:00Z',
   },
   {
@@ -1176,6 +1218,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'VFX Preview',
     },
     collectionIds: ['vfx-4', 'vfx-char-3'],
+    department: 'vfx',
     created_at: '2024-02-09T16:00:00Z',
   },
 
@@ -1190,6 +1233,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Dailies',
     },
     collectionIds: ['cam-1'],
+    department: 'camera',
     created_at: '2024-03-01T09:00:00Z',
   },
   {
@@ -1202,6 +1246,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Dailies',
     },
     collectionIds: ['cam-1'],
+    department: 'camera',
     created_at: '2024-03-01T10:30:00Z',
   },
   {
@@ -1214,6 +1259,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Camera Test',
     },
     collectionIds: ['cam-2'],
+    department: 'camera',
     created_at: '2024-02-28T14:00:00Z',
   },
   {
@@ -1226,6 +1272,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Lens Test',
     },
     collectionIds: ['cam-3'],
+    department: 'camera',
     created_at: '2024-02-28T11:00:00Z',
   },
   {
@@ -1238,6 +1285,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Lens Test',
     },
     collectionIds: ['cam-3'],
+    department: 'camera',
     created_at: '2024-02-28T11:30:00Z',
   },
   {
@@ -1250,6 +1298,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'B-Roll',
     },
     collectionIds: ['cam-4'],
+    department: 'camera',
     created_at: '2024-02-27T15:00:00Z',
   },
   {
@@ -1262,6 +1311,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'B-Roll',
     },
     collectionIds: ['cam-4'],
+    department: 'camera',
     created_at: '2024-02-27T16:30:00Z',
   },
   {
@@ -1274,6 +1324,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Aerial',
     },
     collectionIds: ['cam-5'],
+    department: 'camera',
     created_at: '2024-02-26T06:00:00Z',
   },
   {
@@ -1286,6 +1337,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Aerial',
     },
     collectionIds: ['cam-5'],
+    department: 'camera',
     created_at: '2024-02-26T07:00:00Z',
   },
   {
@@ -1298,6 +1350,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Steadicam',
     },
     collectionIds: ['cam-6'],
+    department: 'camera',
     created_at: '2024-02-25T14:00:00Z',
   },
   {
@@ -1310,6 +1363,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Steadicam',
     },
     collectionIds: ['cam-6'],
+    department: 'camera',
     created_at: '2024-02-25T15:30:00Z',
   },
   {
@@ -1322,6 +1376,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Dailies',
     },
     collectionIds: ['cam-1'],
+    department: 'camera',
     created_at: '2024-03-01T11:00:00Z',
   },
 
@@ -1336,6 +1391,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Rough Cut',
     },
     collectionIds: ['edit-1'],
+    department: 'editorial',
     created_at: '2024-03-05T09:00:00Z',
   },
   {
@@ -1348,6 +1404,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Rough Cut',
     },
     collectionIds: ['edit-1'],
+    department: 'editorial',
     created_at: '2024-03-06T10:00:00Z',
   },
   {
@@ -1360,6 +1417,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Assembly',
     },
     collectionIds: ['edit-2'],
+    department: 'editorial',
     created_at: '2024-03-03T14:00:00Z',
   },
   {
@@ -1372,6 +1430,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Fine Cut',
     },
     collectionIds: ['edit-3'],
+    department: 'editorial',
     created_at: '2024-03-08T11:00:00Z',
   },
   {
@@ -1384,6 +1443,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Color Pass',
     },
     collectionIds: ['edit-4'],
+    department: 'editorial',
     created_at: '2024-03-10T09:00:00Z',
   },
   {
@@ -1396,6 +1456,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Color Pass',
     },
     collectionIds: ['edit-4'],
+    department: 'editorial',
     created_at: '2024-03-11T10:00:00Z',
   },
   {
@@ -1408,6 +1469,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'VFX Temp',
     },
     collectionIds: ['edit-5'],
+    department: 'editorial',
     created_at: '2024-03-09T15:00:00Z',
   },
   {
@@ -1420,6 +1482,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'VFX Temp',
     },
     collectionIds: ['edit-5'],
+    department: 'editorial',
     created_at: '2024-03-09T16:00:00Z',
   },
   {
@@ -1432,6 +1495,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Final',
     },
     collectionIds: ['edit-6'],
+    department: 'editorial',
     created_at: '2024-03-15T09:00:00Z',
   },
   {
@@ -1444,6 +1508,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Final',
     },
     collectionIds: ['edit-6'],
+    department: 'editorial',
     created_at: '2024-03-15T10:00:00Z',
   },
 
@@ -1457,6 +1522,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Production',
     },
     collectionIds: ['audio-1'],
+    department: 'audio-sound',
     created_at: '2024-03-01T09:00:00Z',
   },
   {
@@ -1468,6 +1534,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Production',
     },
     collectionIds: ['audio-1'],
+    department: 'audio-sound',
     created_at: '2024-03-01T10:00:00Z',
   },
   {
@@ -1479,6 +1546,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'SFX',
     },
     collectionIds: ['audio-2'],
+    department: 'audio-sound',
     created_at: '2024-02-28T14:00:00Z',
   },
   {
@@ -1490,6 +1558,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'SFX',
     },
     collectionIds: ['audio-2'],
+    department: 'audio-sound',
     created_at: '2024-02-28T14:30:00Z',
   },
   {
@@ -1501,6 +1570,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'SFX',
     },
     collectionIds: ['audio-2'],
+    department: 'audio-sound',
     created_at: '2024-02-28T15:00:00Z',
   },
   {
@@ -1512,6 +1582,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Foley',
     },
     collectionIds: ['audio-3'],
+    department: 'audio-sound',
     created_at: '2024-02-27T11:00:00Z',
   },
   {
@@ -1523,6 +1594,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Foley',
     },
     collectionIds: ['audio-3'],
+    department: 'audio-sound',
     created_at: '2024-02-27T12:00:00Z',
   },
   {
@@ -1534,6 +1606,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Ambient',
     },
     collectionIds: ['audio-4'],
+    department: 'audio-sound',
     created_at: '2024-02-26T09:00:00Z',
   },
   {
@@ -1545,6 +1618,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Ambient',
     },
     collectionIds: ['audio-4'],
+    department: 'audio-sound',
     created_at: '2024-02-26T10:00:00Z',
   },
   {
@@ -1556,6 +1630,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Score',
     },
     collectionIds: ['audio-5'],
+    department: 'audio-sound',
     created_at: '2024-02-25T14:00:00Z',
   },
   {
@@ -1567,6 +1642,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'Score',
     },
     collectionIds: ['audio-5'],
+    department: 'audio-sound',
     created_at: '2024-02-25T15:00:00Z',
   },
   {
@@ -1578,6 +1654,7 @@ const MOCK_ASSETS: Asset[] = [
       typeTag: 'ADR',
     },
     collectionIds: ['audio-6'],
+    department: 'audio-sound',
     created_at: '2024-02-24T10:00:00Z',
   },
 ]
@@ -1621,6 +1698,39 @@ export async function getAssets(): Promise<Asset[]> {
 
 export async function getAllAssets(): Promise<Asset[]> {
   return getAssets()
+}
+
+export async function getAssetsByDepartment(departmentId: DepartmentId): Promise<Asset[]> {
+  const assets = await getAssets()
+  return assets.filter(a => a.department === departmentId)
+}
+
+export async function getAssetsByDepartmentAndCollection(
+  departmentId: DepartmentId,
+  collectionId: string
+): Promise<Asset[]> {
+  const assets = await getAssets()
+  return assets.filter(
+    (a) => a.department === departmentId && a.collectionIds?.includes(collectionId)
+  )
+}
+
+export async function getRecentAssets(limit: number = 12): Promise<Asset[]> {
+  const assets = await getAssets()
+  // Sort by created_at descending and take the first N
+  return assets
+    .sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
+      return dateB - dateA
+    })
+    .slice(0, limit)
+}
+
+export async function getAssetsByIds(ids: string[]): Promise<Asset[]> {
+  const assets = await getAssets()
+  const idSet = new Set(ids)
+  return assets.filter(a => idSet.has(a.id))
 }
 
 export async function getCollections(): Promise<Collection[]> {

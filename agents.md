@@ -1,5 +1,17 @@
 # Agent Resources & References
 
+## Project Purpose
+
+This is an **experimental prototype** that mimics the existing platform but allows for much faster iteration as a stand-alone experience. The goal is to validate user experience with potential future users.
+
+**Key points:**
+- **Not connected to backend** - Most functionality is mocked/simulated
+- **Operational in stages** - Features should work in complete workflows, even if isolated
+- **Prototype-first mindset** - Speed of iteration matters more than production-readiness
+- **UX validation focus** - The primary goal is testing and validating user experience concepts
+
+---
+
 This document contains useful resources and patterns for building with React and related technologies.
 
 ---

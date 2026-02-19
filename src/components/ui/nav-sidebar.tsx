@@ -23,7 +23,7 @@ import {
   Lock,
   type LucideIcon,
 } from 'lucide-react'
-import { useDepartmentAccess } from '@/hooks'
+import { useDepartmentAccess, useUserCollections } from '@/hooks'
 import type { DepartmentId } from '@/components/department/types'
 import { cn } from '@/lib/utils'
 import { Tag } from './tag'
@@ -214,6 +214,7 @@ const DEPARTMENT_NAV_ITEMS: { href: string; label: string; id: DepartmentId }[] 
 
 function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
   const { getAccessLevel } = useDepartmentAccess()
+  const { collections: userCollections } = useUserCollections()
 
   return (
     <>
@@ -255,7 +256,18 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
       <div className="py-2">
         <SectionHeader title="My Collections" />
         <div className="px-3 space-y-1">
-          <p className="px-3 py-1 text-label-0-regular text-foreground-dim">No collections yet</p>
+          {userCollections.length === 0 ? (
+            <p className="px-3 py-1 text-label-0-regular text-foreground-dim">No collections yet</p>
+          ) : (
+            userCollections.map((collection) => (
+              <NavLink
+                key={collection.id}
+                href={`/nextgen/collections/${collection.id}`}
+                label={collection.name}
+                badge={collection.assetIds.length}
+              />
+            ))
+          )}
           <button
             onClick={onNewCollection}
             className="flex items-center gap-2 px-3 py-2 text-body-0-bold text-foreground-dim hover:text-foreground-subtle transition-colors min-w-0"

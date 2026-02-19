@@ -27,6 +27,8 @@ interface DesktopWindowProps {
   titleBarContent?: ReactNode
   /** Additional class names for the window container */
   className?: string
+  /** Additional class names for the title bar */
+  titleBarClassName?: string
 }
 
 export function DesktopWindow({
@@ -42,6 +44,7 @@ export function DesktopWindow({
   children,
   titleBarContent,
   className,
+  titleBarClassName,
 }: DesktopWindowProps) {
   const windowRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -185,7 +188,8 @@ export function DesktopWindow({
         className={cn(
           'h-10 px-3 flex items-center gap-3 flex-shrink-0',
           'bg-surface-mid border-b border-border-dim',
-          !window.isMaximized && 'cursor-move'
+          !window.isMaximized && 'cursor-move',
+          titleBarClassName
         )}
         onMouseDown={handleTitleBarMouseDown}
       >

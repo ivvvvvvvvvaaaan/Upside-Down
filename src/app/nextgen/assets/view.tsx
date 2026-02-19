@@ -19,7 +19,7 @@ import {
 } from '@/components/ui'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import { AppLayout } from '@/components/layouts'
-import { useAssetSelection, useViewPreferences, useCompactBar } from '@/hooks'
+import { useAssetSelection, useViewPreferences, useCompactBar, useUserCollections } from '@/hooks'
 import type { Asset } from '@/lib/data'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
@@ -39,6 +39,7 @@ export function AssetsView({ assets }: AssetsViewProps) {
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const { layout, setLayout, cardSize, setCardSize } = useViewPreferences()
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
+  const { createCollection } = useUserCollections()
 
   // Sort settings
   const sortFields = [
@@ -73,6 +74,11 @@ export function AssetsView({ assets }: AssetsViewProps) {
   const selectedAssets = useMemo(() => {
     return assets.filter((asset) => selectedIds.has(asset.id))
   }, [assets, selectedIds])
+
+  const handleCreateCollection = (name: string) => {
+    createCollection(name, selectedAssets.map(a => a.id))
+    clearSelection()
+  }
 
   // Determine grid columns based on card size
   const getColumns = () => {
@@ -175,6 +181,7 @@ export function AssetsView({ assets }: AssetsViewProps) {
                         loading={showAssetLoading}
                         forceEmptyPreview={forceEmptyPreview}
                         processing={showProcessing}
+                        showDepartment
                       />
                     ))}
                   </CardGrid>
@@ -208,7 +215,7 @@ export function AssetsView({ assets }: AssetsViewProps) {
           selectedCount={selectedIds.size}
           selectedAssets={selectedAssets}
           onClear={clearSelection}
-          onCreateCollection={(name) => console.log('Create collection:', name, 'with assets:', Array.from(selectedIds))}
+          onCreateCollection={handleCreateCollection}
           onShare={() => console.log('Share:', Array.from(selectedIds))}
         />
       </div>

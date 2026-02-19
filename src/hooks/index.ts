@@ -11,3 +11,6 @@ export { useCompactBar } from './use-compact-bar'
 
 export { useDepartmentAccess } from './useDepartmentAccess'
 export type { UseDepartmentAccessReturn, DepartmentAccessLevel } from './useDepartmentAccess'
+
+export { useUserCollections, UserCollectionsProvider } from './useUserCollections'
+export type { UserCollection } from './useUserCollections'

@@ -1,8 +1,9 @@
-import { getVfxCollections } from '@/lib/data'
+import { getCollections } from '@/lib/data'
 import { VfxView } from './view'
 
 export default async function VFXPage() {
-  const collections = await getVfxCollections()
+  // Pass global collections for metadata lookup (names, types, avatars)
+  const collections = await getCollections()
 
   return <VfxView initialCollections={collections} />
 }

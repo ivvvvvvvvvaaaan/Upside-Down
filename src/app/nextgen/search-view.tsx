@@ -1,22 +1,32 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { ArrowLeft, Search } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Button } from '@/components/ui'
+import { Button, AssetCard, CardGrid, Stack, SelectionBar } from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
+import { useAssetSelection, useViewPreferences, useUserCollections } from '@/hooks'
+import type { Asset } from '@/lib/data'
+
+interface MediaLibrarySearchViewProps {
+  recentAssets: Asset[]
+}
 
 /**
  * Media Library Search View
  *
- * Placeholder page with a prominent search bar
+ * Search bar at top, recent assets gallery at bottom
  * Following Hawkins design system
  */
-export function MediaLibrarySearchView() {
+export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const pathname = usePathname()
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
+
+  const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
+  const { cardSize } = useViewPreferences()
+  const { createCollection } = useUserCollections()
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,11 +34,35 @@ export function MediaLibrarySearchView() {
     console.log('Search query:', searchQuery)
   }
 
+  const handleMenuClick = (asset: Asset) => {
+    console.log('Menu clicked for:', asset.name)
+  }
+
+  // Determine grid columns based on card size
+  const getColumns = () => {
+    switch (cardSize) {
+      case 'sm': return 6
+      case 'lg': return 3
+      default: return 4
+    }
+  }
+
+  // Get selected assets for the selection bar
+  const selectedAssets = useMemo(() => {
+    return recentAssets.filter((asset) => selectedIds.has(asset.id))
+  }, [recentAssets, selectedIds])
+
+  const handleCreateCollection = (name: string) => {
+    createCollection(name, selectedAssets.map(a => a.id))
+    clearSelection()
+  }
+
   return (
     <AppLayout>
       <div className="h-full flex flex-col">
         <div className="flex-1 min-h-0 overflow-auto">
-          <div className="p-6 md:hidden">
+          {/* Mobile back button */}
+          <div className="p-6 pb-0 md:hidden">
             <Button asChild variant="icon" size="icon" aria-label="Menu">
               <Link href={menuHref}>
                 <ArrowLeft className="w-4 h-4" />
@@ -36,39 +70,75 @@ export function MediaLibrarySearchView() {
               </Link>
             </Button>
           </div>
-          <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 pb-6">
-            <div className="w-full max-w-2xl space-y-6">
-              {/* Title */}
-              <div className="text-center">
-                <h1 className="text-heading-4 text-foreground mb-2">
-                  Media Library
-                </h1>
-                <p className="text-body-1-regular text-foreground-subtle">
-                  Search across all collections and assets
-                </p>
-              </div>
 
-              {/* Search Bar */}
-              <form onSubmit={handleSearch} className="w-full">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground-dim" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search collections, assets, characters..."
-                    className="w-full h-14 pl-12 pr-4 bg-surface-low border border-border rounded text-body-1-regular text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-selected focus:ring-1 focus:ring-border-selected transition-colors"
-                  />
+          <div className="p-6">
+            <div className="max-w-7xl mx-auto">
+              <Stack spacing="lg">
+                {/* Search Section */}
+                <div className="flex flex-col items-center pt-8 pb-4">
+                  <div className="w-full max-w-2xl space-y-4">
+                    {/* Title */}
+                    <div className="text-center">
+                      <h1 className="text-heading-4 text-foreground mb-2">
+                        Media Library
+                      </h1>
+                      <p className="text-body-1-regular text-foreground-subtle">
+                        Search across all collections and assets
+                      </p>
+                    </div>
+
+                    {/* Search Bar */}
+                    <form onSubmit={handleSearch} className="w-full">
+                      <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground-dim" />
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Search collections, assets, characters..."
+                          className="w-full h-14 pl-12 pr-4 bg-surface-low border border-border rounded text-body-1-regular text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-selected focus:ring-1 focus:ring-border-selected transition-colors"
+                        />
+                      </div>
+                    </form>
+                  </div>
                 </div>
-              </form>
 
-              {/* Placeholder hint */}
-              <p className="text-center text-label-0-regular text-foreground-dim">
-                Try searching for characters, locations, or scenes
-              </p>
+                {/* Recent Section */}
+                {recentAssets.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-label-1-medium text-foreground-subtle">Recent</span>
+                      <Button asChild variant="tertiary" compact>
+                        <Link href="/nextgen/assets">View all</Link>
+                      </Button>
+                    </div>
+                    <CardGrid columns={getColumns()} gap="4">
+                      {recentAssets.map((asset) => (
+                        <AssetCard
+                          key={asset.id}
+                          asset={asset}
+                          selected={selectedIds.has(asset.id)}
+                          primary={primaryId === asset.id}
+                          onClick={(a, e) => handleAssetClick(a, e, recentAssets)}
+                          onMenuClick={handleMenuClick}
+                          showDepartment
+                        />
+                      ))}
+                    </CardGrid>
+                  </div>
+                )}
+              </Stack>
             </div>
           </div>
         </div>
+
+        <SelectionBar
+          selectedCount={selectedIds.size}
+          selectedAssets={selectedAssets}
+          onClear={clearSelection}
+          onCreateCollection={handleCreateCollection}
+          onShare={() => console.log('Share:', Array.from(selectedIds))}
+        />
       </div>
     </AppLayout>
   )

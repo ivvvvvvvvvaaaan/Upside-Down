@@ -32,6 +32,8 @@ export function BrowserWindow({
       onResize={onResize}
       onMinimize={onMinimize}
       onMaximize={onMaximize}
+      className="dark:bg-[#1D2123]"
+      titleBarClassName="dark:bg-[#1D2123]"
     >
       <div className="relative w-full h-full">
         <iframe

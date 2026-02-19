@@ -4,7 +4,16 @@ import { Tag } from './tag'
 import { Text } from './text'
 import { MoreVertical, Music } from 'lucide-react'
 import Image from 'next/image'
-import type { Asset } from '@/lib/data'
+import type { Asset, DepartmentId } from '@/lib/data'
+
+// Department short names for display
+const DEPARTMENT_NAMES: Record<DepartmentId, string> = {
+  'art-design': 'Art',
+  'vfx': 'VFX',
+  'camera': 'Camera',
+  'editorial': 'Editorial',
+  'audio-sound': 'Audio',
+}
 
 /**
  * AssetCard Component
@@ -49,6 +58,8 @@ export interface AssetCardProps {
   forceEmptyPreview?: boolean
   /** Asset is processing (uploaded but metadata/preview extraction in progress) */
   processing?: boolean
+  /** Show department tag for assets from other teams */
+  showDepartment?: boolean
 }
 
 // Placeholder image for assets without thumbnails
@@ -64,6 +75,7 @@ export function AssetCard({
   primary = false,
   forceEmptyPreview = false,
   processing = false,
+  showDepartment = false,
 }: AssetCardProps) {
   // Primary implies selected
   const isSelected = selected || primary
@@ -152,26 +164,25 @@ export function AssetCard({
     ? asset.audioMeta?.duration
     : asset.videoMeta?.duration
 
+  // Get type tag label
+  const getTypeTag = (): string => {
+    switch (asset.type) {
+      case 'shot': return 'Shot'
+      case 'video': return asset.videoMeta?.typeTag || 'Video'
+      case 'image': return asset.imageMeta?.typeTag || 'Image'
+      case 'text': return asset.textMeta?.typeTag || 'Document'
+      case 'audio': return asset.audioMeta?.typeTag || 'Audio'
+      default: return ''
+    }
+  }
+
   // Render type tag
   const renderTypeTag = () => {
-    let tagLabel = ''
+    const tagLabel = getTypeTag()
 
-    switch (asset.type) {
-      case 'shot':
-        tagLabel = 'Shot'
-        break
-      case 'video':
-        tagLabel = asset.videoMeta?.typeTag || 'Video'
-        break
-      case 'image':
-        tagLabel = asset.imageMeta?.typeTag || 'Image'
-        break
-      case 'text':
-        tagLabel = asset.textMeta?.typeTag || 'Document'
-        break
-      case 'audio':
-        tagLabel = asset.audioMeta?.typeTag || 'Audio'
-        break
+    // "Final" type tag should be green (positive) for consistency
+    if (tagLabel === 'Final') {
+      return <Tag type="positive">{tagLabel}</Tag>
     }
 
     return <Tag>{tagLabel}</Tag>
@@ -204,29 +215,7 @@ export function AssetCard({
       )
     }
 
-    if (asset.type === 'image' && asset.imageMeta?.imageCount) {
-      // Multi-image grid
-      return (
-        <div className="absolute inset-0">
-          <div className="grid grid-cols-2 gap-1 h-full">
-            {[...Array(Math.min(4, asset.imageMeta.imageCount))].map((_, i) => (
-              <div key={i} className="relative bg-surface-2 rounded-sm overflow-hidden">
-                {asset.thumbnail && (
-                  <Image
-                    src={asset.thumbnail}
-                    alt=""
-                    fill
-                    className="object-cover"
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )
-    }
-
-    // Single image for shot, video, text
+    // Single thumbnail for all asset types
     // forceEmptyPreview overrides to always show placeholder
     const thumbnailSrc = forceEmptyPreview ? EMPTY_ASSET_PLACEHOLDER : asset.thumbnail
 
@@ -286,6 +275,9 @@ export function AssetCard({
           <div className="flex items-center gap-2">
             {renderTypeTag()}
             {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
+            {showDepartment && asset.department && (
+              <Tag type="neutral" variant="border">{DEPARTMENT_NAMES[asset.department]}</Tag>
+            )}
             {renderMetadata()}
           </div>
         </div>

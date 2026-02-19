@@ -28,7 +28,7 @@ import { AppLayout } from '@/components/layouts'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAssetSelection, useCollectionAssets, useViewPreferences, useCompactBar } from '@/hooks'
+import { useAssetSelection, useCollectionAssets, useViewPreferences, useCompactBar, useUserCollections } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
 
 // Collection card states: loading, real data (asis), or fake thumbnail variants
@@ -55,6 +55,7 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
     goBack,
   } = useCollectionAssets({ onNavigate: clearSelection })
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
+  const { createCollection } = useUserCollections()
   const isCompactBarVisible = !selectedCollection && showCompactBar
 
   // Appearance settings - persisted globally
@@ -187,6 +188,11 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
     return sourceAssets.filter((asset) => selectedIds.has(asset.id))
   }, [allAssets, collectionAssets, selectedCollection, selectedIds])
 
+  const handleCreateCollection = (name: string) => {
+    createCollection(name, selectedAssets.map(a => a.id))
+    clearSelection()
+  }
+
   // Derive numberOfAssets based on collectionCardState
   const getNumberOfAssets = (collection: Collection): CollectionCardAssetCount => {
     if (collectionCardState === 'asis' || collectionCardState === 'loading') {
@@ -280,6 +286,7 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                           loading={showAssetLoading}
                           forceEmptyPreview={forceEmptyPreview}
                           processing={showProcessing}
+                          showDepartment
                         />
                       ))}
                     </CardGrid>
@@ -313,7 +320,7 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
             selectedCount={selectedIds.size}
             selectedAssets={selectedAssets}
             onClear={clearSelection}
-            onCreateCollection={(name) => console.log('Create collection:', name, 'with assets:', Array.from(selectedIds))}
+            onCreateCollection={handleCreateCollection}
             onShare={() => console.log('Share:', Array.from(selectedIds))}
           />
         </div>
@@ -497,7 +504,7 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
           selectedCount={selectedIds.size}
           selectedAssets={selectedAssets}
           onClear={clearSelection}
-          onCreateCollection={(name) => console.log('Create collection:', name, 'with assets:', Array.from(selectedIds))}
+          onCreateCollection={handleCreateCollection}
           onShare={() => console.log('Share:', Array.from(selectedIds))}
         />
       </div>
