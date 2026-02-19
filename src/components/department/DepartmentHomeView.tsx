@@ -456,25 +456,11 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
                       <span className="sr-only">Menu</span>
                     </Link>
                   </Button>
-                  <div className="flex items-center gap-2">
-                    <HawkinsSearch
-                      value={searchQuery}
-                      onValueChange={setSearchQuery}
-                      filters={filterOptions}
-                    />
-                    <SortDropdown
-                      fields={sortFields}
-                      value={sortCriteria}
-                      onChange={setSortCriteria}
-                      iconOnly
-                    />
-                    <AppearanceDropdown iconOnly
-                      layout={layout}
-                      onLayoutChange={setLayout}
-                      cardSize={cardSize}
-                      onCardSizeChange={setCardSize}
-                    />
-                  </div>
+                  <HawkinsSearch
+                    value={searchQuery}
+                    onValueChange={setSearchQuery}
+                    filters={filterOptions}
+                  />
                 </div>
 
                 {/* Header with facepile */}
@@ -491,17 +477,6 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
                       value={searchQuery}
                       onValueChange={setSearchQuery}
                       filters={filterOptions}
-                    />
-                    <SortDropdown
-                      fields={sortFields}
-                      value={sortCriteria}
-                      onChange={setSortCriteria}
-                    />
-                    <AppearanceDropdown
-                      layout={layout}
-                      onLayoutChange={setLayout}
-                      cardSize={cardSize}
-                      onCardSizeChange={setCardSize}
                     />
                   </div>
                 </div>
@@ -557,12 +532,29 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
                 {/* All Assets Stream */}
                 <section>
                   <div className="flex items-center justify-between mb-4">
-                    <Text variant="headline-2" weight="bold">
-                      All Assets
-                    </Text>
-                    <Text variant="body-1" color="secondary">
-                      {sortedAssets.length} {sortedAssets.length === 1 ? 'asset' : 'assets'}
-                    </Text>
+                    <div className="flex items-center gap-3">
+                      <Text variant="headline-2" weight="bold">
+                        All Assets
+                      </Text>
+                      <Text variant="body-1" color="secondary">
+                        {sortedAssets.length} {sortedAssets.length === 1 ? 'asset' : 'assets'}
+                      </Text>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <SortDropdown
+                        fields={sortFields}
+                        value={sortCriteria}
+                        onChange={setSortCriteria}
+                        iconOnly
+                      />
+                      <AppearanceDropdown
+                        layout={layout}
+                        onLayoutChange={setLayout}
+                        cardSize={cardSize}
+                        onCardSizeChange={setCardSize}
+                        iconOnly
+                      />
+                    </div>
                   </div>
                   {isLoading ? (
                     <CardGrid
