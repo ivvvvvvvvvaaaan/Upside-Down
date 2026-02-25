@@ -21,9 +21,10 @@ import {
   Database,
   Layout,
   Lock,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react'
-import { useDepartmentAccess, useUserCollections } from '@/hooks'
+import { useDepartmentAccess, useUserCollections, useSmartCollections } from '@/hooks'
 import type { DepartmentId } from '@/components/department/types'
 import { cn } from '@/lib/utils'
 import { Tag } from './tag'
@@ -212,9 +213,11 @@ const DEPARTMENT_NAV_ITEMS: { href: string; label: string; id: DepartmentId }[] 
   { href: '/nextgen/departments/audio-sound', label: 'Audio & Sound', id: 'audio-sound' },
 ]
 
+
 function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
   const { getAccessLevel } = useDepartmentAccess()
   const { collections: userCollections } = useUserCollections()
+  const { collections: smartCollections } = useSmartCollections()
 
   return (
     <>
@@ -241,33 +244,30 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
         </div>
       </div>
 
-      {/* Smart Collections Section */}
+      {/* Collections Section - Smart + User collections unified */}
       <div className="py-2">
-        <SectionHeader title="Smart Collections" />
+        <SectionHeader title="Collections" />
         <div className="px-3 space-y-1">
-          <NavLink href="/nextgen/collections" label="All Collections" />
-          <NavLink href="/nextgen/collections/characters" label="Characters" />
-          <NavLink href="/nextgen/collections/locations" label="Locations" />
-          <NavLink href="/nextgen/collections/scenes" label="Scenes" />
-        </div>
-      </div>
-
-      {/* My Collections Section */}
-      <div className="py-2">
-        <SectionHeader title="My Collections" />
-        <div className="px-3 space-y-1">
-          {userCollections.length === 0 ? (
-            <p className="px-3 py-1 text-label-0-regular text-foreground-dim">No collections yet</p>
-          ) : (
-            userCollections.map((collection) => (
-              <NavLink
-                key={collection.id}
-                href={`/nextgen/collections/${collection.id}`}
-                label={collection.name}
-                badge={collection.assetIds.length}
-              />
-            ))
-          )}
+          {/* Smart collections - Sparkles icon */}
+          {smartCollections.map((collection) => (
+            <NavLink
+              key={collection.id}
+              href={`/nextgen/smart-collections/${collection.id}`}
+              label={collection.name}
+              icon={<Sparkles className="w-4 h-4 flex-shrink-0" />}
+            />
+          ))}
+          {/* User collections - Folder icon */}
+          {userCollections.map((collection) => (
+            <NavLink
+              key={collection.id}
+              href={`/nextgen/collections/${collection.id}`}
+              label={collection.name}
+              icon={<Folder className="w-4 h-4 flex-shrink-0" />}
+              badge={collection.assetIds.length}
+            />
+          ))}
+          {/* New collection button */}
           <button
             onClick={onNewCollection}
             className="flex items-center gap-2 px-3 py-2 text-body-0-bold text-foreground-dim hover:text-foreground-subtle transition-colors min-w-0"
@@ -280,19 +280,16 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
 
       {/* Sharing Section */}
       <div className="py-2">
-        <SectionHeader title="Sharing" />
+        <SectionHeader title="Shared" />
         <div className="px-3 space-y-1">
-          <div className="flex items-center gap-2 px-3 py-1.5 min-w-0">
-            <ArrowUpRight className="w-3 h-3 text-foreground-dim flex-shrink-0" />
-            <span className="text-label-0-bold uppercase text-foreground-dim truncate">Sent</span>
-          </div>
-          <p className="px-3 py-1 pl-8 text-label-0-regular text-foreground-dim truncate">Nothing sent</p>
-
-          <div className="flex items-center gap-2 px-3 py-1.5 mt-2 min-w-0">
-            <ArrowDownLeft className="w-3 h-3 text-foreground-dim flex-shrink-0" />
-            <span className="text-label-0-bold uppercase text-foreground-dim truncate">Incoming</span>
-          </div>
-          <NavLink href="/nextgen/sharing/incoming/1" label="Project Assets" badge={4} />
+          {/* Incoming shared collections */}
+          <NavLink
+            href="/nextgen/sharing/incoming/1"
+            label="Project Assets"
+            badge={4}
+            icon={<ArrowDownLeft className="w-4 h-4 flex-shrink-0" />}
+          />
+          {/* Sent shared collections would appear here with ArrowUpRight icon */}
         </div>
       </div>
     </>

@@ -1,7 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { NavSidebar, PrimaryNavRail, ResizeHandle, ProjectBreadcrumb, NewCollectionModal } from '@/components/ui'
+import { useUserCollections, useSmartCollections } from '@/hooks'
+import type { AssetFilter } from '@/lib/data'
 
 /**
  * App Layout
@@ -20,6 +23,10 @@ export interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  const router = useRouter()
+  const { createCollection: createUserCollection } = useUserCollections()
+  const { createCollection: createSmartCollection } = useSmartCollections()
+
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH)
   const [isDragging, setIsDragging] = useState(false)
   const [showNewCollectionModal, setShowNewCollectionModal] = useState(false)
@@ -82,8 +89,14 @@ export function AppLayout({ children }: AppLayoutProps) {
         open={showNewCollectionModal}
         onOpenChange={setShowNewCollectionModal}
         onCreateCollection={(name) => {
-          console.log('Create collection from sidebar:', name)
+          const collection = createUserCollection(name, [])
           setShowNewCollectionModal(false)
+          router.push(`/nextgen/collections/${collection.id}`)
+        }}
+        onCreateSmartCollection={(name: string, filter: AssetFilter) => {
+          const collection = createSmartCollection(name, 'filter', filter)
+          setShowNewCollectionModal(false)
+          router.push(`/nextgen/smart-collections/${collection.id}`)
         }}
       />
     </div>

@@ -14,3 +14,5 @@ export type { UseDepartmentAccessReturn, DepartmentAccessLevel } from './useDepa
 
 export { useUserCollections, UserCollectionsProvider } from './useUserCollections'
 export type { UserCollection } from './useUserCollections'
+
+export { useSmartCollections, SmartCollectionsProvider, matchesFilter } from './useSmartCollections'

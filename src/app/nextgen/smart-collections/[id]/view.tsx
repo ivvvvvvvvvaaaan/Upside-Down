@@ -12,69 +12,69 @@ import {
   AssetCard,
   SelectionBar,
   EmptyState,
-  CollectionSidePanel,
+  SmartCollectionSidePanel,
 } from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
-import { useAssetSelection, useViewPreferences, useUserCollections } from '@/hooks'
-import type { Asset } from '@/lib/data'
+import { useAssetSelection, useViewPreferences, useUserCollections, useSmartCollections } from '@/hooks'
+import { matchesFilter } from '@/hooks/useSmartCollections'
+import type { Asset, AssetFilter } from '@/lib/data'
 
-interface UserCollectionDetailViewProps {
+interface SmartCollectionDetailViewProps {
   collectionId: string
 }
 
-export function UserCollectionDetailView({ collectionId }: UserCollectionDetailViewProps) {
+export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetailViewProps) {
   const pathname = usePathname()
   const router = useRouter()
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
 
-  const { getCollection, createCollection, deleteCollection } = useUserCollections()
+  const { getCollection, updateCollection, deleteCollection } = useSmartCollections()
+  const { createCollection: createUserCollection } = useUserCollections()
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const { cardSize } = useViewPreferences()
 
-  const [assets, setAssets] = useState<Asset[]>([])
+  const [allAssets, setAllAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
   const [sidePanelOpen, setSidePanelOpen] = useState(true)
 
   const collection = getCollection(collectionId)
 
-  const handleDeleteCollection = () => {
-    if (collection) {
-      deleteCollection(collection.id)
-      router.push('/nextgen')
-    }
-  }
-
-  const handleShareCollection = () => {
-    console.log('Share collection:', collection?.id)
-  }
-
-  // Fetch assets by IDs when collection loads
+  // Fetch all assets on mount
   useEffect(() => {
-    if (!collection) {
-      setLoading(false)
-      return
-    }
-
     const fetchAssets = async () => {
       setLoading(true)
       try {
-        const response = await fetch('/api/assets/by-ids', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids: collection.assetIds }),
-        })
+        const response = await fetch('/api/assets')
         if (!response.ok) throw new Error('Failed to fetch assets')
         const fetchedAssets = await response.json()
-        setAssets(fetchedAssets)
+        setAllAssets(fetchedAssets)
       } catch (error) {
         console.error('Failed to fetch assets:', error)
-        setAssets([])
+        setAllAssets([])
       }
       setLoading(false)
     }
 
     fetchAssets()
-  }, [collection])
+  }, [])
+
+  // Filter assets based on collection's filter rules
+  const filteredAssets = useMemo(() => {
+    if (!collection) return []
+    return allAssets.filter(asset => matchesFilter(asset, collection.filter))
+  }, [allAssets, collection])
+
+  const handleDeleteCollection = () => {
+    if (collection && deleteCollection(collection.id)) {
+      router.push('/nextgen')
+    }
+  }
+
+  const handleUpdateCollection = (updates: { name?: string; filter?: AssetFilter }) => {
+    if (collection) {
+      updateCollection(collection.id, updates)
+    }
+  }
 
   const handleMenuClick = (asset: Asset) => {
     console.log('Menu clicked for:', asset.name)
@@ -89,11 +89,11 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   }
 
   const selectedAssets = useMemo(() => {
-    return assets.filter((asset) => selectedIds.has(asset.id))
-  }, [assets, selectedIds])
+    return filteredAssets.filter((asset) => selectedIds.has(asset.id))
+  }, [filteredAssets, selectedIds])
 
   const handleCreateCollection = (name: string) => {
-    createCollection(name, selectedAssets.map(a => a.id))
+    createUserCollection(name, selectedAssets.map(a => a.id))
     clearSelection()
   }
 
@@ -115,15 +115,15 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                     </Button>
                   </div>
                   <EmptyState
-                    title="Collection not found"
-                    message="This collection may have been deleted or doesn't exist."
+                    title="Smart Collection not found"
+                    message="This smart collection may have been deleted or doesn't exist."
                   >
                     <Button
                       variant="secondary"
-                      onClick={() => router.push('/nextgen/collections')}
+                      onClick={() => router.push('/nextgen')}
                       className="mt-4"
                     >
-                      Back to Collections
+                      Back to Home
                     </Button>
                   </EmptyState>
                 </Stack>
@@ -162,9 +162,9 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         <Text variant="body-2" color="secondary">
                           {loading
                             ? 'Loading assets...'
-                            : assets.length === 0
-                            ? 'No assets'
-                            : `${assets.length} asset${assets.length !== 1 ? 's' : ''}`
+                            : filteredAssets.length === 0
+                            ? 'No matching assets'
+                            : `${filteredAssets.length} asset${filteredAssets.length !== 1 ? 's' : ''}`
                           }
                         </Text>
                       </div>
@@ -189,15 +189,15 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         <AssetCard key={i} loading />
                       ))}
                     </CardGrid>
-                  ) : assets.length > 0 ? (
+                  ) : filteredAssets.length > 0 ? (
                     <CardGrid columns={getColumns()} gap="4">
-                      {assets.map((asset) => (
+                      {filteredAssets.map((asset) => (
                         <AssetCard
                           key={asset.id}
                           asset={asset}
                           selected={selectedIds.has(asset.id)}
                           primary={primaryId === asset.id}
-                          onClick={(a, e) => handleAssetClick(a, e, assets)}
+                          onClick={(a, e) => handleAssetClick(a, e, filteredAssets)}
                           onMenuClick={handleMenuClick}
                           showDepartment
                         />
@@ -205,8 +205,8 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                     </CardGrid>
                   ) : (
                     <EmptyState
-                      title="No assets"
-                      message="This collection doesn't have any assets yet"
+                      title="No matching assets"
+                      message="No assets match the current filter rules. Try adjusting the filters."
                     />
                   )}
                 </Stack>
@@ -225,12 +225,13 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
 
         {/* Side panel - pushes content when open */}
         {collection && (
-          <CollectionSidePanel
+          <SmartCollectionSidePanel
             collection={collection}
             open={sidePanelOpen}
             onClose={() => setSidePanelOpen(false)}
+            onUpdate={handleUpdateCollection}
             onDelete={handleDeleteCollection}
-            onShare={handleShareCollection}
+            matchingCount={filteredAssets.length}
           />
         )}
       </div>

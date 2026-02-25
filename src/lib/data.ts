@@ -31,6 +31,26 @@ export type AudioMetadata = {
 
 export type DepartmentId = 'art-design' | 'vfx' | 'camera' | 'editorial' | 'audio-sound'
 
+// Smart Collection Types
+export type SmartCollectionIcon = 'character' | 'location' | 'scene' | 'palette' | 'filter' | 'tag'
+
+export type AssetFilter = {
+  query?: string              // Free text search (name, tags)
+  types?: AssetType[]         // ['image', 'video', 'shot', 'text', 'audio']
+  department?: DepartmentId   // 'art-design', 'vfx', 'camera', etc.
+  typeTags?: string[]         // ['Concept Art', 'Storyboards', 'Final']
+  isKeyArt?: boolean          // Key art filter
+}
+
+export type SmartCollection = {
+  id: string
+  name: string
+  icon: SmartCollectionIcon
+  filter: AssetFilter
+  isDefault?: boolean         // Cannot be deleted, only edited
+  createdAt: Date
+}
+
 export type Asset = {
   id: string
   name: string

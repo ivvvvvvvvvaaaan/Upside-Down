@@ -1,7 +1,6 @@
 'use client'
 
 import { X, Trash2, Share2, Shield, Users, Droplets } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { SettingToggle } from './settings-panel'
 import type { UserCollection } from '@/hooks'
@@ -58,22 +57,14 @@ export function CollectionSidePanel({
         {/* Actions */}
         <section className="space-y-2">
           <h3 className="text-label-0-bold uppercase text-foreground-dim">Actions</h3>
-          <div className="space-y-2">
+          <div className="space-y-1">
             <Button
-              variant="secondary"
+              variant="tertiary"
               className="w-full justify-start"
               icon={<Share2 className="w-4 h-4" />}
               onClick={onShare}
             >
               Share Collection
-            </Button>
-            <Button
-              variant="secondary"
-              className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-500/10"
-              icon={<Trash2 className="w-4 h-4" />}
-              onClick={onDelete}
-            >
-              Delete Collection
             </Button>
           </div>
         </section>
@@ -123,6 +114,18 @@ export function CollectionSidePanel({
             </Button>
           </div>
         </section>
+      </div>
+
+      {/* Footer with delete */}
+      <div className="p-4 border-t border-border">
+        <Button
+          variant="tertiary"
+          className="w-full justify-start text-foreground-system-error hover:bg-surface-system-error-subtle"
+          icon={<Trash2 className="w-4 h-4" />}
+          onClick={onDelete}
+        >
+          Delete Collection
+        </Button>
       </div>
     </div>
   )
