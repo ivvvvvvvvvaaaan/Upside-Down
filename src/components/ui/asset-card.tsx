@@ -1,9 +1,13 @@
+'use client'
+
 import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { Tag } from './tag'
 import { Text } from './text'
 import { MoreVertical, Music } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type { Asset, DepartmentId } from '@/lib/data'
 
 // Department short names for display
@@ -60,6 +64,8 @@ export interface AssetCardProps {
   processing?: boolean
   /** Show department tag for assets from other teams */
   showDepartment?: boolean
+  /** Asset originates from a workspace managed zone */
+  fromWorkspace?: boolean
 }
 
 // Placeholder image for assets without thumbnails
@@ -76,7 +82,9 @@ export function AssetCard({
   forceEmptyPreview = false,
   processing = false,
   showDepartment = false,
+  fromWorkspace = false,
 }: AssetCardProps) {
+  const router = useRouter()
   // Primary implies selected
   const isSelected = selected || primary
 
@@ -234,6 +242,7 @@ export function AssetCard({
   return (
     <div
       onClick={(e) => onClick?.(asset, e)}
+      onDoubleClick={() => router.push(`/nextgen/assets/${asset.id}`)}
       className={cn(
         'group relative flex flex-col',
         'w-full cursor-pointer',
@@ -267,9 +276,13 @@ export function AssetCard({
         {/* Left: Title, Tag + Metadata row */}
         <div className="flex-1 min-w-0 flex flex-col gap-1">
           {/* Title - 1st line with hover state - body-0-bold (13px/20px/600) */}
-          <div className="text-body-0-bold text-foreground truncate group-hover:text-foreground-system-link group-hover:underline">
+          <Link
+            href={`/nextgen/assets/${asset.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="text-body-0-bold text-foreground truncate block hover:text-foreground-system-link hover:underline"
+          >
             {asset.name}
-          </div>
+          </Link>
 
           {/* Tag + Metadata - 2nd line with 8px gap */}
           <div className="flex items-center gap-2">
@@ -277,6 +290,9 @@ export function AssetCard({
             {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
             {showDepartment && asset.department && (
               <Tag type="neutral" variant="border">{DEPARTMENT_NAMES[asset.department]}</Tag>
+            )}
+            {fromWorkspace && (
+              <Tag type="informative" variant="border">Workspace</Tag>
             )}
             {renderMetadata()}
           </div>

@@ -19,7 +19,11 @@ import {
   SettingGroup,
   SettingSegmented,
   Tag,
-  CollectionCard,
+
+  Tabs,
+  TabsList,
+  Tab,
+  TabsContent,
 } from '@/components/ui'
 import type { FacepileUser } from '@/components/ui/facepile'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
@@ -27,10 +31,12 @@ import { AppLayout } from '@/components/layouts'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAssetSelection, useViewPreferences, useCompactBar, useDepartmentAccess, useUserCollections } from '@/hooks'
+import { useAssetSelection, useViewPreferences, useCompactBar, useDepartmentAccess, useUserCollections, useWorkspaceState } from '@/hooks'
 import type { DepartmentAccessLevel } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
 import type { DepartmentConfig } from './types'
+import { WorkspaceFilesTab } from './WorkspaceFilesTab'
+import { instanceToAsset } from '@/lib/asset-instances'
 
 interface DepartmentHomeViewProps {
   config: DepartmentConfig
@@ -51,10 +57,6 @@ const MOCK_DEPARTMENT_MEMBERS: FacepileUser[] = [
   { id: '7', name: 'Anna Thompson', avatarSrc: 'https://i.pravatar.cc/150?img=16' },
 ]
 
-// Minimum assets needed to show a suggested collection
-// Using 1 for prototype since mock data has limited assets per collection
-const MIN_ASSETS_FOR_SUGGESTION = 1
-
 // Department labels for settings panel
 const DEPARTMENT_LABELS: Record<string, string> = {
   'art-design': 'Art & Design',
@@ -73,21 +75,13 @@ const ACCESS_LEVEL_OPTIONS: { value: DepartmentAccessLevel; label: string }[] = 
 
 
 export function DepartmentHomeView({ config, initialCollections }: DepartmentHomeViewProps) {
-  // Collection metadata lookup map (for getting names, types, avatars from global collections)
-  const collectionsMap = useMemo(() => {
-    const map = new Map<string, Collection>()
-    for (const c of initialCollections) {
-      map.set(c.id, c)
-    }
-    return map
-  }, [initialCollections])
-
   const pathname = usePathname()
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const { getAccessLevel, setAccessLevel, allDepartments, accessLevels } = useDepartmentAccess()
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
   const { createCollection } = useUserCollections()
+  const { instanceGroups } = useWorkspaceState(config.id, 'files')
 
   // Department assets - single source of truth for this department's assets
   const [departmentAssets, setDepartmentAssets] = useState<Asset[]>([])
@@ -138,56 +132,26 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
     fetchDepartmentAssets()
   }, [config.id])
 
-  // All assets sorted by date (newest first)
+  // IDs of assets that came from workspace instances
+  const workspaceAssetIds = useMemo(() => {
+    return new Set(instanceGroups.flatMap(g => g.instances.map(inst => inst.id)))
+  }, [instanceGroups])
+
+  // All assets (library + workspace instances) sorted by date (newest first)
   const sortedAssets = useMemo(() => {
-    return [...departmentAssets].sort((a, b) => {
+    const workspaceAssets = instanceGroups.flatMap(g => g.instances).map(instanceToAsset)
+    return [...departmentAssets, ...workspaceAssets].sort((a, b) => {
       const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
       const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
       return dateB - dateA
     })
-  }, [departmentAssets])
+  }, [departmentAssets, instanceGroups])
 
   // Assets for current collection view (filtered from department assets)
   const collectionAssets = useMemo(() => {
     if (!selectedCollection) return []
     return departmentAssets.filter((a) => a.collectionIds?.includes(selectedCollection.id))
   }, [departmentAssets, selectedCollection])
-
-  // Derive suggested collections from department assets
-  // Group by collectionIds, count assets, filter to smart collection types
-  const suggestedCollections = useMemo(() => {
-    const smartTypes = ['character', 'location']
-
-    // Count assets per collection (only collections this department has assets for)
-    const collectionCounts = new Map<string, number>()
-    for (const asset of departmentAssets) {
-      for (const collectionId of asset.collectionIds || []) {
-        collectionCounts.set(collectionId, (collectionCounts.get(collectionId) || 0) + 1)
-      }
-    }
-
-    // Build suggested collections with metadata
-    const suggestions: Array<Collection & { departmentAssetCount: number }> = []
-
-    collectionCounts.forEach((count, collectionId) => {
-      if (count < MIN_ASSETS_FOR_SUGGESTION) return
-
-      // Look up collection metadata from global collections
-      const metadata = collectionsMap.get(collectionId)
-      if (!metadata) return
-      if (!smartTypes.includes(metadata.type)) return
-
-      suggestions.push({
-        ...metadata,
-        departmentAssetCount: count,
-      })
-    })
-
-    // Sort by asset count descending, take top 8
-    return suggestions
-      .sort((a, b) => b.departmentAssetCount - a.departmentAssetCount)
-      .slice(0, 8)
-  }, [departmentAssets, collectionsMap])
 
   // Collection navigation handlers
   const loadCollection = useCallback((collection: Collection) => {
@@ -481,115 +445,83 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
                   </div>
                 </div>
 
-                {/* Suggested Collections - horizontal scroll */}
-                {suggestedCollections.length > 0 && (
-                  <section>
-                    <Text variant="headline-2" weight="bold" className="mb-4">
-                      Suggested
-                    </Text>
-                    <div className="flex gap-3 overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide">
-                      {suggestedCollections.map((collection) => {
-                        // Get department's assets for this collection to build thumbnails
-                        const deptCollectionAssets = departmentAssets.filter(
-                          (a) => a.collectionIds?.includes(collection.id)
-                        )
-                        const mainImage = deptCollectionAssets[0]?.thumbnail || collection.mainImage
-                        const thumbnailImages = deptCollectionAssets
-                          .slice(1, 3)
-                          .map((a) => a.thumbnail)
-                          .filter(Boolean) as string[]
-                        const assetCount = collection.departmentAssetCount
+                <Tabs defaultValue="assets">
+                  <TabsList>
+                    <Tab value="assets">Assets</Tab>
+                    <Tab value="files">Files</Tab>
+                  </TabsList>
 
-                        return (
-                          <div key={collection.id} className="flex-shrink-0 w-48">
-                            <CollectionCard
-                              title={collection.name}
-                              assetCount={assetCount}
-                              type={collection.type}
-                              mainImage={mainImage}
-                              thumbnailImages={thumbnailImages.length > 0 ? thumbnailImages : collection.thumbnailImages}
-                              avatarSrc={collection.avatarSrc}
-                              avatarName={collection.name}
-                              numberOfAssets={
-                                assetCount === 0
-                                  ? 'None'
-                                  : assetCount === 1
-                                  ? 'One'
-                                  : assetCount === 2
-                                  ? 'Two'
-                                  : 'Many'
-                              }
-                              size="sm"
-                              onClick={() => loadCollection(collection)}
+                  <TabsContent value="assets">
+                    <Stack spacing="lg">
+                      {/* All Assets Stream */}
+                      <section>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <Text variant="headline-2" weight="bold">
+                              All Assets
+                            </Text>
+                            <Text variant="body-1" color="secondary">
+                              {sortedAssets.length} {sortedAssets.length === 1 ? 'asset' : 'assets'}
+                            </Text>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <SortDropdown
+                              fields={sortFields}
+                              value={sortCriteria}
+                              onChange={setSortCriteria}
+                              iconOnly
+                            />
+                            <AppearanceDropdown
+                              layout={layout}
+                              onLayoutChange={setLayout}
+                              cardSize={cardSize}
+                              onCardSizeChange={setCardSize}
+                              iconOnly
                             />
                           </div>
-                        )
-                      })}
-                    </div>
-                  </section>
-                )}
+                        </div>
+                        {isLoading ? (
+                          <CardGrid
+                            gap="4"
+                            columns={layout === 'gallery' ? 3 : cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}
+                            layout={layout === 'list' ? 'list' : 'grid'}
+                          >
+                            {[...Array(12)].map((_, i) => (
+                              <AssetCard key={i} loading />
+                            ))}
+                          </CardGrid>
+                        ) : sortedAssets.length > 0 ? (
+                          <CardGrid
+                            gap="4"
+                            columns={layout === 'gallery' ? 3 : cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}
+                            layout={layout === 'list' ? 'list' : 'grid'}
+                          >
+                            {sortedAssets.map((asset) => (
+                              <AssetCard
+                                key={asset.id}
+                                asset={asset}
+                                selected={selectedIds.has(asset.id)}
+                                primary={primaryId === asset.id}
+                                onClick={(a, e) => handleAssetClick(a, e, departmentAssets)}
+                                onMenuClick={handleMenuClick}
+                                fromWorkspace={workspaceAssetIds.has(asset.id)}
+                              />
+                            ))}
+                          </CardGrid>
+                        ) : (
+                          <EmptyState
+                            title="No assets yet"
+                            message="Assets uploaded to your department folder will appear here"
+                          />
+                        )}
+                      </section>
+                    </Stack>
+                  </TabsContent>
 
-                {/* All Assets Stream */}
-                <section>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <Text variant="headline-2" weight="bold">
-                        All Assets
-                      </Text>
-                      <Text variant="body-1" color="secondary">
-                        {sortedAssets.length} {sortedAssets.length === 1 ? 'asset' : 'assets'}
-                      </Text>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <SortDropdown
-                        fields={sortFields}
-                        value={sortCriteria}
-                        onChange={setSortCriteria}
-                        iconOnly
-                      />
-                      <AppearanceDropdown
-                        layout={layout}
-                        onLayoutChange={setLayout}
-                        cardSize={cardSize}
-                        onCardSizeChange={setCardSize}
-                        iconOnly
-                      />
-                    </div>
-                  </div>
-                  {isLoading ? (
-                    <CardGrid
-                      gap="4"
-                      columns={layout === 'gallery' ? 3 : cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}
-                      layout={layout === 'list' ? 'list' : 'grid'}
-                    >
-                      {[...Array(12)].map((_, i) => (
-                        <AssetCard key={i} loading />
-                      ))}
-                    </CardGrid>
-                  ) : sortedAssets.length > 0 ? (
-                    <CardGrid
-                      gap="4"
-                      columns={layout === 'gallery' ? 3 : cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}
-                      layout={layout === 'list' ? 'list' : 'grid'}
-                    >
-                      {sortedAssets.map((asset) => (
-                        <AssetCard
-                          key={asset.id}
-                          asset={asset}
-                          selected={selectedIds.has(asset.id)}
-                          primary={primaryId === asset.id}
-                          onClick={(a, e) => handleAssetClick(a, e, departmentAssets)}
-                          onMenuClick={handleMenuClick}
-                        />
-                      ))}
-                    </CardGrid>
-                  ) : (
-                    <EmptyState
-                      title="No assets yet"
-                      message="Assets uploaded to your department folder will appear here"
-                    />
-                  )}
-                </section>
+                  <TabsContent value="files">
+                    <WorkspaceFilesTab departmentId={config.id} />
+                  </TabsContent>
+                </Tabs>
               </Stack>
             </div>
           </div>

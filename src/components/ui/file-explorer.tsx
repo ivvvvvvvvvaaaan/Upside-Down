@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Folder, File, Image as ImageIcon, FileVideo, FileText, ChevronRight, LayoutGrid, List, Columns, GalleryHorizontal } from 'lucide-react'
+import { Tag } from './tag'
 
 /**
  * File Explorer Component
@@ -33,8 +34,8 @@ export interface FileNode {
   modifiedAt?: string
   /** Children for folders */
   children?: FileNode[]
-  /** Whether this file has been assetized */
-  assetized?: boolean
+  /** Whether this node is inside a managed zone */
+  managedZone?: boolean
   /** Thumbnail URL for gallery view */
   thumbnail?: string
 }
@@ -50,6 +51,8 @@ export interface FileExplorerProps {
   onFolderClick?: (folder: FileNode) => void
   /** Show view mode toggle */
   showViewToggle?: boolean
+  /** Right-click handler for file/folder rows */
+  onContextMenu?: (event: React.MouseEvent, node: FileNode) => void
 }
 
 function getFileIcon(node: FileNode, sizeClass: string = 'w-4 h-4') {
@@ -89,9 +92,10 @@ interface FileRowProps {
   depth: number
   onFileClick?: (file: FileNode) => void
   onFolderClick?: (folder: FileNode) => void
+  onContextMenu?: (event: React.MouseEvent, node: FileNode) => void
 }
 
-function FileRow({ node, depth, onFileClick, onFolderClick }: FileRowProps) {
+function FileRow({ node, depth, onFileClick, onFolderClick, onContextMenu }: FileRowProps) {
   const [expanded, setExpanded] = useState(false)
 
   const handleClick = () => {
@@ -103,10 +107,18 @@ function FileRow({ node, depth, onFileClick, onFolderClick }: FileRowProps) {
     }
   }
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (onContextMenu) {
+      e.preventDefault()
+      onContextMenu(e, node)
+    }
+  }
+
   return (
     <>
       <div
         onClick={handleClick}
+        onContextMenu={handleContextMenu}
         className={cn(
           'flex items-center gap-3 px-3 py-2 hover:bg-surface-2 cursor-pointer transition-colors',
           'border-b border-border-dim last:border-b-0'
@@ -133,11 +145,9 @@ function FileRow({ node, depth, onFileClick, onFolderClick }: FileRowProps) {
           {node.name}
         </span>
 
-        {/* Assetized badge */}
-        {node.assetized && (
-          <span className="px-1.5 py-0.5 rounded text-label-0-bold bg-surface-selected-subtle text-foreground-subtle">
-            Assetized
-          </span>
+        {/* Managed zone badge */}
+        {node.managedZone && (
+          <Tag size="compact" type="informative">Managed</Tag>
         )}
 
         {/* Size */}
@@ -161,6 +171,7 @@ function FileRow({ node, depth, onFileClick, onFolderClick }: FileRowProps) {
               depth={depth + 1}
               onFileClick={onFileClick}
               onFolderClick={onFolderClick}
+              onContextMenu={onContextMenu}
             />
           ))}
         </>
@@ -204,10 +215,12 @@ function IconsView({
   files,
   onFileClick,
   onFolderClick,
+  onContextMenu,
 }: {
   files: FileNode[]
   onFileClick?: (file: FileNode) => void
   onFolderClick?: (folder: FileNode) => void
+  onContextMenu?: (event: React.MouseEvent, node: FileNode) => void
 }) {
   const handleClick = (node: FileNode) => {
     if (node.type === 'folder') {
@@ -223,6 +236,7 @@ function IconsView({
         <div
           key={node.id}
           onClick={() => handleClick(node)}
+          onContextMenu={onContextMenu ? (e) => { e.preventDefault(); onContextMenu(e, node) } : undefined}
           className="flex flex-col items-center gap-2 p-3 rounded hover:bg-surface-2 cursor-pointer transition-colors"
         >
           <div className="w-12 h-12 flex items-center justify-center">
@@ -235,10 +249,8 @@ function IconsView({
           <span className="text-body-0-regular text-foreground text-center truncate w-full">
             {node.name}
           </span>
-          {node.assetized && (
-            <span className="px-1.5 py-0.5 rounded text-label-0-bold bg-surface-selected-subtle text-foreground-subtle">
-              Assetized
-            </span>
+          {node.managedZone && (
+            <Tag size="compact" type="informative">Managed</Tag>
           )}
         </div>
       ))}
@@ -251,10 +263,12 @@ function ColumnsView({
   files,
   onFileClick,
   onFolderClick,
+  onContextMenu,
 }: {
   files: FileNode[]
   onFileClick?: (file: FileNode) => void
   onFolderClick?: (folder: FileNode) => void
+  onContextMenu?: (event: React.MouseEvent, node: FileNode) => void
 }) {
   const [selectedPath, setSelectedPath] = useState<FileNode[]>([])
 
@@ -290,6 +304,7 @@ function ColumnsView({
               <div
                 key={node.id}
                 onClick={() => handleSelect(node, colIndex)}
+                onContextMenu={onContextMenu ? (e) => { e.preventDefault(); onContextMenu(e, node) } : undefined}
                 className={cn(
                   'flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors',
                   isSelected ? 'bg-surface-selected-subtle' : 'hover:bg-surface-2'
@@ -299,6 +314,9 @@ function ColumnsView({
                 <span className="flex-1 text-body-0-regular text-foreground truncate">
                   {node.name}
                 </span>
+                {node.managedZone && (
+                  <Tag size="compact" type="informative">Managed</Tag>
+                )}
                 {node.type === 'folder' && node.children && node.children.length > 0 && (
                   <ChevronRight className="w-4 h-4 text-foreground-dim" />
                 )}
@@ -318,10 +336,12 @@ function GalleryView({
   files,
   onFileClick,
   onFolderClick,
+  onContextMenu,
 }: {
   files: FileNode[]
   onFileClick?: (file: FileNode) => void
   onFolderClick?: (folder: FileNode) => void
+  onContextMenu?: (event: React.MouseEvent, node: FileNode) => void
 }) {
   const [selectedNode, setSelectedNode] = useState<FileNode | null>(null)
 
@@ -356,10 +376,8 @@ function GalleryView({
                 {' · '}
                 {formatDate(selectedNode.modifiedAt)}
               </div>
-              {selectedNode.assetized && (
-                <span className="inline-block mt-2 px-2 py-1 rounded text-label-0-bold bg-surface-selected-subtle text-foreground-subtle">
-                  Assetized
-                </span>
+              {selectedNode.managedZone && (
+                <Tag size="compact" type="informative">Managed</Tag>
               )}
             </div>
           </div>
@@ -398,6 +416,7 @@ export function FileExplorer({
   onFileClick,
   onFolderClick,
   showViewToggle = true,
+  onContextMenu,
 }: FileExplorerProps) {
   const [internalViewMode, setInternalViewMode] = useState<FileViewMode>('list')
   const viewMode = controlledViewMode ?? internalViewMode
@@ -457,6 +476,7 @@ export function FileExplorer({
                 depth={0}
                 onFileClick={onFileClick}
                 onFolderClick={onFolderClick}
+                onContextMenu={onContextMenu}
               />
             ))}
           </div>
@@ -464,15 +484,15 @@ export function FileExplorer({
       )}
 
       {viewMode === 'icons' && (
-        <IconsView files={files} onFileClick={onFileClick} onFolderClick={onFolderClick} />
+        <IconsView files={files} onFileClick={onFileClick} onFolderClick={onFolderClick} onContextMenu={onContextMenu} />
       )}
 
       {viewMode === 'columns' && (
-        <ColumnsView files={files} onFileClick={onFileClick} onFolderClick={onFolderClick} />
+        <ColumnsView files={files} onFileClick={onFileClick} onFolderClick={onFolderClick} onContextMenu={onContextMenu} />
       )}
 
       {viewMode === 'gallery' && (
-        <GalleryView files={files} onFileClick={onFileClick} onFolderClick={onFolderClick} />
+        <GalleryView files={files} onFileClick={onFileClick} onFolderClick={onFolderClick} onContextMenu={onContextMenu} />
       )}
     </div>
   )

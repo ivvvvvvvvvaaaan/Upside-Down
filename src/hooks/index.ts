@@ -16,3 +16,6 @@ export { useUserCollections, UserCollectionsProvider } from './useUserCollection
 export type { UserCollection } from './useUserCollections'
 
 export { useSmartCollections, SmartCollectionsProvider, matchesFilter } from './useSmartCollections'
+
+export { useWorkspaceState } from './useWorkspaceState'
+export type { WorkspaceViewFilter, UseWorkspaceStateReturn } from './useWorkspaceState'

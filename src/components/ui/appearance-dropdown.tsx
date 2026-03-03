@@ -87,6 +87,7 @@ export function AppearanceDropdown({
               />
             </div>
           )}
+
         </div>
       </Card.Body>
     </Dropdown>

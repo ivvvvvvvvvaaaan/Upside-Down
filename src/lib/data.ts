@@ -1747,6 +1747,11 @@ export async function getRecentAssets(limit: number = 12): Promise<Asset[]> {
     .slice(0, limit)
 }
 
+export async function getAsset(id: string): Promise<Asset | undefined> {
+  const assets = await getAssets()
+  return assets.find(a => a.id === id)
+}
+
 export async function getAssetsByIds(ids: string[]): Promise<Asset[]> {
   const assets = await getAssets()
   const idSet = new Set(ids)
