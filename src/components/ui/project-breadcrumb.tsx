@@ -1,5 +1,6 @@
 'use client'
 
+import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
@@ -10,12 +11,14 @@ import { cn } from '@/lib/utils'
  *
  * Top-level horizontal breadcrumb navigation showing project context.
  * Displays: Project Name / Current Section
+ *
+ * Child components can append extra crumbs via useBreadcrumbExtras().
  */
 
 // Route to display name mapping
 const routeLabels: Record<string, string> = {
   '/nextgen': 'Media Library',
-  '/nextgen/assets': 'All Assets',
+  '/nextgen/workspace': 'Workspace',
   '/nextgen/departments/art-design': 'Art & Design',
   '/nextgen/departments/camera': 'Camera',
   '/nextgen/departments/editorial': 'Editorial',
@@ -35,10 +38,49 @@ const sectionPrefixes: { prefix: string; label: string }[] = [
   { prefix: '/nextgen/sharing/', label: 'Sharing' },
 ]
 
-interface BreadcrumbItem {
+export interface BreadcrumbItem {
   label: string
   href?: string
+  onClick?: () => void
 }
+
+// --- Breadcrumb extras context ---
+
+interface BreadcrumbExtrasContextValue {
+  extras: BreadcrumbItem[]
+  setExtras: (items: BreadcrumbItem[]) => void
+}
+
+const BreadcrumbExtrasContext = createContext<BreadcrumbExtrasContextValue>({
+  extras: [],
+  setExtras: () => {},
+})
+
+export function BreadcrumbExtrasProvider({ children }: { children: React.ReactNode }) {
+  const [extras, setExtras] = useState<BreadcrumbItem[]>([])
+  return (
+    <BreadcrumbExtrasContext.Provider value={{ extras, setExtras }}>
+      {children}
+    </BreadcrumbExtrasContext.Provider>
+  )
+}
+
+/** Hook for child components to set extra breadcrumb items */
+export function useBreadcrumbExtras() {
+  const { setExtras } = useContext(BreadcrumbExtrasContext)
+
+  const setBreadcrumbExtras = useCallback((items: BreadcrumbItem[]) => {
+    setExtras(items)
+  }, [setExtras])
+
+  const clearBreadcrumbExtras = useCallback(() => {
+    setExtras([])
+  }, [setExtras])
+
+  return { setBreadcrumbExtras, clearBreadcrumbExtras }
+}
+
+// --- Core breadcrumb logic ---
 
 function getBreadcrumbs(pathname: string): BreadcrumbItem[] {
   const crumbs: BreadcrumbItem[] = [
@@ -51,21 +93,19 @@ function getBreadcrumbs(pathname: string): BreadcrumbItem[] {
   if (section) {
     // Add section crumb
     const sectionHref =
-      section.prefix === '/nextgen/departments/'
-        ? '/nextgen/assets'
-        : section.prefix === '/nextgen/collections/'
-          ? '/nextgen/collections'
-          : undefined
+      section.prefix === '/nextgen/collections/'
+        ? '/nextgen/collections'
+        : undefined
     crumbs.push({ label: section.label, href: sectionHref })
   }
 
-  // Add the current page
+  // Add the current page (with href so it becomes a link when extras are appended)
   const pageLabel = routeLabels[pathname]
   if (pageLabel && pageLabel !== 'Media Library') {
     // Don't duplicate if section label matches page label
     const lastCrumb = crumbs[crumbs.length - 1]
     if (lastCrumb.label !== pageLabel) {
-      crumbs.push({ label: pageLabel })
+      crumbs.push({ label: pageLabel, href: pathname })
     }
   }
 
@@ -74,32 +114,53 @@ function getBreadcrumbs(pathname: string): BreadcrumbItem[] {
 
 export function ProjectBreadcrumb() {
   const pathname = usePathname()
+  const { extras } = useContext(BreadcrumbExtrasContext)
 
   // Only show on nextgen routes
   if (!pathname.startsWith('/nextgen')) {
     return null
   }
 
-  const breadcrumbs = getBreadcrumbs(pathname)
+  // Resolve the base pathname (strip dynamic segments for sub-routes)
+  let basePathname = pathname
+  if (pathname.startsWith('/nextgen/workspace')) {
+    basePathname = '/nextgen/workspace'
+  } else if (pathname.startsWith('/nextgen/collections/') && !routeLabels[pathname]) {
+    // Dynamic collection route like /nextgen/collections/user-123
+    // Keep prefix so section crumb appears, but skip page label
+    basePathname = pathname
+  }
+  const baseCrumbs = getBreadcrumbs(basePathname)
+
+  const allCrumbs: BreadcrumbItem[] = [...baseCrumbs, ...extras]
 
   return (
     <div className="h-10 px-4 flex items-center border-b border-border-dim bg-surface-1">
       <nav className="flex items-center gap-1 text-body-0-regular">
-        {breadcrumbs.map((crumb, index) => {
-          const isLast = index === breadcrumbs.length - 1
+        {allCrumbs.map((crumb, index) => {
+          const isLast = index === allCrumbs.length - 1
 
           return (
             <span key={index} className="flex items-center gap-1">
               {index > 0 && (
                 <ChevronRight className="w-3 h-3 text-foreground-dim" />
               )}
-              {crumb.href && !isLast ? (
-                <Link
-                  href={crumb.href}
-                  className="text-foreground-subtle hover:text-foreground transition-colors"
-                >
-                  {crumb.label}
-                </Link>
+              {!isLast && (crumb.href || crumb.onClick) ? (
+                crumb.href ? (
+                  <Link
+                    href={crumb.href}
+                    className="text-foreground-subtle hover:text-foreground transition-colors"
+                  >
+                    {crumb.label}
+                  </Link>
+                ) : (
+                  <button
+                    onClick={crumb.onClick}
+                    className="text-foreground-subtle hover:text-foreground transition-colors"
+                  >
+                    {crumb.label}
+                  </button>
+                )
               ) : (
                 <span
                   className={cn(

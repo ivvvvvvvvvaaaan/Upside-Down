@@ -108,9 +108,6 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-label-1-medium text-foreground-subtle">Recent</span>
-                      <Button asChild variant="tertiary" compact>
-                        <Link href="/nextgen/assets">View all</Link>
-                      </Button>
                     </div>
                     <CardGrid columns={getColumns()} gap="4">
                       {recentAssets.map((asset) => (

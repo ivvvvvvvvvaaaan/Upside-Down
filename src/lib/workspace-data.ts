@@ -16,6 +16,11 @@ export interface WorkspaceFileNode {
 
 // Art Department workspace files
 const artDepartmentFiles: WorkspaceFileNode[] = [
+  // Loose files at top level — messy WIP workspace
+  { id: 'ws-art-loose-1', name: 'notes_from_scott.txt', type: 'file', extension: 'txt', size: 2048, modifiedAt: '2026-02-15' },
+  { id: 'ws-art-loose-2', name: 'feedback_round2_FINAL.psd', type: 'file', extension: 'psd', size: 28311552, modifiedAt: '2026-02-14' },
+  { id: 'ws-art-loose-3', name: 'Screenshot 2026-02-13.png', type: 'file', extension: 'png', size: 1048576, modifiedAt: '2026-02-13' },
+  { id: 'ws-art-loose-4', name: 'mood_board_draft.jpg', type: 'file', extension: 'jpg', size: 5242880, modifiedAt: '2026-02-12' },
   {
     id: 'ws-art-concept',
     name: 'Concept Art',
@@ -27,6 +32,7 @@ const artDepartmentFiles: WorkspaceFileNode[] = [
       { id: 'ws-art-concept-2', name: 'villain_design_final.psd', type: 'file', extension: 'psd', size: 38912000, modifiedAt: '2026-02-12' },
     ],
   },
+  { id: 'ws-art-loose-5', name: 'color_test_001.png', type: 'file', extension: 'png', size: 3145728, modifiedAt: '2026-02-11' },
   {
     id: 'ws-art-storyboards',
     name: 'Storyboards',
@@ -59,6 +65,7 @@ const artDepartmentFiles: WorkspaceFileNode[] = [
       { id: 'ws-art-env-2', name: 'warehouse_interior.psd', type: 'file', extension: 'psd', size: 52428800, modifiedAt: '2026-02-09' },
     ],
   },
+  { id: 'ws-art-loose-6', name: 'TODO_cleanup_assets.md', type: 'file', extension: 'md', size: 512, modifiedAt: '2026-02-09' },
   {
     id: 'ws-art-props',
     name: 'Props',
@@ -89,6 +96,7 @@ const artDepartmentFiles: WorkspaceFileNode[] = [
       { id: 'ws-art-ref-2', name: 'costume_research.pdf', type: 'file', extension: 'pdf', size: 31457280, modifiedAt: '2026-02-06' },
     ],
   },
+  { id: 'ws-art-loose-7', name: 'Untitled-2.psd', type: 'file', extension: 'psd', size: 10485760, modifiedAt: '2026-02-06' },
 ]
 
 // VFX workspace files

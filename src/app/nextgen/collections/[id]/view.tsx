@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { ArrowLeft, PanelRightOpen, PanelRightClose } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -15,6 +15,7 @@ import {
   CollectionSidePanel,
 } from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
+import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import { useAssetSelection, useViewPreferences, useUserCollections } from '@/hooks'
 import type { Asset } from '@/lib/data'
 
@@ -30,12 +31,21 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const { getCollection, createCollection, deleteCollection } = useUserCollections()
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const { cardSize } = useViewPreferences()
+  const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
 
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
   const [sidePanelOpen, setSidePanelOpen] = useState(true)
 
   const collection = getCollection(collectionId)
+
+  // Sync collection name to top-level breadcrumb
+  useEffect(() => {
+    if (collection?.name) {
+      setBreadcrumbExtras([{ label: collection.name }])
+    }
+    return () => clearBreadcrumbExtras()
+  }, [collection?.name, setBreadcrumbExtras, clearBreadcrumbExtras])
 
   const handleDeleteCollection = () => {
     if (collection) {

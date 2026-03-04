@@ -292,7 +292,7 @@ function ColumnsView({
   })
 
   return (
-    <div className="flex overflow-x-auto border border-border-dim rounded items-stretch">
+    <div className="flex overflow-x-auto items-stretch">
       {columns.map((columnFiles, colIndex) => (
         <div
           key={colIndex}
@@ -359,7 +359,7 @@ function GalleryView({
   }
 
   return (
-    <div className="border border-border-dim rounded overflow-hidden">
+    <div className="overflow-hidden">
       {/* Preview area */}
       <div className="h-64 bg-surface-2 flex items-center justify-center border-b border-border-dim">
         {selectedNode ? (
@@ -457,7 +457,7 @@ export function FileExplorer({
 
       {/* View content */}
       {viewMode === 'list' && (
-        <div className="rounded border border-border-dim overflow-hidden">
+        <div className="overflow-hidden">
           {/* Header */}
           <div className="flex items-center gap-3 px-3 py-2 bg-surface-2 border-b border-border-dim">
             <div className="w-4 flex-shrink-0" />

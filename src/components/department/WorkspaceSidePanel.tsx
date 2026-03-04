@@ -48,9 +48,9 @@ export function WorkspaceSidePanel({
   const fileCount = isFolder ? countChildFiles(node) : 0
 
   return (
-    <div className="w-[360px] flex-shrink-0 border-l border-border bg-surface-1 flex flex-col h-full">
+    <div className="w-[360px] flex-shrink-0 border-l border-border-dim bg-surface-1 flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
+      <div className="flex items-center justify-between p-4 border-b border-border-dim">
         <span className="text-body-1-bold text-foreground">
           {isFolder ? 'Folder Info' : 'File Info'}
         </span>

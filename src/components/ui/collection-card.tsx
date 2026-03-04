@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils'
 import { Avatar } from './avatar'
 import { Card } from './card'
+import { Folder } from 'lucide-react'
 import Image from 'next/image'
 
 const EMPTY_COLLECTION_PLACEHOLDER = '/assets/clapper-img.png'
@@ -64,7 +65,7 @@ export type CollectionCardState =
 
 export type CollectionCardAssetCount = 'Many' | 'Two' | 'One' | 'None'
 
-export type CollectionCardType = 'character' | 'location' | 'scene' | 'art-type'
+export type CollectionCardType = 'character' | 'location' | 'scene' | 'art-type' | 'folder'
 
 export type CollectionCardSize = 'sm' | 'md' | 'lg'
 
@@ -104,21 +105,21 @@ export function CollectionCard({
 }: CollectionCardProps) {
   const sizeStyles = size === 'sm'
     ? {
-        thumbnail: 'h-[104px]',
-        minHeight: 'min-h-[184px]',
+        thumbnail: 'aspect-video',
+        minHeight: '',
         bottomThumb: 'h-[48px]',
         emptyInset: 'inset-2',
       }
     : size === 'lg'
     ? {
-        thumbnail: 'h-[152px]',
-        minHeight: 'min-h-[236px]',
+        thumbnail: 'aspect-video',
+        minHeight: '',
         bottomThumb: 'h-[72px]',
         emptyInset: 'inset-4',
       }
     : {
-        thumbnail: 'h-[124px]',
-        minHeight: 'min-h-[204px]',
+        thumbnail: 'aspect-video',
+        minHeight: '',
         bottomThumb: 'h-[60px]',
         emptyInset: 'inset-3',
       }
@@ -150,7 +151,7 @@ export function CollectionCard({
   // Loading state with breathing animation
   if (state === 'Loading') {
     return (
-      <div className={cn('flex flex-col gap-4 p-1 relative w-full animate-breathe', sizeStyles.minHeight, className)}>
+      <div className={cn('flex flex-col gap-2 p-1 relative w-full animate-breathe', className)}>
         {/* Thumbnail skeleton */}
         <div className={cn('w-full rounded bg-surface-3', sizeStyles.thumbnail)} />
         {/* Footer skeleton */}
@@ -176,6 +177,19 @@ export function CollectionCard({
 
   // Render thumbnail grid based on numberOfAssets
   const renderThumbnails = () => {
+    if (type === 'folder') {
+      return (
+        <div
+          className={cn(
+            'relative rounded shrink-0 w-full overflow-hidden bg-surface-2 group-hover:bg-surface-3 transition-colors isolate flex items-center justify-center',
+            sizeStyles.thumbnail
+          )}
+        >
+          <Folder className="w-10 h-10 text-foreground-dim" />
+        </div>
+      )
+    }
+
     if (numberOfAssets === 'None') {
       return (
         <div
@@ -393,6 +407,26 @@ export function CollectionCard({
       )
     }
 
+    if (type === 'folder') {
+      return (
+        <div className="flex flex-col items-start flex-1 min-w-0">
+          <div
+            className={cn(
+              titleClass,
+              'text-foreground break-words',
+              linkClass,
+              isHovered && 'underline text-foreground-system-link'
+            )}
+          >
+            {title}
+          </div>
+          <div className={cn(metaClass, assetCount === 0 ? 'text-foreground-dim' : 'text-foreground-subtle')}>
+            {assetCount === 0 ? 'No items' : `${assetCount} items`}
+          </div>
+        </div>
+      )
+    }
+
     // Character type (default) - uses Avatar
     return (
       <div className="flex gap-4 items-center w-full">
@@ -426,13 +460,12 @@ export function CollectionCard({
   }
 
   // Determine alignment based on type
-  const isCentered = type === 'location' || type === 'scene' || type === 'art-type'
+  const isCentered = type === 'location' || type === 'scene' || type === 'art-type' || type === 'folder'
   
   return (
     <div
       className={cn(
-        'group flex flex-col gap-4 p-2 relative w-full rounded',
-        sizeStyles.minHeight,
+        'group flex flex-col gap-2 p-1 relative w-full rounded',
         'bg-surface-2 border border-border-elevation',
         isCentered ? 'items-start' : 'items-start',
         isHovered && 'bg-surface-3',

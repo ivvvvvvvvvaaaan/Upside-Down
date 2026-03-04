@@ -225,7 +225,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
       <div className="pt-4 pb-2">
         <div className="px-3 space-y-1">
           <NavLink href="/nextgen" label="Search" />
-          <NavLink href="/nextgen/assets" label="All Assets" />
+          <NavLink href="/nextgen/workspace" label="Workspace" />
         </div>
       </div>
 

@@ -149,6 +149,8 @@ export interface HawkinsSearchProps extends Omit<React.InputHTMLAttributes<HTMLI
   onSavedFiltersClick?: () => void
   /** Show saved filters button */
   showSavedFilters?: boolean
+  /** Start compact and animate wider on focus */
+  expandable?: boolean
 }
 
 const HawkinsSearch = forwardRef<HTMLInputElement, HawkinsSearchProps>(
@@ -161,12 +163,14 @@ const HawkinsSearch = forwardRef<HTMLInputElement, HawkinsSearchProps>(
     onFilterRemove,
     onSavedFiltersClick,
     showSavedFilters = true,
+    expandable = false,
     placeholder = 'Type to filter',
     onChange,
     ...props
   }, ref) => {
     const [inputPopoverOpen, setInputPopoverOpen] = useState(false)
     const [openChips, setOpenChips] = useState<Set<string>>(new Set())
+    const [expanded, setExpanded] = useState(false)
 
     const handleChipOpenChange = (filterId: string, open: boolean) => {
       setOpenChips(prev => {
@@ -187,14 +191,22 @@ const HawkinsSearch = forwardRef<HTMLInputElement, HawkinsSearchProps>(
       onChange?.(e)
     }
 
+    const isExpanded = expanded || !!value
+
     return (
       <div
         data-hawkins-search
         className={cn(
-          'flex items-center gap-2 flex-1 h-10 px-2 rounded transition-shadow border border-border-subtle dark:border-border-inverse-subtle',
+          'flex items-center gap-2 h-10 px-2 rounded border border-border-subtle dark:border-border-inverse-subtle',
+          'transition-all duration-300 ease-in-out',
           isAnyPopoverOpen && 'ring-2 ring-border-system-focus ring-offset-2 ring-offset-background',
+          expandable
+            ? isExpanded ? 'w-80' : 'w-48'
+            : 'flex-1',
           className
         )}
+        onFocus={() => expandable && setExpanded(true)}
+        onBlur={() => expandable && !value && setExpanded(false)}
       >
         {/* Saved filters button */}
         {showSavedFilters && (

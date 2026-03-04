@@ -20,10 +20,6 @@ import {
   SettingSegmented,
   Tag,
 
-  Tabs,
-  TabsList,
-  Tab,
-  TabsContent,
 } from '@/components/ui'
 import type { FacepileUser } from '@/components/ui/facepile'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
@@ -31,12 +27,10 @@ import { AppLayout } from '@/components/layouts'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAssetSelection, useViewPreferences, useCompactBar, useDepartmentAccess, useUserCollections, useWorkspaceState } from '@/hooks'
+import { useAssetSelection, useViewPreferences, useCompactBar, useDepartmentAccess, useUserCollections } from '@/hooks'
 import type { DepartmentAccessLevel } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
 import type { DepartmentConfig } from './types'
-import { WorkspaceFilesTab } from './WorkspaceFilesTab'
-import { instanceToAsset } from '@/lib/asset-instances'
 
 interface DepartmentHomeViewProps {
   config: DepartmentConfig
@@ -81,7 +75,6 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
   const { getAccessLevel, setAccessLevel, allDepartments, accessLevels } = useDepartmentAccess()
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
   const { createCollection } = useUserCollections()
-  const { instanceGroups } = useWorkspaceState(config.id, 'files')
 
   // Department assets - single source of truth for this department's assets
   const [departmentAssets, setDepartmentAssets] = useState<Asset[]>([])
@@ -104,6 +97,13 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
     { field: 'name', direction: 'asc' }
   ])
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Asset card state toggle
+  type AssetCardState = 'loading' | 'asis' | 'no-preview' | 'processing'
+  const [assetCardState, setAssetCardState] = useState<AssetCardState>('asis')
+  const showAssetLoading = assetCardState === 'loading'
+  const forceEmptyPreview = assetCardState === 'no-preview'
+  const showProcessing = assetCardState === 'processing'
 
   const filterOptions = [
     { id: 'type', label: 'Type' },
@@ -132,20 +132,13 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
     fetchDepartmentAssets()
   }, [config.id])
 
-  // IDs of assets that came from workspace instances
-  const workspaceAssetIds = useMemo(() => {
-    return new Set(instanceGroups.flatMap(g => g.instances.map(inst => inst.id)))
-  }, [instanceGroups])
-
-  // All assets (library + workspace instances) sorted by date (newest first)
   const sortedAssets = useMemo(() => {
-    const workspaceAssets = instanceGroups.flatMap(g => g.instances).map(instanceToAsset)
-    return [...departmentAssets, ...workspaceAssets].sort((a, b) => {
+    return [...departmentAssets].sort((a, b) => {
       const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
       const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
       return dateB - dateA
     })
-  }, [departmentAssets, instanceGroups])
+  }, [departmentAssets])
 
   // Assets for current collection view (filtered from department assets)
   const collectionAssets = useMemo(() => {
@@ -187,6 +180,18 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
   // Settings panel component (shared across all views)
   const settingsPanel = (
     <SettingsPanel>
+      <SettingGroup label="Asset Cards">
+        <SettingSegmented
+          options={[
+            { value: 'loading' as const, label: 'Loading' },
+            { value: 'asis' as const, label: 'As Is' },
+            { value: 'no-preview' as const, label: 'No Preview' },
+            { value: 'processing' as const, label: 'Processing' },
+          ]}
+          value={assetCardState}
+          onChange={(val) => setAssetCardState(val as AssetCardState)}
+        />
+      </SettingGroup>
       <SettingGroup label="Department Access">
         {allDepartments.map((deptId) => (
           <SettingSegmented
@@ -283,6 +288,9 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
                             primary={primaryId === asset.id}
                             onClick={(a, e) => handleAssetClick(a, e, departmentAssets)}
                             onMenuClick={handleMenuClick}
+                            loading={showAssetLoading}
+                            forceEmptyPreview={forceEmptyPreview}
+                            processing={showProcessing}
                           />
                         ))}
                       </CardGrid>
@@ -361,6 +369,9 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
                           primary={primaryId === asset.id}
                           onClick={(a, e) => handleAssetClick(a, e, collectionAssets)}
                           onMenuClick={handleMenuClick}
+                          loading={showAssetLoading}
+                          forceEmptyPreview={forceEmptyPreview}
+                          processing={showProcessing}
                         />
                       ))}
                     </CardGrid>
@@ -445,83 +456,70 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
                   </div>
                 </div>
 
-                <Tabs defaultValue="assets">
-                  <TabsList>
-                    <Tab value="assets">Assets</Tab>
-                    <Tab value="files">Files</Tab>
-                  </TabsList>
-
-                  <TabsContent value="assets">
-                    <Stack spacing="lg">
-                      {/* All Assets Stream */}
-                      <section>
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <Text variant="headline-2" weight="bold">
-                              All Assets
-                            </Text>
-                            <Text variant="body-1" color="secondary">
-                              {sortedAssets.length} {sortedAssets.length === 1 ? 'asset' : 'assets'}
-                            </Text>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <SortDropdown
-                              fields={sortFields}
-                              value={sortCriteria}
-                              onChange={setSortCriteria}
-                              iconOnly
-                            />
-                            <AppearanceDropdown
-                              layout={layout}
-                              onLayoutChange={setLayout}
-                              cardSize={cardSize}
-                              onCardSizeChange={setCardSize}
-                              iconOnly
-                            />
-                          </div>
-                        </div>
-                        {isLoading ? (
-                          <CardGrid
-                            gap="4"
-                            columns={layout === 'gallery' ? 3 : cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}
-                            layout={layout === 'list' ? 'list' : 'grid'}
-                          >
-                            {[...Array(12)].map((_, i) => (
-                              <AssetCard key={i} loading />
-                            ))}
-                          </CardGrid>
-                        ) : sortedAssets.length > 0 ? (
-                          <CardGrid
-                            gap="4"
-                            columns={layout === 'gallery' ? 3 : cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}
-                            layout={layout === 'list' ? 'list' : 'grid'}
-                          >
-                            {sortedAssets.map((asset) => (
-                              <AssetCard
-                                key={asset.id}
-                                asset={asset}
-                                selected={selectedIds.has(asset.id)}
-                                primary={primaryId === asset.id}
-                                onClick={(a, e) => handleAssetClick(a, e, departmentAssets)}
-                                onMenuClick={handleMenuClick}
-                                fromWorkspace={workspaceAssetIds.has(asset.id)}
-                              />
-                            ))}
-                          </CardGrid>
-                        ) : (
-                          <EmptyState
-                            title="No assets yet"
-                            message="Assets uploaded to your department folder will appear here"
-                          />
-                        )}
-                      </section>
-                    </Stack>
-                  </TabsContent>
-
-                  <TabsContent value="files">
-                    <WorkspaceFilesTab departmentId={config.id} />
-                  </TabsContent>
-                </Tabs>
+                {/* All Assets */}
+                <section>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <Text variant="headline-2" weight="bold">
+                        All Assets
+                      </Text>
+                      <Text variant="body-1" color="secondary">
+                        {sortedAssets.length} {sortedAssets.length === 1 ? 'asset' : 'assets'}
+                      </Text>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <SortDropdown
+                        fields={sortFields}
+                        value={sortCriteria}
+                        onChange={setSortCriteria}
+                        iconOnly
+                      />
+                      <AppearanceDropdown
+                        layout={layout}
+                        onLayoutChange={setLayout}
+                        cardSize={cardSize}
+                        onCardSizeChange={setCardSize}
+                        iconOnly
+                      />
+                    </div>
+                  </div>
+                  {isLoading ? (
+                    <CardGrid
+                      gap="4"
+                      columns={layout === 'gallery' ? 3 : cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}
+                      layout={layout === 'list' ? 'list' : 'grid'}
+                    >
+                      {[...Array(12)].map((_, i) => (
+                        <AssetCard key={i} loading />
+                      ))}
+                    </CardGrid>
+                  ) : sortedAssets.length > 0 ? (
+                    <CardGrid
+                      gap="4"
+                      columns={layout === 'gallery' ? 3 : cardSize === 'sm' ? 6 : cardSize === 'lg' ? 3 : 4}
+                      layout={layout === 'list' ? 'list' : 'grid'}
+                    >
+                      {sortedAssets.map((asset) => (
+                        <AssetCard
+                          key={asset.id}
+                          asset={asset}
+                          selected={selectedIds.has(asset.id)}
+                          primary={primaryId === asset.id}
+                          onClick={(a, e) => handleAssetClick(a, e, departmentAssets)}
+                          onMenuClick={handleMenuClick}
+                          loading={showAssetLoading}
+                          forceEmptyPreview={forceEmptyPreview}
+                          processing={showProcessing}
+                        />
+                      ))}
+                    </CardGrid>
+                  ) : (
+                    <EmptyState
+                      title="No assets yet"
+                      message="Assets uploaded to your department folder will appear here"
+                    />
+                  )}
+                </section>
               </Stack>
             </div>
           </div>

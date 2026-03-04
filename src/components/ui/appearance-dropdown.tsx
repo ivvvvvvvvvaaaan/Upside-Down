@@ -1,9 +1,10 @@
 'use client'
 
-import { LayoutGrid, LayoutList, GalleryHorizontalEnd } from 'lucide-react'
+import { LayoutGrid, LayoutList, GalleryHorizontalEnd, List, Columns } from 'lucide-react'
 import { Card } from './card'
 import { Dropdown } from './dropdown'
 import { ToggleButtonGroup } from './toggle-button-group'
+import type { ToggleButtonOption } from './toggle-button-group'
 
 export type LayoutType = 'grid' | 'list' | 'gallery'
 export type CardSize = 'sm' | 'md' | 'lg'
@@ -20,6 +21,12 @@ export interface AppearanceDropdownProps {
   /** Hide empty collections toggle */
   hideEmptyCollections?: boolean
   onHideEmptyCollectionsChange?: (hide: boolean) => void
+  /** Custom view mode options (replaces default layout toggle) */
+  viewModeOptions?: ToggleButtonOption<string>[]
+  /** Current view mode value (used with viewModeOptions) */
+  viewMode?: string
+  /** Callback when view mode changes (used with viewModeOptions) */
+  onViewModeChange?: (mode: string) => void
 }
 
 export function AppearanceDropdown({
@@ -32,6 +39,9 @@ export function AppearanceDropdown({
   iconOnly = false,
   hideEmptyCollections,
   onHideEmptyCollectionsChange,
+  viewModeOptions,
+  viewMode,
+  onViewModeChange,
 }: AppearanceDropdownProps) {
   return (
     <Dropdown
@@ -44,7 +54,16 @@ export function AppearanceDropdown({
     >
       <Card.Body padding="lg">
         <div className="space-y-3 min-w-56">
-          {showLayoutOptions && (
+          {viewModeOptions && viewMode != null && onViewModeChange && (
+            <ToggleButtonGroup
+              options={viewModeOptions}
+              value={viewMode}
+              onChange={onViewModeChange}
+              compact
+            />
+          )}
+
+          {showLayoutOptions && !viewModeOptions && (
             <ToggleButtonGroup
               options={[
                 { value: 'grid' as const, label: 'Grid', icon: <LayoutGrid className="w-4 h-4" /> },
