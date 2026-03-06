@@ -1,9 +1,5 @@
-import { getCollections } from '@/lib/data'
-import { EditorialView } from './view'
+import { redirect } from 'next/navigation'
 
-export default async function EditorialPage() {
-  // Pass global collections for metadata lookup (names, types, avatars)
-  const collections = await getCollections()
-
-  return <EditorialView initialCollections={collections} />
+export default function EditorialPage() {
+  redirect('/nextgen/workspace/editorial')
 }

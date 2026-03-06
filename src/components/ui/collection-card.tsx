@@ -86,6 +86,8 @@ export interface CollectionCardProps extends React.HTMLAttributes<HTMLDivElement
   numberOfAssets?: CollectionCardAssetCount
   /** Card size - affects font sizes and spacing */
   size?: CollectionCardSize
+  /** Optional icon rendered next to title in the footer (e.g. Lock, Users) */
+  accessIcon?: React.ReactNode
 }
 
 export function CollectionCard({
@@ -99,30 +101,16 @@ export function CollectionCard({
   state = 'Normal',
   numberOfAssets = 'Many',
   size = 'md',
+  accessIcon,
   onClick,
   className,
   ...props
 }: CollectionCardProps) {
   const sizeStyles = size === 'sm'
-    ? {
-        thumbnail: 'aspect-video',
-        minHeight: '',
-        bottomThumb: 'h-[48px]',
-        emptyInset: 'inset-2',
-      }
+    ? { thumbnail: 'aspect-video', emptyInset: 'inset-2' }
     : size === 'lg'
-    ? {
-        thumbnail: 'aspect-video',
-        minHeight: '',
-        bottomThumb: 'h-[72px]',
-        emptyInset: 'inset-4',
-      }
-    : {
-        thumbnail: 'aspect-video',
-        minHeight: '',
-        bottomThumb: 'h-[60px]',
-        emptyInset: 'inset-3',
-      }
+    ? { thumbnail: 'aspect-video', emptyInset: 'inset-4' }
+    : { thumbnail: 'aspect-video', emptyInset: 'inset-3' }
   const avatarSizeClass = size === 'sm' ? 'w-6 h-6' : 'w-8 h-8'
   // Typography classes based on size
   const titleClass = size === 'sm'
@@ -231,32 +219,24 @@ export function CollectionCard({
 
     if (numberOfAssets === 'Two') {
       return (
-        <div className="flex gap-1 items-center w-full">
-          {/* Main image - takes 2/3 of space */}
-          <div className={cn('flex-[2] min-h-px min-w-px relative rounded', sizeStyles.thumbnail)}>
-            {mainImage ? (
-              <Image
-                src={mainImage}
-                alt={title}
-                fill
-                className="object-cover rounded"
-              />
-            ) : (
-              <div className="absolute inset-0 bg-surface-highlight rounded" />
-            )}
-          </div>
-          {/* Thumbnail - takes 1/3 of space */}
-          <div className={cn('flex-[1] min-h-px min-w-px relative rounded', sizeStyles.thumbnail)}>
-            {thumbnailImages[0] ? (
-              <Image
-                src={thumbnailImages[0]}
-                alt=""
-                fill
-                className="object-cover rounded"
-              />
-            ) : (
-              <div className="absolute inset-0 bg-surface-2 rounded" />
-            )}
+        <div className={cn('relative w-full overflow-hidden rounded', sizeStyles.thumbnail)}>
+          <div className="absolute inset-0 flex gap-1">
+            {/* Main image - takes 2/3 */}
+            <div className="flex-[2] relative rounded overflow-hidden">
+              {mainImage ? (
+                <Image src={mainImage} alt={title} fill className="object-cover" />
+              ) : (
+                <div className="absolute inset-0 bg-surface-highlight rounded" />
+              )}
+            </div>
+            {/* Thumbnail - takes 1/3 */}
+            <div className="flex-[1] relative rounded overflow-hidden">
+              {thumbnailImages[0] ? (
+                <Image src={thumbnailImages[0]} alt="" fill className="object-cover" />
+              ) : (
+                <div className="absolute inset-0 bg-surface-2 rounded" />
+              )}
+            </div>
           </div>
         </div>
       )
@@ -264,63 +244,43 @@ export function CollectionCard({
 
     // Many: 1 large + 2 small + "+X" overlay
     return (
-      <div className="flex gap-1 items-center w-full">
-        {/* Main large image */}
-        <div className={cn('basis-0 grow min-h-px min-w-px relative rounded shrink-0', sizeStyles.thumbnail)}>
-          {mainImage ? (
-            <div className="absolute inset-0 overflow-hidden rounded">
-              <Image
-                src={mainImage}
-                alt={title}
-                fill
-                className="object-cover"
-              />
-            </div>
-          ) : (
-            <div className="absolute inset-0 bg-surface-highlight rounded" />
-          )}
-        </div>
-
-        {/* Right column: 2 small thumbnails */}
-        <div className={cn('basis-0 flex flex-col gap-1 grow items-start min-h-px min-w-px relative shrink-0', sizeStyles.thumbnail)}>
-          {/* First small thumbnail */}
-          <div className="basis-0 grow min-h-px min-w-px relative rounded shrink-0 w-full">
-            {thumbnailImages[0] ? (
-              <Image
-                src={thumbnailImages[0]}
-                alt=""
-                fill
-                className="object-cover rounded"
-              />
+      <div className={cn('relative w-full overflow-hidden rounded', sizeStyles.thumbnail)}>
+        <div className="absolute inset-0 flex gap-1">
+          {/* Main large image - left half */}
+          <div className="flex-1 relative rounded overflow-hidden">
+            {mainImage ? (
+              <Image src={mainImage} alt={title} fill className="object-cover" />
             ) : (
-              <div className="absolute inset-0 bg-surface-2 rounded" />
+              <div className="absolute inset-0 bg-surface-highlight rounded" />
             )}
           </div>
 
-          {/* Second small thumbnail with "+X" overlay */}
-          <div className={cn('relative shrink-0 w-full', sizeStyles.bottomThumb)}>
-            {thumbnailImages[1] ? (
-              <>
-                <div className={cn('absolute left-0 rounded top-0 w-full', sizeStyles.bottomThumb)}>
-                  <div className="absolute inset-0 rounded">
-                    <Image
-                      src={thumbnailImages[1]}
-                      alt=""
-                      fill
-                      className="object-cover rounded"
-                    />
-                    <div className="absolute bg-surface-overlay inset-0 rounded" />
-                  </div>
-                </div>
-                {remainingAssets > 0 && (
-                  <div className="absolute left-[calc(50%-16px)] text-foreground text-nowrap top-[calc(50%-12px)] text-body-2-bold">
-                    +{remainingAssets}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="absolute inset-0 bg-surface-2 rounded" />
-            )}
+          {/* Right column: 2 small thumbnails stacked */}
+          <div className="flex-1 flex flex-col gap-1">
+            {/* Top thumbnail */}
+            <div className="flex-1 relative rounded overflow-hidden">
+              {thumbnailImages[0] ? (
+                <Image src={thumbnailImages[0]} alt="" fill className="object-cover" />
+              ) : (
+                <div className="absolute inset-0 bg-surface-2 rounded" />
+              )}
+            </div>
+            {/* Bottom thumbnail with "+X" overlay */}
+            <div className="flex-1 relative rounded overflow-hidden">
+              {thumbnailImages[1] ? (
+                <>
+                  <Image src={thumbnailImages[1]} alt="" fill className="object-cover" />
+                  <div className="absolute bg-surface-overlay inset-0" />
+                  {remainingAssets > 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center text-foreground text-body-2-bold">
+                      +{remainingAssets}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="absolute inset-0 bg-surface-2 rounded" />
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -409,20 +369,27 @@ export function CollectionCard({
 
     if (type === 'folder') {
       return (
-        <div className="flex flex-col items-start flex-1 min-w-0">
-          <div
-            className={cn(
-              titleClass,
-              'text-foreground break-words',
-              linkClass,
-              isHovered && 'underline text-foreground-system-link'
-            )}
-          >
-            {title}
+        <div className="flex items-center gap-2 w-full">
+          <div className="flex flex-col items-start flex-1 min-w-0">
+            <div
+              className={cn(
+                titleClass,
+                'text-foreground break-words',
+                linkClass,
+                isHovered && 'underline text-foreground-system-link'
+              )}
+            >
+              {title}
+            </div>
+            <div className={cn(metaClass, assetCount === 0 ? 'text-foreground-dim' : 'text-foreground-subtle')}>
+              {assetCount === 0 ? 'No items' : `${assetCount} items`}
+            </div>
           </div>
-          <div className={cn(metaClass, assetCount === 0 ? 'text-foreground-dim' : 'text-foreground-subtle')}>
-            {assetCount === 0 ? 'No items' : `${assetCount} items`}
-          </div>
+          {accessIcon && (
+            <div className="shrink-0 p-1 rounded bg-surface-3 border border-border-dim text-foreground-dim">
+              {accessIcon}
+            </div>
+          )}
         </div>
       )
     }
@@ -490,7 +457,7 @@ export function CollectionCard({
       </div>
       
       {/* Footer with avatar/icon and metadata */}
-      <div className="relative z-10">
+      <div className={cn('relative z-10 w-full', type === 'folder' && 'px-2 pb-1')}>
         {renderFooter()}
       </div>
     </div>

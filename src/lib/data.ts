@@ -40,7 +40,15 @@ export type AssetFilter = {
   department?: DepartmentId   // 'art-design', 'vfx', 'camera', etc.
   typeTags?: string[]         // ['Concept Art', 'Storyboards', 'Final']
   isKeyArt?: boolean          // Key art filter
+  aiCharacters?: string[]     // Match assets with ANY of these in aiMeta.characters
+  aiLocation?: string         // Match assets with this aiMeta.location
+  aiScene?: string            // Match assets with this aiMeta.scene
+  aiHasCharacters?: boolean   // true = must have at least one character
+  aiHasLocation?: boolean     // true = must have a location
+  aiHasScene?: boolean        // true = must have a scene
 }
+
+export type SmartCollectionGroupBy = 'characters' | 'locations' | 'scenes'
 
 export type SmartCollection = {
   id: string
@@ -49,6 +57,16 @@ export type SmartCollection = {
   filter: AssetFilter
   isDefault?: boolean         // Cannot be deleted, only edited
   createdAt: Date
+  groupBy?: SmartCollectionGroupBy   // Auto-generate children from this AI dimension
+  parentId?: string                  // Links child back to parent
+}
+
+export type AIMeta = {
+  characters?: string[]
+  scene?: string
+  location?: string
+  confidence?: number
+  keywords?: string[]
 }
 
 export type Asset = {
@@ -73,6 +91,11 @@ export type Asset = {
   // Special flags
   isKeyArt?: boolean  // Mark asset as key art (hero imagery for the project)
   isFinal?: boolean   // Mark asset as final/approved version
+
+  // AI-promoted workspace assets
+  isAutoPromoted?: boolean  // True when surfaced from a managed workspace zone
+  aiMeta?: AIMeta           // AI analysis results (characters, scene, location, etc.)
+  workspacePath?: string    // Source path in workspace
 
   created_at?: string
 }
@@ -773,6 +796,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['char-1'],
     department: 'camera',
     created_at: '2024-03-15T10:30:00Z',
+    aiMeta: { characters: ['Billy Hargrove'], location: 'Hawkins High School', scene: 'INT. HAWKINS LAB - NIGHT', keywords: ['close-up', 'confrontation'] },
   },
   {
     id: 'asset-2',
@@ -788,6 +812,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['char-2', 'scene-1'],
     department: 'camera',
     created_at: '2024-03-14T14:20:00Z',
+    aiMeta: { characters: ['Eleven'], location: 'Hawkins Lab', scene: 'INT. HAWKINS LAB - NIGHT', keywords: ['powers', 'awakening', 'telekinesis'] },
   },
   {
     id: 'asset-3',
@@ -803,6 +828,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['loc-1', 'scene-1'],
     department: 'camera',
     created_at: '2024-03-13T09:15:00Z',
+    aiMeta: { characters: ['Eleven'], location: 'The Upside Down', scene: 'EXT. FOREST CHASE - DUSK', keywords: ['portal', 'opening', 'dimensional'] },
   },
 
   // VIDEO examples
@@ -818,6 +844,7 @@ const MOCK_ASSETS: Asset[] = [
     },
     collectionIds: ['char-1', 'loc-1'],
     created_at: '2024-03-12T16:45:00Z',
+    aiMeta: { characters: ['Billy Hargrove'], location: 'The Upside Down', keywords: ['animatic', 'season 3'] },
   },
   {
     id: 'asset-5',
@@ -831,6 +858,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['char-1', 'char-2', 'scene-1'],
     department: 'editorial',
     created_at: '2024-03-11T11:30:00Z',
+    aiMeta: { characters: ['Billy Hargrove', 'Eleven'], location: 'Hawkins Lab', scene: 'INT. HAWKINS LAB - NIGHT', keywords: ['locked cut', 'episode 7'] },
   },
   {
     id: 'asset-6',
@@ -844,6 +872,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['loc-1'],
     department: 'vfx',
     created_at: '2024-03-10T13:00:00Z',
+    aiMeta: { characters: ['Demogorgon'], location: 'The Upside Down', scene: 'EXT. FOREST CHASE - DUSK', keywords: ['vfx', 'portal', 'atmosphere'] },
   },
 
   // IMAGE examples
@@ -859,6 +888,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['scene-1'],
     department: 'art-design',
     created_at: '2024-03-09T10:00:00Z',
+    aiMeta: { characters: ['Eleven', 'Mike Wheeler'], location: 'Hawkins Lab', scene: 'INT. HAWKINS LAB - NIGHT', keywords: ['storyboard', 'sequence'] },
   },
   {
     id: 'asset-8',
@@ -872,6 +902,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['loc-1'],
     department: 'art-design',
     created_at: '2024-03-08T15:30:00Z',
+    aiMeta: { characters: ['Demogorgon'], location: 'The Upside Down', keywords: ['concept art', 'creature', 'monster design'] },
   },
   {
     id: 'asset-9',
@@ -885,6 +916,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['char-1'],
     department: 'art-design',
     created_at: '2024-03-07T09:45:00Z',
+    aiMeta: { characters: ['Billy Hargrove'], keywords: ['costume', 'design', 'lifeguard'] },
   },
 
   // TEXT examples
@@ -899,6 +931,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['loc-1'],
     department: 'vfx',
     created_at: '2024-03-06T12:00:00Z',
+    aiMeta: { location: 'The Upside Down', keywords: ['virtual art', 'notes', 'environment'] },
   },
   {
     id: 'asset-11',
@@ -911,6 +944,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['char-1', 'char-2', 'scene-1'],
     department: 'editorial',
     created_at: '2024-03-05T14:30:00Z',
+    aiMeta: { characters: ['Billy Hargrove', 'Eleven'], scene: 'INT. HAWKINS LAB - NIGHT', keywords: ['script', 'final', 'episode 7'] },
   },
   {
     id: 'asset-12',
@@ -923,6 +957,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['scene-1'],
     department: 'camera',
     created_at: '2024-03-04T08:15:00Z',
+    aiMeta: { scene: 'EXT. GULAG YARD - DAY', keywords: ['shot list', 'master'] },
   },
 
   // Art Department assets
@@ -938,6 +973,7 @@ const MOCK_ASSETS: Asset[] = [
     department: 'art-design',
     isKeyArt: true,
     created_at: '2024-02-15T09:00:00Z',
+    aiMeta: { location: 'The Upside Down', keywords: ['environment', 'concept art', 'dark'] },
   },
   {
     id: 'art-asset-2',
@@ -951,6 +987,7 @@ const MOCK_ASSETS: Asset[] = [
     department: 'art-design',
     isKeyArt: true,
     created_at: '2024-02-14T11:30:00Z',
+    aiMeta: { characters: ['Demogorgon'], location: 'The Upside Down', keywords: ['creature', 'design', 'monster'] },
   },
   {
     id: 'art-asset-3',
@@ -963,6 +1000,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['art-1'],
     department: 'art-design',
     created_at: '2024-02-13T14:00:00Z',
+    aiMeta: { location: 'Hawkins Lab', keywords: ['interior', 'concept art', 'laboratory'] },
   },
   {
     id: 'art-asset-4',
@@ -975,6 +1013,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['art-2'],
     department: 'art-design',
     created_at: '2024-02-12T10:00:00Z',
+    aiMeta: { characters: ['Eleven', 'Jim Hopper'], scene: 'INT. HAWKINS LAB - NIGHT', location: 'Hawkins Lab', keywords: ['storyboard', 'episode 1'] },
   },
   {
     id: 'art-asset-5',
@@ -987,6 +1026,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['art-2'],
     department: 'art-design',
     created_at: '2024-02-11T15:30:00Z',
+    aiMeta: { characters: ['Eleven', 'Demogorgon'], scene: 'EXT. FOREST CHASE - DUSK', keywords: ['chase', 'storyboard', 'action'] },
   },
   {
     id: 'art-asset-6',
@@ -999,6 +1039,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['art-4', 'art-3'],
     department: 'art-design',
     created_at: '2024-02-10T09:00:00Z',
+    aiMeta: { location: 'Byers House', keywords: ['floor plan', 'blueprint', 'set design'] },
   },
   {
     id: 'art-asset-7',
@@ -1011,6 +1052,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['art-4', 'art-3'],
     department: 'art-design',
     created_at: '2024-02-09T13:00:00Z',
+    aiMeta: { location: 'Starcourt Mall', keywords: ['blueprint', 'mall', 'set design'] },
   },
   {
     id: 'art-asset-8',
@@ -1048,6 +1090,7 @@ const MOCK_ASSETS: Asset[] = [
     department: 'art-design',
     isKeyArt: true,
     created_at: '2024-02-06T09:00:00Z',
+    aiMeta: { characters: ['Jim Hopper'], keywords: ['uniform', 'costume', 'chief'] },
   },
   {
     id: 'art-asset-11',
@@ -1061,6 +1104,7 @@ const MOCK_ASSETS: Asset[] = [
     department: 'art-design',
     isKeyArt: true,
     created_at: '2024-02-05T14:00:00Z',
+    aiMeta: { characters: ['Eleven'], keywords: ['hospital gown', 'costume', 'design'] },
   },
   {
     id: 'art-asset-12',
@@ -1100,6 +1144,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['vfx-1', 'vfx-char-1'],
     department: 'vfx',
     created_at: '2024-02-20T09:00:00Z',
+    aiMeta: { characters: ['Demogorgon'], location: 'The Upside Down', keywords: ['rig', 'creature', '3d'] },
   },
   {
     id: 'vfx-asset-2',
@@ -1112,6 +1157,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['vfx-1', 'vfx-char-1'],
     department: 'vfx',
     created_at: '2024-02-19T14:30:00Z',
+    aiMeta: { characters: ['Demogorgon'], keywords: ['texture', 'creature', 'maps'] },
   },
   {
     id: 'vfx-asset-3',
@@ -1125,6 +1171,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['vfx-2', 'vfx-3'],
     department: 'vfx',
     created_at: '2024-02-18T10:00:00Z',
+    aiMeta: { location: 'The Upside Down', keywords: ['fog', 'simulation', 'environment'] },
   },
   {
     id: 'vfx-asset-4',
@@ -1151,6 +1198,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['vfx-4', 'vfx-char-3'],
     department: 'vfx',
     created_at: '2024-02-16T09:30:00Z',
+    aiMeta: { characters: ['Eleven'], location: 'Hawkins Lab', scene: 'INT. HAWKINS LAB - NIGHT', keywords: ['powers', 'comp', 'vfx'] },
   },
   {
     id: 'vfx-asset-6',
@@ -1164,6 +1212,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['vfx-4'],
     department: 'vfx',
     created_at: '2024-02-15T15:00:00Z',
+    aiMeta: { location: 'Hawkins Lab', scene: 'EXT. STARCOURT PARKING - NIGHT', keywords: ['destruction', 'comp', 'explosion'] },
   },
   {
     id: 'vfx-asset-7',
@@ -1201,6 +1250,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['vfx-6', 'vfx-char-2'],
     department: 'vfx',
     created_at: '2024-02-12T09:00:00Z',
+    aiMeta: { characters: ['Demogorgon'], location: 'Starcourt Mall', keywords: ['mind flayer', '3d', 'model'] },
   },
   {
     id: 'vfx-asset-10',
@@ -1320,6 +1370,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['cam-4'],
     department: 'camera',
     created_at: '2024-02-27T15:00:00Z',
+    aiMeta: { location: 'Hawkins High School', keywords: ['town square', 'b-roll', 'establishing'] },
   },
   {
     id: 'cam-asset-7',
@@ -1372,6 +1423,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['cam-6'],
     department: 'camera',
     created_at: '2024-02-25T14:00:00Z',
+    aiMeta: { characters: ['Eleven', 'Demogorgon'], scene: 'EXT. FOREST CHASE - DUSK', keywords: ['chase', 'steadicam', 'action'] },
   },
   {
     id: 'cam-asset-11',
@@ -1413,6 +1465,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['edit-1'],
     department: 'editorial',
     created_at: '2024-03-05T09:00:00Z',
+    aiMeta: { characters: ['Eleven', 'Mike Wheeler', 'Jim Hopper'], scene: 'INT. HAWKINS LAB - NIGHT', location: 'Hawkins Lab', keywords: ['rough cut', 'episode 1'] },
   },
   {
     id: 'edit-asset-2',
@@ -1439,6 +1492,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['edit-2'],
     department: 'editorial',
     created_at: '2024-03-03T14:00:00Z',
+    aiMeta: { characters: ['Eleven', 'Dustin Henderson'], scene: 'INT. WHEELER BASEMENT - DAY', keywords: ['assembly', 'episode 1'] },
   },
   {
     id: 'edit-asset-4',
@@ -1568,6 +1622,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['audio-2'],
     department: 'audio-sound',
     created_at: '2024-02-28T14:00:00Z',
+    aiMeta: { characters: ['Demogorgon'], keywords: ['growl', 'creature', 'sfx'] },
   },
   {
     id: 'audio-asset-4',
@@ -1592,6 +1647,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['audio-2'],
     department: 'audio-sound',
     created_at: '2024-02-28T15:00:00Z',
+    aiMeta: { characters: ['Eleven'], keywords: ['powers', 'telekinesis', 'sfx'] },
   },
   {
     id: 'audio-asset-6',
@@ -1628,6 +1684,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['audio-4'],
     department: 'audio-sound',
     created_at: '2024-02-26T09:00:00Z',
+    aiMeta: { location: 'The Upside Down', keywords: ['ambience', 'atmosphere', 'dark'] },
   },
   {
     id: 'audio-asset-9',
@@ -1676,6 +1733,7 @@ const MOCK_ASSETS: Asset[] = [
     collectionIds: ['audio-6'],
     department: 'audio-sound',
     created_at: '2024-02-24T10:00:00Z',
+    aiMeta: { characters: ['Eleven'], keywords: ['adr', 'dialogue', 'voice'] },
   },
 ]
 

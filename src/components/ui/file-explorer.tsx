@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Folder, File, Image as ImageIcon, FileVideo, FileText, ChevronRight, LayoutGrid, List, Columns, GalleryHorizontal } from 'lucide-react'
-import { Tag } from './tag'
+
 
 /**
  * File Explorer Component
@@ -145,11 +145,6 @@ function FileRow({ node, depth, onFileClick, onFolderClick, onContextMenu }: Fil
           {node.name}
         </span>
 
-        {/* Managed zone badge */}
-        {node.managedZone && (
-          <Tag size="compact" type="informative">Managed</Tag>
-        )}
-
         {/* Size */}
         <span className="w-20 text-right text-label-0-regular text-foreground-dim">
           {node.type === 'file' ? formatFileSize(node.size) : `${node.children?.length || 0} items`}
@@ -249,9 +244,6 @@ function IconsView({
           <span className="text-body-0-regular text-foreground text-center truncate w-full">
             {node.name}
           </span>
-          {node.managedZone && (
-            <Tag size="compact" type="informative">Managed</Tag>
-          )}
         </div>
       ))}
     </div>
@@ -314,9 +306,6 @@ function ColumnsView({
                 <span className="flex-1 text-body-0-regular text-foreground truncate">
                   {node.name}
                 </span>
-                {node.managedZone && (
-                  <Tag size="compact" type="informative">Managed</Tag>
-                )}
                 {node.type === 'folder' && node.children && node.children.length > 0 && (
                   <ChevronRight className="w-4 h-4 text-foreground-dim" />
                 )}
@@ -376,9 +365,6 @@ function GalleryView({
                 {' · '}
                 {formatDate(selectedNode.modifiedAt)}
               </div>
-              {selectedNode.managedZone && (
-                <Tag size="compact" type="informative">Managed</Tag>
-              )}
             </div>
           </div>
         ) : (

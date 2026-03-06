@@ -1,13 +1,17 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { ArrowLeft, Search } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Button, AssetCard, CardGrid, Stack, SelectionBar } from '@/components/ui'
+import { Button, AssetCard, CardGrid, Stack, SelectionBar, Text } from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
-import { useAssetSelection, useViewPreferences, useUserCollections } from '@/hooks'
-import type { Asset } from '@/lib/data'
+import { useAssetSelection, useViewPreferences, useUserCollections, matchesFilter } from '@/hooks'
+import type { Asset, DepartmentId } from '@/lib/data'
+import { mergeWorkspaceAssets, generateAssetInstances } from '@/lib/asset-instances'
+import { getDepartmentWorkspaceFiles } from '@/lib/workspace-data'
+
+const ALL_DEPARTMENTS: DepartmentId[] = ['art-design', 'vfx', 'camera', 'editorial', 'audio-sound']
 
 interface MediaLibrarySearchViewProps {
   recentAssets: Asset[]
@@ -16,8 +20,8 @@ interface MediaLibrarySearchViewProps {
 /**
  * Media Library Search View
  *
- * Search bar at top, recent assets gallery at bottom
- * Following Hawkins design system
+ * Search bar at top, recent assets gallery at bottom.
+ * Searches across curated + workspace-promoted assets when query is non-empty.
  */
 export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewProps) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -28,17 +32,57 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
   const { cardSize } = useViewPreferences()
   const { createCollection } = useUserCollections()
 
+  // Lazy-load all department assets only when user has a search query
+  const [allDepartmentAssets, setAllDepartmentAssets] = useState<Asset[]>([])
+  const [hasLoadedAll, setHasLoadedAll] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
+
+  // Fetch all department assets when user starts typing (deferred)
+  useEffect(() => {
+    if (!searchQuery.trim() || hasLoadedAll) return
+
+    const fetchAll = async () => {
+      setIsSearching(true)
+      try {
+        const responses = await Promise.all(
+          ALL_DEPARTMENTS.map(id => fetch(`/api/departments/${id}/assets`).then(r => r.ok ? r.json() : []))
+        )
+        const apiAssets: Asset[] = responses.flat()
+
+        // Generate promoted assets from default managed zones across all depts
+        const allInstances = ALL_DEPARTMENTS.flatMap(deptId => {
+          const files = getDepartmentWorkspaceFiles(deptId)
+          // Use the static default managed zones (files with zone: 'managed')
+          return generateAssetInstances(files, deptId)
+        })
+
+        setAllDepartmentAssets(mergeWorkspaceAssets(apiAssets, allInstances))
+        setHasLoadedAll(true)
+      } catch (error) {
+        console.error('Failed to fetch assets for search:', error)
+      } finally {
+        setIsSearching(false)
+      }
+    }
+
+    fetchAll()
+  }, [searchQuery, hasLoadedAll])
+
+  // Filter results based on search query
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return null
+    if (!hasLoadedAll) return null
+    return allDepartmentAssets.filter(asset => matchesFilter(asset, { query: searchQuery }))
+  }, [searchQuery, allDepartmentAssets, hasLoadedAll])
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Implement search functionality
-    console.log('Search query:', searchQuery)
   }
 
   const handleMenuClick = (asset: Asset) => {
     console.log('Menu clicked for:', asset.name)
   }
 
-  // Determine grid columns based on card size
   const getColumns = () => {
     switch (cardSize) {
       case 'sm': return 6
@@ -47,15 +91,18 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     }
   }
 
-  // Get selected assets for the selection bar
+  const displayAssets = searchResults ?? recentAssets
+
   const selectedAssets = useMemo(() => {
-    return recentAssets.filter((asset) => selectedIds.has(asset.id))
-  }, [recentAssets, selectedIds])
+    return displayAssets.filter((asset) => selectedIds.has(asset.id))
+  }, [displayAssets, selectedIds])
 
   const handleCreateCollection = (name: string) => {
     createCollection(name, selectedAssets.map(a => a.id))
     clearSelection()
   }
+
+  const isSearchActive = searchQuery.trim().length > 0
 
   return (
     <AppLayout>
@@ -103,26 +150,60 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                   </div>
                 </div>
 
-                {/* Recent Section */}
-                {recentAssets.length > 0 && (
+                {/* Results */}
+                {isSearchActive ? (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-label-1-medium text-foreground-subtle">Recent</span>
+                      <span className="text-label-1-medium text-foreground-subtle">
+                        {isSearching ? 'Searching...' : searchResults ? `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}` : ''}
+                      </span>
                     </div>
-                    <CardGrid columns={getColumns()} gap="4">
-                      {recentAssets.map((asset) => (
-                        <AssetCard
-                          key={asset.id}
-                          asset={asset}
-                          selected={selectedIds.has(asset.id)}
-                          primary={primaryId === asset.id}
-                          onClick={(a, e) => handleAssetClick(a, e, recentAssets)}
-                          onMenuClick={handleMenuClick}
-                          showDepartment
-                        />
-                      ))}
-                    </CardGrid>
+                    {searchResults && searchResults.length > 0 && (
+                      <CardGrid columns={getColumns()} gap="4">
+                        {searchResults.map((asset) => (
+                          <AssetCard
+                            key={asset.id}
+                            asset={asset}
+                            selected={selectedIds.has(asset.id)}
+                            primary={primaryId === asset.id}
+                            onClick={(a, e) => handleAssetClick(a, e, searchResults)}
+                            onMenuClick={handleMenuClick}
+                            showDepartment
+                            fromWorkspace={asset.isAutoPromoted}
+                          />
+                        ))}
+                      </CardGrid>
+                    )}
+                    {searchResults && searchResults.length === 0 && (
+                      <div className="text-center py-12">
+                        <Text variant="body-1" color="secondary">
+                          No results for &ldquo;{searchQuery}&rdquo;
+                        </Text>
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  /* Recent Section */
+                  recentAssets.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-label-1-medium text-foreground-subtle">Recent</span>
+                      </div>
+                      <CardGrid columns={getColumns()} gap="4">
+                        {recentAssets.map((asset) => (
+                          <AssetCard
+                            key={asset.id}
+                            asset={asset}
+                            selected={selectedIds.has(asset.id)}
+                            primary={primaryId === asset.id}
+                            onClick={(a, e) => handleAssetClick(a, e, recentAssets)}
+                            onMenuClick={handleMenuClick}
+                            showDepartment
+                          />
+                        ))}
+                      </CardGrid>
+                    </div>
+                  )
                 )}
               </Stack>
             </div>

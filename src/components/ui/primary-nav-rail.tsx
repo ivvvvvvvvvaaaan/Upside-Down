@@ -22,18 +22,8 @@ export function PrimaryNavRail({ className }: PrimaryNavRailProps) {
         height={40}
         className="h-10 w-auto"
       />
-      {/* First group: 3 ghost boxes */}
-      <div className="flex flex-col gap-4">
-        {[...Array(3)].map((_, i) => (
-          <div
-            key={i}
-            className="w-6 h-6 rounded bg-surface-4"
-          />
-        ))}
-      </div>
-      {/* Second group: Library icon (selected) + 1 ghost box */}
+      {/* First group: Library icon (selected) + 1 ghost box */}
       <div className="flex flex-col gap-4 items-center">
-        {/* Library icon with selected background */}
         <div className="w-10 h-10 rounded bg-indigo-500/20 flex items-center justify-center">
           <Image
             src="/Icons/icon-libirary.svg"
@@ -42,8 +32,16 @@ export function PrimaryNavRail({ className }: PrimaryNavRailProps) {
             height={16}
           />
         </div>
-        {/* Ghost box */}
         <div className="w-6 h-6 rounded bg-surface-4" />
+      </div>
+      {/* Second group: 3 ghost boxes */}
+      <div className="flex flex-col gap-4">
+        {[...Array(3)].map((_, i) => (
+          <div
+            key={i}
+            className="w-6 h-6 rounded bg-surface-4"
+          />
+        ))}
       </div>
       {/* Third group: 5 ghost boxes */}
       <div className="flex flex-col gap-4">

@@ -1,9 +1,11 @@
 'use client'
 
-import { X, Folder, File, FolderCheck, ArrowUpRight } from 'lucide-react'
+import { X, Folder, File, FolderCheck, ArrowUpRight, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Tag } from '@/components/ui/tag'
 import { SettingToggle } from '@/components/ui/settings-panel'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
+import { getAITagsForFile } from '@/lib/ai-tags'
 
 interface WorkspaceSidePanelProps {
   node: WorkspaceFileNode
@@ -46,6 +48,7 @@ export function WorkspaceSidePanel({
 }: WorkspaceSidePanelProps) {
   const isFolder = node.type === 'folder'
   const fileCount = isFolder ? countChildFiles(node) : 0
+  const aiTags = !isFolder ? getAITagsForFile(node.id) : undefined
 
   return (
     <div className="w-[360px] flex-shrink-0 border-l border-border-dim bg-surface-1 flex flex-col h-full">
@@ -121,15 +124,47 @@ export function WorkspaceSidePanel({
           </section>
         )}
 
-        {/* Asset instance info (files in managed zones) */}
-        {!isFolder && node.managedZone && (
+        {/* Asset instance info (all files) */}
+        {!isFolder && (
           <section className="space-y-2">
             <h3 className="text-label-0-bold uppercase text-foreground-dim">Asset Instance</h3>
-            <div className="bg-surface-2 rounded p-3">
+            <div className="bg-surface-2 rounded p-3 space-y-3">
               <div className="flex items-center gap-2 text-label-1-regular text-foreground-dim">
                 <ArrowUpRight className="w-3 h-3" />
-                <span>This file has an asset instance in the Assets tab</span>
+                <span>This file is surfaced as an asset in the department view</span>
               </div>
+
+              {aiTags && (
+                <div className="space-y-2 pt-1 border-t border-border-dim">
+                  <div className="flex items-center gap-1.5 text-label-0-bold text-foreground-dim">
+                    <Sparkles className="w-3 h-3" />
+                    <span>AI Analysis</span>
+                    <span className="text-label-0-regular ml-auto">{Math.round(aiTags.confidence * 100)}%</span>
+                  </div>
+
+                  {aiTags.characters.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {aiTags.characters.map(c => (
+                        <Tag key={c} type="neutral" variant="border" size="compact">{c}</Tag>
+                      ))}
+                    </div>
+                  )}
+
+                  {aiTags.location && (
+                    <div className="flex justify-between text-label-1-regular">
+                      <span className="text-foreground-dim">Location</span>
+                      <span className="text-foreground">{aiTags.location}</span>
+                    </div>
+                  )}
+
+                  {aiTags.scene && (
+                    <div className="flex justify-between text-label-1-regular">
+                      <span className="text-foreground-dim">Scene</span>
+                      <span className="text-foreground truncate ml-2">{aiTags.scene}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </section>
         )}

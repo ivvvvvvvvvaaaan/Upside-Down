@@ -65,21 +65,21 @@ export function AppLayout({ children }: AppLayoutProps) {
   }, [])
 
   return (
-    <div className="h-screen bg-surface-flat flex overflow-hidden">
-      <div className="hidden md:flex">
-        <PrimaryNavRail />
-        <NavSidebar width={sidebarWidth} onNewCollection={() => setShowNewCollectionModal(true)} />
-        <ResizeHandle
-          isDragging={isDragging}
-          onDragStart={handleDragStart}
-          onDrag={handleDrag}
-          onDragEnd={handleDragEnd}
-        />
-      </div>
+    <div className="h-screen bg-surface-flat flex flex-col overflow-hidden">
+      <ProjectBreadcrumb />
+      <div className="flex-1 min-h-0 flex overflow-hidden">
+        <div className="hidden md:flex">
+          <PrimaryNavRail />
+          <NavSidebar width={sidebarWidth} onNewCollection={() => setShowNewCollectionModal(true)} />
+          <ResizeHandle
+            isDragging={isDragging}
+            onDragStart={handleDragStart}
+            onDrag={handleDrag}
+            onDragEnd={handleDragEnd}
+          />
+        </div>
 
-      {/* Main Content */}
-      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-        <ProjectBreadcrumb />
+        {/* Main Content */}
         <div className="flex-1 min-h-0 overflow-hidden">
           {children}
         </div>

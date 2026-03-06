@@ -1,6 +1,6 @@
 'use client'
 
-import { X, FolderOpen, FileText } from 'lucide-react'
+import { X, FolderOpen, FileText, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from './button'
 import { Tag } from './tag'
@@ -178,13 +178,65 @@ export function AssetDetailPanel({
           </div>
         </section>
 
-        {/* Workspace Path Placeholder */}
+        {/* AI Analysis (only for promoted assets) */}
+        {asset.isAutoPromoted && asset.aiMeta && (
+          <section className="space-y-2">
+            <h3 className="text-label-0-bold uppercase text-foreground-dim flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3" />
+              AI Analysis
+            </h3>
+            <div className="bg-surface-2 rounded p-3 space-y-2">
+              {asset.aiMeta.confidence != null && (
+                <div>
+                  <p className="text-label-0-regular text-foreground-dim">Confidence</p>
+                  <p className="text-body-1-regular text-foreground">{Math.round(asset.aiMeta.confidence * 100)}%</p>
+                </div>
+              )}
+              {asset.aiMeta.characters && asset.aiMeta.characters.length > 0 && (
+                <div>
+                  <p className="text-label-0-regular text-foreground-dim mb-1">Characters</p>
+                  <div className="flex flex-wrap gap-1">
+                    {asset.aiMeta.characters.map(c => (
+                      <Tag key={c} type="neutral" variant="border" size="compact">{c}</Tag>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {asset.aiMeta.scene && (
+                <div>
+                  <p className="text-label-0-regular text-foreground-dim">Scene</p>
+                  <p className="text-body-1-regular text-foreground">{asset.aiMeta.scene}</p>
+                </div>
+              )}
+              {asset.aiMeta.location && (
+                <div>
+                  <p className="text-label-0-regular text-foreground-dim">Location</p>
+                  <p className="text-body-1-regular text-foreground">{asset.aiMeta.location}</p>
+                </div>
+              )}
+              {asset.aiMeta.keywords && asset.aiMeta.keywords.length > 0 && (
+                <div>
+                  <p className="text-label-0-regular text-foreground-dim mb-1">Keywords</p>
+                  <div className="flex flex-wrap gap-1">
+                    {asset.aiMeta.keywords.map(k => (
+                      <Tag key={k} type="neutral" variant="border" size="compact">{k}</Tag>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* Workspace Path */}
         <section className="space-y-2">
           <h3 className="text-label-0-bold uppercase text-foreground-dim">Workspace</h3>
           <div className="bg-surface-2 rounded p-3">
             <div className="flex items-center gap-2 text-label-1-regular text-foreground-dim">
               <FileText className="w-3 h-3 flex-shrink-0" />
-              <span className="truncate">/project/assets/{asset.type}/{asset.name}</span>
+              <span className="truncate">
+                {asset.workspacePath ?? `/project/assets/${asset.type}/${asset.name}`}
+              </span>
             </div>
           </div>
         </section>

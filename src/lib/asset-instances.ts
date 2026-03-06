@@ -1,6 +1,8 @@
 import type { DepartmentId } from '@/components/department/types'
 import type { Asset, AssetType } from '@/lib/data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
+import { getAITagsForFile, toAIMeta } from '@/lib/ai-tags'
+import type { AITagResult } from '@/lib/ai-tags'
 
 export interface AssetInstance {
   id: string
@@ -13,6 +15,7 @@ export interface AssetInstance {
   type: AssetType
   size?: number
   modifiedAt?: string
+  aiTags?: AITagResult
 }
 
 export interface AssetInstanceGroup {
@@ -65,7 +68,7 @@ export function generateAssetInstances(
 
   function walk(nodes: WorkspaceFileNode[], pathParts: string[], category: string) {
     for (const node of nodes) {
-      if (node.type === 'file' && node.managedZone) {
+      if (node.type === 'file') {
         const name = node.name.replace(/\.[^.]+$/, '')
         instances.push({
           id: `inst-${node.id}`,
@@ -78,10 +81,11 @@ export function generateAssetInstances(
           type: mapExtensionToType(node.extension),
           size: node.size,
           modifiedAt: node.modifiedAt,
+          aiTags: getAITagsForFile(node.id),
         })
       }
       if (node.type === 'folder' && node.children) {
-        const nextCategory = node.zone === 'managed' ? node.name : category
+        const nextCategory = node.name
         walk(node.children, [...pathParts, node.name], nextCategory)
       }
     }
@@ -107,7 +111,8 @@ export function groupInstancesByCategory(
   }))
 }
 
-/** Convert an AssetInstance to an Asset-compatible shape for AssetCard rendering */
+/** Convert an AssetInstance to an Asset-compatible shape for AssetCard rendering.
+ *  This is the basic mapper — no AI enrichment. Used by workspace grid views. */
 export function instanceToAsset(instance: AssetInstance): Asset {
   return {
     id: instance.id,
@@ -116,4 +121,54 @@ export function instanceToAsset(instance: AssetInstance): Asset {
     department: instance.department,
     created_at: instance.modifiedAt,
   }
+}
+
+/** Convert an AssetInstance to a promoted Asset with AI metadata.
+ *  Sets typeTag from category/AI, populates aiMeta. Used by department/search views. */
+export function promotedInstanceToAsset(instance: AssetInstance): Asset {
+  const base: Asset = {
+    id: instance.id,
+    name: instance.name,
+    type: instance.type,
+    department: instance.department,
+    created_at: instance.modifiedAt,
+    isAutoPromoted: true,
+    workspacePath: instance.sourcePath,
+  }
+
+  // Set typeTag from AI tags or fall back to category name
+  const typeTag = instance.aiTags?.typeTag ?? instance.category
+  if (typeTag) {
+    switch (instance.type) {
+      case 'image':
+        base.imageMeta = { typeTag }
+        break
+      case 'video':
+        base.videoMeta = { typeTag }
+        break
+      case 'audio':
+        base.audioMeta = { typeTag }
+        break
+      case 'text':
+        base.textMeta = { typeTag }
+        break
+    }
+  }
+
+  // Populate AI metadata
+  if (instance.aiTags) {
+    base.aiMeta = toAIMeta(instance.aiTags)
+  }
+
+  return base
+}
+
+/** Merge curated API assets with promoted workspace instances.
+ *  Simple concatenation — no deduplication since ID namespaces are disjoint. */
+export function mergeWorkspaceAssets(
+  apiAssets: Asset[],
+  instances: AssetInstance[],
+): Asset[] {
+  const promoted = instances.map(promotedInstanceToAsset)
+  return [...apiAssets, ...promoted]
 }

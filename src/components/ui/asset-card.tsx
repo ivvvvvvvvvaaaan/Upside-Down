@@ -292,7 +292,7 @@ export function AssetCard({
               <Tag type="neutral" variant="border">{DEPARTMENT_NAMES[asset.department]}</Tag>
             )}
             {fromWorkspace && (
-              <Tag type="informative" variant="border">Workspace</Tag>
+              <Tag type="neutral" variant="border">AI</Tag>
             )}
             {renderMetadata()}
           </div>

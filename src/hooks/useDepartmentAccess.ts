@@ -49,10 +49,14 @@ function getStoredSettings(): DepartmentAccessSettings {
   }
 }
 
+const ACCESS_CHANGE_EVENT = 'department-access-change'
+
 function saveSettings(settings: DepartmentAccessSettings): void {
   if (typeof window === 'undefined') return
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+    // Notify other hook instances in the same tab
+    window.dispatchEvent(new Event(ACCESS_CHANGE_EVENT))
   } catch (error) {
     console.error('Failed to save department access settings:', error)
   }
@@ -80,6 +84,11 @@ export function useDepartmentAccess(): UseDepartmentAccessReturn {
   useEffect(() => {
     setMounted(true)
     setSettings(getStoredSettings())
+
+    // Sync when another hook instance changes access levels
+    const handleChange = () => setSettings(getStoredSettings())
+    window.addEventListener(ACCESS_CHANGE_EVENT, handleChange)
+    return () => window.removeEventListener(ACCESS_CHANGE_EVENT, handleChange)
   }, [])
 
   const getAccessLevel = useCallback(

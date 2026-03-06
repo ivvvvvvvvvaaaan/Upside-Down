@@ -164,7 +164,7 @@ const HawkinsSearch = forwardRef<HTMLInputElement, HawkinsSearchProps>(
     onSavedFiltersClick,
     showSavedFilters = true,
     expandable = false,
-    placeholder = 'Type to filter',
+    placeholder = 'Search...',
     onChange,
     ...props
   }, ref) => {

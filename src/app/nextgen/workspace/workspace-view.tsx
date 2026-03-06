@@ -16,6 +16,10 @@ import {
   FileExplorer,
   CollectionCard,
   SelectionBar,
+  SettingsPanel,
+  SettingGroup,
+  SettingSegmented,
+  NewFolderModal,
 } from '@/components/ui'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
@@ -23,19 +27,26 @@ import type { FileNode, FileViewMode } from '@/components/ui/file-explorer'
 import { ContextMenu } from '@/components/ui/context-menu'
 import type { ContextMenuItem } from '@/components/ui/context-menu'
 import { AppLayout } from '@/components/layouts'
-import { useViewPreferences, useCompactBar, useWorkspaceState, useAssetSelection, useUserCollections } from '@/hooks'
+import { useViewPreferences, useCompactBar, useWorkspaceState, useAssetSelection, useUserCollections, useDepartmentAccess } from '@/hooks'
+import type { DepartmentAccessLevel } from '@/hooks'
 import type { DepartmentId } from '@/components/department/types'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { instanceToAsset } from '@/lib/asset-instances'
 import type { AssetInstance } from '@/lib/asset-instances'
 import { WorkspaceSidePanel } from '@/components/department/WorkspaceSidePanel'
-import { ArrowLeft, List, Columns, LayoutGrid, PanelRight, X } from 'lucide-react'
+import { ArrowLeft, List, Columns, LayoutGrid, PanelRight, X, Lock, Users, FolderPlus } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { departmentConfigs } from '@/lib/department-configs'
+import { getDepartmentWorkspaceFiles } from '@/lib/workspace-data'
 
 type WorkspaceViewMode = FileViewMode | 'grid'
 
-const DEPARTMENT_ID: DepartmentId = 'art-design'
+const ACCESS_LEVEL_OPTIONS: { value: DepartmentAccessLevel; label: string }[] = [
+  { value: 'full', label: 'Full' },
+  { value: 'partial', label: 'Partial' },
+  { value: 'none', label: 'Locked' },
+]
 
 const EXTENSION_MAP: Record<string, 'image' | 'video' | 'audio' | 'text'> = {
   psd: 'image', png: 'image', jpg: 'image', jpeg: 'image', gif: 'image',
@@ -125,14 +136,22 @@ const VIEW_MODE_OPTIONS = [
   { value: 'columns', label: 'Columns', icon: <Columns className="w-4 h-4" /> },
 ]
 
+const ALL_DEPARTMENT_IDS: DepartmentId[] = ['art-design', 'camera', 'editorial', 'vfx', 'audio-sound']
+
 interface WorkspaceViewProps {
+  /** Department to display. When omitted, shows department folder landing. */
+  departmentId?: DepartmentId
   /** URL path segments representing the drilled-down folder path */
   folderPath: string[]
 }
 
-export function WorkspaceView({ folderPath: urlPath }: WorkspaceViewProps) {
+export function WorkspaceView({ departmentId, folderPath: urlPath }: WorkspaceViewProps) {
   const router = useRouter()
-  const menuHref = '/nextgen/menu?return=%2Fnextgen%2Fworkspace'
+  const isLanding = !departmentId
+  const { getAccessLevel, setAccessLevel, allDepartments, accessLevels } = useDepartmentAccess()
+  const menuHref = departmentId
+    ? `/nextgen/menu?return=%2Fnextgen%2Fworkspace%2F${departmentId}`
+    : '/nextgen/menu?return=%2Fnextgen%2Fworkspace'
 
   const { layout, setLayout, cardSize, setCardSize } = useViewPreferences()
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
@@ -147,15 +166,47 @@ export function WorkspaceView({ folderPath: urlPath }: WorkspaceViewProps) {
     setSelectedNode,
     processedFiles,
     totalFileCount,
-  } = useWorkspaceState(DEPARTMENT_ID, 'files')
+    loading,
+    createFolder,
+  // Always call hook (React rules); results ignored when isLanding
+  } = useWorkspaceState(departmentId ?? 'art-design', 'files')
 
   const [viewMode, setViewMode] = useState<WorkspaceViewMode>('grid')
   const [showPanel, setShowPanel] = useState(false)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [newFolderModalOpen, setNewFolderModalOpen] = useState(false)
+  const [newFolderParentPath, setNewFolderParentPath] = useState<string[]>([])
+  const [landingFolders, setLandingFolders] = useState<WorkspaceFileNode[]>([])
+  const [landingDrillFolder, setLandingDrillFolder] = useState<WorkspaceFileNode | null>(null)
+
+  const handleCreateFolder = useCallback((name: string) => {
+    if (isLanding) {
+      const newFolder: WorkspaceFileNode = {
+        id: `new-folder-${Date.now()}`,
+        name,
+        type: 'folder',
+        children: [],
+      }
+      setLandingFolders((prev) => [...prev, newFolder])
+    } else {
+      createFolder(name, newFolderParentPath)
+    }
+  }, [isLanding, createFolder, newFolderParentPath])
   const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
     { field: 'name', direction: 'asc' },
   ])
+
+  // Department folder nodes for landing view — real WorkspaceFileNode shapes
+  const departmentNodes: WorkspaceFileNode[] = useMemo(() => {
+    if (!isLanding) return []
+    return ALL_DEPARTMENT_IDS.map((id) => ({
+      id,
+      name: departmentConfigs[id].name,
+      type: 'folder' as const,
+      children: getDepartmentWorkspaceFiles(id),
+    }))
+  }, [isLanding])
 
   // Resolve URL path segments to actual folder nodes
   const resolvedFolderPath = useMemo(
@@ -175,7 +226,7 @@ export function WorkspaceView({ folderPath: urlPath }: WorkspaceViewProps) {
       onClick: i < resolvedFolderPath.length - 1
         ? () => {
             const pathSegments = resolvedFolderPath.slice(0, i + 1).map((f) => f.id)
-            router.push(`/nextgen/workspace/${pathSegments.join('/')}`)
+            router.push(`/nextgen/workspace/${departmentId}/${pathSegments.join('/')}`)
           }
         : undefined,
     }))
@@ -197,17 +248,23 @@ export function WorkspaceView({ folderPath: urlPath }: WorkspaceViewProps) {
 
   const fileNodes = toFileNodes(processedFiles)
 
-  // Current grid items: either top-level or inside a drilled-down folder
-  const currentGridItems = useMemo(() => {
+  // Unified grid items — works for both landing and department views
+  const currentGridItems: WorkspaceFileNode[] = useMemo(() => {
+    if (isLanding) {
+      if (landingDrillFolder) return landingDrillFolder.children ?? []
+      return [...departmentNodes, ...landingFolders]
+    }
     if (resolvedFolderPath.length === 0) return processedFiles
     const current = resolvedFolderPath[resolvedFolderPath.length - 1]
     return current.children ?? []
-  }, [processedFiles, resolvedFolderPath])
+  }, [isLanding, landingDrillFolder, departmentNodes, landingFolders, processedFiles, resolvedFolderPath])
 
-  // Build flat asset list from ALL current grid items (folders + files) for shift-range selection
+  // Flat asset list for selection — on landing each folder's "department" is itself
   const currentGridAssets = useMemo(() => {
-    return currentGridItems.map((n) => instanceToAsset(fileToInstance(n, DEPARTMENT_ID)))
-  }, [currentGridItems])
+    return currentGridItems.map((n) =>
+      instanceToAsset(fileToInstance(n, (departmentId ?? n.id) as DepartmentId))
+    )
+  }, [currentGridItems, departmentId])
 
   const selectedAssets = useMemo(() => {
     return currentGridAssets.filter((a) => selectedIds.has(a.id))
@@ -234,28 +291,64 @@ export function WorkspaceView({ folderPath: urlPath }: WorkspaceViewProps) {
   const closeContextMenu = useCallback(() => setContextMenu(null), [])
 
   const handleFolderDrilldown = useCallback((folder: WorkspaceFileNode) => {
-    const newPath = [...urlPath, folder.id]
-    router.push(`/nextgen/workspace/${newPath.join('/')}`)
-  }, [urlPath, router])
+    if (isLanding) {
+      // Transient folders on landing: drill down locally (no URL change)
+      if (folder.id.startsWith('new-folder-')) {
+        setLandingDrillFolder(folder)
+      } else {
+        router.push(`/nextgen/workspace/${folder.id}`)
+      }
+    } else {
+      const newPath = [...urlPath, folder.id]
+      router.push(`/nextgen/workspace/${departmentId}/${newPath.join('/')}`)
+    }
+  }, [isLanding, urlPath, router, departmentId])
 
-  const contextMenuItems: ContextMenuItem[] = contextMenu?.node.type === 'folder'
-    ? [
+  const contextMenuItems: ContextMenuItem[] = (() => {
+    if (!contextMenu) return []
+    // Background right-click — only "New Folder" at current level
+    if (contextMenu.node.id === '__background__') {
+      return [{
+        label: 'New Folder',
+        icon: <FolderPlus className="w-4 h-4" />,
+        onClick: () => {
+          setNewFolderParentPath(urlPath)
+          setNewFolderModalOpen(true)
+        },
+      }]
+    }
+    if (contextMenu.node.type === 'folder') {
+      return [
+        {
+          label: 'New Folder',
+          icon: <FolderPlus className="w-4 h-4" />,
+          onClick: () => {
+            setNewFolderParentPath([...urlPath, contextMenu.node.id])
+            setNewFolderModalOpen(true)
+          },
+          dividerAfter: true,
+        },
         {
           label: managedFolderIds.has(contextMenu.node.id) ? 'Unmark Managed Zone' : 'Mark as Managed Zone',
           checked: managedFolderIds.has(contextMenu.node.id),
           onClick: () => toggleManagedZone(contextMenu.node.id),
         },
       ]
-    : []
+    }
+    return []
+  })()
 
   const isInsideFolder = resolvedFolderPath.length > 0
   const currentFolder = isInsideFolder ? resolvedFolderPath[resolvedFolderPath.length - 1] : null
-  const pageTitle = currentFolder?.name ?? 'Workspace'
-  const backHref = isInsideFolder
-    ? urlPath.length <= 1
-      ? '/nextgen/workspace'
-      : `/nextgen/workspace/${urlPath.slice(0, -1).join('/')}`
-    : null
+  const departmentName = departmentId ? (departmentConfigs[departmentId]?.name ?? departmentId) : 'Workspace'
+  const pageTitle = landingDrillFolder?.name ?? currentFolder?.name ?? departmentName
+  const backHref = isLanding
+    ? undefined
+    : isInsideFolder
+      ? urlPath.length <= 1
+        ? `/nextgen/workspace/${departmentId}`
+        : `/nextgen/workspace/${departmentId}/${urlPath.slice(0, -1).join('/')}`
+      : `/nextgen/workspace`
 
   const isGridView = viewMode === 'grid'
   const explorerViewMode = isGridView ? 'list' : viewMode
@@ -268,13 +361,6 @@ export function WorkspaceView({ folderPath: urlPath }: WorkspaceViewProps) {
     }
   }
 
-  const getAssetCount = (count: number): 'None' | 'One' | 'Two' | 'Many' => {
-    if (count === 0) return 'None'
-    if (count === 1) return 'One'
-    if (count === 2) return 'Two'
-    return 'Many'
-  }
-
   return (
     <AppLayout>
       <div className="h-full flex flex-col">
@@ -283,8 +369,8 @@ export function WorkspaceView({ folderPath: urlPath }: WorkspaceViewProps) {
           <CompactBar
             visible={showCompactBar}
             title={pageTitle}
-            count={totalFileCount}
-            countLabel="file"
+            count={isLanding ? departmentNodes.length : totalFileCount}
+            countLabel={isLanding ? 'department' : 'file'}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             filterOptions={filterOptions}
@@ -334,7 +420,16 @@ export function WorkspaceView({ folderPath: urlPath }: WorkspaceViewProps) {
 
                 {/* Header */}
                 <div ref={headerRef} className="flex items-center justify-between gap-4">
-                  <PageHeader title={pageTitle} backHref={backHref ?? undefined} />
+                  {landingDrillFolder ? (
+                    <div className="flex items-center gap-3">
+                      <Button variant="icon" size="icon" aria-label="Back" className="-my-4" onClick={() => setLandingDrillFolder(null)}>
+                        <ArrowLeft className="w-4 h-4" />
+                      </Button>
+                      <PageHeader title={pageTitle} />
+                    </div>
+                  ) : (
+                    <PageHeader title={pageTitle} backHref={backHref ?? undefined} />
+                  )}
                   <div className="hidden md:flex items-center gap-2">
                     <HawkinsSearch
                       value={searchQuery}
@@ -360,6 +455,17 @@ export function WorkspaceView({ folderPath: urlPath }: WorkspaceViewProps) {
                     <Button
                       variant="icon"
                       size="icon"
+                      aria-label="New folder"
+                      onClick={() => {
+                        setNewFolderParentPath(urlPath)
+                        setNewFolderModalOpen(true)
+                      }}
+                    >
+                      <FolderPlus className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="icon"
+                      size="icon"
                       aria-label="Toggle panel"
                       onClick={() => setShowPanel((v) => !v)}
                       className={cn(showPanel && 'bg-surface-3')}
@@ -370,54 +476,83 @@ export function WorkspaceView({ folderPath: urlPath }: WorkspaceViewProps) {
                 </div>
 
                 {/* Content */}
-                <div className="min-h-[400px]">
-                  {isGridView ? (
-                    <>
-                      {currentGridItems.length > 0 ? (
-                        <CardGrid gap="4" columns={getColumns()}>
-                          {currentGridItems.map((node) => {
-                            if (node.type === 'folder') {
-                              const fileCount = countFiles(node.children ?? [])
-                              const folderAsset = instanceToAsset(fileToInstance(node, DEPARTMENT_ID))
-                              return (
-                                <CollectionCard
-                                  key={node.id}
-                                  title={node.name}
-                                  assetCount={fileCount}
-                                  type="folder"
-                                  numberOfAssets="None"
-                                  state={selectedIds.has(node.id) ? 'Selected' : 'Normal'}
-                                  onClick={(e) => {
-                                    handleAssetClick(folderAsset, e as React.MouseEvent, currentGridAssets)
-                                    setSelectedNode(node)
-                                  }}
-                                  onDoubleClick={() => handleFolderDrilldown(node)}
-                                />
-                              )
-                            }
-                            const asset = instanceToAsset(fileToInstance(node, DEPARTMENT_ID))
+                <div
+                  className="min-h-[400px]"
+                  onContextMenu={(e) => {
+                    if ((e.target as HTMLElement).closest('[data-card]') === null) {
+                      e.preventDefault()
+                      setContextMenu({
+                        x: e.clientX,
+                        y: e.clientY,
+                        node: { id: '__background__', name: '', type: 'folder', children: [] },
+                      })
+                    }
+                  }}
+                >
+                  {isGridView || isLanding ? (
+                    currentGridItems.length > 0 || (!isLanding && loading) ? (
+                      <CardGrid gap="4" columns={getColumns()}>
+                        {currentGridItems.map((node) => {
+                          if (node.type === 'folder') {
+                            const fileCount = countFiles(node.children ?? [])
+                            const dept = (departmentId ?? node.id) as DepartmentId
+                            const folderAsset = instanceToAsset(fileToInstance(node, dept))
+                            const access = isLanding ? getAccessLevel(node.id as DepartmentId) : null
+                            const accessIcon = access === 'none'
+                              ? <Lock className="w-4 h-4" />
+                              : access === 'partial'
+                              ? <Users className="w-4 h-4" />
+                              : undefined
+                            const isLocked = access === 'none'
                             return (
-                              <AssetCard
+                              <CollectionCard
                                 key={node.id}
-                                asset={asset}
-                                fromWorkspace={node.managedZone}
-                                selected={selectedIds.has(node.id)}
-                                primary={primaryId === node.id}
-                                onClick={(a, e) => {
-                                  handleAssetClick(a, e, currentGridAssets)
+                                title={node.name}
+                                assetCount={fileCount}
+                                type="folder"
+                                numberOfAssets="None"
+                                accessIcon={accessIcon}
+                                className={isLocked ? 'opacity-50 cursor-not-allowed' : undefined}
+                                state={selectedIds.has(node.id) ? 'Selected' : 'Normal'}
+                                onClick={isLocked ? undefined : (e) => {
+                                  handleAssetClick(folderAsset, e as React.MouseEvent, currentGridAssets)
                                   setSelectedNode(node)
                                 }}
+                                onDoubleClick={isLocked ? undefined : () => handleFolderDrilldown(node)}
                               />
                             )
-                          })}
-                        </CardGrid>
-                      ) : (
-                        <EmptyState
-                          title="Empty folder"
-                          message="No files in this folder"
-                        />
-                      )}
-                    </>
+                          }
+                          const asset = instanceToAsset(fileToInstance(node, departmentId!))
+                          return (
+                            <AssetCard
+                              key={node.id}
+                              asset={asset}
+                              selected={selectedIds.has(node.id)}
+                              primary={primaryId === node.id}
+                              onClick={(a, e) => {
+                                handleAssetClick(a, e, currentGridAssets)
+                                setSelectedNode(node)
+                              }}
+                            />
+                          )
+                        })}
+                        {!isLanding && loading && (
+                          Array.from({ length: 4 }, (_, i) => (
+                            <CollectionCard
+                              key={`skeleton-${i}`}
+                              title=""
+                              assetCount={0}
+                              state="Loading"
+                            />
+                          ))
+                        )}
+                      </CardGrid>
+                    ) : (
+                      <EmptyState
+                        title="Empty folder"
+                        message="No files in this folder"
+                      />
+                    )
                   ) : (
                     <FileExplorer
                       files={fileNodes}
@@ -476,6 +611,24 @@ export function WorkspaceView({ folderPath: urlPath }: WorkspaceViewProps) {
           onClear={clearSelection}
           onCreateCollection={handleCreateCollection}
           onShare={() => console.log('Share:', Array.from(selectedIds))}
+        />
+        <SettingsPanel>
+          <SettingGroup label="Department Access">
+            {allDepartments.map((deptId) => (
+              <SettingSegmented
+                key={deptId}
+                label={departmentConfigs[deptId]?.name ?? deptId}
+                options={ACCESS_LEVEL_OPTIONS}
+                value={accessLevels[deptId] ?? 'full'}
+                onChange={(level) => setAccessLevel(deptId, level)}
+              />
+            ))}
+          </SettingGroup>
+        </SettingsPanel>
+        <NewFolderModal
+          open={newFolderModalOpen}
+          onOpenChange={setNewFolderModalOpen}
+          onCreate={handleCreateFolder}
         />
       </div>
     </AppLayout>

@@ -27,9 +27,10 @@ import { AppLayout } from '@/components/layouts'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAssetSelection, useViewPreferences, useCompactBar, useDepartmentAccess, useUserCollections } from '@/hooks'
+import { useAssetSelection, useViewPreferences, useCompactBar, useDepartmentAccess, useUserCollections, useWorkspaceState } from '@/hooks'
 import type { DepartmentAccessLevel } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
+import { mergeWorkspaceAssets } from '@/lib/asset-instances'
 import type { DepartmentConfig } from './types'
 
 interface DepartmentHomeViewProps {
@@ -76,10 +77,19 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
   const { createCollection } = useUserCollections()
 
-  // Department assets - single source of truth for this department's assets
-  const [departmentAssets, setDepartmentAssets] = useState<Asset[]>([])
+  // Curated department assets from API
+  const [curatedAssets, setCuratedAssets] = useState<Asset[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<Error | null>(null)
+
+  // Workspace promoted assets
+  const { assetInstances } = useWorkspaceState(config.id, 'files')
+
+  // Merge curated + promoted into a single asset list
+  const departmentAssets = useMemo(
+    () => mergeWorkspaceAssets(curatedAssets, assetInstances),
+    [curatedAssets, assetInstances],
+  )
 
   // Collection drilldown state (department-scoped)
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null)
@@ -120,7 +130,7 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
         const response = await fetch(`/api/departments/${config.id}/assets`)
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const assets = await response.json()
-        setDepartmentAssets(assets)
+        setCuratedAssets(assets)
       } catch (error) {
         console.error('Failed to fetch department assets:', error)
         setLoadError(error instanceof Error ? error : new Error('Failed to fetch assets'))
@@ -510,6 +520,7 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
                           loading={showAssetLoading}
                           forceEmptyPreview={forceEmptyPreview}
                           processing={showProcessing}
+                          fromWorkspace={asset.isAutoPromoted}
                         />
                       ))}
                     </CardGrid>
