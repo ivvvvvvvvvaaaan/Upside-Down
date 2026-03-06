@@ -214,26 +214,44 @@ export function WorkspaceView({ departmentId, folderPath: urlPath }: WorkspaceVi
     [urlPath, processedFiles],
   )
 
-  // Sync breadcrumb extras with the folder path
+  // Sync breadcrumb extras: Workspace > Department > Folder > ...
   useEffect(() => {
-    if (resolvedFolderPath.length === 0) {
-      clearBreadcrumbExtras()
-      return
+    const extras: { label: string; href?: string; onClick?: () => void }[] = []
+
+    // Workspace crumb — link when deeper, plain when on landing
+    if (departmentId) {
+      extras.push({ label: 'Workspace', href: '/nextgen/workspace' })
+    } else {
+      extras.push({ label: 'Workspace' })
     }
 
-    const extras = resolvedFolderPath.map((folder, i) => ({
-      label: folder.name,
-      onClick: i < resolvedFolderPath.length - 1
-        ? () => {
-            const pathSegments = resolvedFolderPath.slice(0, i + 1).map((f) => f.id)
-            router.push(`/nextgen/workspace/${departmentId}/${pathSegments.join('/')}`)
-          }
-        : undefined,
-    }))
+    // Department crumb
+    if (departmentId) {
+      const deptName = departmentConfigs[departmentId]?.name ?? departmentId
+      if (resolvedFolderPath.length > 0) {
+        extras.push({ label: deptName, href: `/nextgen/workspace/${departmentId}` })
+      } else {
+        extras.push({ label: deptName })
+      }
+
+      // Folder path crumbs
+      resolvedFolderPath.forEach((folder, i) => {
+        const isLast = i === resolvedFolderPath.length - 1
+        extras.push({
+          label: folder.name,
+          onClick: !isLast
+            ? () => {
+                const pathSegments = resolvedFolderPath.slice(0, i + 1).map((f) => f.id)
+                router.push(`/nextgen/workspace/${departmentId}/${pathSegments.join('/')}`)
+              }
+            : undefined,
+        })
+      })
+    }
 
     setBreadcrumbExtras(extras)
     return () => clearBreadcrumbExtras()
-  }, [resolvedFolderPath, setBreadcrumbExtras, clearBreadcrumbExtras, router])
+  }, [departmentId, resolvedFolderPath, setBreadcrumbExtras, clearBreadcrumbExtras, router])
 
   const sortFields = [
     { value: 'name', label: 'Name' },

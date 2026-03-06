@@ -439,7 +439,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
       </CollapsibleSection>
 
       {/* Sharing Section */}
-      <CollapsibleSection title="Shared">
+      <CollapsibleSection title="Links">
         <NavLink
           href="/nextgen/sharing/incoming/1"
           label="Project Assets"

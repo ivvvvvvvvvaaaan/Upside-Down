@@ -124,7 +124,8 @@ export function ProjectBreadcrumb() {
   // Resolve the base pathname (strip dynamic segments for sub-routes)
   let basePathname = pathname
   if (pathname.startsWith('/nextgen/workspace')) {
-    basePathname = '/nextgen/workspace'
+    // Workspace breadcrumbs are fully managed via extras from workspace-view
+    basePathname = '/nextgen'
   } else if (pathname.startsWith('/nextgen/collections/') && !routeLabels[pathname]) {
     // Dynamic collection route like /nextgen/collections/user-123
     // Keep prefix so section crumb appears, but skip page label
