@@ -1,6 +1,6 @@
 'use client'
 
-import { UserCollectionsProvider, SmartCollectionsProvider } from '@/hooks'
+import { UserCollectionsProvider, SmartCollectionsProvider, WorkspaceFilesProvider } from '@/hooks'
 
 /**
  * Nextgen Layout
@@ -8,6 +8,7 @@ import { UserCollectionsProvider, SmartCollectionsProvider } from '@/hooks'
  * Wraps all nextgen pages with providers for shared state:
  * - UserCollectionsProvider: manages user-created collections (prototype, not persisted)
  * - SmartCollectionsProvider: manages filter-based smart collections
+ * - WorkspaceFilesProvider: manages workspace folders/files (create folder, transient folders)
  */
 export default function NextgenLayout({
   children,
@@ -17,7 +18,9 @@ export default function NextgenLayout({
   return (
     <SmartCollectionsProvider>
       <UserCollectionsProvider>
-        {children}
+        <WorkspaceFilesProvider>
+          {children}
+        </WorkspaceFilesProvider>
       </UserCollectionsProvider>
     </SmartCollectionsProvider>
   )

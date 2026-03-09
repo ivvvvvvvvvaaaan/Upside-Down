@@ -27,7 +27,7 @@ import type { FileNode, FileViewMode } from '@/components/ui/file-explorer'
 import { ContextMenu } from '@/components/ui/context-menu'
 import type { ContextMenuItem } from '@/components/ui/context-menu'
 import { AppLayout } from '@/components/layouts'
-import { useViewPreferences, useCompactBar, useWorkspaceState, useAssetSelection, useUserCollections, useDepartmentAccess } from '@/hooks'
+import { useViewPreferences, useCompactBar, useWorkspaceState, useAssetSelection, useUserCollections, useDepartmentAccess, useCreateFolder, useWorkspaceLandingFolders } from '@/hooks'
 import type { DepartmentAccessLevel } from '@/hooks'
 import type { DepartmentId } from '@/components/department/types'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
@@ -177,22 +177,17 @@ export function WorkspaceView({ departmentId, folderPath: urlPath }: WorkspaceVi
   const [searchQuery, setSearchQuery] = useState('')
   const [newFolderModalOpen, setNewFolderModalOpen] = useState(false)
   const [newFolderParentPath, setNewFolderParentPath] = useState<string[]>([])
-  const [landingFolders, setLandingFolders] = useState<WorkspaceFileNode[]>([])
   const [landingDrillFolder, setLandingDrillFolder] = useState<WorkspaceFileNode | null>(null)
+  const contextCreateFolder = useCreateFolder()
+  const landingFolders = useWorkspaceLandingFolders()
 
   const handleCreateFolder = useCallback((name: string) => {
     if (isLanding) {
-      const newFolder: WorkspaceFileNode = {
-        id: `new-folder-${Date.now()}`,
-        name,
-        type: 'folder',
-        children: [],
-      }
-      setLandingFolders((prev) => [...prev, newFolder])
+      contextCreateFolder('workspace', name, [])
     } else {
       createFolder(name, newFolderParentPath)
     }
-  }, [isLanding, createFolder, newFolderParentPath])
+  }, [isLanding, createFolder, contextCreateFolder, newFolderParentPath])
   const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
     { field: 'name', direction: 'asc' },
   ])

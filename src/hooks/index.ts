@@ -19,3 +19,5 @@ export { useSmartCollections, SmartCollectionsProvider, matchesFilter } from './
 
 export { useWorkspaceState } from './useWorkspaceState'
 export type { WorkspaceViewFilter, UseWorkspaceStateReturn } from './useWorkspaceState'
+
+export { WorkspaceFilesProvider, useTransientFolders, useCreateFolder, useWorkspaceLandingFolders } from './useWorkspaceFiles'

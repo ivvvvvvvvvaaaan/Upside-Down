@@ -25,7 +25,7 @@ import {
   Sparkles,
   type LucideIcon,
 } from 'lucide-react'
-import { useDepartmentAccess, useUserCollections, useSmartCollections } from '@/hooks'
+import { useDepartmentAccess, useUserCollections, useSmartCollections, useTransientFolders } from '@/hooks'
 import type { DepartmentId } from '@/components/department/types'
 import { getDepartmentWorkspaceFiles, type WorkspaceFileNode } from '@/lib/workspace-data'
 import { cn } from '@/lib/utils'
@@ -342,8 +342,58 @@ const DEPARTMENT_NAV_ITEMS: { href: string; label: string; id: DepartmentId }[] 
 ]
 
 
-function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
+/** Merge transient folders into a static file tree */
+function mergeTransientFolders(
+  nodes: WorkspaceFileNode[],
+  transient: Map<string, WorkspaceFileNode[]>,
+): WorkspaceFileNode[] {
+  if (transient.size === 0) return nodes
+  function inject(items: WorkspaceFileNode[], pathPrefix: string): WorkspaceFileNode[] {
+    return items.map((node) => {
+      if (node.type !== 'folder') return node
+      const childPath = pathPrefix ? `${pathPrefix}/${node.id}` : node.id
+      const extras = transient.get(childPath)
+      const children = node.children ? inject(node.children, childPath) : []
+      return { ...node, children: extras ? [...children, ...extras] : children }
+    })
+  }
+  const withNested = inject(nodes, '')
+  const rootExtras = transient.get('') ?? []
+  return rootExtras.length > 0 ? [...withNested, ...rootExtras] : withNested
+}
+
+/** Renders a single department nav item, using live transient folders from context */
+function DepartmentNavItem({ item }: { item: typeof DEPARTMENT_NAV_ITEMS[number] }) {
   const { getAccessLevel } = useDepartmentAccess()
+  const transient = useTransientFolders(item.id)
+  const staticFiles = getDepartmentWorkspaceFiles(item.id)
+  const files = mergeTransientFolders(staticFiles, transient)
+  const accessLevel = getAccessLevel(item.id)
+  const hasFolders = files.some((n) => n.type === 'folder')
+
+  if (hasFolders) {
+    return (
+      <TreeNavLink
+        href={item.href}
+        label={item.label}
+        accessLevel={accessLevel}
+        defaultExpanded={false}
+      >
+        <FolderNavTree nodes={files} basePath={item.href} accessLevel={accessLevel} />
+      </TreeNavLink>
+    )
+  }
+  return (
+    <NavLink
+      href={item.href}
+      label={item.label}
+      accessLevel={accessLevel}
+      matchSubpaths
+    />
+  )
+}
+
+function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
   const { collections: userCollections } = useUserCollections()
   const { collections: smartCollections, getChildren } = useSmartCollections()
 
@@ -354,32 +404,9 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
         <div className="px-3 space-y-1">
           <NavLink href="/nextgen" label="Search" />
           <TreeNavLink href="/nextgen/workspace" label="Workspace" defaultExpanded={true}>
-            {DEPARTMENT_NAV_ITEMS.map((item) => {
-              const files = getDepartmentWorkspaceFiles(item.id)
-              const hasFolders = files.some((n) => n.type === 'folder')
-              if (hasFolders) {
-                return (
-                  <TreeNavLink
-                    key={item.href}
-                    href={item.href}
-                    label={item.label}
-                    accessLevel={getAccessLevel(item.id)}
-                    defaultExpanded={false}
-                  >
-                    <FolderNavTree nodes={files} basePath={item.href} accessLevel={getAccessLevel(item.id)} />
-                  </TreeNavLink>
-                )
-              }
-              return (
-                <NavLink
-                  key={item.href}
-                  href={item.href}
-                  label={item.label}
-                  accessLevel={getAccessLevel(item.id)}
-                  matchSubpaths
-                />
-              )
-            })}
+            {DEPARTMENT_NAV_ITEMS.map((item) => (
+              <DepartmentNavItem key={item.href} item={item} />
+            ))}
           </TreeNavLink>
         </div>
       </div>

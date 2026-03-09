@@ -6,6 +6,7 @@ import { getDepartmentWorkspaceFiles, type WorkspaceFileNode } from '@/lib/works
 import { generateAssetInstances, groupInstancesByCategory } from '@/lib/asset-instances'
 import type { AssetInstance, AssetInstanceGroup } from '@/lib/asset-instances'
 import type { Asset, AssetType } from '@/lib/data'
+import { useTransientFolders, useCreateFolder } from './useWorkspaceFiles'
 
 export type WorkspaceViewFilter = 'files' | 'assets' | 'mixed'
 
@@ -140,23 +141,12 @@ export function useWorkspaceState(departmentId: DepartmentId, viewFilter: Worksp
   const [selectedNode, setSelectedNode] = useState<WorkspaceFileNode | null>(null)
   const [curatedAssetNodes, setCuratedAssetNodes] = useState<WorkspaceFileNode[]>([])
   const [loading, setLoading] = useState(true)
-  const [transientFolders, setTransientFolders] = useState<Map<string, WorkspaceFileNode[]>>(new Map())
+  const transientFolders = useTransientFolders(departmentId)
+  const contextCreateFolder = useCreateFolder()
 
   const createFolder = useCallback((name: string, parentPath: string[]) => {
-    const key = parentPath.join('/')
-    const newFolder: WorkspaceFileNode = {
-      id: `new-folder-${Date.now()}`,
-      name,
-      type: 'folder',
-      children: [],
-    }
-    setTransientFolders(prev => {
-      const next = new Map(prev)
-      const existing = next.get(key) ?? []
-      next.set(key, [...existing, newFolder])
-      return next
-    })
-  }, [])
+    contextCreateFolder(departmentId, name, parentPath)
+  }, [contextCreateFolder, departmentId])
 
   // Load state on mount
   useEffect(() => {
