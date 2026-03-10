@@ -25,7 +25,7 @@ import {
   Sparkles,
   type LucideIcon,
 } from 'lucide-react'
-import { useDepartmentAccess, useUserCollections, useSmartCollections, useTransientFolders } from '@/hooks'
+import { useDepartmentAccess, useUserCollections, useSmartCollections, useTransientFolders, useWorkspaceLandingFolders } from '@/hooks'
 import type { DepartmentId } from '@/components/department/types'
 import { getDepartmentWorkspaceFiles, type WorkspaceFileNode } from '@/lib/workspace-data'
 import { cn } from '@/lib/utils'
@@ -196,10 +196,11 @@ function TreeNavLink({ href, label, icon, badge, accessLevel = 'full', children,
       >
         {children && (
           <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center justify-center pl-3 py-2 flex-shrink-0"
+            onClick={isLocked ? undefined : () => setIsExpanded(!isExpanded)}
+            className={cn("flex items-center justify-center pl-3 py-2 flex-shrink-0", isLocked && "cursor-not-allowed")}
+            disabled={isLocked}
           >
-            {isExpanded ? (
+            {isExpanded && !isLocked ? (
               <ChevronDown className="w-4 h-4 text-foreground-dim" />
             ) : (
               <ChevronRight className="w-4 h-4 text-foreground-dim" />
@@ -214,7 +215,7 @@ function TreeNavLink({ href, label, icon, badge, accessLevel = 'full', children,
           </Link>
         )}
       </div>
-      {children && isExpanded && (
+      {children && !isLocked && isExpanded && (
         <div className="pl-6 space-y-1 mt-1">
           {children}
         </div>
@@ -396,6 +397,7 @@ function DepartmentNavItem({ item }: { item: typeof DEPARTMENT_NAV_ITEMS[number]
 function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
   const { collections: userCollections } = useUserCollections()
   const { collections: smartCollections, getChildren } = useSmartCollections()
+  const workspaceFolders = useWorkspaceLandingFolders()
 
   return (
     <>
@@ -406,6 +408,11 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
           <TreeNavLink href="/nextgen/workspace" label="Workspace" defaultExpanded={true}>
             {DEPARTMENT_NAV_ITEMS.map((item) => (
               <DepartmentNavItem key={item.href} item={item} />
+            ))}
+            {workspaceFolders.map((folder) => (
+              <TreeNavLink key={folder.id} href={`/nextgen/workspace/${folder.id}`} label={folder.name} defaultExpanded={false}>
+                <span className="text-label-0-regular text-foreground-dim px-3 py-1">Empty</span>
+              </TreeNavLink>
             ))}
           </TreeNavLink>
         </div>

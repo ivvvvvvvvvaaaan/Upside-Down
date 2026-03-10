@@ -143,9 +143,11 @@ interface WorkspaceViewProps {
   departmentId?: DepartmentId
   /** URL path segments representing the drilled-down folder path */
   folderPath: string[]
+  /** Workspace-level transient folder ID to auto-drill into on the landing page */
+  landingFolderId?: string
 }
 
-export function WorkspaceView({ departmentId, folderPath: urlPath }: WorkspaceViewProps) {
+export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolderId }: WorkspaceViewProps) {
   const router = useRouter()
   const isLanding = !departmentId
   const { getAccessLevel, setAccessLevel, allDepartments, accessLevels } = useDepartmentAccess()
@@ -180,6 +182,14 @@ export function WorkspaceView({ departmentId, folderPath: urlPath }: WorkspaceVi
   const [landingDrillFolder, setLandingDrillFolder] = useState<WorkspaceFileNode | null>(null)
   const contextCreateFolder = useCreateFolder()
   const landingFolders = useWorkspaceLandingFolders()
+
+  // Auto-drill into a workspace-level transient folder when navigated to via URL
+  useEffect(() => {
+    if (landingFolderId && isLanding) {
+      const folder = landingFolders.find(f => f.id === landingFolderId)
+      if (folder) setLandingDrillFolder(folder)
+    }
+  }, [landingFolderId, isLanding, landingFolders])
 
   const handleCreateFolder = useCallback((name: string) => {
     if (isLanding) {

@@ -25,7 +25,8 @@ export default async function WorkspacePage({ params }: Props) {
   // First segment must be a valid department ID
   const departmentId = path[0] as DepartmentId
   if (!VALID_DEPARTMENTS.includes(departmentId)) {
-    notFound()
+    // Not a department — treat as a workspace-level transient folder on the landing page
+    return <WorkspaceView folderPath={[]} landingFolderId={path[0]} />
   }
 
   // Remaining segments are the folder path within the department
