@@ -64,7 +64,7 @@ export function ResizeHandle({
       <div
         className={cn(
           'w-px h-full transition-all',
-          'bg-border-dim group-hover:w-1 group-hover:bg-indigo-500/40',
+          'bg-transparent group-hover:w-1 group-hover:bg-indigo-500/40',
           isDragging && 'w-1 bg-indigo-500/40'
         )}
       />

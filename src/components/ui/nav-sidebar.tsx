@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -22,11 +22,11 @@ import {
   Database,
   Layout,
   Lock,
-  Sparkles,
   type LucideIcon,
 } from 'lucide-react'
 import { useDepartmentAccess, useUserCollections, useSmartCollections, useTransientFolders, useWorkspaceLandingFolders } from '@/hooks'
 import type { DepartmentId } from '@/components/department/types'
+import type { SmartCollectionCategory } from '@/lib/data'
 import { getDepartmentWorkspaceFiles, type WorkspaceFileNode } from '@/lib/workspace-data'
 import { cn } from '@/lib/utils'
 import { Tag } from './tag'
@@ -42,6 +42,33 @@ import type { NavConfig, NavSection, NavItem } from '@/types/navigation'
  * Can render dynamic navigation via navConfig prop, or falls back to
  * hardcoded nextgen navigation for backward compatibility.
  */
+
+const NAV_STORAGE_KEY = 'nav-expanded'
+
+function usePersistedExpand(key: string, fallback: boolean): [boolean, (v: boolean) => void] {
+  const [value, setValue] = useState(() => {
+    try {
+      const stored = localStorage.getItem(NAV_STORAGE_KEY)
+      if (stored) {
+        const map = JSON.parse(stored)
+        if (key in map) return map[key] as boolean
+      }
+    } catch {}
+    return fallback
+  })
+
+  const setPersisted = useCallback((next: boolean) => {
+    setValue(next)
+    try {
+      const stored = localStorage.getItem(NAV_STORAGE_KEY)
+      const map = stored ? JSON.parse(stored) : {}
+      map[key] = next
+      localStorage.setItem(NAV_STORAGE_KEY, JSON.stringify(map))
+    } catch {}
+  }, [key])
+
+  return [value, setPersisted]
+}
 
 // Icon map for dynamic icon rendering
 const iconMap: Record<string, LucideIcon> = {
@@ -134,29 +161,45 @@ function NavLink({ href, label, badge, icon, accessLevel = 'full', matchSubpaths
 }
 
 interface TreeNavLinkProps {
-  href: string
+  href?: string
   label: string
   icon?: React.ReactNode
   badge?: number
   accessLevel?: AccessIndicator
   children?: React.ReactNode
   defaultExpanded?: boolean
+  /** Reserve chevron space even when there are no children, for alignment */
+  indent?: boolean
+  /** When true, forces the node to expand (e.g. when a child route becomes active externally) */
+  forceExpand?: boolean
 }
 
-function TreeNavLink({ href, label, icon, badge, accessLevel = 'full', children, defaultExpanded = true }: TreeNavLinkProps) {
+function TreeNavLink({ href, label, icon, badge, accessLevel = 'full', children, defaultExpanded = true, indent = false, forceExpand = false }: TreeNavLinkProps) {
   const pathname = usePathname()
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded)
-  const isActive = pathname === href
+  const isActive = href ? pathname === href : false
   const isLocked = accessLevel === 'none'
   // Check both /parent/ subroutes AND --child smart collection IDs
-  const smartCollectionBase = href.replace(/^\/nextgen\/smart-collections\//, '')
+  const smartCollectionBase = href ? href.replace(/^\/nextgen\/smart-collections\//, '') : ''
   const currentPath = pathname.replace(/^\/nextgen\/smart-collections\//, '')
-  const isChildActive = pathname.startsWith(href + '/') ||
-    (smartCollectionBase && currentPath.startsWith(smartCollectionBase + '--'))
+  const isChildActive = href
+    ? pathname.startsWith(href + '/') || (smartCollectionBase && currentPath.startsWith(smartCollectionBase + '--'))
+    : false
+  const storageKey = href || `tree:${label}`
+  const [isExpanded, setIsExpanded] = usePersistedExpand(storageKey, defaultExpanded || isChildActive)
+
+  // Auto-expand when a child becomes active (e.g. navigating from relationship panel)
+  useEffect(() => {
+    if ((isChildActive || forceExpand) && !isExpanded) {
+      setIsExpanded(true)
+    }
+  }, [isChildActive, forceExpand]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hasChevron = !!children
+  const reserveChevronSpace = indent && !hasChevron
 
   const linkClassName = cn(
     'flex-1 flex items-center justify-between py-2 pr-3 min-w-0',
-    children ? 'pl-1' : 'pl-3',
+    hasChevron ? 'pl-1' : reserveChevronSpace ? 'pl-1' : 'pl-3',
     isLocked && 'cursor-not-allowed'
   )
 
@@ -190,11 +233,11 @@ function TreeNavLink({ href, label, icon, badge, accessLevel = 'full', children,
             : isActive
               ? 'bg-indigo-500/20 text-foreground'
               : isChildActive
-              ? 'text-foreground'
+              ? 'text-foreground hover:bg-surface-2'
               : 'text-foreground-subtle hover:bg-surface-2 hover:text-foreground'
         )}
       >
-        {children && (
+        {hasChevron ? (
           <button
             onClick={isLocked ? undefined : () => setIsExpanded(!isExpanded)}
             className={cn("flex items-center justify-center pl-3 py-2 flex-shrink-0", isLocked && "cursor-not-allowed")}
@@ -206,13 +249,24 @@ function TreeNavLink({ href, label, icon, badge, accessLevel = 'full', children,
               <ChevronRight className="w-4 h-4 text-foreground-dim" />
             )}
           </button>
-        )}
+        ) : reserveChevronSpace ? (
+          <span className="flex items-center justify-center pl-3 py-2 flex-shrink-0">
+            <span className="w-4 h-4" />
+          </span>
+        ) : null}
         {isLocked ? (
           <div className={linkClassName}>{linkContent}</div>
-        ) : (
+        ) : href ? (
           <Link href={href} className={linkClassName}>
             {linkContent}
           </Link>
+        ) : (
+          <button
+            onClick={children ? () => setIsExpanded(!isExpanded) : undefined}
+            className={cn(linkClassName, 'text-left')}
+          >
+            {linkContent}
+          </button>
         )}
       </div>
       {children && !isLocked && isExpanded && (
@@ -225,13 +279,13 @@ function TreeNavLink({ href, label, icon, badge, accessLevel = 'full', children,
 }
 
 function CollapsibleSection({ title, defaultOpen = true, children }: CollapsibleSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen)
+  const [isOpen, setIsOpen] = usePersistedExpand(`section:${title}`, defaultOpen)
 
   return (
     <div className="py-2">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center gap-1 px-3 py-2 text-left group min-w-0"
+        className="w-full flex items-center gap-1 px-3 py-1 text-left group min-w-0"
       >
         {isOpen ? (
           <ChevronDown className="w-4 h-4 text-foreground-dim flex-shrink-0" />
@@ -394,7 +448,49 @@ function DepartmentNavItem({ item }: { item: typeof DEPARTMENT_NAV_ITEMS[number]
   )
 }
 
+const PIPELINE_STAGES: { category: SmartCollectionCategory; label: string }[] = [
+  { category: 'narrative', label: 'Narrative' },
+  { category: 'production', label: 'Production' },
+  { category: 'cg', label: 'CG' },
+  { category: 'edit', label: 'Edit' },
+]
+
+function SmartCollectionNavItem({ collection, getChildren, indent }: {
+  collection: { id: string; name: string; groupBy?: string }
+  getChildren: (parentId: string) => { id: string; name: string }[]
+  indent?: boolean
+}) {
+  const children = collection.groupBy ? getChildren(collection.id) : []
+  if (collection.groupBy && children.length > 0) {
+    return (
+      <TreeNavLink
+        key={collection.id}
+        href={`/nextgen/smart-collections/${collection.id}`}
+        label={collection.name}
+        defaultExpanded={false}
+      >
+        {children.map(child => (
+          <NavLink
+            key={child.id}
+            href={`/nextgen/smart-collections/${child.id}`}
+            label={child.name}
+          />
+        ))}
+      </TreeNavLink>
+    )
+  }
+  return (
+    <TreeNavLink
+      key={collection.id}
+      href={`/nextgen/smart-collections/${collection.id}`}
+      label={collection.name}
+      indent={indent}
+    />
+  )
+}
+
 function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
+  const pathname = usePathname()
   const { collections: userCollections } = useUserCollections()
   const { collections: smartCollections, getChildren } = useSmartCollections()
   const workspaceFolders = useWorkspaceLandingFolders()
@@ -405,7 +501,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
       <div className="pt-4 pb-2">
         <div className="px-3 space-y-1">
           <NavLink href="/nextgen" label="Search" />
-          <TreeNavLink href="/nextgen/workspace" label="Workspace" defaultExpanded={true}>
+          <TreeNavLink href="/nextgen/workspace" label="Workspaces" defaultExpanded={true}>
             {DEPARTMENT_NAV_ITEMS.map((item) => (
               <DepartmentNavItem key={item.href} item={item} />
             ))}
@@ -418,41 +514,38 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
         </div>
       </div>
 
-      {/* Collections Section - Smart + User collections unified */}
-      <CollapsibleSection title="Collections">
-        {/* Smart collections - Sparkles icon, tree for groupBy */}
-        {smartCollections.map((collection) => {
-          const children = collection.groupBy ? getChildren(collection.id) : []
-          if (collection.groupBy && children.length > 0) {
-            return (
-              <TreeNavLink
-                key={collection.id}
-                href={`/nextgen/smart-collections/${collection.id}`}
-                label={collection.name}
-                icon={<Sparkles className="w-4 h-4 flex-shrink-0" />}
-                defaultExpanded={false}
-              >
-                {children.map(child => (
-                  <NavLink
-                    key={child.id}
-                    href={`/nextgen/smart-collections/${child.id}`}
-                    label={child.name}
-                    icon={<Sparkles className="w-4 h-4 flex-shrink-0" />}
-                  />
-                ))}
-              </TreeNavLink>
-            )
-          }
+      {/* Smart Collections - grouped by pipeline stage */}
+      <SectionHeader title="Smart Collections" />
+      <div className="px-3 space-y-1">
+        {PIPELINE_STAGES.map(({ category, label }) => {
+          const stageCollections = smartCollections.filter(c => c.category === category)
+          if (stageCollections.length === 0) return null
+          const hasActiveChild = stageCollections.some(c =>
+            pathname.startsWith(`/nextgen/smart-collections/${c.id}`)
+          )
           return (
-            <NavLink
-              key={collection.id}
-              href={`/nextgen/smart-collections/${collection.id}`}
-              label={collection.name}
-              icon={<Sparkles className="w-4 h-4 flex-shrink-0" />}
-            />
+            <TreeNavLink
+              key={category}
+              label={label}
+              defaultExpanded={hasActiveChild}
+              forceExpand={hasActiveChild}
+            >
+              {stageCollections.map((collection) => (
+                <SmartCollectionNavItem
+                  key={collection.id}
+                  collection={collection}
+                  getChildren={getChildren}
+                  indent={stageCollections.some(c => c.groupBy)}
+                />
+              ))}
+            </TreeNavLink>
           )
         })}
-        {/* User collections - Folder icon */}
+      </div>
+
+      {/* My Collections - User collections */}
+      <SectionHeader title="My Collections" />
+      <div className="px-3 space-y-1">
         {userCollections.map((collection) => (
           <NavLink
             key={collection.id}
@@ -462,7 +555,6 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
             badge={collection.assetIds.length}
           />
         ))}
-        {/* New collection button */}
         <button
           onClick={onNewCollection}
           className="flex items-center gap-2 px-3 py-2 text-body-0-bold text-foreground-dim hover:text-foreground-subtle transition-colors min-w-0"
@@ -470,7 +562,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
           <Plus className="w-4 h-4 flex-shrink-0" />
           <span className="truncate">New Collection</span>
         </button>
-      </CollapsibleSection>
+      </div>
 
       {/* Sharing Section */}
       <CollapsibleSection title="Links">

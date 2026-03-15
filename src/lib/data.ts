@@ -32,7 +32,9 @@ export type AudioMetadata = {
 export type DepartmentId = 'art-design' | 'vfx' | 'camera' | 'editorial' | 'audio-sound'
 
 // Smart Collection Types
-export type SmartCollectionIcon = 'character' | 'location' | 'scene' | 'palette' | 'filter' | 'tag'
+export type SmartCollectionCategory = 'narrative' | 'production' | 'cg' | 'edit'
+
+export type SmartCollectionIcon = 'character' | 'location' | 'scene' | 'palette' | 'filter' | 'tag' | 'shot' | 'sequence'
 
 export type AssetFilter = {
   query?: string              // Free text search (name, tags)
@@ -59,6 +61,7 @@ export type SmartCollection = {
   createdAt: Date
   groupBy?: SmartCollectionGroupBy   // Auto-generate children from this AI dimension
   parentId?: string                  // Links child back to parent
+  category?: SmartCollectionCategory // Pipeline stage grouping
 }
 
 export type AIMeta = {

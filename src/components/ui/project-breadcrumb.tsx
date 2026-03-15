@@ -34,7 +34,8 @@ const routeLabels: Record<string, string> = {
 // Section groupings for breadcrumb hierarchy
 const sectionPrefixes: { prefix: string; label: string }[] = [
   { prefix: '/nextgen/departments/', label: 'Departments' },
-  { prefix: '/nextgen/collections/', label: 'Smart Collections' },
+  { prefix: '/nextgen/smart-collections/', label: 'Collections' },
+  { prefix: '/nextgen/collections/', label: 'My Collections' },
   { prefix: '/nextgen/sharing/', label: 'Sharing' },
 ]
 
@@ -136,7 +137,7 @@ export function ProjectBreadcrumb() {
   const allCrumbs: BreadcrumbItem[] = [...baseCrumbs, ...extras]
 
   return (
-    <div className="h-10 px-4 flex items-center border-b border-border-dim bg-surface-1">
+    <div className="h-12 px-4 flex items-center border-b border-border-dim bg-surface-1">
       <nav className="flex items-center gap-1 text-body-0-regular">
         {allCrumbs.map((crumb, index) => {
           const isLast = index === allCrumbs.length - 1
