@@ -35,7 +35,9 @@
     "manage": "node scripts/manage-projects.mjs",
     "save": "node scripts/save-changes.mjs",
     "publish": "node scripts/publish.mjs",
-    "deploy": "npx vercel --yes"
+    "deploy": "npx vercel --yes",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@radix-ui/react-popover": "^1.1.15",
@@ -57,11 +59,13 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@vitest/coverage-v8": "^4.1.1",
     "autoprefixer": "^10",
     "eslint": "^8",
     "eslint-config-next": "14.1.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.1"
   }
 }
