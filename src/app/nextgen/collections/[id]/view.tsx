@@ -70,9 +70,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     }
   }
 
-  const handleShareCollection = () => {
-    console.log('Share collection:', collection?.id ?? collectionId)
-  }
+
 
   // Fetch assets by IDs when collection loads
   useEffect(() => {
@@ -267,10 +265,8 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
             open={sidePanelOpen && !primaryAsset}
             onClose={() => setSidePanelOpen(false)}
             onDelete={handleDeleteCollection}
-            onShare={handleShareCollection}
             reviewNoteSummary={reviewNoteSummary}
             canDelete={isOwner}
-            canShare={isOwner}
           />
         )}
       </div>

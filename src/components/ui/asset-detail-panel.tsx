@@ -1,12 +1,16 @@
 'use client'
 
+import { useMemo } from 'react'
 import { X, LayoutGrid, FileText, ExternalLink, Clapperboard } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from './button'
 import { ResponsivePanel } from './responsive-panel'
+import { AccessPanel } from './access-panel'
 import { Tag } from './tag'
 import { cn } from '@/lib/utils'
 import type { Asset, DepartmentId } from '@/lib/data'
+import type { ResourceRef } from '@/lib/grants'
+import { useAccess } from '@/hooks'
 import type { UserCollection } from '@/hooks'
 import type { RelatedAssetGroup } from '@/lib/context-relationships'
 import type { ReviewNoteSummary } from '@/lib/review-notes'
@@ -68,12 +72,26 @@ export function AssetDetailPanel({
   reviewNoteSummary = null,
   activeCollectionId,
 }: AssetDetailPanelProps) {
+  const { getInheritedGrants, getCollectionRippleGrants } = useAccess()
+
+  const resourceRef: ResourceRef | undefined = asset ? {
+    id: asset.id,
+    type: 'asset',
+    departmentId: asset.department,
+  } : undefined
+
+  const inheritedGrants = useMemo(() => {
+    if (!asset) return []
+    const folderGrants = getInheritedGrants(asset.id)
+    const collectionGrants = getCollectionRippleGrants(asset.id)
+    return [...folderGrants, ...collectionGrants]
+  }, [asset, getInheritedGrants, getCollectionRippleGrants])
+
   if (!asset) return <ResponsivePanel open={false} onClose={onClose}><div /></ResponsivePanel>
 
   const duration = getDuration(asset)
   const typeTag = getTypeTag(asset)
 
-  // Find collections that contain this asset
   const assetCollections = collections.filter(c =>
     c.assetIds.includes(asset.id)
   )
@@ -316,6 +334,12 @@ export function AssetDetailPanel({
           </section>
         )}
 
+
+        <AccessPanel
+          resourceId={asset.id}
+          resourceRef={resourceRef}
+          inheritedGrants={inheritedGrants}
+        />
 
         {/* Workspace Path */}
         <section className="space-y-2">

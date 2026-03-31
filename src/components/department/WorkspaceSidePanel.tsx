@@ -1,19 +1,18 @@
 'use client'
 
-import { useMemo } from 'react'
-import { X, Folder, File, Users } from 'lucide-react'
+import { X, Folder, File } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
+import { AccessPanel } from '@/components/ui/access-panel'
 import { Tag } from '@/components/ui/tag'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import type { DepartmentId } from '@/components/department/types'
+import type { ResourceRef } from '@/lib/grants'
 import { getAITagsForFile } from '@/lib/ai-tags'
 import { slugify } from '@/lib/smart-collection-filters'
 import { formatDate } from '@/lib/utils'
-import { SCENARIO } from '@/lib/scenario'
-import { getTeamById } from '@/lib/teams'
-import { profileLabel } from '@/lib/grants'
+import { useAccess } from '@/hooks'
 
 interface WorkspaceSidePanelProps {
   node?: WorkspaceFileNode | null
@@ -55,25 +54,19 @@ export function WorkspaceSidePanel({
 }: WorkspaceSidePanelProps) {
   const isFolder = node?.type === 'folder'
   const fileCount = isFolder && node ? countChildFiles(node) : 0
-
-  const departmentTeams = useMemo(() => {
-    return Object.entries(SCENARIO.projectRoles.teams)
-      .filter(([teamId]) => {
-        if (!departmentId) return true
-        const team = getTeamById(teamId)
-        return team?.departmentId === departmentId || !team?.departmentId
-      })
-      .map(([teamId, role]) => {
-        const team = getTeamById(teamId)
-        return {
-          id: teamId,
-          name: team?.name ?? teamId,
-          memberCount: team?.memberUserIds.length ?? 0,
-          role,
-        }
-      })
-  }, [departmentId])
   const aiTags = !isFolder && node ? getAITagsForFile(node.id) : undefined
+  const { getInheritedGrants } = useAccess()
+
+  const resourceRef: ResourceRef | undefined = node ? {
+    id: node.id,
+    type: node.type === 'folder' ? 'folder' : 'asset',
+    departmentId,
+  } : undefined
+
+  const inheritedGrants = node ? getInheritedGrants(node.id).map(({ grant, fromResourceName }) => ({
+    grant,
+    fromResourceName,
+  })) : []
 
   return (
     <ResponsivePanel open={open} onClose={onClose}>
@@ -134,23 +127,11 @@ export function WorkspaceSidePanel({
         </section>
 
 
-        <section className="space-y-2">
-          <h3 className="text-label-0-bold uppercase text-foreground-dim">Access</h3>
-          <div className="space-y-2">
-            {departmentTeams.map((team) => (
-                  <div key={team.id} className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Users className="w-4 h-4 text-foreground-dim flex-shrink-0" />
-                      <div className="min-w-0">
-                        <span className="text-body-0-regular text-foreground truncate block">{team.name}</span>
-                        <span className="text-label-0-regular text-foreground-dim">{team.memberCount} {team.memberCount === 1 ? 'member' : 'members'}</span>
-                      </div>
-                    </div>
-                    <Tag size="compact" type="neutral">{profileLabel(team.role)}</Tag>
-                  </div>
-                ))}
-          </div>
-        </section>
+        <AccessPanel
+          resourceId={node?.id ?? ''}
+          resourceRef={resourceRef}
+          inheritedGrants={inheritedGrants}
+        />
 
         {/* AI tags (files only) */}
         {!isFolder && aiTags && (

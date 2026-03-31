@@ -303,7 +303,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
 
     return false
-  }, [activePersona, userId, grants, collectionAccessById, collectionAssetAccessById])
+  }, [activePersona, userId, grants, collectionAccessById, collectionAssetAccessById, nodeToDepartment])
 
   // filterByAccess: filter assets by persona access
   const filterByAccess = useCallback((assets: Asset[]): Asset[] => {
