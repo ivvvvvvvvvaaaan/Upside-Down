@@ -7,8 +7,7 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
-  ArrowUpRight,
-  ArrowDownLeft,
+
   Grid,
   Folder,
   Search,
@@ -22,12 +21,15 @@ import {
   Database,
   Layout,
   Lock,
+  Inbox,
+  Link2,
+  Send,
   type LucideIcon,
 } from 'lucide-react'
-import { useDepartmentAccess, useUserCollections, useSmartCollections, useTransientFolders, useWorkspaceLandingFolders } from '@/hooks'
+import { useUserCollections, useSmartCollections, useFileTree, useAccess, usePersona } from '@/hooks'
+import { matchesFilter } from '@/lib/smart-collection-filters'
 import type { DepartmentId } from '@/components/department/types'
-import type { SmartCollectionCategory } from '@/lib/data'
-import { getDepartmentWorkspaceFiles, type WorkspaceFileNode } from '@/lib/workspace-data'
+import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { cn } from '@/lib/utils'
 import { Tag } from './tag'
 import type { NavConfig, NavSection, NavItem } from '@/types/navigation'
@@ -97,14 +99,13 @@ export interface NavSidebarProps {
   onNewCollection?: () => void
 }
 
-type AccessIndicator = 'none' | 'partial' | 'full'
-
 interface NavLinkProps {
   href: string
   label: string
   badge?: number
+  /** 'unread' = indigo fill (inbox/shared), 'count' = border + dim text (collections) */
+  badgeStyle?: 'unread' | 'count'
   icon?: React.ReactNode
-  accessLevel?: AccessIndicator
   /** When true, also highlight for subpaths (e.g. /workspace/art-design matches /workspace/art-design/subfolder) */
   matchSubpaths?: boolean
 }
@@ -115,47 +116,33 @@ interface CollapsibleSectionProps {
   children: React.ReactNode
 }
 
-function NavLink({ href, label, badge, icon, accessLevel = 'full', matchSubpaths = false }: NavLinkProps) {
+function NavLink({ href, label, badge, badgeStyle = 'count', icon, matchSubpaths = false }: NavLinkProps) {
   const pathname = usePathname()
   const isActive = pathname === href || (matchSubpaths && pathname.startsWith(href + '/'))
-  const isLocked = accessLevel === 'none'
 
-  const className = cn(
-    'flex items-center justify-between px-3 py-2 rounded transition-colors text-body-0-bold min-w-0',
-    isLocked
-      ? 'text-foreground-dim cursor-not-allowed opacity-50'
-      : isActive
-        ? 'bg-indigo-500/20 text-foreground'
-        : 'text-foreground-subtle hover:bg-surface-2 hover:text-foreground'
-  )
-
-  const content = (
-    <>
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'flex items-center justify-between px-3 py-2 rounded transition-colors text-body-0-bold min-w-0',
+        isActive
+          ? 'bg-indigo-500/20 text-foreground'
+          : 'text-foreground-subtle hover:bg-surface-2 hover:text-foreground'
+      )}
+    >
       <span className="flex items-center gap-2 min-w-0 truncate">
         {icon}
         <span className="truncate">{label}</span>
       </span>
-      <span className="flex items-center gap-1.5">
-        {isLocked && (
-          <Lock className="w-3 h-3 text-foreground-dim flex-shrink-0" />
-        )}
-        {accessLevel === 'partial' && (
-          <Users className="w-3 h-3 text-foreground-dim flex-shrink-0" />
-        )}
-        {badge !== undefined && badge > 0 && (
-          <Tag size="compact" type="announcement">{badge}</Tag>
-        )}
-      </span>
-    </>
-  )
-
-  if (isLocked) {
-    return <div className={className}>{content}</div>
-  }
-
-  return (
-    <Link href={href} className={className}>
-      {content}
+      {badge !== undefined && badge > 0 && (
+        <span className="flex items-center gap-1.5">
+          {badgeStyle === 'unread' ? (
+            <Tag size="compact" type="announcement">{badge}</Tag>
+          ) : (
+            <Tag size="compact" type="neutral" variant="border" className="text-foreground-dim">{badge}</Tag>
+          )}
+        </span>
+      )}
     </Link>
   )
 }
@@ -165,19 +152,21 @@ interface TreeNavLinkProps {
   label: string
   icon?: React.ReactNode
   badge?: number
-  accessLevel?: AccessIndicator
+  /** 'unread' = indigo fill (inbox/shared), 'count' = border + dim text (collections) */
+  badgeStyle?: 'unread' | 'count'
   children?: React.ReactNode
   defaultExpanded?: boolean
   /** Reserve chevron space even when there are no children, for alignment */
   indent?: boolean
   /** When true, forces the node to expand (e.g. when a child route becomes active externally) */
   forceExpand?: boolean
+  /** Optional icon rendered on the right side, after the badge area */
+  trailingIcon?: React.ReactNode
 }
 
-function TreeNavLink({ href, label, icon, badge, accessLevel = 'full', children, defaultExpanded = true, indent = false, forceExpand = false }: TreeNavLinkProps) {
+function TreeNavLink({ href, label, icon, badge, badgeStyle = 'count', children, defaultExpanded = true, indent = false, forceExpand = false, trailingIcon }: TreeNavLinkProps) {
   const pathname = usePathname()
   const isActive = href ? pathname === href : false
-  const isLocked = accessLevel === 'none'
   // Check both /parent/ subroutes AND --child smart collection IDs
   const smartCollectionBase = href ? href.replace(/^\/nextgen\/smart-collections\//, '') : ''
   const currentPath = pathname.replace(/^\/nextgen\/smart-collections\//, '')
@@ -200,7 +189,6 @@ function TreeNavLink({ href, label, icon, badge, accessLevel = 'full', children,
   const linkClassName = cn(
     'flex-1 flex items-center justify-between py-2 pr-3 min-w-0',
     hasChevron ? 'pl-1' : reserveChevronSpace ? 'pl-1' : 'pl-3',
-    isLocked && 'cursor-not-allowed'
   )
 
   const linkContent = (
@@ -209,15 +197,14 @@ function TreeNavLink({ href, label, icon, badge, accessLevel = 'full', children,
         {icon}
         <span className="truncate">{label}</span>
       </span>
-      <span className="flex items-center gap-1.5">
-        {isLocked && (
-          <Lock className="w-3 h-3 text-foreground-dim flex-shrink-0" />
-        )}
-        {accessLevel === 'partial' && (
-          <Users className="w-3 h-3 text-foreground-dim flex-shrink-0" />
-        )}
+      <span className="flex items-center gap-1">
+        {trailingIcon}
         {badge !== undefined && badge > 0 && (
-          <Tag size="compact" type="announcement">{badge}</Tag>
+          badgeStyle === 'unread' ? (
+            <Tag size="compact" type="announcement">{badge}</Tag>
+          ) : (
+            <Tag size="compact" type="neutral" variant="border" className="text-foreground-dim">{badge}</Tag>
+          )
         )}
       </span>
     </>
@@ -228,22 +215,19 @@ function TreeNavLink({ href, label, icon, badge, accessLevel = 'full', children,
       <div
         className={cn(
           'flex items-center justify-between rounded transition-colors text-body-0-bold min-w-0',
-          isLocked
-            ? 'text-foreground-dim opacity-50'
-            : isActive
-              ? 'bg-indigo-500/20 text-foreground'
-              : isChildActive
-              ? 'text-foreground hover:bg-surface-2'
-              : 'text-foreground-subtle hover:bg-surface-2 hover:text-foreground'
+          isActive
+            ? 'bg-indigo-500/20 text-foreground'
+            : isChildActive
+            ? 'text-foreground hover:bg-surface-2'
+            : 'text-foreground-subtle hover:bg-surface-2 hover:text-foreground'
         )}
       >
         {hasChevron ? (
           <button
-            onClick={isLocked ? undefined : () => setIsExpanded(!isExpanded)}
-            className={cn("flex items-center justify-center pl-3 py-2 flex-shrink-0", isLocked && "cursor-not-allowed")}
-            disabled={isLocked}
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center justify-center pl-3 py-2 flex-shrink-0"
           >
-            {isExpanded && !isLocked ? (
+            {isExpanded ? (
               <ChevronDown className="w-4 h-4 text-foreground-dim" />
             ) : (
               <ChevronRight className="w-4 h-4 text-foreground-dim" />
@@ -254,9 +238,7 @@ function TreeNavLink({ href, label, icon, badge, accessLevel = 'full', children,
             <span className="w-4 h-4" />
           </span>
         ) : null}
-        {isLocked ? (
-          <div className={linkClassName}>{linkContent}</div>
-        ) : href ? (
+        {href ? (
           <Link href={href} className={linkClassName}>
             {linkContent}
           </Link>
@@ -269,7 +251,7 @@ function TreeNavLink({ href, label, icon, badge, accessLevel = 'full', children,
           </button>
         )}
       </div>
-      {children && !isLocked && isExpanded && (
+      {children && isExpanded && (
         <div className="pl-6 space-y-1 mt-1">
           {children}
         </div>
@@ -364,24 +346,41 @@ function SectionHeader({ title }: { title: string }) {
   )
 }
 
-/** Recursively render workspace folders as nav tree items */
-function FolderNavTree({ nodes, basePath, accessLevel }: { nodes: WorkspaceFileNode[]; basePath: string; accessLevel?: AccessIndicator }) {
+/** Recursively render workspace folders as nav tree items, filtering by access */
+function FolderNavTree({ nodes, basePath }: { nodes: WorkspaceFileNode[]; basePath: string }) {
+  const { canAccess } = useAccess()
+  const { activePersona } = usePersona()
   const folders = nodes.filter((n) => n.type === 'folder')
   if (folders.length === 0) return null
 
   return (
     <>
       {folders.map((folder) => {
+        const accessible = canAccess(folder.id)
+        // Not accessible + persona can't see restricted → hidden
+        if (!accessible && activePersona?.role !== 'manager') return null
         const href = `${basePath}/${folder.id}`
+        // Not accessible + persona can see restricted → show with lock (non-navigable)
+        if (!accessible) {
+          return (
+            <div
+              key={folder.id}
+              className="flex items-center justify-between px-3 py-2 rounded text-body-0-bold text-foreground-dim opacity-50 cursor-not-allowed min-w-0"
+            >
+              <span className="truncate">{folder.name}</span>
+              <Lock className="w-3 h-3 text-foreground-dim flex-shrink-0" />
+            </div>
+          )
+        }
         const subfolders = (folder.children ?? []).filter((n) => n.type === 'folder')
         if (subfolders.length > 0) {
           return (
-            <TreeNavLink key={folder.id} href={href} label={folder.name} accessLevel={accessLevel} defaultExpanded={false}>
-              <FolderNavTree nodes={folder.children ?? []} basePath={href} accessLevel={accessLevel} />
+            <TreeNavLink key={folder.id} href={href} label={folder.name} defaultExpanded={false}>
+              <FolderNavTree nodes={folder.children ?? []} basePath={href} />
             </TreeNavLink>
           )
         }
-        return <NavLink key={folder.id} href={href} label={folder.name} accessLevel={accessLevel} matchSubpaths />
+        return <NavLink key={folder.id} href={href} label={folder.name} matchSubpaths />
       })}
     </>
   )
@@ -397,33 +396,10 @@ const DEPARTMENT_NAV_ITEMS: { href: string; label: string; id: DepartmentId }[] 
 ]
 
 
-/** Merge transient folders into a static file tree */
-function mergeTransientFolders(
-  nodes: WorkspaceFileNode[],
-  transient: Map<string, WorkspaceFileNode[]>,
-): WorkspaceFileNode[] {
-  if (transient.size === 0) return nodes
-  function inject(items: WorkspaceFileNode[], pathPrefix: string): WorkspaceFileNode[] {
-    return items.map((node) => {
-      if (node.type !== 'folder') return node
-      const childPath = pathPrefix ? `${pathPrefix}/${node.id}` : node.id
-      const extras = transient.get(childPath)
-      const children = node.children ? inject(node.children, childPath) : []
-      return { ...node, children: extras ? [...children, ...extras] : children }
-    })
-  }
-  const withNested = inject(nodes, '')
-  const rootExtras = transient.get('') ?? []
-  return rootExtras.length > 0 ? [...withNested, ...rootExtras] : withNested
-}
-
-/** Renders a single department nav item, using live transient folders from context */
+/** Renders a single department nav item, using files from the shared file tree */
 function DepartmentNavItem({ item }: { item: typeof DEPARTMENT_NAV_ITEMS[number] }) {
-  const { getAccessLevel } = useDepartmentAccess()
-  const transient = useTransientFolders(item.id)
-  const staticFiles = getDepartmentWorkspaceFiles(item.id)
-  const files = mergeTransientFolders(staticFiles, transient)
-  const accessLevel = getAccessLevel(item.id)
+  const { getDepartmentFiles } = useFileTree()
+  const files = getDepartmentFiles(item.id) as WorkspaceFileNode[]
   const hasFolders = files.some((n) => n.type === 'folder')
 
   if (hasFolders) {
@@ -431,10 +407,9 @@ function DepartmentNavItem({ item }: { item: typeof DEPARTMENT_NAV_ITEMS[number]
       <TreeNavLink
         href={item.href}
         label={item.label}
-        accessLevel={accessLevel}
         defaultExpanded={false}
       >
-        <FolderNavTree nodes={files} basePath={item.href} accessLevel={accessLevel} />
+        <FolderNavTree nodes={files} basePath={item.href} />
       </TreeNavLink>
     )
   }
@@ -442,23 +417,50 @@ function DepartmentNavItem({ item }: { item: typeof DEPARTMENT_NAV_ITEMS[number]
     <NavLink
       href={item.href}
       label={item.label}
-      accessLevel={accessLevel}
       matchSubpaths
     />
   )
 }
 
-const PIPELINE_STAGES: { category: SmartCollectionCategory; label: string }[] = [
-  { category: 'narrative', label: 'Narrative' },
-  { category: 'production', label: 'Production' },
-  { category: 'cg', label: 'CG' },
-  { category: 'edit', label: 'Edit' },
-]
+/** Shared nav: outbound shares only */
+function SharedNavSection() {
+  const { sharesCreatedByMe, allProjectShares } = useAccess()
+  const { isAdmin } = usePersona()
 
-function SmartCollectionNavItem({ collection, getChildren, indent }: {
+  const badge = isAdmin ? allProjectShares.length : sharesCreatedByMe.length
+
+  return (
+    <NavLink
+      href="/nextgen/shared"
+      label="Shared by me"
+      icon={<Send className="w-4 h-4 flex-shrink-0" />}
+      badge={badge > 0 ? badge : undefined}
+      badgeStyle="unread"
+    />
+  )
+}
+
+/** Inbox nav link with badge for unread received shares */
+function InboxNavLink() {
+  const { unreadInboxCount } = useAccess()
+
+  return (
+    <NavLink
+      href="/nextgen/inbox"
+      label="Inbox"
+      icon={<Inbox className="w-4 h-4 flex-shrink-0" />}
+      badge={unreadInboxCount}
+      badgeStyle="unread"
+    />
+  )
+}
+
+
+function SmartCollectionNavItem({ collection, getChildren, indent, badge }: {
   collection: { id: string; name: string; groupBy?: string }
   getChildren: (parentId: string) => { id: string; name: string }[]
   indent?: boolean
+  badge?: number
 }) {
   const children = collection.groupBy ? getChildren(collection.id) : []
   if (collection.groupBy && children.length > 0) {
@@ -467,6 +469,7 @@ function SmartCollectionNavItem({ collection, getChildren, indent }: {
         key={collection.id}
         href={`/nextgen/smart-collections/${collection.id}`}
         label={collection.name}
+        badge={badge}
         defaultExpanded={false}
       >
         {children.map(child => (
@@ -484,77 +487,111 @@ function SmartCollectionNavItem({ collection, getChildren, indent }: {
       key={collection.id}
       href={`/nextgen/smart-collections/${collection.id}`}
       label={collection.name}
+      badge={badge}
       indent={indent}
     />
   )
 }
 
+/** Shared collections in the nav — all for admin, received-only for regular users */
+function SharedCollectionNavItems() {
+  const { sharesReceivedByMe, allProjectShares, readShareIds } = useAccess()
+  const { isAdmin } = usePersona()
+  const entries = isAdmin ? allProjectShares : sharesReceivedByMe
+  const sharedCollections = entries.filter(e => e.resourceType === 'collection')
+  if (sharedCollections.length === 0) return null
+
+  return (
+    <>
+      {sharedCollections.map((entry) => {
+        const isUnread = !readShareIds.has(entry.id)
+        return (
+          <TreeNavLink
+            key={entry.id}
+            href={`/nextgen/collections/${entry.resourceId}`}
+            label={entry.label}
+            badge={isUnread ? 1 : undefined}
+            badgeStyle="count"
+            trailingIcon={<Link2 className="w-3.5 h-3.5 text-foreground-dim" />}
+            indent
+          />
+        )
+      })}
+    </>
+  )
+}
+
 function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
-  const pathname = usePathname()
   const { collections: userCollections } = useUserCollections()
-  const { collections: smartCollections, getChildren } = useSmartCollections()
-  const workspaceFolders = useWorkspaceLandingFolders()
+  const { collections: smartCollections, getChildren, scopedAssets } = useSmartCollections()
+  const { tree: fileTree } = useFileTree()
+  const { sharesReceivedByMe, allProjectShares, canAccess } = useAccess()
+  const { activePersona, isAdmin } = usePersona()
+  // Workspace-level folders: top-level folders created by user (exclude department folders already rendered above)
+  const DEPT_FOLDER_IDS = new Set(['ws-art', 'ws-vfx', 'ws-camera', 'ws-editorial', 'ws-audio'])
+  const workspaceFolders = fileTree.filter((f) => f.type === 'folder' && !DEPT_FOLDER_IDS.has(f.id)) as WorkspaceFileNode[]
+  const accessibleDepartments = DEPARTMENT_NAV_ITEMS.filter((item) => canAccess(item.id))
+  const receivedSharedFolders = sharesReceivedByMe.filter((entry) => entry.resourceType === 'folder')
+  const showWorkspaceLink = accessibleDepartments.length > 0 || workspaceFolders.length > 0 || receivedSharedFolders.length > 0
+  const sharedCollectionIds = new Set(
+    (isAdmin ? allProjectShares : sharesReceivedByMe)
+      .filter((entry) => entry.resourceType === 'collection')
+      .map((entry) => entry.resourceId),
+  )
+  const ownedCollections = userCollections.filter((collection) => {
+    if (activePersona) return collection.createdBy === activePersona.email
+    return !sharedCollectionIds.has(collection.id)
+  })
 
   return (
     <>
       {/* Top Level Items */}
       <div className="pt-4 pb-2">
         <div className="px-3 space-y-1">
-          <NavLink href="/nextgen" label="Search" />
-          <TreeNavLink href="/nextgen/workspace" label="Workspaces" defaultExpanded={true}>
-            {DEPARTMENT_NAV_ITEMS.map((item) => (
-              <DepartmentNavItem key={item.href} item={item} />
-            ))}
-            {workspaceFolders.map((folder) => (
-              <TreeNavLink key={folder.id} href={`/nextgen/workspace/${folder.id}`} label={folder.name} defaultExpanded={false}>
-                <span className="text-label-0-regular text-foreground-dim px-3 py-1">Empty</span>
-              </TreeNavLink>
-            ))}
-          </TreeNavLink>
+          <NavLink href="/nextgen" label="Search" icon={<Search className="w-4 h-4 flex-shrink-0" />} />
+          <InboxNavLink />
+          <SharedNavSection />
+          <div className="pt-3" />
+          {showWorkspaceLink && (
+            <TreeNavLink href="/nextgen/workspace" label="Workspaces" defaultExpanded={true}>
+              {accessibleDepartments.map((item) => (
+                <DepartmentNavItem key={item.href} item={item} />
+              ))}
+              {workspaceFolders.map((folder) => (
+                <TreeNavLink key={folder.id} href={`/nextgen/workspace/${folder.id}`} label={folder.name} defaultExpanded={false}>
+                  <span className="text-label-0-regular text-foreground-dim px-3 py-1">Empty</span>
+                </TreeNavLink>
+              ))}
+            </TreeNavLink>
+          )}
         </div>
       </div>
 
-      {/* Smart Collections - grouped by pipeline stage */}
-      <SectionHeader title="Smart Collections" />
+      {/* Collections — smart + user */}
+      <SectionHeader title="Collections" />
       <div className="px-3 space-y-1">
-        {PIPELINE_STAGES.map(({ category, label }) => {
-          const stageCollections = smartCollections.filter(c => c.category === category)
-          if (stageCollections.length === 0) return null
-          const hasActiveChild = stageCollections.some(c =>
-            pathname.startsWith(`/nextgen/smart-collections/${c.id}`)
-          )
+        {smartCollections.map((collection) => {
+          const count = scopedAssets.filter(a => matchesFilter(a, collection.filter)).length
           return (
-            <TreeNavLink
-              key={category}
-              label={label}
-              defaultExpanded={hasActiveChild}
-              forceExpand={hasActiveChild}
-            >
-              {stageCollections.map((collection) => (
-                <SmartCollectionNavItem
-                  key={collection.id}
-                  collection={collection}
-                  getChildren={getChildren}
-                  indent={stageCollections.some(c => c.groupBy)}
-                />
-              ))}
-            </TreeNavLink>
+            <SmartCollectionNavItem
+              key={collection.id}
+              collection={collection}
+              getChildren={getChildren}
+              indent
+              badge={count > 0 ? count : undefined}
+            />
           )
         })}
-      </div>
-
-      {/* My Collections - User collections */}
-      <SectionHeader title="My Collections" />
-      <div className="px-3 space-y-1">
-        {userCollections.map((collection) => (
-          <NavLink
+        {ownedCollections.map((collection) => (
+          <TreeNavLink
             key={collection.id}
             href={`/nextgen/collections/${collection.id}`}
             label={collection.name}
-            icon={<Folder className="w-4 h-4 flex-shrink-0" />}
             badge={collection.assetIds.length}
+            indent
           />
         ))}
+        <SharedCollectionNavItems />
         <button
           onClick={onNewCollection}
           className="flex items-center gap-2 px-3 py-2 text-body-0-bold text-foreground-dim hover:text-foreground-subtle transition-colors min-w-0"
@@ -564,15 +601,6 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
         </button>
       </div>
 
-      {/* Sharing Section */}
-      <CollapsibleSection title="Links">
-        <NavLink
-          href="/nextgen/sharing/incoming/1"
-          label="Project Assets"
-          badge={4}
-          icon={<ArrowDownLeft className="w-4 h-4 flex-shrink-0" />}
-        />
-      </CollapsibleSection>
     </>
   )
 }

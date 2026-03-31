@@ -6,12 +6,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button, AssetCard, CardGrid, Stack, SelectionBar, Text } from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
-import { useAssetSelection, useViewPreferences, useUserCollections, matchesFilter } from '@/hooks'
-import type { Asset, DepartmentId } from '@/lib/data'
-import { mergeWorkspaceAssets, generateAssetInstances } from '@/lib/asset-instances'
-import { getDepartmentWorkspaceFiles } from '@/lib/workspace-data'
-
-const ALL_DEPARTMENTS: DepartmentId[] = ['art-design', 'vfx', 'camera', 'editorial', 'audio-sound']
+import { useAccess, useAssetSelection, useViewPreferences, useUserCollections, matchesFilter } from '@/hooks'
+import type { Asset } from '@/lib/data'
+import { mergePrototypeAssets } from '@/lib/prototype-assets'
 
 interface MediaLibrarySearchViewProps {
   recentAssets: Asset[]
@@ -31,9 +28,10 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const { cardSize } = useViewPreferences()
   const { createCollection } = useUserCollections()
+  const { filterByAccess } = useAccess()
 
   // Lazy-load all department assets only when user has a search query
-  const [allDepartmentAssets, setAllDepartmentAssets] = useState<Asset[]>([])
+  const [apiAssets, setApiAssets] = useState<Asset[]>([])
   const [hasLoadedAll, setHasLoadedAll] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
 
@@ -44,19 +42,9 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     const fetchAll = async () => {
       setIsSearching(true)
       try {
-        const responses = await Promise.all(
-          ALL_DEPARTMENTS.map(id => fetch(`/api/departments/${id}/assets`).then(r => r.ok ? r.json() : []))
-        )
-        const apiAssets: Asset[] = responses.flat()
-
-        // Generate promoted assets from default managed zones across all depts
-        const allInstances = ALL_DEPARTMENTS.flatMap(deptId => {
-          const files = getDepartmentWorkspaceFiles(deptId)
-          // Use the static default managed zones (files with zone: 'managed')
-          return generateAssetInstances(files, deptId)
-        })
-
-        setAllDepartmentAssets(mergeWorkspaceAssets(apiAssets, allInstances))
+        const response = await fetch('/api/assets')
+        const assets: Asset[] = response.ok ? await response.json() : []
+        setApiAssets(assets)
         setHasLoadedAll(true)
       } catch (error) {
         console.error('Failed to fetch assets for search:', error)
@@ -68,12 +56,25 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     fetchAll()
   }, [searchQuery, hasLoadedAll])
 
+  const allSearchableAssets = useMemo(() => {
+    if (!hasLoadedAll) return []
+    return mergePrototypeAssets(apiAssets)
+  }, [apiAssets, hasLoadedAll])
+
+  const accessibleSearchAssets = useMemo(() => {
+    return filterByAccess(allSearchableAssets)
+  }, [allSearchableAssets, filterByAccess])
+
+  const accessibleRecentAssets = useMemo(() => {
+    return filterByAccess(recentAssets)
+  }, [recentAssets, filterByAccess])
+
   // Filter results based on search query
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return null
     if (!hasLoadedAll) return null
-    return allDepartmentAssets.filter(asset => matchesFilter(asset, { query: searchQuery }))
-  }, [searchQuery, allDepartmentAssets, hasLoadedAll])
+    return accessibleSearchAssets.filter((asset) => matchesFilter(asset, { query: searchQuery }))
+  }, [searchQuery, accessibleSearchAssets, hasLoadedAll])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -91,7 +92,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     }
   }
 
-  const displayAssets = searchResults ?? recentAssets
+  const displayAssets = searchResults ?? accessibleRecentAssets
 
   const selectedAssets = useMemo(() => {
     return displayAssets.filter((asset) => selectedIds.has(asset.id))
@@ -184,19 +185,19 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                   </div>
                 ) : (
                   /* Recent Section */
-                  recentAssets.length > 0 && (
+                  accessibleRecentAssets.length > 0 && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-label-1-medium text-foreground-subtle">Recent</span>
                       </div>
                       <CardGrid columns={getColumns()} gap="4">
-                        {recentAssets.map((asset) => (
+                        {accessibleRecentAssets.map((asset) => (
                           <AssetCard
                             key={asset.id}
                             asset={asset}
                             selected={selectedIds.has(asset.id)}
                             primary={primaryId === asset.id}
-                            onClick={(a, e) => handleAssetClick(a, e, recentAssets)}
+                            onClick={(a, e) => handleAssetClick(a, e, accessibleRecentAssets)}
                             onMenuClick={handleMenuClick}
                             showDepartment
                           />

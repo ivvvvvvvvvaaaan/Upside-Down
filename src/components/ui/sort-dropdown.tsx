@@ -46,7 +46,7 @@ export function SortDropdown({
   return (
     <Dropdown
       label={label}
-      icon={<ArrowUpDown className="w-4 h-4" />}
+      icon={<ArrowUpDown />}
       size="standard"
       align="end"
       width="xl"

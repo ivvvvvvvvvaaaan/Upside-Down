@@ -110,7 +110,7 @@ export default function GalleryExample() {
                 Browse and manage your media assets
               </p>
             </div>
-            <Button variant="primary" icon={<Plus className="w-4 h-4" />}>
+            <Button variant="primary" icon={<Plus />}>
               Upload Media
             </Button>
           </div>

@@ -1,116 +1,80 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react'
-import type { SmartCollection, SmartCollectionGroupBy, AssetFilter, Asset, SmartCollectionIcon, SmartCollectionCategory, DepartmentId } from '@/lib/data'
-import { mergeWorkspaceAssets, generateAssetInstances } from '@/lib/asset-instances'
-import { getDepartmentWorkspaceFiles } from '@/lib/workspace-data'
+import type { SmartCollection, SmartCollectionGroupBy, AssetFilter, Asset, SmartCollectionIcon } from '@/lib/data'
+import { mergePrototypeAssets } from '@/lib/prototype-assets'
 import { matchesFilter, slugify, generateChildCollections } from '@/lib/smart-collection-filters'
+import { useAccess } from './useAccess'
 
 // Re-export for existing consumers
 export { matchesFilter, slugify, generateChildCollections } from '@/lib/smart-collection-filters'
 
-const ALL_DEPARTMENTS: DepartmentId[] = ['art-design', 'vfx', 'camera', 'editorial', 'audio-sound']
-
-// Default smart collections grouped by pipeline stage
+// Default smart collections — flat list, each with optional sub-collections via groupBy
 const DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [
-  // Narrative
   {
-    id: 'smart-narrative-character',
+    id: 'smart-character',
     name: 'Character',
     icon: 'character',
     filter: { aiHasCharacters: true },
     isDefault: true,
-    createdAt: new Date('2024-01-01'),
+    createdAt: new Date('2026-01-15'),
     groupBy: 'characters',
-    category: 'narrative',
   },
   {
-    id: 'smart-narrative-scene',
+    id: 'smart-scene',
     name: 'Scene',
     icon: 'scene',
     filter: { aiHasScene: true },
     isDefault: true,
-    createdAt: new Date('2024-01-01'),
+    createdAt: new Date('2026-01-15'),
     groupBy: 'scenes',
-    category: 'narrative',
   },
   {
-    id: 'smart-narrative-location',
+    id: 'smart-location',
     name: 'Location',
     icon: 'location',
     filter: { aiHasLocation: true },
     isDefault: true,
-    createdAt: new Date('2024-01-01'),
+    createdAt: new Date('2026-01-15'),
     groupBy: 'locations',
-    category: 'narrative',
   },
-  // Production
   {
-    id: 'smart-production-shot',
-    name: 'Shot (Live Action)',
+    id: 'smart-shot',
+    name: 'Shot',
     icon: 'shot',
     filter: { types: ['shot'] },
     isDefault: true,
-    createdAt: new Date('2024-01-01'),
-    category: 'production',
+    createdAt: new Date('2026-01-15'),
   },
   {
-    id: 'smart-production-scene',
-    name: 'Scene',
-    icon: 'scene',
-    filter: { aiHasScene: true, types: ['shot'] },
-    isDefault: true,
-    createdAt: new Date('2024-01-01'),
-    groupBy: 'scenes',
-    category: 'production',
-  },
-  // CG
-  {
-    id: 'smart-cg-shot',
-    name: 'Shot',
-    icon: 'shot',
-    filter: { types: ['shot'], typeTags: ['CG', 'VFX'] },
-    isDefault: true,
-    createdAt: new Date('2024-01-01'),
-    category: 'cg',
-  },
-  {
-    id: 'smart-cg-sequence',
+    id: 'smart-sequence',
     name: 'Sequence',
     icon: 'sequence',
-    filter: { typeTags: ['Sequence', 'CG Sequence'] },
+    filter: { typeTags: ['Sequence', 'CG Sequence', 'Edit Sequence'] },
     isDefault: true,
-    createdAt: new Date('2024-01-01'),
-    category: 'cg',
+    createdAt: new Date('2026-01-15'),
   },
-  // Edit
+  // User-created smart collections
   {
-    id: 'smart-edit-shot',
-    name: 'Shot',
+    id: 'smart-finals',
+    name: 'Finals',
     icon: 'shot',
-    filter: { types: ['shot'], department: 'editorial' },
-    isDefault: true,
-    createdAt: new Date('2024-01-01'),
-    category: 'edit',
+    filter: { isFinal: true },
+    createdAt: new Date('2026-02-05'),
   },
   {
-    id: 'smart-edit-scene',
-    name: 'Scene',
+    id: 'smart-key-art',
+    name: 'Key Art',
     icon: 'scene',
-    filter: { aiHasScene: true, department: 'editorial' },
-    isDefault: true,
-    createdAt: new Date('2024-01-01'),
-    groupBy: 'scenes',
-    category: 'edit',
+    filter: { isKeyArt: true },
+    createdAt: new Date('2026-02-08'),
   },
   {
-    id: 'smart-edit-sequence',
-    name: 'Sequence',
-    icon: 'sequence',
-    filter: { typeTags: ['Sequence', 'Edit Sequence'], department: 'editorial' },
-    isDefault: true,
-    createdAt: new Date('2024-01-01'),
-    category: 'edit',
+    id: 'smart-low-conf',
+    name: 'Needs AI Review',
+    icon: 'filter',
+    filter: { aiConfidenceBelow: 0.7 },
+    createdAt: new Date('2026-02-10'),
   },
 ]
 
@@ -131,6 +95,7 @@ interface SmartCollectionsContextValue {
   getRelatedCollections: (collectionId: string) => RelatedCollections
   filterAssets: (assets: Asset[], collectionId: string) => Asset[]
   allAssets: Asset[]
+  scopedAssets: Asset[]
   assetsLoading: boolean
 }
 
@@ -140,22 +105,21 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
   const [collections, setCollections] = useState<SmartCollection[]>(DEFAULT_SMART_COLLECTIONS)
   const [allAssets, setAllAssets] = useState<Asset[]>([])
   const [assetsLoading, setAssetsLoading] = useState(true)
+  const { filterByAccess } = useAccess()
 
-  // Fetch all assets on mount (API + promoted workspace instances)
+  // Scoped assets: filtered by folder access when a persona is active
+  const scopedAssets = useMemo(() => {
+    return filterByAccess(allAssets)
+  }, [allAssets, filterByAccess])
+
+  // Fetch all assets on mount (API + promoted workspace instances + shared folders)
   useEffect(() => {
     const fetchAll = async () => {
       setAssetsLoading(true)
       try {
         const response = await fetch('/api/assets')
         const apiAssets: Asset[] = response.ok ? await response.json() : []
-
-        // Generate promoted assets from workspace managed zones
-        const allInstances = ALL_DEPARTMENTS.flatMap(deptId => {
-          const files = getDepartmentWorkspaceFiles(deptId)
-          return generateAssetInstances(files, deptId)
-        })
-
-        setAllAssets(mergeWorkspaceAssets(apiAssets, allInstances))
+        setAllAssets(mergePrototypeAssets(apiAssets))
       } catch (error) {
         console.error('Failed to fetch assets for smart collections:', error)
         setAllAssets([])
@@ -166,11 +130,11 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
     fetchAll()
   }, [])
 
-  // Compute child collections from loaded assets
+  // Compute child collections from scoped assets (persona-filtered)
   const childCollections = useMemo(() => {
-    if (allAssets.length === 0) return []
-    return collections.flatMap(parent => generateChildCollections(parent, allAssets))
-  }, [collections, allAssets])
+    if (scopedAssets.length === 0) return []
+    return collections.flatMap(parent => generateChildCollections(parent, scopedAssets))
+  }, [collections, scopedAssets])
 
   // All collections = parents + children
   const allCollections = useMemo(() => {
@@ -224,8 +188,8 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
     const parent = collections.find(c => c.id === collection.parentId)
     if (!parent?.groupBy) return empty
 
-    // Get assets matching this child collection
-    const matchingAssets = allAssets.filter(a => matchesFilter(a, collection.filter))
+    // Get assets matching this child collection (scoped to persona access)
+    const matchingAssets = scopedAssets.filter(a => matchesFilter(a, collection.filter))
 
     // Determine own dimension from parent's groupBy — skip it in results
     const ownDimension = parent.groupBy
@@ -271,7 +235,7 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
         .map(v => findChildByValue('locations', v))
         .filter((c): c is SmartCollection => !!c),
     }
-  }, [allCollections, collections, allAssets])
+  }, [allCollections, collections, scopedAssets])
 
   const filterAssets = useCallback((assets: Asset[], collectionId: string): Asset[] => {
     const collection = allCollections.find(c => c.id === collectionId)
@@ -294,6 +258,7 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
         getRelatedCollections,
         filterAssets,
         allAssets,
+        scopedAssets,
         assetsLoading,
       }}
     >

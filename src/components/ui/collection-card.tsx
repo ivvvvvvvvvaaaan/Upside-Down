@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 import { Avatar } from './avatar'
 import { Card } from './card'
-import { Folder } from 'lucide-react'
+import { Folder, Zap } from 'lucide-react'
 import Image from 'next/image'
 
 const EMPTY_COLLECTION_PLACEHOLDER = '/assets/clapper-img.png'
@@ -88,6 +88,12 @@ export interface CollectionCardProps extends React.HTMLAttributes<HTMLDivElement
   size?: CollectionCardSize
   /** Optional icon rendered next to title in the footer (e.g. Lock, Users) */
   accessIcon?: React.ReactNode
+  /** Show auto-ingest indicator badge */
+  autoIngest?: boolean
+  /** Whether the card is selected */
+  isSelected?: boolean
+  /** Double-click handler (e.g. navigate) */
+  onDoubleClick?: () => void
 }
 
 export function CollectionCard({
@@ -102,6 +108,9 @@ export function CollectionCard({
   numberOfAssets = 'Many',
   size = 'md',
   accessIcon,
+  autoIngest,
+  isSelected: isSelectedProp,
+  onDoubleClick,
   onClick,
   className,
   ...props
@@ -111,7 +120,7 @@ export function CollectionCard({
     : size === 'lg'
     ? { thumbnail: 'aspect-video', emptyInset: 'inset-4' }
     : { thumbnail: 'aspect-video', emptyInset: 'inset-3' }
-  const avatarSizeClass = size === 'sm' ? 'w-6 h-6' : 'w-8 h-8'
+  const avatarSizeClass = 'w-6 h-6'
   // Typography classes based on size
   const titleClass = size === 'sm'
     ? 'text-body-0-bold'
@@ -123,12 +132,12 @@ export function CollectionCard({
     ? 'text-label-0-regular'
     : 'text-label-1-regular'
   // Determine if card should show selection border
-  const isSelected = 
-    state === 'Selected' || 
-    state === 'Selected Secondary' || 
+  const isSelected = isSelectedProp ??
+    (state === 'Selected' ||
+    state === 'Selected Secondary' ||
     state === 'Hover Selected' ||
     state === 'Focused' ||
-    state === 'HoverFocused_CharCollection'
+    state === 'HoverFocused_CharCollection')
   
   // Determine if card is hovered (from state prop or will be handled by CSS)
   const isHovered = 
@@ -139,7 +148,7 @@ export function CollectionCard({
   // Loading state with breathing animation
   if (state === 'Loading') {
     return (
-      <div className={cn('flex flex-col gap-2 p-1 relative w-full animate-breathe', className)}>
+      <div className={cn('flex flex-col gap-2 p-2 relative w-full animate-breathe', className)}>
         {/* Thumbnail skeleton */}
         <div className={cn('w-full rounded bg-surface-3', sizeStyles.thumbnail)} />
         {/* Footer skeleton */}
@@ -174,6 +183,12 @@ export function CollectionCard({
           )}
         >
           <Folder className="w-10 h-10 text-foreground-dim" />
+          {autoIngest && (
+            <div className="absolute top-1.5 right-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400">
+              <Zap className="w-3 h-3" />
+              <span className="text-label-0-bold">Auto</span>
+            </div>
+          )}
         </div>
       )
     }
@@ -396,14 +411,14 @@ export function CollectionCard({
 
     // Character type (default) - uses Avatar
     return (
-      <div className="flex gap-4 items-center w-full">
+      <div className="flex gap-2 items-center w-full">
         {assetCount === 0 ? (
           <div className={cn('rounded-full bg-surface-3 shrink-0', avatarSizeClass)} />
         ) : (
           <Avatar
             src={avatarSrc}
             name={avatarName || title}
-            size={size === 'sm' ? 'xs' : 'sm'}
+            size="xs"
             className="shrink-0"
           />
         )}
@@ -427,21 +442,21 @@ export function CollectionCard({
   }
 
   // Determine alignment based on type
-  const isCentered = type === 'location' || type === 'scene' || type === 'art-type' || type === 'folder'
   
   return (
     <div
       className={cn(
-        'group flex flex-col gap-2 p-1 relative w-full rounded',
+        'group flex flex-col gap-2 p-2 relative w-full rounded',
         'bg-surface-2 border border-border-elevation',
-        isCentered ? 'items-start' : 'items-start',
+        'items-start',
         isHovered && 'bg-surface-3',
         'hover:bg-surface-3 transition-colors',
-        isSelected && 'ring-2 ring-primary',
+        isSelected && 'bg-surface-selected hover:bg-surface-selected-hover ring-2 ring-border-selected',
         onClick && 'cursor-pointer',
         className
       )}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
       {...props}
     >
       {/* Card wrapper for selected states */}

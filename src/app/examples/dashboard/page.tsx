@@ -186,10 +186,10 @@ export default function DashboardExample() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="secondary" icon={<Settings className="w-4 h-4" />}>
+              <Button variant="secondary" icon={<Settings />}>
                 Settings
               </Button>
-              <Button variant="primary" icon={<Plus className="w-4 h-4" />}>
+              <Button variant="primary" icon={<Plus />}>
                 Add New
               </Button>
             </div>

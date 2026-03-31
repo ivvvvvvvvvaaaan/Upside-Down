@@ -60,7 +60,7 @@ export function Dropdown({
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         <Button
-          variant="secondary"
+          variant={iconOnly ? 'icon' : 'secondary'}
           size={iconOnly ? 'icon' : size === 'compact' ? 'compact' : 'default'}
           icon={iconOnly ? undefined : icon}
           dropdown={!iconOnly}

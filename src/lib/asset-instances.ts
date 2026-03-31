@@ -15,7 +15,9 @@ export interface AssetInstance {
   type: AssetType
   size?: number
   modifiedAt?: string
+  modifiedBy?: string
   aiTags?: AITagResult
+  sourceFolderId?: string
 }
 
 export interface AssetInstanceGroup {
@@ -41,6 +43,9 @@ const EXTENSION_TO_ASSET_TYPE: Record<string, AssetType> = {
   mkv: 'video',
   webm: 'video',
   prproj: 'video',
+  mb: 'video',
+  hip: 'video',
+  nk: 'video',
   wav: 'audio',
   mp3: 'audio',
   aac: 'audio',
@@ -52,6 +57,8 @@ const EXTENSION_TO_ASSET_TYPE: Record<string, AssetType> = {
   txt: 'text',
   md: 'text',
   xlsx: 'text',
+  csv: 'text',
+  zip: 'image',
 }
 
 function mapExtensionToType(ext?: string): AssetType {
@@ -66,7 +73,7 @@ export function generateAssetInstances(
 ): AssetInstance[] {
   const instances: AssetInstance[] = []
 
-  function walk(nodes: WorkspaceFileNode[], pathParts: string[], category: string) {
+  function walk(nodes: WorkspaceFileNode[], pathParts: string[], category: string, managedZoneFolderId?: string) {
     for (const node of nodes) {
       if (node.type === 'file') {
         const name = node.name.replace(/\.[^.]+$/, '')
@@ -81,12 +88,16 @@ export function generateAssetInstances(
           type: mapExtensionToType(node.extension),
           size: node.size,
           modifiedAt: node.modifiedAt,
+          modifiedBy: node.modifiedBy,
           aiTags: getAITagsForFile(node.id),
+          sourceFolderId: managedZoneFolderId,
         })
       }
       if (node.type === 'folder' && node.children) {
         const nextCategory = node.name
-        walk(node.children, [...pathParts, node.name], nextCategory)
+        // If this folder is a managed zone, track its ID for all children
+        const zoneId = node.zone === 'managed' ? node.id : managedZoneFolderId
+        walk(node.children, [...pathParts, node.name], nextCategory, zoneId)
       }
     }
   }
@@ -111,6 +122,38 @@ export function groupInstancesByCategory(
   }))
 }
 
+/** Deterministic placeholder thumbnails for promoted assets */
+const THUMBNAIL_POOL = [
+  '/images/dept/Rectangle 16688.png',
+  '/images/dept/Rectangle 16688-1.png',
+  '/images/dept/Rectangle 16688-2.png',
+  '/images/dept/Rectangle 16688-3.png',
+  '/images/dept/Rectangle 16688-4.png',
+  '/images/dept/Rectangle 16688-6.png',
+  '/images/dept/Rectangle 16688-7.png',
+  '/images/dept/Rectangle 16688-8.png',
+  '/images/dept/Rectangle 16688-9.png',
+  '/images/dept/Rectangle 16688-11.png',
+  '/images/dept/Rectangle 16679.png',
+  '/images/dept/Rectangle 16678.png',
+]
+
+function hashCode(s: string): number {
+  let h = 0
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h + s.charCodeAt(i)) | 0
+  }
+  return Math.abs(h)
+}
+
+/** Only visual media types get preview thumbnails */
+function getThumbnail(instance: AssetInstance): string | undefined {
+  if (instance.type === 'image' || instance.type === 'video') {
+    return THUMBNAIL_POOL[hashCode(instance.id) % THUMBNAIL_POOL.length]
+  }
+  return undefined
+}
+
 /** Convert an AssetInstance to an Asset-compatible shape for AssetCard rendering.
  *  This is the basic mapper — no AI enrichment. Used by workspace grid views. */
 export function instanceToAsset(instance: AssetInstance): Asset {
@@ -120,6 +163,7 @@ export function instanceToAsset(instance: AssetInstance): Asset {
     type: instance.type,
     department: instance.department,
     created_at: instance.modifiedAt,
+    thumbnail: getThumbnail(instance),
   }
 }
 
@@ -132,8 +176,11 @@ export function promotedInstanceToAsset(instance: AssetInstance): Asset {
     type: instance.type,
     department: instance.department,
     created_at: instance.modifiedAt,
+    modifiedBy: instance.modifiedBy,
     isAutoPromoted: true,
     workspacePath: instance.sourcePath,
+    sourceFolderIds: instance.sourceFolderId ? [instance.sourceFolderId] : undefined,
+    thumbnail: getThumbnail(instance),
   }
 
   // Set typeTag from AI tags or fall back to category name

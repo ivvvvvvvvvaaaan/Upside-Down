@@ -9,8 +9,6 @@ export type { UseViewPreferencesReturn, CollectionViewType } from './useViewPref
 
 export { useCompactBar } from './use-compact-bar'
 
-export { useDepartmentAccess } from './useDepartmentAccess'
-export type { UseDepartmentAccessReturn, DepartmentAccessLevel } from './useDepartmentAccess'
 
 export { useUserCollections, UserCollectionsProvider } from './useUserCollections'
 export type { UserCollection } from './useUserCollections'
@@ -20,4 +18,10 @@ export { useSmartCollections, SmartCollectionsProvider, matchesFilter } from './
 export { useWorkspaceState } from './useWorkspaceState'
 export type { WorkspaceViewFilter, UseWorkspaceStateReturn } from './useWorkspaceState'
 
-export { WorkspaceFilesProvider, useTransientFolders, useCreateFolder, useWorkspaceLandingFolders } from './useWorkspaceFiles'
+export { FileTreeProvider, useFileTree } from './useFileTree'
+
+export { PersonaProvider, usePersona } from './usePersona'
+
+export { AccessProvider, useAccess } from './useAccess'
+
+export { useMediaQuery, useIsMobile } from './useMediaQuery'

@@ -46,3 +46,13 @@ const twMerge = extendTailwindMerge({
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
+
+/** Format an ISO date string to "Mon DD, YYYY" */
+export function formatDate(dateStr?: string, fallback = '—'): string {
+  if (!dateStr) return fallback
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}

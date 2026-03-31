@@ -91,7 +91,7 @@ export function AssetCard({
   // Loading state with breathing animation (no asset data available)
   if (loading || !asset) {
     return (
-      <div className={cn('flex flex-col w-full p-1 animate-breathe', className)}>
+      <div className={cn('flex flex-col w-full p-2 animate-breathe', className)}>
         {/* Thumbnail skeleton - 16:9 aspect ratio */}
         <div className="w-full aspect-video rounded mb-2 bg-surface-3" />
         {/* Content skeleton */}
@@ -119,7 +119,7 @@ export function AssetCard({
         className={cn(
           'group relative flex flex-col',
           'w-full cursor-pointer',
-          'rounded p-1',
+          'rounded p-2',
           'transition-colors',
           // Background states
           !isSelected && 'bg-transparent hover:bg-surface-2',
@@ -157,9 +157,9 @@ export function AssetCard({
               e.stopPropagation()
               onMenuClick?.(asset)
             }}
-            className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-1"
+            className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
           >
-            <MoreVertical className="w-4 h-4" />
+            <MoreVertical />
           </Button>
         </div>
       </div>
@@ -246,7 +246,7 @@ export function AssetCard({
       className={cn(
         'group relative flex flex-col',
         'w-full cursor-pointer',
-        'rounded p-1',
+        'rounded p-2',
         'transition-colors',
         // Background states
         !isSelected && 'bg-transparent hover:bg-surface-2',
@@ -306,9 +306,9 @@ export function AssetCard({
             e.stopPropagation()
             onMenuClick?.(asset)
           }}
-          className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-1"
+          className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
         >
-          <MoreVertical className="w-4 h-4" />
+          <MoreVertical />
         </Button>
       </div>
     </div>

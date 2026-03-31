@@ -5,6 +5,7 @@ import { X, Plus } from 'lucide-react'
 import { Input } from './input'
 import { FormSelect } from './form-select'
 import { Button } from './button'
+import { Toggle } from './switch'
 import { Popover, PopoverContent, PopoverTrigger } from './popover'
 import { cn } from '@/lib/utils'
 import type { AssetFilter, AssetType, DepartmentId } from '@/lib/data'
@@ -12,22 +13,40 @@ import type { AssetFilter, AssetType, DepartmentId } from '@/lib/data'
 /**
  * Smart Collection Filter Builder
  *
- * Progressive disclosure UI for building filter rules.
- * - Name always visible at top
- * - Active filters shown as removable rows
- * - "Add filter" button to progressively add rules
- * - All rules combined with AND logic
+ * Unified filter builder for all smart collections.
+ * Any filter (AI tags, asset type, department, etc.) can be added or removed.
+ * All rules combined with AND logic.
  */
 
-type FilterType = 'query' | 'types' | 'department' | 'typeTags' | 'isKeyArt'
+type FilterType =
+  | 'query' | 'types' | 'department' | 'typeTags'
+  | 'isKeyArt' | 'isFinal'
+  | 'aiHasCharacters' | 'aiHasScene' | 'aiHasLocation'
+  | 'aiCharacters' | 'aiScene' | 'aiLocation'
+  | 'aiConfidenceBelow'
 
-const FILTER_TYPE_LABELS: Record<FilterType, string> = {
+const FILTER_LABELS: Record<FilterType, string> = {
   query: 'Name contains',
   types: 'Asset type',
   department: 'Department',
   typeTags: 'Type tag',
   isKeyArt: 'Key art only',
+  isFinal: 'Finals only',
+  aiHasCharacters: 'Has character tags',
+  aiHasScene: 'Has scene tags',
+  aiHasLocation: 'Has location tags',
+  aiCharacters: 'Character is',
+  aiScene: 'Scene is',
+  aiLocation: 'Location is',
+  aiConfidenceBelow: 'AI confidence below',
 }
+
+const ALL_FILTER_TYPES: FilterType[] = [
+  'aiHasCharacters', 'aiHasScene', 'aiHasLocation',
+  'aiCharacters', 'aiScene', 'aiLocation',
+  'types', 'department', 'typeTags', 'query',
+  'isKeyArt', 'isFinal', 'aiConfidenceBelow',
+]
 
 const ASSET_TYPE_OPTIONS = [
   { value: 'image', label: 'Image' },
@@ -46,21 +65,9 @@ const DEPARTMENT_OPTIONS = [
 ]
 
 const TYPE_TAG_PRESETS = [
-  'Concept Art',
-  'Storyboards',
-  'Character',
-  'Location',
-  'Environment',
-  'Scene',
-  'Color Palette',
-  'Blueprint',
-  'Reference',
-  'Costume Design',
-  'Prop Design',
-  'Final',
-  'VFX Preview',
-  'Dailies',
-  'Rough Cut',
+  'Concept Art', 'Storyboards', 'Character', 'Location', 'Environment',
+  'Scene', 'Color Palette', 'Blueprint', 'Reference', 'Costume Design',
+  'Prop Design', 'Final', 'VFX Preview', 'Dailies', 'Rough Cut',
 ]
 
 interface SmartCollectionFilterBuilderProps {
@@ -86,46 +93,63 @@ export function SmartCollectionFilterBuilder({
 
   const removeFilter = (type: FilterType) => {
     const newFilter = { ...filter }
-    delete newFilter[type]
+    switch (type) {
+      case 'query': delete newFilter.query; break
+      case 'types': delete newFilter.types; break
+      case 'department': delete newFilter.department; break
+      case 'typeTags': delete newFilter.typeTags; break
+      case 'isKeyArt': delete newFilter.isKeyArt; break
+      case 'isFinal': delete newFilter.isFinal; break
+      case 'aiHasCharacters': delete newFilter.aiHasCharacters; break
+      case 'aiHasScene': delete newFilter.aiHasScene; break
+      case 'aiHasLocation': delete newFilter.aiHasLocation; break
+      case 'aiCharacters': delete newFilter.aiCharacters; break
+      case 'aiScene': delete newFilter.aiScene; break
+      case 'aiLocation': delete newFilter.aiLocation; break
+      case 'aiConfidenceBelow': delete newFilter.aiConfidenceBelow; break
+    }
     onFilterChange(newFilter)
   }
 
-  // Determine which filters are active
+  // Detect active filters
   const activeFilters: FilterType[] = []
   if (filter.query) activeFilters.push('query')
   if (filter.types && filter.types.length > 0) activeFilters.push('types')
   if (filter.department) activeFilters.push('department')
   if (filter.typeTags && filter.typeTags.length > 0) activeFilters.push('typeTags')
   if (filter.isKeyArt !== undefined) activeFilters.push('isKeyArt')
+  if (filter.isFinal !== undefined) activeFilters.push('isFinal')
+  if (filter.aiHasCharacters) activeFilters.push('aiHasCharacters')
+  if (filter.aiHasScene) activeFilters.push('aiHasScene')
+  if (filter.aiHasLocation) activeFilters.push('aiHasLocation')
+  if (filter.aiCharacters && filter.aiCharacters.length > 0) activeFilters.push('aiCharacters')
+  if (filter.aiScene) activeFilters.push('aiScene')
+  if (filter.aiLocation) activeFilters.push('aiLocation')
+  if (filter.aiConfidenceBelow != null) activeFilters.push('aiConfidenceBelow')
 
-  // Filters available to add
-  const availableFilters: FilterType[] = (['query', 'types', 'department', 'typeTags', 'isKeyArt'] as FilterType[])
-    .filter(f => !activeFilters.includes(f))
+  const availableFilters = ALL_FILTER_TYPES.filter(f => !activeFilters.includes(f))
 
   const addFilter = (type: FilterType) => {
     switch (type) {
-      case 'query':
-        updateFilter({ query: '' })
-        break
-      case 'types':
-        updateFilter({ types: [] })
-        break
-      case 'department':
-        updateFilter({ department: 'art-design' })
-        break
-      case 'typeTags':
-        updateFilter({ typeTags: [] })
-        break
-      case 'isKeyArt':
-        updateFilter({ isKeyArt: true })
-        break
+      case 'query': updateFilter({ query: '' }); break
+      case 'types': updateFilter({ types: [] }); break
+      case 'department': updateFilter({ department: 'art-design' }); break
+      case 'typeTags': updateFilter({ typeTags: [] }); break
+      case 'isKeyArt': updateFilter({ isKeyArt: true }); break
+      case 'isFinal': updateFilter({ isFinal: true }); break
+      case 'aiHasCharacters': updateFilter({ aiHasCharacters: true }); break
+      case 'aiHasScene': updateFilter({ aiHasScene: true }); break
+      case 'aiHasLocation': updateFilter({ aiHasLocation: true }); break
+      case 'aiCharacters': updateFilter({ aiCharacters: [] }); break
+      case 'aiScene': updateFilter({ aiScene: '' }); break
+      case 'aiLocation': updateFilter({ aiLocation: '' }); break
+      case 'aiConfidenceBelow': updateFilter({ aiConfidenceBelow: 0.7 }); break
     }
     setAddFilterOpen(false)
   }
 
   return (
     <div className={cn('space-y-4', className)}>
-      {/* Name */}
       <Input
         label="Name"
         value={name}
@@ -135,13 +159,14 @@ export function SmartCollectionFilterBuilder({
         data-1p-ignore
       />
 
-      {/* Section: Filter Rules */}
       <section>
-        <h3 className="text-label-0-bold uppercase text-foreground-dim mb-3">Filter Rules</h3>
+        <h3 className="text-label-0-bold uppercase text-foreground-dim mb-3">
+          Includes assets matching
+        </h3>
 
         {activeFilters.length === 0 ? (
           <p className="text-label-1-regular text-foreground-dim mb-3">
-            No filters. Matches all assets.
+            No filters yet. Add a filter to define which assets appear in this collection.
           </p>
         ) : (
           <div className="space-y-2 mb-3">
@@ -157,7 +182,6 @@ export function SmartCollectionFilterBuilder({
           </div>
         )}
 
-        {/* Add Filter Button */}
         {availableFilters.length > 0 && (
           <Popover open={addFilterOpen} onOpenChange={setAddFilterOpen}>
             <PopoverTrigger asChild>
@@ -165,7 +189,7 @@ export function SmartCollectionFilterBuilder({
                 Add filter
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="p-1 w-48">
+            <PopoverContent align="start" className="p-1 w-52 max-h-64 overflow-y-auto">
               <div className="flex flex-col">
                 {availableFilters.map((type) => (
                   <button
@@ -174,7 +198,7 @@ export function SmartCollectionFilterBuilder({
                     onClick={() => addFilter(type)}
                     className="px-3 py-2 text-left text-body-0-regular text-foreground hover:bg-surface-highlight rounded transition-colors"
                   >
-                    {FILTER_TYPE_LABELS[type]}
+                    {FILTER_LABELS[type]}
                   </button>
                 ))}
               </div>
@@ -186,9 +210,8 @@ export function SmartCollectionFilterBuilder({
   )
 }
 
-/**
- * Individual filter row component
- */
+// --- Filter row ---
+
 interface FilterRowProps {
   type: FilterType
   filter: AssetFilter
@@ -201,7 +224,7 @@ function FilterRow({ type, filter, onUpdate, onRemove }: FilterRowProps) {
     <div className="flex items-start gap-2 p-2 rounded bg-surface-2 group">
       <div className="flex-1 min-w-0">
         <span className="text-label-0-regular text-foreground-dim block mb-1">
-          {FILTER_TYPE_LABELS[type]}
+          {FILTER_LABELS[type]}
         </span>
         <FilterEditor type={type} filter={filter} onUpdate={onUpdate} />
       </div>
@@ -217,9 +240,8 @@ function FilterRow({ type, filter, onUpdate, onRemove }: FilterRowProps) {
   )
 }
 
-/**
- * Filter value editor based on type
- */
+// --- Filter value editors ---
+
 interface FilterEditorProps {
   type: FilterType
   filter: AssetFilter
@@ -290,27 +312,74 @@ function FilterEditor({ type, filter, onUpdate }: FilterEditorProps) {
       )
 
     case 'isKeyArt':
+    case 'isFinal': {
+      const value = type === 'isKeyArt' ? filter.isKeyArt : filter.isFinal
       return (
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => onUpdate({ isKeyArt: !filter.isKeyArt })}
-            className={cn(
-              'w-8 h-5 rounded-full transition-colors relative',
-              filter.isKeyArt ? 'bg-indigo-500' : 'bg-surface-flat border border-border-dim'
-            )}
-          >
-            <span
-              className={cn(
-                'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
-                filter.isKeyArt ? 'translate-x-3.5' : 'translate-x-0.5'
-              )}
-            />
-          </button>
-          <span className="text-body-0-regular text-foreground">
-            {filter.isKeyArt ? 'Yes' : 'No'}
-          </span>
-        </div>
+        <Toggle
+          checked={!!value}
+          onChange={(v) => onUpdate({ [type]: v })}
+        />
+      )
+    }
+
+    // AI boolean flags — just confirm they're active
+    case 'aiHasCharacters':
+    case 'aiHasScene':
+    case 'aiHasLocation':
+      return (
+        <Toggle
+          checked={!!filter[type]}
+          onChange={(v) => onUpdate({ [type]: v || undefined })}
+        />
+      )
+
+    // AI specific value filters
+    case 'aiCharacters':
+      return (
+        <TypeTagsEditor
+          tags={filter.aiCharacters || []}
+          onChange={(tags) => onUpdate({ aiCharacters: tags.length > 0 ? tags : undefined })}
+          placeholder="Add character..."
+        />
+      )
+
+    case 'aiScene':
+      return (
+        <input
+          type="text"
+          value={filter.aiScene || ''}
+          onChange={(e) => onUpdate({ aiScene: e.target.value || undefined })}
+          placeholder="Scene name..."
+          className="w-full h-8 px-3 rounded text-body-0-regular bg-surface-flat dark:bg-white/[0.04] border border-border-dim text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-system-focus focus:ring-1 focus:ring-inset focus:ring-border-system-focus"
+          autoComplete="off"
+          data-1p-ignore
+        />
+      )
+
+    case 'aiLocation':
+      return (
+        <input
+          type="text"
+          value={filter.aiLocation || ''}
+          onChange={(e) => onUpdate({ aiLocation: e.target.value || undefined })}
+          placeholder="Location name..."
+          className="w-full h-8 px-3 rounded text-body-0-regular bg-surface-flat dark:bg-white/[0.04] border border-border-dim text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-system-focus focus:ring-1 focus:ring-inset focus:ring-border-system-focus"
+          autoComplete="off"
+          data-1p-ignore
+        />
+      )
+
+    case 'aiConfidenceBelow':
+      return (
+        <input
+          type="number"
+          min={0}
+          max={1}
+          step={0.1}
+          value={filter.aiConfidenceBelow ?? 0.7}
+          onChange={(e) => onUpdate({ aiConfidenceBelow: parseFloat(e.target.value) || undefined })}
+          className="w-24 h-8 px-3 rounded text-body-0-regular bg-surface-flat dark:bg-white/[0.04] border border-border-dim text-foreground focus:outline-none focus:border-border-system-focus focus:ring-1 focus:ring-inset focus:ring-border-system-focus"
+        />
       )
 
     default:
@@ -318,20 +387,25 @@ function FilterEditor({ type, filter, onUpdate }: FilterEditorProps) {
   }
 }
 
-/**
- * Type tags editor with chips and add dropdown
- */
+// --- Shared components ---
+
 interface TypeTagsEditorProps {
   tags: string[]
   onChange: (tags: string[]) => void
+  placeholder?: string
 }
 
-function TypeTagsEditor({ tags, onChange }: TypeTagsEditorProps) {
+function TypeTagsEditor({ tags, onChange, placeholder }: TypeTagsEditorProps) {
   const [open, setOpen] = useState(false)
+  const [customInput, setCustomInput] = useState('')
   const availableTags = TYPE_TAG_PRESETS.filter(t => !tags.includes(t))
+  const hasPresets = !placeholder // Only show presets for type tags, not character names
 
   const addTag = (tag: string) => {
-    onChange([...tags, tag])
+    if (tag.trim() && !tags.includes(tag.trim())) {
+      onChange([...tags, tag.trim()])
+    }
+    setCustomInput('')
     setOpen(false)
   }
 
@@ -356,32 +430,47 @@ function TypeTagsEditor({ tags, onChange }: TypeTagsEditorProps) {
           </button>
         </span>
       ))}
-      {availableTags.length > 0 && (
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-flat text-label-0-regular text-foreground-subtle hover:bg-surface-highlight transition-colors"
-            >
-              <Plus className="w-2.5 h-2.5" />
-              Add
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="p-1 w-48 max-h-48 overflow-y-auto">
-            <div className="flex flex-col">
-              {availableTags.map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => addTag(tag)}
-                  className="px-3 py-1.5 text-left text-body-0-regular text-foreground hover:bg-surface-highlight rounded transition-colors"
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+      {hasPresets ? (
+        availableTags.length > 0 && (
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-flat text-label-0-regular text-foreground-subtle hover:bg-surface-highlight transition-colors"
+              >
+                <Plus className="w-2.5 h-2.5" />
+                Add
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="p-1 w-48 max-h-48 overflow-y-auto">
+              <div className="flex flex-col">
+                {availableTags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => addTag(tag)}
+                    className="px-3 py-1.5 text-left text-body-0-regular text-foreground hover:bg-surface-highlight rounded transition-colors"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )
+      ) : (
+        <input
+          type="text"
+          value={customInput}
+          onChange={(e) => setCustomInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); addTag(customInput) }
+          }}
+          placeholder={placeholder}
+          className="flex-1 min-w-[100px] h-7 px-2 rounded text-label-0-regular bg-transparent text-foreground placeholder:text-foreground-dim focus:outline-none"
+          autoComplete="off"
+          data-1p-ignore
+        />
       )}
     </div>
   )

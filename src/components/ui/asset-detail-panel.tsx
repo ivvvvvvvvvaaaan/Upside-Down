@@ -1,11 +1,17 @@
 'use client'
 
-import { X, FolderOpen, FileText, Sparkles } from 'lucide-react'
+import { X, LayoutGrid, FileText, ExternalLink, Clapperboard } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from './button'
+import { ResponsivePanel } from './responsive-panel'
 import { Tag } from './tag'
+import { cn } from '@/lib/utils'
 import type { Asset, DepartmentId } from '@/lib/data'
 import type { UserCollection } from '@/hooks'
+import type { RelatedAssetGroup } from '@/lib/context-relationships'
+import type { ReviewNoteSummary } from '@/lib/review-notes'
+import { PERSONAS } from '@/lib/personas'
+import { slugify } from '@/lib/smart-collection-filters'
 
 const DEPARTMENT_NAMES: Record<DepartmentId, string> = {
   'art-design': 'Art & Design',
@@ -40,6 +46,10 @@ interface AssetDetailPanelProps {
   open: boolean
   onClose: () => void
   collections?: UserCollection[]
+  relatedGroups?: RelatedAssetGroup[]
+  reviewNoteSummary?: ReviewNoteSummary | null
+  /** ID of the collection this asset is currently being viewed from */
+  activeCollectionId?: string
 }
 
 /**
@@ -54,8 +64,11 @@ export function AssetDetailPanel({
   open,
   onClose,
   collections = [],
+  relatedGroups = [],
+  reviewNoteSummary = null,
+  activeCollectionId,
 }: AssetDetailPanelProps) {
-  if (!open) return null
+  if (!open || !asset) return null
 
   const duration = getDuration(asset)
   const typeTag = getTypeTag(asset)
@@ -66,9 +79,9 @@ export function AssetDetailPanel({
   )
 
   return (
-    <div className="w-[360px] flex-shrink-0 border-l border-border bg-surface-1 flex flex-col h-full">
+    <ResponsivePanel open={open} onClose={onClose}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
+      <div className="flex items-center justify-between p-4">
         <span className="text-body-1-bold text-foreground">Asset Info</span>
         <Button variant="icon" compact onClick={onClose}>
           <X className="w-4 h-4" />
@@ -80,7 +93,7 @@ export function AssetDetailPanel({
         {/* Details Section */}
         <section className="space-y-2">
           <h3 className="text-label-0-bold uppercase text-foreground-dim">Details</h3>
-          <div className="bg-surface-2 rounded p-3 space-y-2">
+          <div className="space-y-2">
             <div>
               <p className="text-label-0-regular text-foreground-dim">File name</p>
               <p className="text-body-1-regular text-foreground">{asset.name}</p>
@@ -133,105 +146,181 @@ export function AssetDetailPanel({
                 </p>
               </div>
             )}
-          </div>
-        </section>
-
-        {/* Tags Section */}
-        <section className="space-y-2">
-          <h3 className="text-label-0-bold uppercase text-foreground-dim">Tags</h3>
-          <div className="bg-surface-2 rounded p-3">
-            <div className="flex flex-wrap gap-2">
-              <Tag>{typeTag}</Tag>
-              {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
-              {asset.isFinal && <Tag type="positive">Final</Tag>}
-              {asset.department && (
-                <Tag type="neutral" variant="border">
-                  {DEPARTMENT_NAMES[asset.department]}
-                </Tag>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* Collection Context */}
-        <section className="space-y-2">
-          <h3 className="text-label-0-bold uppercase text-foreground-dim">Collections</h3>
-          <div className="bg-surface-2 rounded p-3">
-            {assetCollections.length > 0 ? (
-              <div className="space-y-2">
-                {assetCollections.map(collection => (
-                  <Link
-                    key={collection.id}
-                    href={`/nextgen/collections/${collection.id}`}
-                    className="flex items-center gap-2 text-body-1-regular text-foreground hover:text-foreground-system-link transition-colors"
-                  >
-                    <FolderOpen className="w-4 h-4 text-foreground-dim flex-shrink-0" />
-                    {collection.name}
-                  </Link>
-                ))}
+            {asset.modifiedBy && (
+              <div>
+                <p className="text-label-0-regular text-foreground-dim">Modified by</p>
+                <p className="text-body-1-regular text-foreground">
+                  {PERSONAS.find(p => p.email === asset.modifiedBy)?.name ?? asset.modifiedBy}
+                </p>
               </div>
-            ) : (
-              <p className="text-label-1-regular text-foreground-dim">
-                Not in any collections
-              </p>
             )}
           </div>
         </section>
 
-        {/* AI Analysis (only for promoted assets) */}
-        {asset.isAutoPromoted && asset.aiMeta && (
+        {/* Tags */}
+        <section className="space-y-2">
+          <h3 className="text-label-0-bold uppercase text-foreground-dim">Tags</h3>
+          <div className="flex flex-wrap gap-1.5">
+            <Tag size="compact" variant="border">{typeTag}</Tag>
+            {asset.isKeyArt && <Tag size="compact" type="announcement" variant="border">Key Art</Tag>}
+            {asset.isFinal && <Tag size="compact" type="positive" variant="border">Final</Tag>}
+            {asset.department && (
+              <Tag size="compact" type="neutral" variant="border">
+                {DEPARTMENT_NAMES[asset.department]}
+              </Tag>
+            )}
+            {asset.aiMeta?.keywords?.map(k => (
+              <Tag key={k} size="compact" type="neutral" variant="border">{k}</Tag>
+            ))}
+          </div>
+        </section>
+
+        {/* Collections — user collections + smart collection relationships */}
+        <section className="space-y-2">
+          <h3 className="text-label-0-bold uppercase text-foreground-dim">Appears in</h3>
+          <div className="space-y-1">
+            {assetCollections.map(collection => {
+              const isActive = collection.id === activeCollectionId
+              const row = (
+                <span className="flex items-center justify-between gap-2 py-1 text-body-0-regular w-full">
+                  <span className="flex items-center gap-2 min-w-0">
+                    <LayoutGrid className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
+                    <span className={cn('truncate', isActive && 'text-foreground-dim')}>{collection.name}</span>
+                  </span>
+                  <span className="text-label-0-regular text-foreground-dim flex-shrink-0">Collection</span>
+                </span>
+              )
+              return isActive ? (
+                <div key={collection.id} className="text-foreground">{row}</div>
+              ) : (
+                <Link key={collection.id} href={`/nextgen/collections/${collection.id}`} className="text-foreground hover:text-foreground-system-link transition-colors">{row}</Link>
+              )
+            })}
+            {asset.aiMeta?.characters?.map(c => {
+              const id = `smart-character--${slugify(c)}`
+              const isActive = id === activeCollectionId
+              const row = (
+                <span className="flex items-center justify-between gap-2 py-1 text-body-0-regular w-full">
+                  <span className="flex items-center gap-2 min-w-0">
+                    <LayoutGrid className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
+                    <span className={cn('truncate', isActive && 'text-foreground-dim')}>{c}</span>
+                  </span>
+                  <span className="text-label-0-regular text-foreground-dim flex-shrink-0">Character</span>
+                </span>
+              )
+              return isActive ? (
+                <div key={c} className="text-foreground">{row}</div>
+              ) : (
+                <Link key={c} href={`/nextgen/smart-collections/${id}`} className="text-foreground hover:text-foreground-system-link transition-colors">{row}</Link>
+              )
+            })}
+            {asset.aiMeta?.scene && (() => {
+              const id = `smart-scene--${slugify(asset.aiMeta!.scene!)}`
+              const isActive = id === activeCollectionId
+              const row = (
+                <span className="flex items-center justify-between gap-2 py-1 text-body-0-regular w-full">
+                  <span className="flex items-center gap-2 min-w-0">
+                    <LayoutGrid className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
+                    <span className={cn('truncate', isActive && 'text-foreground-dim')}>{asset.aiMeta!.scene}</span>
+                  </span>
+                  <span className="text-label-0-regular text-foreground-dim flex-shrink-0">Scene</span>
+                </span>
+              )
+              return isActive ? (
+                <div className="text-foreground">{row}</div>
+              ) : (
+                <Link href={`/nextgen/smart-collections/${id}`} className="text-foreground hover:text-foreground-system-link transition-colors">{row}</Link>
+              )
+            })()}
+            {asset.aiMeta?.location && (() => {
+              const id = `smart-location--${slugify(asset.aiMeta!.location!)}`
+              const isActive = id === activeCollectionId
+              const row = (
+                <span className="flex items-center justify-between gap-2 py-1 text-body-0-regular w-full">
+                  <span className="flex items-center gap-2 min-w-0">
+                    <LayoutGrid className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
+                    <span className={cn('truncate', isActive && 'text-foreground-dim')}>{asset.aiMeta!.location}</span>
+                  </span>
+                  <span className="text-label-0-regular text-foreground-dim flex-shrink-0">Location</span>
+                </span>
+              )
+              return isActive ? (
+                <div className="text-foreground">{row}</div>
+              ) : (
+                <Link href={`/nextgen/smart-collections/${id}`} className="text-foreground hover:text-foreground-system-link transition-colors">{row}</Link>
+              )
+            })()}
+            {assetCollections.length === 0 && !asset.aiMeta?.characters?.length && !asset.aiMeta?.scene && !asset.aiMeta?.location && (
+              <p className="text-label-1-regular text-foreground-dim">None</p>
+            )}
+          </div>
+        </section>
+
+        {reviewNoteSummary && (
           <section className="space-y-2">
-            <h3 className="text-label-0-bold uppercase text-foreground-dim flex items-center gap-1.5">
-              <Sparkles className="w-3 h-3" />
-              AI Analysis
-            </h3>
-            <div className="bg-surface-2 rounded p-3 space-y-2">
-              {asset.aiMeta.confidence != null && (
-                <div>
-                  <p className="text-label-0-regular text-foreground-dim">Confidence</p>
-                  <p className="text-body-1-regular text-foreground">{Math.round(asset.aiMeta.confidence * 100)}%</p>
-                </div>
-              )}
-              {asset.aiMeta.characters && asset.aiMeta.characters.length > 0 && (
-                <div>
-                  <p className="text-label-0-regular text-foreground-dim mb-1">Characters</p>
-                  <div className="flex flex-wrap gap-1">
-                    {asset.aiMeta.characters.map(c => (
-                      <Tag key={c} type="neutral" variant="border" size="compact">{c}</Tag>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {asset.aiMeta.scene && (
-                <div>
-                  <p className="text-label-0-regular text-foreground-dim">Scene</p>
-                  <p className="text-body-1-regular text-foreground">{asset.aiMeta.scene}</p>
-                </div>
-              )}
-              {asset.aiMeta.location && (
-                <div>
-                  <p className="text-label-0-regular text-foreground-dim">Location</p>
-                  <p className="text-body-1-regular text-foreground">{asset.aiMeta.location}</p>
-                </div>
-              )}
-              {asset.aiMeta.keywords && asset.aiMeta.keywords.length > 0 && (
-                <div>
-                  <p className="text-label-0-regular text-foreground-dim mb-1">Keywords</p>
-                  <div className="flex flex-wrap gap-1">
-                    {asset.aiMeta.keywords.map(k => (
-                      <Tag key={k} type="neutral" variant="border" size="compact">{k}</Tag>
-                    ))}
-                  </div>
-                </div>
-              )}
+            <h3 className="text-label-0-bold uppercase text-foreground-dim">Creative Review</h3>
+            <div className="space-y-3">
+              <div>
+                <p className="text-label-0-regular text-foreground-dim">Latest</p>
+                <p className="text-body-1-regular text-foreground">{reviewNoteSummary.latestSummary}</p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Tag type="announcement">{reviewNoteSummary.totalNotes} notes</Tag>
+                <Tag type={reviewNoteSummary.unresolvedCount > 0 ? 'notice' : 'positive'}>
+                  {reviewNoteSummary.unresolvedCount} unresolved
+                </Tag>
+              </div>
+              <div>
+                <p className="text-label-0-regular text-foreground-dim">Updated</p>
+                <p className="text-body-1-regular text-foreground">
+                  {new Date(reviewNoteSummary.updatedAt).toLocaleDateString()}
+                </p>
+              </div>
+              <a
+                href={reviewNoteSummary.externalUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 text-body-1-regular text-foreground hover:text-foreground-system-link transition-colors"
+              >
+                <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                Open in Creative Review
+              </a>
             </div>
           </section>
         )}
 
+        {relatedGroups.length > 0 && (
+          <section className="space-y-2">
+            <h3 className="text-label-0-bold uppercase text-foreground-dim">Explore Context</h3>
+            <div className="space-y-4">
+              {relatedGroups.map((group) => (
+                <div key={group.type} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Clapperboard className="w-4 h-4 text-foreground-dim flex-shrink-0" />
+                    <p className="text-body-0-bold text-foreground">{group.label}</p>
+                  </div>
+                  <div className="space-y-1">
+                    {group.assets.map((relatedAsset) => (
+                      <Link
+                        key={`${group.type}-${relatedAsset.id}`}
+                        href={`/nextgen/assets/${relatedAsset.id}`}
+                        className="block text-body-1-regular text-foreground hover:text-foreground-system-link transition-colors"
+                      >
+                        {relatedAsset.name}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+
         {/* Workspace Path */}
         <section className="space-y-2">
           <h3 className="text-label-0-bold uppercase text-foreground-dim">Workspace</h3>
-          <div className="bg-surface-2 rounded p-3">
+          <div>
             <div className="flex items-center gap-2 text-label-1-regular text-foreground-dim">
               <FileText className="w-3 h-3 flex-shrink-0" />
               <span className="truncate">
@@ -241,6 +330,6 @@ export function AssetDetailPanel({
           </div>
         </section>
       </div>
-    </div>
+    </ResponsivePanel>
   )
 }

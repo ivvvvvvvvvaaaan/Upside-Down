@@ -55,6 +55,20 @@ export function matchesFilter(asset: Asset, filter: AssetFilter): boolean {
     }
   }
 
+  // Final: must match if specified
+  if (filter.isFinal !== undefined) {
+    if (Boolean(asset.isFinal) !== filter.isFinal) {
+      return false
+    }
+  }
+
+  // AI confidence below threshold
+  if (filter.aiConfidenceBelow != null) {
+    if (!asset.aiMeta?.confidence || asset.aiMeta.confidence >= filter.aiConfidenceBelow) {
+      return false
+    }
+  }
+
   // AI metadata filters
   if (filter.aiHasCharacters) {
     if (!asset.aiMeta?.characters || asset.aiMeta.characters.length === 0) {

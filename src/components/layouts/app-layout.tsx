@@ -20,9 +20,10 @@ const STORAGE_KEY = 'sidebar-width'
 
 export interface AppLayoutProps {
   children: React.ReactNode
+  hideNav?: boolean
 }
 
-export function AppLayout({ children }: AppLayoutProps) {
+export function AppLayout({ children, hideNav = false }: AppLayoutProps) {
   const router = useRouter()
   const { createCollection: createUserCollection } = useUserCollections()
   const { createCollection: createSmartCollection } = useSmartCollections()
@@ -67,23 +68,27 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="h-screen bg-surface-flat flex overflow-hidden">
       {/* Primary nav rail — full height, touches top of browser */}
-      <div className="hidden md:flex">
-        <PrimaryNavRail />
-      </div>
+      {!hideNav && (
+        <div className="hidden md:flex">
+          <PrimaryNavRail />
+        </div>
+      )}
 
       {/* Right side: breadcrumb + sidebar + content */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <ProjectBreadcrumb />
         <div className="flex-1 min-h-0 flex overflow-hidden">
-          <div className="hidden md:flex">
-            <NavSidebar width={sidebarWidth} onNewCollection={() => setShowNewCollectionModal(true)} />
-            <ResizeHandle
-              isDragging={isDragging}
-              onDragStart={handleDragStart}
-              onDrag={handleDrag}
-              onDragEnd={handleDragEnd}
-            />
-          </div>
+          {!hideNav && (
+            <div className="hidden md:flex">
+              <NavSidebar width={sidebarWidth} onNewCollection={() => setShowNewCollectionModal(true)} />
+              <ResizeHandle
+                isDragging={isDragging}
+                onDragStart={handleDragStart}
+                onDrag={handleDrag}
+                onDragEnd={handleDragEnd}
+              />
+            </div>
+          )}
 
           {/* Main Content */}
           <div className="flex-1 min-h-0 overflow-hidden">

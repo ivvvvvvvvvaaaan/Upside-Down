@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { ArrowLeft, PanelRightOpen, PanelRightClose } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -13,11 +13,14 @@ import {
   SelectionBar,
   EmptyState,
   CollectionSidePanel,
+  AssetDetailPanel,
 } from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
-import { useAssetSelection, useViewPreferences, useUserCollections } from '@/hooks'
+import { useAccess, useAssetSelection, usePersona, useViewPreferences, useUserCollections } from '@/hooks'
 import type { Asset } from '@/lib/data'
+import { PERSONAS } from '@/lib/personas'
+import { getReviewNoteSummary } from '@/lib/review-notes'
 
 interface UserCollectionDetailViewProps {
   collectionId: string
@@ -28,39 +31,53 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const router = useRouter()
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
 
+  const { activePersona, isAdmin, hydrated } = usePersona()
+  const { canAccess, filterByAccess, sharesReceivedByMe, allProjectShares } = useAccess()
   const { getCollection, createCollection, deleteCollection } = useUserCollections()
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
-  const { cardSize } = useViewPreferences()
+  const { cardSize, sidePanelOpen, setSidePanelOpen } = useViewPreferences()
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
 
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
-  const [sidePanelOpen, setSidePanelOpen] = useState(true)
 
   const collection = getCollection(collectionId)
+  const isOwner = hydrated && (isAdmin || (!!collection && collection.createdBy === activePersona?.email))
+  const hasCollectionAccess = hydrated && !!collection && (isOwner || canAccess(collection.id))
+
+  // Find who shared this collection with the current user
+  const sharedBy = useMemo(() => {
+    const shares = isAdmin ? allProjectShares : sharesReceivedByMe
+    const share = shares.find(s => s.resourceId === collectionId)
+    if (!share || isOwner) return null
+    return PERSONAS.find(p => p.id === share.grantedByUserId)?.name ?? share.grantedByUserId
+  }, [collectionId, isOwner, isAdmin, sharesReceivedByMe, allProjectShares])
 
   // Sync collection name to top-level breadcrumb
+  const displayName = hasCollectionAccess ? collection?.name : undefined
   useEffect(() => {
-    if (collection?.name) {
-      setBreadcrumbExtras([{ label: collection.name }])
+    if (displayName) {
+      setBreadcrumbExtras([{ label: displayName }])
     }
     return () => clearBreadcrumbExtras()
-  }, [collection?.name, setBreadcrumbExtras, clearBreadcrumbExtras])
+  }, [displayName, setBreadcrumbExtras, clearBreadcrumbExtras])
 
   const handleDeleteCollection = () => {
-    if (collection) {
+    if (collection && isOwner) {
       deleteCollection(collection.id)
       router.push('/nextgen')
     }
   }
 
   const handleShareCollection = () => {
-    console.log('Share collection:', collection?.id)
+    console.log('Share collection:', collection?.id ?? collectionId)
   }
 
   // Fetch assets by IDs when collection loads
   useEffect(() => {
-    if (!collection) {
+    if (!hydrated) return
+    if (!collection || !hasCollectionAccess) {
+      setAssets([])
       setLoading(false)
       return
     }
@@ -75,7 +92,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
         })
         if (!response.ok) throw new Error('Failed to fetch assets')
         const fetchedAssets = await response.json()
-        setAssets(fetchedAssets)
+        setAssets(filterByAccess(fetchedAssets))
       } catch (error) {
         console.error('Failed to fetch assets:', error)
         setAssets([])
@@ -84,7 +101,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     }
 
     fetchAssets()
-  }, [collection])
+  }, [hydrated, collection, hasCollectionAccess, filterByAccess])
 
   const handleMenuClick = (asset: Asset) => {
     console.log('Menu clicked for:', asset.name)
@@ -101,6 +118,11 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const selectedAssets = useMemo(() => {
     return assets.filter((asset) => selectedIds.has(asset.id))
   }, [assets, selectedIds])
+  const primaryAsset = useMemo(() => {
+    if (!primaryId) return null
+    return assets.find(a => a.id === primaryId) ?? null
+  }, [primaryId, assets])
+  const reviewNoteSummary = useMemo(() => getReviewNoteSummary(collectionId), [collectionId])
 
   const handleCreateCollection = (name: string) => {
     createCollection(name, selectedAssets.map(a => a.id))
@@ -108,7 +130,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   }
 
   // Collection not found
-  if (!collection && !loading) {
+  if ((!collection || !hasCollectionAccess) && !loading) {
     return (
       <AppLayout>
         <div className="h-full flex flex-col">
@@ -167,7 +189,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <Text variant="headline-1" weight="bold" className="mb-2">
-                          {collection?.name || 'Loading...'}
+                          {displayName || 'Loading...'}
                         </Text>
                         <Text variant="body-2" color="secondary">
                           {loading
@@ -176,6 +198,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                             ? 'No assets'
                             : `${assets.length} asset${assets.length !== 1 ? 's' : ''}`
                           }
+                          {sharedBy && ` · Shared by ${sharedBy}`}
                         </Text>
                       </div>
                       <Button
@@ -233,16 +256,26 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
           />
         </div>
 
-        {/* Side panel - pushes content when open */}
-        {collection && (
+        {/* Side panel - asset detail when selected, collection settings otherwise */}
+        {sidePanelOpen && primaryAsset ? (
+          <AssetDetailPanel
+            asset={primaryAsset}
+            open
+            onClose={() => { clearSelection(); setSidePanelOpen(false) }}
+            activeCollectionId={collectionId}
+          />
+        ) : collection && hasCollectionAccess ? (
           <CollectionSidePanel
             collection={collection}
             open={sidePanelOpen}
             onClose={() => setSidePanelOpen(false)}
             onDelete={handleDeleteCollection}
             onShare={handleShareCollection}
+            reviewNoteSummary={reviewNoteSummary}
+            canDelete={isOwner}
+            canShare={isOwner}
           />
-        )}
+        ) : null}
       </div>
     </AppLayout>
   )

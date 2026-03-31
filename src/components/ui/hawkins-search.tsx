@@ -220,8 +220,8 @@ const HawkinsSearch = forwardRef<HTMLInputElement, HawkinsSearchProps>(
           </Button>
         )}
 
-        {/* Filter chips - hidden on mobile */}
-        <div className="hidden md:flex items-center gap-1 flex-wrap">
+        {/* Filter chips - hidden when narrow */}
+        <div className="hidden lg:flex items-center gap-1 flex-shrink-0">
           {filters.map((filter) => (
             <FilterChip
               key={filter.id}

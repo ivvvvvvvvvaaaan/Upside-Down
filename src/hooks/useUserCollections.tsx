@@ -1,6 +1,8 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { usePersona } from './usePersona'
+import { buildSeedCollections } from '@/lib/scenario'
 
 /**
  * User-created collection (distinct from smart collections)
@@ -11,6 +13,7 @@ export type UserCollection = {
   name: string
   assetIds: string[]
   createdAt: Date
+  createdBy?: string
 }
 
 interface UserCollectionsContextValue {
@@ -23,7 +26,8 @@ interface UserCollectionsContextValue {
 const UserCollectionsContext = createContext<UserCollectionsContextValue | null>(null)
 
 export function UserCollectionsProvider({ children }: { children: ReactNode }) {
-  const [collections, setCollections] = useState<UserCollection[]>([])
+  const { activePersona } = usePersona()
+  const [collections, setCollections] = useState<UserCollection[]>(buildSeedCollections)
 
   const createCollection = useCallback((name: string, assetIds: string[]): UserCollection => {
     const newCollection: UserCollection = {
@@ -31,10 +35,11 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
       name,
       assetIds,
       createdAt: new Date(),
+      createdBy: activePersona?.email,
     }
     setCollections(prev => [...prev, newCollection])
     return newCollection
-  }, [])
+  }, [activePersona])
 
   const deleteCollection = useCallback((id: string) => {
     setCollections(prev => prev.filter(c => c.id !== id))

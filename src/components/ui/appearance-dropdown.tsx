@@ -46,7 +46,7 @@ export function AppearanceDropdown({
   return (
     <Dropdown
       label={label}
-      icon={<LayoutGrid className="w-4 h-4" />}
+      icon={<LayoutGrid />}
       size="standard"
       align="end"
       width="auto"

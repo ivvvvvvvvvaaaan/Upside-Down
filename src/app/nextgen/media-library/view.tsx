@@ -79,6 +79,8 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
     { id: 'modified', label: 'Modified' },
   ]
 
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null)
+
   // Card state controls
   const [collectionCardState, setCollectionCardState] = useState<CollectionCardState>('asis')
   const [assetCardState, setAssetCardState] = useState<AssetCardState>('asis')
@@ -241,7 +243,7 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                     <Button
                       variant="tertiary"
                       compact
-                      icon={<ArrowLeft className="w-4 h-4" />}
+                      icon={<ArrowLeft />}
                       onClick={goBack}
                       className="mb-4"
                     >
@@ -381,26 +383,30 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                   </div>
                 </div>
                 <div ref={headerRef} className="flex flex-col gap-3">
-                  <PageHeader
-                    title="All Collections"
-                    description={`${collections.length} collection${collections.length !== 1 ? 's' : ''}`}
-                  />
-                  <div className="hidden md:flex items-center gap-2">
+                  <div className="flex items-center justify-between gap-4">
+                    <PageHeader
+                      title="All Collections"
+                      description={`${collections.length} collection${collections.length !== 1 ? 's' : ''}`}
+                    />
+                    <div className="hidden md:flex items-center gap-2">
+                      <SortDropdown
+                        fields={sortFields}
+                        value={sortCriteria}
+                        onChange={setSortCriteria}
+                      />
+                      <AppearanceDropdown
+                        layout={layout}
+                        onLayoutChange={setLayout}
+                        cardSize={cardSize}
+                        onCardSizeChange={setCardSize}
+                      />
+                    </div>
+                  </div>
+                  <div className="hidden md:block">
                     <HawkinsSearch
                       value={searchQuery}
                       onValueChange={setSearchQuery}
                       filters={filterOptions}
-                    />
-                    <SortDropdown
-                      fields={sortFields}
-                      value={sortCriteria}
-                      onChange={setSortCriteria}
-                    />
-                    <AppearanceDropdown
-                      layout={layout}
-                      onLayoutChange={setLayout}
-                      cardSize={cardSize}
-                      onCardSizeChange={setCardSize}
                     />
                   </div>
                 </div>
@@ -456,7 +462,9 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
                         state={showCollectionLoading ? 'Loading' : 'Normal'}
                         numberOfAssets={getNumberOfAssets(collection)}
                         size={cardSize}
-                        onClick={() => loadCollection(collection)}
+                        isSelected={selectedCollectionId === collection.id}
+                        onClick={() => setSelectedCollectionId(selectedCollectionId === collection.id ? null : collection.id)}
+                        onDoubleClick={() => loadCollection(collection)}
                       />
                     ))}
                   </CardGrid>

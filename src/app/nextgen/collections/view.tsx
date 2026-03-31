@@ -104,6 +104,8 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
     }
   }, [collectionType])
 
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null)
+
   // Separate display states for collection and asset cards
   const [collectionCardState, setCollectionCardState] = useState<CollectionCardState>('asis')
   const [assetCardState, setAssetCardState] = useState<AssetCardState>('asis')
@@ -246,7 +248,7 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                     <Button
                       variant="tertiary"
                       compact
-                      icon={<ArrowLeft className="w-4 h-4" />}
+                      icon={<ArrowLeft />}
                       onClick={goBack}
                       className="mb-4"
                     >
@@ -392,28 +394,32 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                   </div>
                 </div>
                 <div ref={headerRef} className="flex flex-col gap-3">
-                  <PageHeader
-                    title={title}
-                    description="Browse collections by character, location, or scene"
-                  />
-                  <div className="hidden md:flex items-center gap-2">
+                  <div className="flex items-center justify-between gap-4">
+                    <PageHeader
+                      title={title}
+                      description="Browse collections by character, location, or scene"
+                    />
+                    <div className="hidden md:flex items-center gap-2">
+                      <SortDropdown
+                        fields={sortFields}
+                        value={sortCriteria}
+                        onChange={setSortCriteria}
+                      />
+                      <AppearanceDropdown
+                        layout={layout}
+                        onLayoutChange={setLayout}
+                        cardSize={cardSize}
+                        onCardSizeChange={setCardSize}
+                        hideEmptyCollections={hideEmptyCollections}
+                        onHideEmptyCollectionsChange={setHideEmptyCollections}
+                      />
+                    </div>
+                  </div>
+                  <div className="hidden md:block">
                     <HawkinsSearch
                       value={searchQuery}
                       onValueChange={setSearchQuery}
                       filters={filterOptions}
-                    />
-                    <SortDropdown
-                      fields={sortFields}
-                      value={sortCriteria}
-                      onChange={setSortCriteria}
-                    />
-                    <AppearanceDropdown
-                      layout={layout}
-                      onLayoutChange={setLayout}
-                      cardSize={cardSize}
-                      onCardSizeChange={setCardSize}
-                      hideEmptyCollections={hideEmptyCollections}
-                      onHideEmptyCollectionsChange={setHideEmptyCollections}
                     />
                   </div>
                 </div>
@@ -490,7 +496,9 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                           state={showCollectionLoading ? 'Loading' : 'Normal'}
                           numberOfAssets={getNumberOfAssets()}
                           size={cardSize}
-                          onClick={() => loadCollection(collection)}
+                          isSelected={selectedCollectionId === collection.id}
+                          onClick={() => setSelectedCollectionId(selectedCollectionId === collection.id ? null : collection.id)}
+                          onDoubleClick={() => loadCollection(collection)}
                         />
                       )
                     })}

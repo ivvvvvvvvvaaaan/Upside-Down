@@ -55,6 +55,7 @@ const buttonVariants = cva(
         // Hawkins: label-1-bold (12px/18px/600)
         compact: "py-1 px-2 text-label-1-bold",
         icon: "h-10 w-10",
+        "compact-icon": "h-7 w-7",
       },
     },
     compoundVariants: [
@@ -96,7 +97,9 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, compact, asChild = false, children, icon, dropdown, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
-    const finalSize = compact ? 'compact' : size
+    const finalSize = compact
+      ? (variant === 'icon' ? 'compact-icon' : 'compact')
+      : (variant === 'icon' && !size ? 'icon' : size)
     return (
       <Comp className={cn(buttonVariants({ variant, size: finalSize, className }))} ref={ref} {...props}>
         {asChild ? children : (

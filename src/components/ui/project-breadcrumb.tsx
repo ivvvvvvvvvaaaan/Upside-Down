@@ -3,8 +3,11 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from './button'
+import { SettingsModal } from './settings-modal'
+import { PersonaPicker } from './persona-picker'
 
 /**
  * Project Breadcrumb
@@ -28,7 +31,6 @@ const routeLabels: Record<string, string> = {
   '/nextgen/collections/characters': 'Characters',
   '/nextgen/collections/locations': 'Locations',
   '/nextgen/collections/scenes': 'Scenes',
-  '/nextgen/sharing/incoming': 'Incoming',
 }
 
 // Section groupings for breadcrumb hierarchy
@@ -116,6 +118,7 @@ function getBreadcrumbs(pathname: string): BreadcrumbItem[] {
 export function ProjectBreadcrumb() {
   const pathname = usePathname()
   const { extras } = useContext(BreadcrumbExtrasContext)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   // Only show on nextgen routes
   if (!pathname.startsWith('/nextgen')) {
@@ -137,7 +140,7 @@ export function ProjectBreadcrumb() {
   const allCrumbs: BreadcrumbItem[] = [...baseCrumbs, ...extras]
 
   return (
-    <div className="h-12 px-4 flex items-center border-b border-border-dim bg-surface-1">
+    <div className="h-12 px-4 flex items-center justify-between border-b border-border-dim bg-surface-1">
       <nav className="flex items-center gap-1 text-body-0-regular">
         {allCrumbs.map((crumb, index) => {
           const isLast = index === allCrumbs.length - 1
@@ -176,6 +179,20 @@ export function ProjectBreadcrumb() {
           )
         })}
       </nav>
+
+      <div className="flex items-center gap-2">
+        <Button
+          variant="icon"
+          compact
+          onClick={() => setSettingsOpen(true)}
+          aria-label="Permissions settings"
+        >
+          <Settings className="w-4 h-4" />
+        </Button>
+        <PersonaPicker compact showLabel />
+      </div>
+
+      <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   )
 }

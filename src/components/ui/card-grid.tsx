@@ -10,9 +10,17 @@ export interface CardGridProps extends React.HTMLAttributes<HTMLDivElement> {
   layout?: 'grid' | 'list'
 }
 
+// Minimum card width per column setting — grid auto-fills based on container width
+const MIN_CARD_WIDTH: Record<3 | 4 | 6, number> = {
+  3: 280,
+  4: 200,
+  6: 160,
+}
+
 /**
  * Responsive grid layout for cards (asset cards, collection cards, etc.)
- * Default: 1 col mobile, 2 col sm, 3 col lg, 4 col xl
+ * Uses auto-fill with min card widths so the grid adapts to actual container
+ * width (works correctly when side panels reduce available space).
  */
 export function CardGrid({
   children,
@@ -20,14 +28,9 @@ export function CardGrid({
   columns = 4,
   layout = 'grid',
   className,
+  style,
   ...props
 }: CardGridProps) {
-  const columnClasses = {
-    3: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3',
-    4: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
-    6: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6',
-  }
-
   if (layout === 'list') {
     return (
       <div
@@ -37,6 +40,7 @@ export function CardGrid({
           gap === '6' && 'gap-6',
           className
         )}
+        style={style}
         {...props}
       >
         {children}
@@ -44,15 +48,20 @@ export function CardGrid({
     )
   }
 
+  const minWidth = MIN_CARD_WIDTH[columns]
+
   return (
     <div
       className={cn(
         'grid',
-        columnClasses[columns],
         gap === '4' && 'gap-4',
         gap === '6' && 'gap-6',
         className
       )}
+      style={{
+        gridTemplateColumns: `repeat(auto-fill, minmax(${minWidth}px, 1fr))`,
+        ...style,
+      }}
       {...props}
     >
       {children}

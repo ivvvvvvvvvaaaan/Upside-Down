@@ -120,7 +120,7 @@ export function SortContent({
 
             {canAdd && (
               <div className="pl-12">
-                <Button variant="secondary" onClick={handleAdd} icon={<Plus className="w-4 h-4" />}>
+                <Button variant="secondary" onClick={handleAdd} icon={<Plus />}>
                   Add
                 </Button>
               </div>

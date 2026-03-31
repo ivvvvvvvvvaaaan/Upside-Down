@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { cn } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 import { Folder, File, Image as ImageIcon, FileVideo, FileText, ChevronRight, LayoutGrid, List, Columns, GalleryHorizontal } from 'lucide-react'
 
 
@@ -81,11 +81,6 @@ function formatFileSize(bytes?: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }
 
-function formatDate(dateStr?: string): string {
-  if (!dateStr) return '—'
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
 
 interface FileRowProps {
   node: FileNode
@@ -256,11 +251,13 @@ function ColumnsView({
   onFileClick,
   onFolderClick,
   onContextMenu,
+  className,
 }: {
   files: FileNode[]
   onFileClick?: (file: FileNode) => void
   onFolderClick?: (folder: FileNode) => void
   onContextMenu?: (event: React.MouseEvent, node: FileNode) => void
+  className?: string
 }) {
   const [selectedPath, setSelectedPath] = useState<FileNode[]>([])
 
@@ -284,11 +281,11 @@ function ColumnsView({
   })
 
   return (
-    <div className="flex overflow-x-auto items-stretch">
+    <div className={cn('flex overflow-x-auto', className)}>
       {columns.map((columnFiles, colIndex) => (
         <div
           key={colIndex}
-          className="min-w-[200px] max-w-[250px] border-r border-border-dim flex-shrink-0 bg-surface-flat self-stretch"
+          className="min-w-[200px] max-w-[250px] border-r border-border-dim flex-shrink-0 bg-surface-flat"
         >
           {columnFiles.map((node) => {
             const isSelected = selectedPath[colIndex]?.id === node.id
@@ -299,7 +296,7 @@ function ColumnsView({
                 onContextMenu={onContextMenu ? (e) => { e.preventDefault(); onContextMenu(e, node) } : undefined}
                 className={cn(
                   'flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors',
-                  isSelected ? 'bg-surface-selected-subtle' : 'hover:bg-surface-2'
+                  isSelected ? 'bg-indigo-500/20 text-foreground' : 'hover:bg-surface-2'
                 )}
               >
                 {getFileIcon(node)}
@@ -315,7 +312,7 @@ function ColumnsView({
         </div>
       ))}
       {/* Single empty column after content */}
-      <div className="min-w-[200px] flex-1 border-r-0 bg-surface-flat self-stretch" />
+      <div className="min-w-[200px] flex-1 border-r-0 bg-surface-flat" />
     </div>
   )
 }
@@ -413,7 +410,7 @@ export function FileExplorer({
   }
 
   return (
-    <div className={cn('flex flex-col gap-3', className)}>
+    <div className={cn('flex flex-col', className)}>
       {/* Header with title and view mode toggle */}
       {(title || showViewToggle) && (
         <div className="flex items-center justify-between">
@@ -474,7 +471,7 @@ export function FileExplorer({
       )}
 
       {viewMode === 'columns' && (
-        <ColumnsView files={files} onFileClick={onFileClick} onFolderClick={onFolderClick} onContextMenu={onContextMenu} />
+        <ColumnsView className="flex-1" files={files} onFileClick={onFileClick} onFolderClick={onFolderClick} onContextMenu={onContextMenu} />
       )}
 
       {viewMode === 'gallery' && (

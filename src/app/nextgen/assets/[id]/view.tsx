@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { ArrowLeft, PanelRightOpen, PanelRightClose, Play, Music, FileText, Share2, Download, Image as ImageIcon } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -14,8 +14,11 @@ import {
   AssetDetailPanel,
 } from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
-import { useUserCollections } from '@/hooks'
+import { useAccess, usePersona, useViewPreferences, useUserCollections } from '@/hooks'
 import type { Asset, DepartmentId } from '@/lib/data'
+import { mergePrototypeAssets } from '@/lib/prototype-assets'
+import { getContextAssetGroups } from '@/lib/context-relationships'
+import { getReviewNoteSummary } from '@/lib/review-notes'
 
 const DEPARTMENT_NAMES: Record<DepartmentId, string> = {
   'art-design': 'Art & Design',
@@ -150,14 +153,18 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
   const router = useRouter()
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
 
+  const { activePersona, isAdmin, hydrated } = usePersona()
   const { collections } = useUserCollections()
+  const { canAccess, filterByAccess } = useAccess()
+  const { sidePanelOpen, setSidePanelOpen } = useViewPreferences()
 
   const [asset, setAsset] = useState<Asset | null>(null)
+  const [assetPool, setAssetPool] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
-  const [sidePanelOpen, setSidePanelOpen] = useState(true)
 
   // Fetch asset data on mount
   useEffect(() => {
+    if (!hydrated) return
     const fetchAsset = async () => {
       setLoading(true)
       try {
@@ -168,7 +175,7 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
         })
         if (!response.ok) throw new Error('Failed to fetch asset')
         const assets: Asset[] = await response.json()
-        setAsset(assets[0] || null)
+        setAsset(filterByAccess(assets)[0] || null)
       } catch (error) {
         console.error('Failed to fetch asset:', error)
         setAsset(null)
@@ -177,14 +184,45 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
     }
 
     fetchAsset()
-  }, [assetId])
+  }, [assetId, hydrated, filterByAccess])
+
+  useEffect(() => {
+    const fetchAssetPool = async () => {
+      try {
+        const response = await fetch('/api/assets')
+        const apiAssets: Asset[] = response.ok ? await response.json() : []
+        setAssetPool(mergePrototypeAssets(apiAssets))
+      } catch (error) {
+        console.error('Failed to fetch accessible asset pool:', error)
+        setAssetPool([])
+      }
+    }
+
+    fetchAssetPool()
+  }, [])
 
   const typeTag = asset ? getTypeTag(asset) : ''
+  const relatedGroups = useMemo(() => {
+    if (!asset) return []
+    return getContextAssetGroups(asset, filterByAccess(assetPool))
+  }, [asset, assetPool, filterByAccess])
+  const reviewNoteSummary = useMemo(() => {
+    if (!asset) return null
+    return getReviewNoteSummary(asset.id)
+  }, [asset])
+  const visibleCollections = useMemo(() => {
+    if (!hydrated) return []
+    return collections.filter((collection) => {
+      if (isAdmin) return true
+      if (collection.createdBy === activePersona?.email) return true
+      return canAccess(collection.id)
+    })
+  }, [collections, hydrated, isAdmin, activePersona?.email, canAccess])
 
   // Loading state
   if (loading) {
     return (
-      <AppLayout>
+      <AppLayout hideNav>
         <div className="h-full flex flex-col">
           <div className="flex-1 min-h-0 overflow-auto">
             <div className="p-6">
@@ -207,7 +245,7 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
   // Asset not found
   if (!asset) {
     return (
-      <AppLayout>
+      <AppLayout hideNav>
         <div className="h-full flex flex-col">
           <div className="flex-1 min-h-0 overflow-auto">
             <div className="p-6">
@@ -243,7 +281,7 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
   }
 
   return (
-    <AppLayout>
+    <AppLayout hideNav>
       <div className="h-full flex">
         {/* Main content area */}
         <div className="flex-1 min-w-0 flex flex-col">
@@ -255,10 +293,10 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
                   <Button
                     variant="tertiary"
                     compact
-                    icon={<ArrowLeft className="w-4 h-4" />}
+                    icon={<ArrowLeft />}
                     onClick={() => router.back()}
                   >
-                    Back
+                    <span className="hidden lg:inline">Back</span>
                   </Button>
                   <Button
                     variant="icon"
@@ -297,21 +335,37 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
+                    {reviewNoteSummary && (
+                      <Button
+                        asChild
+                        variant="secondary"
+                        compact
+                        icon={<FileText />}
+                      >
+                        <a
+                          href={reviewNoteSummary.externalUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <span className="hidden lg:inline">Creative Review</span>
+                        </a>
+                      </Button>
+                    )}
                     <Button
                       variant="secondary"
                       compact
-                      icon={<Share2 className="w-4 h-4" />}
+                      icon={<Share2 />}
                       onClick={() => console.log('Share asset:', asset.id)}
                     >
-                      Share
+                      <span className="hidden lg:inline">Share</span>
                     </Button>
                     <Button
                       variant="secondary"
                       compact
-                      icon={<Download className="w-4 h-4" />}
+                      icon={<Download />}
                       onClick={() => console.log('Download asset:', asset.id)}
                     >
-                      Download
+                      <span className="hidden lg:inline">Download</span>
                     </Button>
                   </div>
                 </div>
@@ -325,7 +379,9 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
           asset={asset}
           open={sidePanelOpen}
           onClose={() => setSidePanelOpen(false)}
-          collections={collections}
+          collections={visibleCollections}
+          relatedGroups={relatedGroups}
+          reviewNoteSummary={reviewNoteSummary}
         />
       </div>
     </AppLayout>

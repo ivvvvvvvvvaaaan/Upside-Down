@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import type { DepartmentId } from '@/components/department/types'
-import { getDepartmentWorkspaceFiles, type WorkspaceFileNode } from '@/lib/workspace-data'
+import { type WorkspaceFileNode } from '@/lib/workspace-data'
 import { generateAssetInstances, groupInstancesByCategory } from '@/lib/asset-instances'
 import type { AssetInstance, AssetInstanceGroup } from '@/lib/asset-instances'
 import type { Asset, AssetType } from '@/lib/data'
-import { useTransientFolders, useCreateFolder } from './useWorkspaceFiles'
+import { useFileTree } from './useFileTree'
 
 export type WorkspaceViewFilter = 'files' | 'assets' | 'mixed'
 
@@ -141,24 +141,25 @@ export function useWorkspaceState(departmentId: DepartmentId, viewFilter: Worksp
   const [selectedNode, setSelectedNode] = useState<WorkspaceFileNode | null>(null)
   const [curatedAssetNodes, setCuratedAssetNodes] = useState<WorkspaceFileNode[]>([])
   const [loading, setLoading] = useState(true)
-  const transientFolders = useTransientFolders(departmentId)
-  const contextCreateFolder = useCreateFolder()
+  const fileTree = useFileTree()
 
   const createFolder = useCallback((name: string, parentPath: string[]) => {
-    contextCreateFolder(departmentId, name, parentPath)
-  }, [contextCreateFolder, departmentId])
+    // Determine parent folder ID from the path; null means root of department
+    const parentId = parentPath.length > 0 ? parentPath[parentPath.length - 1] : null
+    fileTree.createFolder(parentId, name)
+  }, [fileTree])
 
   // Load state on mount
   useEffect(() => {
     setMounted(true)
-    const rawFiles = getDepartmentWorkspaceFiles(departmentId)
+    const deptFiles = fileTree.getDepartmentFiles(departmentId)
     const stored = getStoredState(departmentId)
 
-    const defaultIds = getDefaultManagedIds(rawFiles)
+    const defaultIds = getDefaultManagedIds(deptFiles)
     const storedIds = stored.managedFolderIds
     const ids = storedIds.length > 0 ? storedIds : defaultIds
     setManagedFolderIds(new Set(ids))
-  }, [departmentId])
+  }, [departmentId, fileTree])
 
   // Fetch curated assets and convert to file nodes
   useEffect(() => {
@@ -195,7 +196,10 @@ export function useWorkspaceState(departmentId: DepartmentId, viewFilter: Worksp
     })
   }, [mounted, departmentId])
 
-  const rawFiles = useMemo(() => getDepartmentWorkspaceFiles(departmentId), [departmentId])
+  const rawFiles = useMemo(
+    () => fileTree.getDepartmentFiles(departmentId),
+    [fileTree, departmentId],
+  )
 
   const processedFiles = useMemo(() => {
     const marked = markManagedZones(rawFiles, managedFolderIds)
@@ -209,26 +213,8 @@ export function useWorkspaceState(departmentId: DepartmentId, viewFilter: Worksp
     }
     collectIds(marked)
     const newNodes = curatedAssetNodes.filter((n) => !existingIds.has(n.id))
-    const merged = [...marked, ...newNodes]
-
-    // Inject transient folders at the appropriate tree levels
-    if (transientFolders.size === 0) return merged
-    function injectTransient(nodes: WorkspaceFileNode[], pathPrefix: string): WorkspaceFileNode[] {
-      const result = nodes.map((node) => {
-        if (node.type !== 'folder') return node
-        const childPath = pathPrefix ? `${pathPrefix}/${node.id}` : node.id
-        const extras = transientFolders.get(childPath)
-        const children = node.children
-          ? injectTransient(node.children, childPath)
-          : []
-        return { ...node, children: extras ? [...children, ...extras] : children }
-      })
-      return result
-    }
-    const withNested = injectTransient(merged, '')
-    const rootExtras = transientFolders.get('') ?? []
-    return [...withNested, ...rootExtras]
-  }, [rawFiles, managedFolderIds, curatedAssetNodes, transientFolders])
+    return [...marked, ...newNodes]
+  }, [rawFiles, managedFolderIds, curatedAssetNodes])
 
   const totalFileCount = useMemo(() => countFiles(processedFiles), [processedFiles])
 
