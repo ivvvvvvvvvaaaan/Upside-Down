@@ -1,7 +1,7 @@
 ---
 title: "feat: Permission Management UI"
 type: feat
-status: active
+status: completed
 date: 2026-03-31
 origin: docs/brainstorms/2026-03-31-permission-management-brainstorm.md
 deepened: 2026-03-31
@@ -68,8 +68,8 @@ Move `FileTreeProvider` above `AccessProvider` so the access hook can consume th
 PersonaProvider > UserCollectionsProvider > FileTreeProvider > AccessProvider > SmartCollectionsProvider
 ```
 
-- [ ] Reorder providers in layout.tsx
-- [ ] Verify no existing code relies on old order (grep for useFileTree inside AccessProvider consumers)
+- [x] Reorder providers in layout.tsx
+- [x] Verify no existing code relies on old order (grep for useFileTree inside AccessProvider consumers)
 
 #### A2. Reactive parent map inside AccessProvider
 
@@ -100,10 +100,10 @@ const { nodeToDepartment, nodeToParent } = useMemo(() => {
 }, [fileTree])
 ```
 
-- [ ] Import `useFileTree` in AccessProvider
-- [ ] Replace module-scope `NODE_TO_DEPARTMENT` with reactive `nodeToDepartment`
-- [ ] Add reactive `nodeToParent`
-- [ ] Update all references to use the new maps
+- [x] Import `useFileTree` in AccessProvider
+- [x] Replace module-scope `NODE_TO_DEPARTMENT` with reactive `nodeToDepartment`
+- [x] Add reactive `nodeToParent`
+- [x] Update all references to use the new maps
 
 #### A3. Inherited grants resolution (display only)
 
@@ -144,9 +144,9 @@ export function findNodeInTree(nodes: WorkspaceFileNode[], id: string): Workspac
 }
 ```
 
-- [ ] Add `findNodeInTree` to workspace-data.ts
-- [ ] Add `getInheritedGrants` to AccessProvider
-- [ ] Expose in context value
+- [x] Add `findNodeInTree` to workspace-data.ts
+- [x] Add `getInheritedGrants` to AccessProvider
+- [x] Expose in context value
 
 #### A4. Collection ripple grants for display
 
@@ -168,8 +168,8 @@ const getCollectionRippleGrants = useCallback((assetId: string): { grant: Grant;
 }, [collections, grants])
 ```
 
-- [ ] Add `getCollectionRippleGrants` to AccessProvider
-- [ ] Expose in context value
+- [x] Add `getCollectionRippleGrants` to AccessProvider
+- [x] Expose in context value
 
 #### A5. Configurable collection ripple
 
@@ -209,11 +209,11 @@ In the UI (CollectionSidePanel), when sharing a collection, show a ripple policy
              Custom — pick specific permissions
 ```
 
-- [ ] Add `RipplePolicy` type to grants.ts
-- [ ] Add `ripplePolicy` + `ripplePermissions` to Grant type
-- [ ] Apply policy in `collectionAssetAccessById`
-- [ ] Default to `view-only` for backwards compatibility
-- [ ] Add ripple policy picker to AccessPanel when `resourceRef.type === 'collection'`
+- [x] Add `RipplePolicy` type to grants.ts
+- [x] Add `ripplePolicy` + `ripplePermissions` to Grant type
+- [x] Apply policy in `collectionAssetAccessById`
+- [x] Default to `view-only` for backwards compatibility
+- [x] Add ripple policy picker to AccessPanel when `resourceRef.type === 'collection'`
 
 #### A6. canShare guard
 
@@ -228,8 +228,8 @@ const canShare = useCallback((): boolean => {
 
 Guard `createGrant`, `revokeGrant`, `updateGrantProfile` — reject if `!canShare()`.
 
-- [ ] Add `canShare` to context
-- [ ] Guard mutation functions
+- [x] Add `canShare` to context
+- [x] Guard mutation functions
 
 #### A7. Search dropdown in AccessPanel
 
@@ -263,13 +263,13 @@ const results = useMemo(() => {
 }, [query])
 ```
 
-- [ ] Replace email input with search input + dropdown
-- [ ] Filter PERSONAS by name/email
-- [ ] Filter TEAMS by name
-- [ ] Show people with initials, teams with Users icon
-- [ ] Click to add (default viewer)
-- [ ] Deduplicate against existing direct grants
-- [ ] Close dropdown on add or click-outside
+- [x] Replace email input with search input + dropdown
+- [x] Filter PERSONAS by name/email
+- [x] Filter TEAMS by name
+- [x] Show people with initials, teams with Users icon
+- [x] Click to add (default viewer)
+- [x] Deduplicate against existing direct grants
+- [x] Close dropdown on add or click-outside
 
 #### A8. Inherited grants display in AccessPanel
 
@@ -291,9 +291,9 @@ Inherited entries: static role label (no dropdown), no remove button, dimmed tex
 
 For unauthorized roles, show `readOnly` with hint text "You don't have permission to manage access" above the list.
 
-- [ ] Add `inheritedGrants` prop
-- [ ] Render "Inherited from [name]" section with read-only entries
-- [ ] Inherited entries: dimmed, static label, no actions
+- [x] Add `inheritedGrants` prop
+- [x] Render "Inherited from [name]" section with read-only entries
+- [x] Inherited entries: dimmed, static label, no actions
 
 #### A9. Seed folder-level grants
 
@@ -316,7 +316,7 @@ For unauthorized roles, show `readOnly` with hint text "You don't have permissio
 },
 ```
 
-- [ ] Add 2 folder grants to scenario shares
+- [x] Add 2 folder grants to scenario shares
 
 ### Phase B: Wire AccessPanel into All Panels
 
@@ -330,9 +330,9 @@ For unauthorized roles, show `readOnly` with hint text "You don't have permissio
 - Compute inherited grants: `getInheritedGrants(node.id)`
 - Pass `readOnly={!canShare()}` for unauthorized roles
 
-- [ ] Remove static team section
-- [ ] Embed AccessPanel with resourceRef + inheritedGrants
-- [ ] Pass readOnly based on canShare
+- [x] Remove static team section
+- [x] Embed AccessPanel with resourceRef + inheritedGrants
+- [x] Pass readOnly based on canShare
 
 #### B2. CollectionSidePanel
 
@@ -344,9 +344,9 @@ For unauthorized roles, show `readOnly` with hint text "You don't have permissio
 - Construct `resourceRef: { id: collection.id, type: 'collection' }`
 - Pass `readOnly={!canShare()}`
 
-- [ ] Replace Members section with AccessPanel
-- [ ] Remove Share button + onShare prop
-- [ ] Remove Manage members button
+- [x] Replace Members section with AccessPanel
+- [x] Remove Share button + onShare prop
+- [x] Remove Manage members button
 
 #### B3. AssetDetailPanel
 
@@ -357,19 +357,19 @@ For unauthorized roles, show `readOnly` with hint text "You don't have permissio
 - Inherited grants: combine `getInheritedGrants(asset.id)` (folder ancestry) + `getCollectionRippleGrants(asset.id)` (collection ripple)
 - Pass `readOnly={!canShare()}`
 
-- [ ] Import useAccess, AccessPanel
-- [ ] Construct resourceRef
-- [ ] Compute combined inherited grants (folder + collection)
-- [ ] Add Access section
+- [x] Import useAccess, AccessPanel
+- [x] Construct resourceRef
+- [x] Compute combined inherited grants (folder + collection)
+- [x] Add Access section
 
 #### B4. Acceptance testing
 
-- [ ] Scenario 1: VFX coordinator shares folder with Editorial team — grant appears, child items show inherited
-- [ ] Scenario 2: User shares collection with a person — grant appears, assets ripple read-only
-- [ ] Scenario 3: User shares asset with studio exec — grant appears, exec sees it in inbox
-- [ ] Switch to vendor persona — controls are read-only
-- [ ] Grants persist across page reload
-- [ ] `npx tsc --noEmit` passes
+- [x] Scenario 1: VFX coordinator shares folder with Editorial team — grant appears, child items show inherited
+- [x] Scenario 2: User shares collection with a person — grant appears, assets ripple read-only
+- [x] Scenario 3: User shares asset with studio exec — grant appears, exec sees it in inbox
+- [x] Switch to vendor persona — controls are read-only
+- [x] Grants persist across page reload
+- [x] `npx tsc --noEmit` passes
 
 ## Technical Considerations
 
