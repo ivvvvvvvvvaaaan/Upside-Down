@@ -123,10 +123,12 @@ export function WorkspaceSidePanel({
                   <span className="text-foreground">{formatFileSize(node.size)}</span>
                 </div>
               )}
+              {node.modifiedAt && (
               <div className="flex justify-between text-label-1-regular">
                 <span className="text-foreground-dim">Modified</span>
                 <span className="text-foreground">{formatDate(node.modifiedAt)}</span>
               </div>
+              )}
             </div>
           </div>
         </section>
@@ -190,7 +192,7 @@ export function WorkspaceSidePanel({
         <section className="space-y-2">
           <h3 className="text-label-0-bold uppercase text-foreground-dim">Path</h3>
           <p className="text-label-0-regular text-foreground-dim font-mono break-all">
-            /Workspaces/Stranger Things S6/{node.name}
+            /Workspaces/Apex S1/{node.name}
           </p>
         </section>
       </div>

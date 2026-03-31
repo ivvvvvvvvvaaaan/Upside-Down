@@ -394,6 +394,12 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   const isInsideFolder = resolvedFolderPath.length > 0
   const currentFolder = isInsideFolder ? resolvedFolderPath[resolvedFolderPath.length - 1] : null
   const departmentName = departmentId ? (departmentConfigs[departmentId]?.name ?? departmentId) : 'Workspace'
+
+  // Default panel context: show current folder or department when nothing is explicitly selected
+  const effectiveNode: WorkspaceFileNode | null =
+    selectedNode ?? currentFolder ?? (departmentId
+      ? { id: departmentId, name: departmentName, type: 'folder' as const, children: processedFiles }
+      : null)
   const pageTitle = landingDrillFolder?.name ?? currentFolder?.name ?? departmentName
   const backHref = isLanding
     ? undefined
@@ -665,7 +671,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
 
         {/* Side Panel — flush right, full height */}
         <WorkspaceSidePanel
-          node={selectedNode}
+          node={effectiveNode}
           open={showPanel}
           onClose={() => setShowPanel(false)}
           departmentId={departmentId}
