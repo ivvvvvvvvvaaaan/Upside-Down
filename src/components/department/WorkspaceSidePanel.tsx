@@ -17,7 +17,8 @@ import { getTeamById } from '@/lib/teams'
 import { profileLabel } from '@/lib/grants'
 
 interface WorkspaceSidePanelProps {
-  node: WorkspaceFileNode
+  node?: WorkspaceFileNode | null
+  open?: boolean
   onClose: () => void
   departmentId?: DepartmentId
   /** Whether this folder is a managed zone */
@@ -47,13 +48,14 @@ function countChildFiles(node: WorkspaceFileNode): number {
 
 export function WorkspaceSidePanel({
   node,
+  open = true,
   onClose,
   departmentId,
   isManagedZone,
   onToggleManagedZone,
 }: WorkspaceSidePanelProps) {
-  const isFolder = node.type === 'folder'
-  const fileCount = isFolder ? countChildFiles(node) : 0
+  const isFolder = node?.type === 'folder'
+  const fileCount = isFolder && node ? countChildFiles(node) : 0
 
   const departmentTeams = useMemo(() => {
     return Object.entries(SCENARIO.projectRoles.teams)
@@ -72,21 +74,25 @@ export function WorkspaceSidePanel({
         }
       })
   }, [departmentId])
-  const aiTags = !isFolder ? getAITagsForFile(node.id) : undefined
+  const aiTags = !isFolder && node ? getAITagsForFile(node.id) : undefined
 
   return (
-    <ResponsivePanel open={true} onClose={onClose}>
+    <ResponsivePanel open={open} onClose={onClose}>
       {/* Header */}
       <div className="flex items-center justify-between p-4">
         <span className="text-body-1-bold text-foreground">
-          {isFolder ? 'Folder Info' : 'File Info'}
+          {node ? (isFolder ? 'Folder Info' : 'File Info') : 'Info'}
         </span>
         <Button variant="icon" compact onClick={onClose}>
           <X className="w-4 h-4" />
         </Button>
       </div>
 
-      {/* Content */}
+      {!node ? (
+        <div className="flex-1 flex items-center justify-center p-4">
+          <span className="text-body-0-regular text-foreground-dim">Select an item to see details</span>
+        </div>
+      ) : (
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Details */}
         <section className="space-y-2">
@@ -196,6 +202,7 @@ export function WorkspaceSidePanel({
           </p>
         </section>
       </div>
+      )}
     </ResponsivePanel>
   )
 }

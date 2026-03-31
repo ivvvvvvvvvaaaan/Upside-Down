@@ -178,7 +178,8 @@ export function CollectionCard({
       return (
         <div
           className={cn(
-            'relative rounded shrink-0 w-full overflow-hidden bg-surface-2 group-hover:bg-surface-3 transition-colors isolate flex items-center justify-center',
+            'relative rounded shrink-0 w-full overflow-hidden transition-colors isolate flex items-center justify-center',
+            !isSelected && 'bg-surface-2 group-hover:bg-surface-3',
             sizeStyles.thumbnail
           )}
         >
@@ -197,7 +198,8 @@ export function CollectionCard({
       return (
         <div
           className={cn(
-            'relative rounded shrink-0 w-full overflow-hidden bg-surface-2 group-hover:bg-surface-3 transition-colors isolate',
+            'relative rounded shrink-0 w-full overflow-hidden transition-colors isolate',
+            !isSelected && 'bg-surface-2 group-hover:bg-surface-3',
             sizeStyles.thumbnail
           )}
         >
@@ -447,11 +449,12 @@ export function CollectionCard({
     <div
       className={cn(
         'group flex flex-col gap-2 p-2 relative w-full rounded',
-        'bg-surface-2 border border-border-elevation',
+        'border border-border-elevation',
         'items-start',
-        isHovered && 'bg-surface-3',
-        'hover:bg-surface-3 transition-colors',
-        isSelected && 'bg-surface-selected hover:bg-surface-selected-hover ring-2 ring-border-selected',
+        isSelected
+          ? 'bg-surface-selected hover:bg-surface-selected-hover ring-2 ring-border-selected'
+          : cn('bg-surface-2', isHovered && 'bg-surface-3', 'hover:bg-surface-3'),
+        'transition-colors',
         onClick && 'cursor-pointer',
         className
       )}

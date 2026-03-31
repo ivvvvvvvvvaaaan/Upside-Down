@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, PanelRightOpen, PanelRightClose } from 'lucide-react'
+import { ArrowLeft, PanelRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -306,13 +307,10 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                           variant="icon"
                           size="icon"
                           onClick={() => setSidePanelOpen(!sidePanelOpen)}
-                          aria-label={sidePanelOpen ? 'Close settings' : 'Open settings'}
+                          aria-label={sidePanelOpen ? 'Close panel' : 'Open panel'}
+                          className={cn(sidePanelOpen && 'bg-surface-3')}
                         >
-                          {sidePanelOpen ? (
-                            <PanelRightClose className="w-4 h-4" />
-                          ) : (
-                            <PanelRightOpen className="w-4 h-4" />
-                          )}
+                          <PanelRight className="w-4 h-4" />
                         </Button>
                     </div>
                   </div>
@@ -340,13 +338,10 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                           variant="icon"
                           size="icon"
                           onClick={() => setSidePanelOpen(!sidePanelOpen)}
-                          aria-label={sidePanelOpen ? 'Close settings' : 'Open settings'}
+                          aria-label={sidePanelOpen ? 'Close panel' : 'Open panel'}
+                          className={cn(sidePanelOpen && 'bg-surface-3')}
                         >
-                          {sidePanelOpen ? (
-                            <PanelRightClose className="w-4 h-4" />
-                          ) : (
-                            <PanelRightOpen className="w-4 h-4" />
-                          )}
+                          <PanelRight className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>

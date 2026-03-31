@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, PanelRightOpen, PanelRightClose, Play, Music, FileText, Share2, Download, Image as ImageIcon } from 'lucide-react'
+import { ArrowLeft, PanelRight, Play, Music, FileText, Share2, Download, Image as ImageIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -302,13 +303,10 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
                     variant="icon"
                     compact
                     onClick={() => setSidePanelOpen(!sidePanelOpen)}
-                    aria-label={sidePanelOpen ? 'Close info panel' : 'Open info panel'}
+                    aria-label={sidePanelOpen ? 'Close panel' : 'Open panel'}
+                    className={cn(sidePanelOpen && 'bg-surface-3')}
                   >
-                    {sidePanelOpen ? (
-                      <PanelRightClose className="w-4 h-4" />
-                    ) : (
-                      <PanelRightOpen className="w-4 h-4" />
-                    )}
+                    <PanelRight className="w-4 h-4" />
                   </Button>
                 </div>
 

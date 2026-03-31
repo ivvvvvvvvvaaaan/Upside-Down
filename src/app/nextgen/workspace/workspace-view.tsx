@@ -31,7 +31,6 @@ import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { instanceToAsset } from '@/lib/asset-instances'
 import type { AssetInstance } from '@/lib/asset-instances'
 import { WorkspaceSidePanel } from '@/components/department/WorkspaceSidePanel'
-import { ResponsivePanel } from '@/components/ui/responsive-panel'
 import { ArrowLeft, List, Columns, LayoutGrid, PanelRight, X, Lock, Users, FolderPlus, Link2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -665,29 +664,14 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
         </div>
 
         {/* Side Panel — flush right, full height */}
-        {showPanel && (
-          selectedNode ? (
-            <WorkspaceSidePanel
-              node={selectedNode}
-              onClose={() => setShowPanel(false)}
-              departmentId={departmentId}
-              isManagedZone={selectedNode.type === 'folder' ? managedFolderIds.has(selectedNode.id) : undefined}
-              onToggleManagedZone={selectedNode.type === 'folder' ? toggleManagedZone : undefined}
-            />
-          ) : (
-            <ResponsivePanel open={true} onClose={() => setShowPanel(false)}>
-              <div className="flex items-center justify-between p-4">
-                <span className="text-body-1-bold text-foreground">Info</span>
-                <Button variant="icon" compact onClick={() => setShowPanel(false)}>
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="flex-1 flex items-center justify-center p-4">
-                <span className="text-body-0-regular text-foreground-dim">Select an item to see details</span>
-              </div>
-            </ResponsivePanel>
-          )
-        )}
+        <WorkspaceSidePanel
+          node={selectedNode}
+          open={showPanel}
+          onClose={() => setShowPanel(false)}
+          departmentId={departmentId}
+          isManagedZone={selectedNode?.type === 'folder' ? managedFolderIds.has(selectedNode.id) : undefined}
+          onToggleManagedZone={selectedNode?.type === 'folder' ? toggleManagedZone : undefined}
+        />
         </div>
 
         {/* Context Menu */}
