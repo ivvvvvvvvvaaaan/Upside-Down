@@ -5,12 +5,12 @@ import { UserCollectionsProvider, SmartCollectionsProvider, FileTreeProvider, Pe
 /**
  * Nextgen Layout
  *
- * Wraps all nextgen pages with providers for shared state:
+ * Provider order matters:
  * - PersonaProvider: manages active persona for access scoping
- * - UserCollectionsProvider: manages user-created collections (prototype, not persisted)
- * - AccessProvider: manages folder-level and asset-level access based on persona and collection shares
+ * - UserCollectionsProvider: manages user-created collections
+ * - FileTreeProvider: manages unified workspace file tree (must wrap AccessProvider — mutable tree consumed reactively)
+ * - AccessProvider: manages access based on persona, grants, and file tree
  * - SmartCollectionsProvider: manages filter-based smart collections (consumes AccessProvider)
- * - FileTreeProvider: manages unified workspace file tree (shared between Workspace and Finder)
  */
 export default function NextgenLayout({
   children,
@@ -20,13 +20,13 @@ export default function NextgenLayout({
   return (
     <PersonaProvider>
       <UserCollectionsProvider>
-        <AccessProvider>
-          <SmartCollectionsProvider>
-            <FileTreeProvider>
+        <FileTreeProvider>
+          <AccessProvider>
+            <SmartCollectionsProvider>
               {children}
-            </FileTreeProvider>
-          </SmartCollectionsProvider>
-        </AccessProvider>
+            </SmartCollectionsProvider>
+          </AccessProvider>
+        </FileTreeProvider>
       </UserCollectionsProvider>
     </PersonaProvider>
   )

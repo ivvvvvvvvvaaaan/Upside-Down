@@ -512,6 +512,18 @@ export function getDepartmentWorkspaceFiles(departmentId: DepartmentId): Workspa
   return departmentFileMap[departmentId] ?? []
 }
 
+/** Find a node by ID in a tree of WorkspaceFileNodes */
+export function findNodeInTree(nodes: WorkspaceFileNode[], id: string): WorkspaceFileNode | null {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    if (node.children) {
+      const found = findNodeInTree(node.children, id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
 /** Map department IDs used in workspace-data to the wrapper folder IDs used in the Finder tree */
 const DEPARTMENT_FOLDER_MAP: Record<DepartmentId, { id: string; name: string }> = {
   'art-design': { id: 'ws-art', name: 'Art Department' },

@@ -199,6 +199,25 @@ export const SCENARIO: Scenario = {
         { to: 'vendor-framestore', as: 'viewer' },
       ],
     },
+    // Folder-level grants (for demonstrating inheritance)
+    {
+      resource: { id: 'ws-vfx-shots', type: 'folder', dept: 'vfx' },
+      label: 'VFX Shots',
+      by: 'vfx-coordinator',
+      date: '2026-01-15',
+      grants: [
+        { toTeam: 'editorial', as: 'viewer' },
+      ],
+    },
+    {
+      resource: { id: 'ws-editorial-cuts', type: 'folder', dept: 'editorial' },
+      label: 'Editorial Cuts',
+      by: 'editorial-coordinator',
+      date: '2026-01-20',
+      grants: [
+        { toTeam: 'dailies-review', as: 'commenter' },
+      ],
+    },
     // Revoked: editorial shared an early rough cut that was replaced
     {
       resource: { id: 'inst-ws-edit-cut-2', type: 'asset', dept: 'editorial' },

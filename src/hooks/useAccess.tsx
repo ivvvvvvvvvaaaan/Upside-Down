@@ -30,7 +30,8 @@ import type {
   Permission,
 } from '@/lib/grants'
 import { isDepartmentRole } from '@/lib/personas'
-import { getDepartmentWorkspaceFiles } from '@/lib/workspace-data'
+import { useFileTree } from './useFileTree'
+import { getDepartmentWorkspaceFiles, findNodeInTree } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 
 // Re-export types consumers may need
@@ -66,6 +67,13 @@ interface AccessContextValue {
   roleGroups: RoleGroup[]
   updateRoleGroup: (id: AccessProfileId, permissions: Permission[]) => void
   resetRoleGroups: () => void
+
+  // Inheritance display
+  getInheritedGrants: (resourceId: string) => { grant: Grant; fromResourceId: string; fromResourceName: string }[]
+  getCollectionRippleGrants: (assetId: string) => { grant: Grant; fromResourceId: string; fromResourceName: string }[]
+
+  // Sharing authority
+  canShare: () => boolean
 
   // Read state tracking
   readShareIds: Set<string>
@@ -115,16 +123,6 @@ function collectAllNodeIds(nodes: WorkspaceFileNode[]): string[] {
   return ids
 }
 
-/** Pre-computed map of workspace node ID -> department ID (O(1) lookup) */
-const NODE_TO_DEPARTMENT: Map<string, DepartmentId> = (() => {
-  const map = new Map<string, DepartmentId>()
-  for (const dept of ALL_DEPARTMENTS) {
-    for (const id of collectAllNodeIds(getDepartmentWorkspaceFiles(dept))) {
-      map.set(id, dept)
-    }
-  }
-  return map
-})()
 
 function mergePermissions(...permissionSets: Permission[][]): Permission[] {
   return Array.from(new Set(permissionSets.flat()))
@@ -142,6 +140,7 @@ function getMorePermissiveTemplate(
 export function AccessProvider({ children }: { children: ReactNode }) {
   const { activePersona } = usePersona()
   const { collections } = useUserCollections()
+  const { tree: fileTree } = useFileTree()
   const [grants, setGrantsState] = useState<Grant[]>(() => {
     if (typeof window === 'undefined') return structuredClone(DEFAULT_GRANTS)
     try {
@@ -159,6 +158,27 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [])
   const [roleGroups, setRoleGroups] = useState<RoleGroup[]>(() => structuredClone(DEFAULT_ROLE_GROUPS))
   const [readShareIds, setReadShareIds] = useState<Set<string>>(() => new Set())
+
+  // Reactive maps derived from the live file tree (handles user-created folders)
+  const { nodeToDepartment, nodeToParent } = useMemo(() => {
+    const deptMap = new Map<string, DepartmentId>()
+    const parentMap = new Map<string, string>()
+    const walk = (nodes: WorkspaceFileNode[], dept: DepartmentId, parentId?: string) => {
+      for (const node of nodes) {
+        deptMap.set(node.id, dept)
+        if (parentId) parentMap.set(node.id, parentId)
+        if (node.children) walk(node.children, dept, node.id)
+      }
+    }
+    for (const dept of ALL_DEPARTMENTS) {
+      // Walk static seed data
+      walk(getDepartmentWorkspaceFiles(dept), dept)
+      // Walk live tree (includes user-created folders)
+      const deptRoot = fileTree.find(n => n.id === DEPARTMENT_WRAPPER_IDS[dept])
+      if (deptRoot?.children) walk(deptRoot.children, dept, deptRoot.id)
+    }
+    return { nodeToDepartment: deptMap, nodeToParent: parentMap }
+  }, [fileTree])
 
   const updateRoleGroup = useCallback((id: AccessProfileId, permissions: Permission[]) => {
     setRoleGroups((prev) =>
@@ -227,6 +247,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [activePersona, userId, collections, grants, roleGroups])
 
   const collectionAssetAccessById = useMemo(() => {
+    const VIEW_ONLY_CAP: Permission[] = ['open', 'download']
     const accessById = new Map<string, {
       templateId: AccessProfileId | null
       permissions: Permission[]
@@ -237,18 +258,27 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       const collectionAccess = collectionAccessById.get(collection.id)
       if (!collectionAccess) continue
 
+      // Apply ripple policy from the grant (default: view-only)
+      const grant = grants.find(g => g.resource.id === collection.id && !g.revokedAt)
+      const policy = grant?.ripplePolicy ?? 'view-only'
+      const cappedPermissions = policy === 'view-only'
+        ? collectionAccess.permissions.filter(p => VIEW_ONLY_CAP.includes(p))
+        : policy === 'match-grant'
+        ? collectionAccess.permissions
+        : (grant?.ripplePermissions ?? VIEW_ONLY_CAP)
+
       for (const assetId of collection.assetIds) {
         const current = accessById.get(assetId)
         accessById.set(assetId, {
           templateId: getMorePermissiveTemplate(current?.templateId ?? null, collectionAccess.templateId),
-          permissions: mergePermissions(current?.permissions ?? [], collectionAccess.permissions),
-          canEdit: Boolean(current?.canEdit || collectionAccess.canEdit),
+          permissions: mergePermissions(current?.permissions ?? [], cappedPermissions),
+          canEdit: Boolean(current?.canEdit || cappedPermissions.includes('write')),
         })
       }
     }
 
     return accessById
-  }, [collections, collectionAccessById])
+  }, [collections, collectionAccessById, grants])
 
   // canAccess: check grants + implicit department access
   const canAccess = useCallback((id: string): boolean => {
@@ -268,7 +298,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       // Check if this is a department wrapper ID
       if (DEPARTMENT_WRAPPER_IDS[activePersona.departmentId] === id) return true
       // Check if this node belongs to the user's department
-      const nodeDept = NODE_TO_DEPARTMENT.get(id)
+      const nodeDept = nodeToDepartment.get(id)
       if (nodeDept === activePersona.departmentId) return true
     }
 
@@ -430,6 +460,42 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     )
   }, [roleGroups])
 
+  // Inherited grants display — walks parent chain for folder inheritance
+  const getInheritedGrants = useCallback((resourceId: string) => {
+    const inherited: { grant: Grant; fromResourceId: string; fromResourceName: string }[] = []
+    let parentId = nodeToParent.get(resourceId)
+    while (parentId) {
+      const parentGrants = grants.filter(g => g.resource.id === parentId && !g.revokedAt)
+      if (parentGrants.length > 0) {
+        const name = findNodeInTree(fileTree, parentId)?.name ?? parentId
+        for (const g of parentGrants) {
+          inherited.push({ grant: g, fromResourceId: parentId, fromResourceName: name })
+        }
+      }
+      parentId = nodeToParent.get(parentId)
+    }
+    return inherited
+  }, [nodeToParent, grants, fileTree])
+
+  // Collection ripple grants display — finds grants that reach an asset through collection membership
+  const getCollectionRippleGrants = useCallback((assetId: string) => {
+    const rippled: { grant: Grant; fromResourceId: string; fromResourceName: string }[] = []
+    for (const collection of collections) {
+      if (!collection.assetIds.includes(assetId)) continue
+      const collGrants = grants.filter(g => g.resource.id === collection.id && !g.revokedAt)
+      for (const g of collGrants) {
+        rippled.push({ grant: g, fromResourceId: collection.id, fromResourceName: collection.name })
+      }
+    }
+    return rippled
+  }, [collections, grants])
+
+  // Sharing authority — only manager/artist roles can create grants
+  const canShareFn = useCallback((): boolean => {
+    if (!activePersona) return false
+    return activePersona.role === 'manager' || activePersona.role === 'artist'
+  }, [activePersona])
+
   const contextValue = useMemo(() => ({
     canAccess,
     filterByAccess,
@@ -451,6 +517,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     roleGroups,
     updateRoleGroup,
     resetRoleGroups,
+    getInheritedGrants,
+    getCollectionRippleGrants,
+    canShare: canShareFn,
     readShareIds,
     markShareRead,
     unreadInboxCount,
@@ -475,6 +544,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     roleGroups,
     updateRoleGroup,
     resetRoleGroups,
+    getInheritedGrants,
+    getCollectionRippleGrants,
+    canShareFn,
     readShareIds,
     markShareRead,
     unreadInboxCount,

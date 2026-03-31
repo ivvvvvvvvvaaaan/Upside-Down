@@ -47,6 +47,8 @@ export type RoleGroup = {
   builtIn: boolean
 }
 
+export type RipplePolicy = 'view-only' | 'match-grant' | 'custom'
+
 export type Grant = {
   id: string
   resource: ResourceRef
@@ -56,6 +58,8 @@ export type Grant = {
   grantedByUserId: string
   grantedAt: string
   revokedAt?: string
+  ripplePolicy?: RipplePolicy
+  ripplePermissions?: Permission[]
 }
 
 export const DEFAULT_ROLE_GROUPS: RoleGroup[] = buildRoleGroups()
