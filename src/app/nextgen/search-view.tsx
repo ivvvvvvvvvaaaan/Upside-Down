@@ -76,6 +76,9 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     return accessibleSearchAssets.filter((asset) => matchesFilter(asset, { query: searchQuery }))
   }, [searchQuery, accessibleSearchAssets, hasLoadedAll])
 
+  const curatedResults = useMemo(() => searchResults?.filter(a => !a.isAutoPromoted) ?? [], [searchResults])
+  const workspaceResults = useMemo(() => searchResults?.filter(a => a.isAutoPromoted) ?? [], [searchResults])
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
   }
@@ -153,27 +156,45 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
 
                 {/* Results */}
                 {isSearchActive ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-label-1-medium text-foreground-subtle">
-                        {isSearching ? 'Searching...' : searchResults ? `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}` : ''}
-                      </span>
-                    </div>
-                    {searchResults && searchResults.length > 0 && (
-                      <CardGrid columns={getColumns()} gap="4">
-                        {searchResults.map((asset) => (
-                          <AssetCard
-                            key={asset.id}
-                            asset={asset}
-                            selected={selectedIds.has(asset.id)}
-                            primary={primaryId === asset.id}
-                            onClick={(a, e) => handleAssetClick(a, e, searchResults)}
-                            onMenuClick={handleMenuClick}
-                            showDepartment
-                            fromWorkspace={asset.isAutoPromoted}
-                          />
-                        ))}
-                      </CardGrid>
+                  <div className="space-y-6">
+                    <span className="text-label-1-medium text-foreground-subtle">
+                      {isSearching ? 'Searching...' : searchResults ? `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}` : ''}
+                    </span>
+                    {curatedResults.length > 0 && (
+                      <div className="space-y-3">
+                        <span className="text-label-1-medium text-foreground-subtle">Assets</span>
+                        <CardGrid columns={getColumns()} gap="4">
+                          {curatedResults.map((asset) => (
+                            <AssetCard
+                              key={asset.id}
+                              asset={asset}
+                              selected={selectedIds.has(asset.id)}
+                              primary={primaryId === asset.id}
+                              onClick={(a, e) => handleAssetClick(a, e, searchResults!)}
+                              onMenuClick={handleMenuClick}
+                              showDepartment
+                            />
+                          ))}
+                        </CardGrid>
+                      </div>
+                    )}
+                    {workspaceResults.length > 0 && (
+                      <div className="space-y-3">
+                        <span className="text-label-1-medium text-foreground-subtle">Workspace files</span>
+                        <CardGrid columns={getColumns()} gap="4">
+                          {workspaceResults.map((asset) => (
+                            <AssetCard
+                              key={asset.id}
+                              asset={asset}
+                              selected={selectedIds.has(asset.id)}
+                              primary={primaryId === asset.id}
+                              onClick={(a, e) => handleAssetClick(a, e, searchResults!)}
+                              onMenuClick={handleMenuClick}
+                              showDepartment
+                            />
+                          ))}
+                        </CardGrid>
+                      </div>
                     )}
                     {searchResults && searchResults.length === 0 && (
                       <div className="text-center py-12">

@@ -61,6 +61,7 @@ export function InboxView() {
     if (!selectedEntry) return undefined
     const kind = selectedEntry.resourceType as AccessEntryKind
     if (kind === 'collection') return `/nextgen/collections/${selectedEntry.resourceId}`
+    if (kind === 'smart-collection') return `/nextgen/smart-collections/${selectedEntry.resourceId}`
     if (kind === 'folder') return selectedEntry.departmentId ? `/nextgen/workspace/${selectedEntry.departmentId}` : '/nextgen/workspace'
     return undefined
   }, [selectedEntry])

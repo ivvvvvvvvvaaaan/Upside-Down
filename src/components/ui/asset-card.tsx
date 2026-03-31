@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { Tag } from './tag'
 import { Text } from './text'
-import { MoreVertical, Music } from 'lucide-react'
+import { MoreVertical, Music, FileText, ImageIcon, Film, File } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -235,7 +235,12 @@ export function AssetCard({
         className="object-cover"
       />
     ) : (
-      <div className="absolute inset-0 bg-surface-2" />
+      <div className="absolute inset-0 bg-surface-2 flex items-center justify-center">
+        {asset.type === 'video' || asset.type === 'shot' ? <Film className="w-8 h-8 text-foreground-dim" /> :
+         asset.type === 'image' ? <ImageIcon className="w-8 h-8 text-foreground-dim" /> :
+         asset.type === 'text' ? <FileText className="w-8 h-8 text-foreground-dim" /> :
+         <File className="w-8 h-8 text-foreground-dim" />}
+      </div>
     )
   }
 
@@ -285,15 +290,9 @@ export function AssetCard({
           </Link>
 
           {/* Tag + Metadata - 2nd line with 8px gap */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-hidden">
             {renderTypeTag()}
             {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
-            {showDepartment && asset.department && (
-              <Tag type="neutral" variant="border">{DEPARTMENT_NAMES[asset.department]}</Tag>
-            )}
-            {fromWorkspace && (
-              <Tag type="neutral" variant="border">AI</Tag>
-            )}
             {renderMetadata()}
           </div>
         </div>

@@ -1,14 +1,13 @@
 'use client'
 
 import { useMemo } from 'react'
-import { X, Folder, File, Users, ArrowDown } from 'lucide-react'
+import { X, Folder, File, Users } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
 import { Tag } from '@/components/ui/tag'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import type { DepartmentId } from '@/components/department/types'
-import { getDepartmentConfig } from '@/lib/department-configs'
 import { getAITagsForFile } from '@/lib/ai-tags'
 import { slugify } from '@/lib/smart-collection-filters'
 import { formatDate } from '@/lib/utils'
@@ -133,15 +132,8 @@ export function WorkspaceSidePanel({
         </section>
 
 
-        {/* Permissions — folder inheritance from department root */}
         <section className="space-y-2">
-          <h3 className="text-label-0-bold uppercase text-foreground-dim">Permissions</h3>
-          {departmentId && (
-            <div className="flex items-center gap-1.5 text-label-0-regular text-foreground-dim">
-              <ArrowDown className="w-3 h-3 flex-shrink-0" />
-              <span>Inherited from {getDepartmentConfig(departmentId).name} workspace</span>
-            </div>
-          )}
+          <h3 className="text-label-0-bold uppercase text-foreground-dim">Access</h3>
           <div className="space-y-2">
             {departmentTeams.map((team) => (
                   <div key={team.id} className="flex items-center justify-between gap-2">

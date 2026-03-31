@@ -115,15 +115,16 @@ function collectAllNodeIds(nodes: WorkspaceFileNode[]): string[] {
   return ids
 }
 
-/** Get the department a workspace node belongs to */
-function getDepartmentForNode(nodeId: string): DepartmentId | undefined {
+/** Pre-computed map of workspace node ID -> department ID (O(1) lookup) */
+const NODE_TO_DEPARTMENT: Map<string, DepartmentId> = (() => {
+  const map = new Map<string, DepartmentId>()
   for (const dept of ALL_DEPARTMENTS) {
-    const files = getDepartmentWorkspaceFiles(dept)
-    const allIds = collectAllNodeIds(files)
-    if (allIds.includes(nodeId)) return dept
+    for (const id of collectAllNodeIds(getDepartmentWorkspaceFiles(dept))) {
+      map.set(id, dept)
+    }
   }
-  return undefined
-}
+  return map
+})()
 
 function mergePermissions(...permissionSets: Permission[][]): Permission[] {
   return Array.from(new Set(permissionSets.flat()))
@@ -141,7 +142,21 @@ function getMorePermissiveTemplate(
 export function AccessProvider({ children }: { children: ReactNode }) {
   const { activePersona } = usePersona()
   const { collections } = useUserCollections()
-  const [grants, setGrants] = useState<Grant[]>(() => structuredClone(DEFAULT_GRANTS))
+  const [grants, setGrantsState] = useState<Grant[]>(() => {
+    if (typeof window === 'undefined') return structuredClone(DEFAULT_GRANTS)
+    try {
+      const stored = localStorage.getItem('access-grants')
+      if (stored) return JSON.parse(stored) as Grant[]
+    } catch { /* fall through */ }
+    return structuredClone(DEFAULT_GRANTS)
+  })
+  const setGrants: typeof setGrantsState = useCallback((action) => {
+    setGrantsState((prev) => {
+      const next = typeof action === 'function' ? action(prev) : action
+      try { localStorage.setItem('access-grants', JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+  }, [])
   const [roleGroups, setRoleGroups] = useState<RoleGroup[]>(() => structuredClone(DEFAULT_ROLE_GROUPS))
   const [readShareIds, setReadShareIds] = useState<Set<string>>(() => new Set())
 
@@ -253,7 +268,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       // Check if this is a department wrapper ID
       if (DEPARTMENT_WRAPPER_IDS[activePersona.departmentId] === id) return true
       // Check if this node belongs to the user's department
-      const nodeDept = getDepartmentForNode(id)
+      const nodeDept = NODE_TO_DEPARTMENT.get(id)
       if (nodeDept === activePersona.departmentId) return true
     }
 

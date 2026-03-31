@@ -255,17 +255,16 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
         </div>
 
         {/* Side panel - asset detail when selected, collection settings otherwise */}
-        {sidePanelOpen && primaryAsset ? (
-          <AssetDetailPanel
-            asset={primaryAsset}
-            open
-            onClose={() => { clearSelection(); setSidePanelOpen(false) }}
-            activeCollectionId={collectionId}
-          />
-        ) : collection && hasCollectionAccess ? (
+        <AssetDetailPanel
+          asset={primaryAsset!}
+          open={sidePanelOpen && !!primaryAsset}
+          onClose={() => { clearSelection(); setSidePanelOpen(false) }}
+          activeCollectionId={collectionId}
+        />
+        {collection && hasCollectionAccess && (
           <CollectionSidePanel
             collection={collection}
-            open={sidePanelOpen}
+            open={sidePanelOpen && !primaryAsset}
             onClose={() => setSidePanelOpen(false)}
             onDelete={handleDeleteCollection}
             onShare={handleShareCollection}
@@ -273,7 +272,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
             canDelete={isOwner}
             canShare={isOwner}
           />
-        ) : null}
+        )}
       </div>
     </AppLayout>
   )

@@ -18,7 +18,7 @@ type ShareTab = 'mine' | 'all'
 
 function kindIcon(kind: AccessEntryKind) {
   if (kind === 'folder') return <Folder className="w-4 h-4 text-foreground-dim flex-shrink-0" />
-  if (kind === 'collection') return <LayoutGrid className="w-4 h-4 text-foreground-dim flex-shrink-0" />
+  if (kind === 'collection' || kind === 'smart-collection') return <LayoutGrid className="w-4 h-4 text-foreground-dim flex-shrink-0" />
   return <FileText className="w-4 h-4 text-foreground-dim flex-shrink-0" />
 }
 

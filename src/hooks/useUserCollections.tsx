@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { usePersona } from './usePersona'
 import { buildSeedCollections } from '@/lib/scenario'
 
@@ -50,7 +50,7 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
   }, [collections])
 
   return (
-    <UserCollectionsContext.Provider value={{ collections, createCollection, deleteCollection, getCollection }}>
+    <UserCollectionsContext.Provider value={useMemo(() => ({ collections, createCollection, deleteCollection, getCollection }), [collections, createCollection, deleteCollection, getCollection])}>
       {children}
     </UserCollectionsContext.Provider>
   )

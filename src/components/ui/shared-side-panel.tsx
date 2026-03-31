@@ -27,7 +27,7 @@ interface SharedSidePanelProps {
 
 function kindIcon(kind: AccessEntryKind) {
   if (kind === 'folder') return <Folder className="w-5 h-5 text-foreground-dim flex-shrink-0" />
-  if (kind === 'collection') return <LayoutGrid className="w-5 h-5 text-foreground-dim flex-shrink-0" />
+  if (kind === 'collection' || kind === 'smart-collection') return <LayoutGrid className="w-5 h-5 text-foreground-dim flex-shrink-0" />
   if (kind === 'review-set') return <FileText className="w-5 h-5 text-foreground-dim flex-shrink-0" />
   return <FileText className="w-5 h-5 text-foreground-dim flex-shrink-0" />
 }

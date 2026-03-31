@@ -62,6 +62,7 @@ export type SmartCollection = {
   icon: SmartCollectionIcon
   filter: AssetFilter
   isDefault?: boolean         // Cannot be deleted, only edited
+  createdBy?: string          // Email of creator; absent = system default
   createdAt: Date
   groupBy?: SmartCollectionGroupBy   // Auto-generate children from this AI dimension
   parentId?: string                  // Links child back to parent

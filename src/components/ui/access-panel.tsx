@@ -109,6 +109,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
   const handleAddPerson = () => {
     const email = newEmail.trim().toLowerCase()
     if (!email || !resourceRef) return
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return
 
     const persona = PERSONAS.find((p) => p.email === email)
     if (!persona) return

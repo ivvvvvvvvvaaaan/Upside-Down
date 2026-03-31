@@ -5,12 +5,13 @@ import type { SmartCollection, SmartCollectionGroupBy, AssetFilter, Asset, Smart
 import { mergePrototypeAssets } from '@/lib/prototype-assets'
 import { matchesFilter, slugify, generateChildCollections } from '@/lib/smart-collection-filters'
 import { useAccess } from './useAccess'
+import { usePersona } from './usePersona'
 
 // Re-export for existing consumers
 export { matchesFilter, slugify, generateChildCollections } from '@/lib/smart-collection-filters'
 
-// Default smart collections — flat list, each with optional sub-collections via groupBy
-const DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [
+// System default smart collections — visible to everyone
+const SYSTEM_DEFAULTS: SmartCollection[] = [
   {
     id: 'smart-character',
     name: 'Character',
@@ -54,12 +55,16 @@ const DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [
     isDefault: true,
     createdAt: new Date('2026-01-15'),
   },
-  // User-created smart collections
+]
+
+// Seed user-created smart collections — each owned by a specific persona
+const SEED_USER_COLLECTIONS: SmartCollection[] = [
   {
     id: 'smart-finals',
     name: 'Finals',
     icon: 'shot',
     filter: { isFinal: true },
+    createdBy: 'schen@netflix.com',
     createdAt: new Date('2026-02-05'),
   },
   {
@@ -67,6 +72,7 @@ const DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [
     name: 'Key Art',
     icon: 'scene',
     filter: { isKeyArt: true },
+    createdBy: 'psharma@netflix.com',
     createdAt: new Date('2026-02-08'),
   },
   {
@@ -74,9 +80,12 @@ const DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [
     name: 'Needs AI Review',
     icon: 'filter',
     filter: { aiConfidenceBelow: 0.7 },
+    createdBy: 'mtorres@netflix.com',
     createdAt: new Date('2026-02-10'),
   },
 ]
+
+const DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [...SYSTEM_DEFAULTS, ...SEED_USER_COLLECTIONS]
 
 export interface RelatedCollections {
   characters: SmartCollection[]
@@ -86,6 +95,7 @@ export interface RelatedCollections {
 
 interface SmartCollectionsContextValue {
   collections: SmartCollection[]
+  visibleCollections: SmartCollection[]
   allCollections: SmartCollection[]
   createCollection: (name: string, icon: SmartCollectionIcon, filter: AssetFilter) => SmartCollection
   updateCollection: (id: string, updates: Partial<Omit<SmartCollection, 'id' | 'isDefault' | 'createdAt'>>) => void
@@ -106,6 +116,14 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
   const [allAssets, setAllAssets] = useState<Asset[]>([])
   const [assetsLoading, setAssetsLoading] = useState(true)
   const { filterByAccess } = useAccess()
+  const { activePersona } = usePersona()
+  const personaEmail = activePersona?.email
+
+  // Collections visible to the active persona: defaults + own creations (admin sees all)
+  const visibleCollections = useMemo(() => {
+    if (!activePersona) return collections
+    return collections.filter(c => c.isDefault || c.createdBy === personaEmail)
+  }, [collections, activePersona, personaEmail])
 
   // Scoped assets: filtered by folder access when a persona is active
   const scopedAssets = useMemo(() => {
@@ -130,11 +148,11 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
     fetchAll()
   }, [])
 
-  // Compute child collections from scoped assets (persona-filtered)
+  // Compute child collections from scoped assets (only for visible parents)
   const childCollections = useMemo(() => {
     if (scopedAssets.length === 0) return []
-    return collections.flatMap(parent => generateChildCollections(parent, scopedAssets))
-  }, [collections, scopedAssets])
+    return visibleCollections.flatMap(parent => generateChildCollections(parent, scopedAssets))
+  }, [visibleCollections, scopedAssets])
 
   // All collections = parents + children
   const allCollections = useMemo(() => {
@@ -152,11 +170,12 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
       icon,
       filter,
       isDefault: false,
+      createdBy: personaEmail,
       createdAt: new Date(),
     }
     setCollections(prev => [...prev, newCollection])
     return newCollection
-  }, [])
+  }, [personaEmail])
 
   const updateCollection = useCallback((
     id: string,
@@ -168,9 +187,12 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
   }, [])
 
   const deleteCollection = useCallback((id: string): boolean => {
+    const target = collections.find(c => c.id === id)
+    if (!target || target.isDefault) return false
+    if (target.createdBy && target.createdBy !== personaEmail) return false
     setCollections(prev => prev.filter(c => c.id !== id))
     return true
-  }, [])
+  }, [collections, personaEmail])
 
   const getCollection = useCallback((id: string): SmartCollection | undefined => {
     return allCollections.find(c => c.id === id)
@@ -247,8 +269,9 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
 
   return (
     <SmartCollectionsContext.Provider
-      value={{
+      value={useMemo(() => ({
         collections,
+        visibleCollections,
         allCollections,
         createCollection,
         updateCollection,
@@ -260,7 +283,7 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
         allAssets,
         scopedAssets,
         assetsLoading,
-      }}
+      }), [collections, visibleCollections, allCollections, createCollection, updateCollection, deleteCollection, getCollection, getChildren, getRelatedCollections, filterAssets, allAssets, scopedAssets, assetsLoading])}
     >
       {children}
     </SmartCollectionsContext.Provider>

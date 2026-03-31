@@ -14,8 +14,9 @@ interface ResponsivePanelProps {
 /**
  * ResponsivePanel
  *
- * Desktop (≥ md): inline push-panel (360px, border-left)
- * Mobile (< md): full-screen overlay sliding in from the right
+ * Desktop (≥ md): inline push-panel (360px, border-left). Renders hidden when
+ * closed so sibling panels sharing the same slot don't cause layout shift.
+ * Mobile (< md): full-screen overlay sliding in from the right.
  */
 export function ResponsivePanel({ open, onClose, children, className }: ResponsivePanelProps) {
   const isMobile = useIsMobile()
@@ -29,7 +30,6 @@ export function ResponsivePanel({ open, onClose, children, className }: Responsi
     return () => document.removeEventListener('keydown', handler)
   }, [open, isMobile, onClose])
 
-
   useEffect(() => {
     if (!isMobile || !open) return
     const prev = document.body.style.overflow
@@ -39,9 +39,8 @@ export function ResponsivePanel({ open, onClose, children, className }: Responsi
     }
   }, [isMobile, open])
 
-  if (!open) return null
-
   if (isMobile) {
+    if (!open) return null
     return (
       <div className="fixed inset-0 z-40">
         <div
@@ -66,6 +65,7 @@ export function ResponsivePanel({ open, onClose, children, className }: Responsi
     <div
       className={cn(
         'w-[360px] flex-shrink-0 border-l border-border bg-surface-1 flex flex-col h-full',
+        !open && 'hidden',
         className,
       )}
     >

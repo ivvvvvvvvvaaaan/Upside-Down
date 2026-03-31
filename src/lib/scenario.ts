@@ -178,6 +178,16 @@ export const SCENARIO: Scenario = {
         { to: 'creative-david', as: 'viewer' },
       ],
     },
+    // Smart collection share: Sarah Chen shares "Finals" with editorial team
+    {
+      resource: { id: 'smart-finals', type: 'smart-collection' },
+      label: 'Finals',
+      by: 'vfx-coordinator',
+      date: '2026-02-12',
+      grants: [
+        { to: 'editorial-artist', as: 'viewer' },
+      ],
+    },
     // Revoked: vendor had an earlier comp share that was superseded
     {
       resource: { id: 'inst-ws-vfx-010-030', type: 'asset', dept: 'vfx' },
@@ -250,8 +260,13 @@ export function buildLabels(): Record<string, string> {
   const labels: Record<string, string> = {
     project: SCENARIO.projectName,
   }
+  // Start with share labels (used for assets)
   for (const share of SCENARIO.shares) {
     labels[share.resource.id] = share.label
+  }
+  // Override with collection names so shared/inbox views match nav names
+  for (const coll of SCENARIO.collections) {
+    labels[coll.id] = coll.name
   }
   return labels
 }

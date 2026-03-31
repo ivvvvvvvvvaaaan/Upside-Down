@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -498,17 +498,20 @@ function SharedCollectionNavItems() {
   const { sharesReceivedByMe, allProjectShares, readShareIds } = useAccess()
   const { isAdmin } = usePersona()
   const entries = isAdmin ? allProjectShares : sharesReceivedByMe
-  const sharedCollections = entries.filter(e => e.resourceType === 'collection')
+  const sharedCollections = entries.filter(e => e.resourceType === 'collection' || e.resourceType === 'smart-collection')
   if (sharedCollections.length === 0) return null
 
   return (
     <>
       {sharedCollections.map((entry) => {
         const isUnread = !readShareIds.has(entry.id)
+        const href = entry.resourceType === 'smart-collection'
+          ? `/nextgen/smart-collections/${entry.resourceId}`
+          : `/nextgen/collections/${entry.resourceId}`
         return (
           <TreeNavLink
             key={entry.id}
-            href={`/nextgen/collections/${entry.resourceId}`}
+            href={href}
             label={entry.label}
             badge={isUnread ? 1 : undefined}
             badgeStyle="count"
@@ -523,7 +526,7 @@ function SharedCollectionNavItems() {
 
 function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
   const { collections: userCollections } = useUserCollections()
-  const { collections: smartCollections, getChildren, scopedAssets } = useSmartCollections()
+  const { visibleCollections: smartCollections, getChildren, scopedAssets } = useSmartCollections()
   const { tree: fileTree } = useFileTree()
   const { sharesReceivedByMe, allProjectShares, canAccess } = useAccess()
   const { activePersona, isAdmin } = usePersona()
@@ -542,6 +545,14 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
     if (activePersona) return collection.createdBy === activePersona.email
     return !sharedCollectionIds.has(collection.id)
   })
+
+  const smartCollectionCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const c of smartCollections) {
+      counts.set(c.id, scopedAssets.filter(a => matchesFilter(a, c.filter)).length)
+    }
+    return counts
+  }, [smartCollections, scopedAssets])
 
   return (
     <>
@@ -570,18 +581,15 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
       {/* Collections — smart + user */}
       <SectionHeader title="Collections" />
       <div className="px-3 space-y-1">
-        {smartCollections.map((collection) => {
-          const count = scopedAssets.filter(a => matchesFilter(a, collection.filter)).length
-          return (
+        {smartCollections.map((collection) => (
             <SmartCollectionNavItem
               key={collection.id}
               collection={collection}
               getChildren={getChildren}
               indent
-              badge={count > 0 ? count : undefined}
+              badge={smartCollectionCounts.get(collection.id) || undefined}
             />
-          )
-        })}
+          ))}
         {ownedCollections.map((collection) => (
           <TreeNavLink
             key={collection.id}

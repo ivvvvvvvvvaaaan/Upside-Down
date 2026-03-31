@@ -68,7 +68,7 @@ export function AssetDetailPanel({
   reviewNoteSummary = null,
   activeCollectionId,
 }: AssetDetailPanelProps) {
-  if (!open || !asset) return null
+  if (!asset) return <ResponsivePanel open={false} onClose={onClose}><div /></ResponsivePanel>
 
   const duration = getDuration(asset)
   const typeTag = getTypeTag(asset)

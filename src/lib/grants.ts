@@ -7,7 +7,7 @@ import {
   buildRoleGroups,
 } from '@/lib/scenario'
 
-export type ResourceType = 'asset' | 'folder' | 'collection' | 'review-set' | 'project'
+export type ResourceType = 'asset' | 'folder' | 'collection' | 'smart-collection' | 'review-set' | 'project'
 
 export type ResourceRef = {
   id: string
