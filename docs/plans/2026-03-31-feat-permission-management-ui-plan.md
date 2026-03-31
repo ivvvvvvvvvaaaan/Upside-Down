@@ -20,6 +20,8 @@ deepened: 2026-03-31
 3. Added collection-ripple display for assets — separate from folder inheritance per SHARING_SCHEMA
 4. Dropped `disabled` prop — use `readOnly` with a hint message instead
 5. Kept inheritance as display-only — don't modify `canAccess`/`filterByAccess` hot paths
+6. **Adopted Iconik two-system model** — Teams control access scope, Role Groups control capabilities
+7. **Configurable collection ripple** — sharer chooses view-only / match-grant / custom per share
 
 ### Critical Issues Found and Resolved
 - `NODE_TO_PARENT` at module scope would be stale when users create folders (architecture reviewer)
@@ -29,7 +31,22 @@ deepened: 2026-03-31
 
 ## Overview
 
-Add inline permission editing to workspace folders, collections, and individual assets. Users can add people/teams via a search dropdown, assign roles, and remove access — all from existing side panels. Folder grants inherit down the tree. Collection grants ripple as read-only to referenced assets.
+Add inline permission editing to workspace folders, collections, and individual assets. Users can add people/teams via a search dropdown, assign role groups, and remove access — all from existing side panels. Folder grants inherit down the tree. Collection grants ripple with configurable policy.
+
+### Two-System Model (from Iconik comparison)
+
+The permission model separates into two orthogonal axes:
+
+**Teams = access scope (what content you see)**
+- A team grant on a folder/collection/asset gives all team members visibility
+- Team membership is the primary way access flows through the system
+
+**Role Groups = capabilities (what actions you can take)**
+- A role group is a named set of permissions (our existing 7: open, download, write, delete, comment, share, edit-acl)
+- Assigned per-grant: "Editorial team gets Viewer role group on this folder"
+- Existing templates (viewer, editor, contributor, commenter) become role groups
+
+A grant is: `{ principal (user/team), resource, roleGroupId }` — this is what we already have. The conceptual shift is recognizing that teams and role groups serve different purposes and should be managed independently in the UI.
 
 ## Problem Statement
 
@@ -154,20 +171,49 @@ const getCollectionRippleGrants = useCallback((assetId: string): { grant: Grant;
 - [ ] Add `getCollectionRippleGrants` to AccessProvider
 - [ ] Expose in context value
 
-#### A5. Collection ripple cap
+#### A5. Configurable collection ripple
 
-**File: `src/hooks/useAccess.tsx`**
+**Files: `src/lib/grants.ts`, `src/hooks/useAccess.tsx`**
 
-Cap `collectionAssetAccessById` permissions at `['open', 'download']`:
+Add `RipplePolicy` to the Grant type and enforce it in `collectionAssetAccessById`:
 
 ```ts
-const RIPPLE_CAP: Permission[] = ['open', 'download']
-// In collectionAssetAccessById computation:
-const cappedPermissions = collectionPerms.filter(p => RIPPLE_CAP.includes(p))
+// grants.ts
+export type RipplePolicy = 'view-only' | 'match-grant' | 'custom'
+
+// On Grant type, add optional field:
+ripplePolicy?: RipplePolicy
+ripplePermissions?: Permission[]  // only used when ripplePolicy === 'custom'
 ```
 
-- [ ] Add `RIPPLE_CAP` constant
-- [ ] Cap permissions in `collectionAssetAccessById`
+In `collectionAssetAccessById`, apply the ripple policy:
+
+```ts
+const VIEW_ONLY_CAP: Permission[] = ['open', 'download']
+
+// For each collection grant:
+const policy = grant.ripplePolicy ?? 'view-only'  // default to view-only
+const rippled = policy === 'view-only'
+  ? collectionPerms.filter(p => VIEW_ONLY_CAP.includes(p))
+  : policy === 'match-grant'
+  ? collectionPerms
+  : (grant.ripplePermissions ?? VIEW_ONLY_CAP)
+```
+
+In the UI (CollectionSidePanel), when sharing a collection, show a ripple policy picker below the role dropdown:
+
+```
+[Viewer ▾]  [View only ▾]
+             View only — can see and download
+             Match role — same permissions as above
+             Custom — pick specific permissions
+```
+
+- [ ] Add `RipplePolicy` type to grants.ts
+- [ ] Add `ripplePolicy` + `ripplePermissions` to Grant type
+- [ ] Apply policy in `collectionAssetAccessById`
+- [ ] Default to `view-only` for backwards compatibility
+- [ ] Add ripple policy picker to AccessPanel when `resourceRef.type === 'collection'`
 
 #### A6. canShare guard
 

@@ -59,6 +59,46 @@ Sharing a collection as "viewer" gives view+download on the assets inside. No wr
 - Add inheritance resolution: when checking a child resource, walk up the folder tree to find parent grants
 - Cap collection ripple at read-only (viewer permissions only, regardless of collection-level role)
 
+## Iconik Comparison (added 2026-03-31)
+
+### What Iconik Does
+
+Iconik separates permissions into two orthogonal systems:
+- **Teams** = WHO can access WHAT content (access scope)
+- **Role Groups** = WHAT actions users can take (capabilities)
+
+These are independent. A user's effective permissions = team membership (what they see) + role group (what they can do). You can change either without affecting the other.
+
+Additionally:
+- ACL on any object type (assets, collections, metadata views, storage locations)
+- Role groups are optional and fine-grained (core, upload, organize, comments & approvals)
+- Collection propagation: new assets added to a shared collection auto-get permissions
+
+### What We're Adopting
+
+**Two-system split: Teams for scope, Role Groups for capabilities.**
+
+A grant becomes: `{ principal, resource, roleGroupId }` where:
+- The principal (user or team) + resource defines the access scope
+- The `roleGroupId` defines what capabilities they have within that scope
+
+This solves the case where you want someone to "see everything editors see but only comment" — currently impossible with our single-axis template system.
+
+**Keeping our current 7 permissions** (open, download, write, delete, comment, share, edit-acl) as the atomic capability set. Role groups are named presets of these permissions. No new permission atoms needed.
+
+**Configurable collection propagation.** When sharing a collection, the sharer chooses a ripple policy:
+- `view-only` — assets get open + download (current default)
+- `match-grant` — assets get the same permissions as the collection grant
+- `custom` — pick specific permissions to propagate
+
+### What We're Keeping From Our Model
+
+- Department isolation as a structural principle (Iconik doesn't have this)
+- Folder inheritance vs collection ripple as distinct mechanics
+- Access explainability (ShareLineage, AccessPath)
+- Review-set as a first-class shareable resource
+- `no-inherit` for breaking inheritance (deferred but designed for)
+
 ## Resolved Questions
 
 1. **Search dropdown vs plain email?** → Search dropdown (combobox). Type-ahead matching for both people and teams. Matches the Settings Modal pattern and is more discoverable.
