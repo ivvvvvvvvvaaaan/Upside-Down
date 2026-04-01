@@ -142,7 +142,6 @@ export function WorkspaceSidePanel({
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Details */}
         <section className="space-y-2">
-          <h3 className="text-body-0-bold text-foreground-dim">Details</h3>
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               {isFolder ? (

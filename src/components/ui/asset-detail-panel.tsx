@@ -346,7 +346,6 @@ export function AssetDetailPanel({
         <div className="space-y-4">
           {/* Details Section */}
           <section className="space-y-2">
-            <h3 className="text-body-0-bold text-foreground-dim">Details</h3>
             <div className="space-y-2">
               <div>
                 <p className="text-body-0-regular text-foreground-dim">File name</p>
