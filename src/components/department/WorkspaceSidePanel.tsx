@@ -125,11 +125,25 @@ export function WorkspaceSidePanel({
   return (
     <ResponsivePanel open={open} onClose={onClose}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4">
-        <span className="text-body-1-bold text-foreground">
-          {node ? (isFolder ? 'Folder Info' : 'File Info') : 'Info'}
-        </span>
-        <Button variant="icon" compact onClick={onClose}>
+      <div className="flex items-center justify-between gap-3 p-4">
+        {node ? (
+          <div className="flex items-center gap-3 min-w-0">
+            {isFolder ? (
+              <FolderIcon className="w-8 h-8 text-foreground flex-shrink-0" />
+            ) : (
+              <File className="w-8 h-8 text-foreground-dim flex-shrink-0" />
+            )}
+            <div className="min-w-0">
+              <p className="text-body-0-bold text-foreground truncate">{node.name}</p>
+              <p className="text-body-0-regular text-foreground-dim">
+                {isFolder ? 'Folder' : node.extension?.toUpperCase() || 'File'}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <span className="text-body-0-bold text-foreground">Info</span>
+        )}
+        <Button variant="icon" compact onClick={onClose} className="flex-shrink-0">
           <X className="w-4 h-4" />
         </Button>
       </div>
@@ -142,20 +156,7 @@ export function WorkspaceSidePanel({
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Details */}
         <section className="space-y-2">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              {isFolder ? (
-                <FolderIcon className="w-8 h-8 text-foreground flex-shrink-0" />
-              ) : (
-                <File className="w-8 h-8 text-foreground-dim flex-shrink-0" />
-              )}
-              <div className="min-w-0">
-                <p className="text-body-0-bold text-foreground truncate">{node.name}</p>
-                <p className="text-body-0-regular text-foreground-dim">
-                  {isFolder ? 'Folder' : node.extension?.toUpperCase() || 'File'}
-                </p>
-              </div>
-            </div>
+          <div className="space-y-1">
 
             <div className="space-y-1">
               {isFolder ? (
