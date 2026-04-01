@@ -124,18 +124,16 @@ function RelationshipGraph({
                 stroke="var(--border-dim, #333)" strokeWidth={1} opacity={0.5} />
             ))}
             <circle cx={cx} cy={cy} r={24} fill="var(--surface-3, #333)" stroke="var(--border-dim, #555)" strokeWidth={1} />
-            <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle"
-              fill="var(--foreground, #fff)" fontSize="11" fontWeight="600">
-              {center.name}
-            </text>
             <style>{`
               .graph-node { transform-origin: center; }
               .graph-node .node-icon { opacity: 1; transition: opacity 0.15s; }
               .graph-node .node-label { opacity: 0; transition: opacity 0.15s; }
               .graph-node .node-scale { transition: transform 0.15s ease; transform-box: fill-box; transform-origin: center; }
-              .graph-node:hover .node-icon { opacity: 0; }
+              .graph-node:hover .node-icon { opacity: 0.3; }
               .graph-node:hover .node-label { opacity: 1; font-size: 11px; font-weight: 600; fill: var(--foreground, #fff); }
               .graph-node:hover .node-scale { transform: scale(1.35); }
+              .graph-node:hover ~ .center-label { opacity: 0.3; }
+              .center-label { transition: opacity 0.15s; }
             `}</style>
             {nodes.map(n => {
               const { mainImage } = getCollectionImages(n.id)
@@ -177,6 +175,10 @@ function RelationshipGraph({
                 </a>
               )
             })}
+            <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle"
+              fill="var(--foreground, #fff)" fontSize="11" fontWeight="600" className="center-label pointer-events-none">
+              {center.name}
+            </text>
           </svg>
         </div>
       )}
