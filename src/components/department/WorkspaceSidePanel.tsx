@@ -176,6 +176,12 @@ export function WorkspaceSidePanel({
                 <span className="text-foreground">{formatDate(node.modifiedAt)}</span>
               </div>
               )}
+              {fullPath && (
+              <div className="text-body-0-regular">
+                <span className="text-foreground-dim">Path</span>
+                <p className="text-foreground break-all">{fullPath}</p>
+              </div>
+              )}
             </div>
           </div>
         </section>
@@ -187,14 +193,6 @@ export function WorkspaceSidePanel({
           inheritedGrants={inheritedGrants}
           resourceName={node.name}
         />
-
-        {/* Path */}
-        <section className="space-y-2">
-          <h3 className="text-body-0-bold text-foreground-dim">Path</h3>
-          <p className="text-body-0-regular text-foreground-dim break-all">
-            {fullPath}
-          </p>
-        </section>
       </div>
       )}
     </ResponsivePanel>
