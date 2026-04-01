@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { X, Folder, File } from 'lucide-react'
+import { X, Folder, FolderSymlink, FolderLock, File } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
 import { AccessSummary } from '@/components/ui/access-summary'
@@ -22,6 +22,8 @@ interface WorkspaceSidePanelProps {
   isManagedZone?: boolean
   /** Toggle managed zone for this folder */
   onToggleManagedZone?: (folderId: string) => void
+  /** Folder variant: 'shared' | 'restricted' — changes the folder icon */
+  folderVariant?: 'shared' | 'restricted'
 }
 
 function formatFileSize(bytes?: number): string {
@@ -55,6 +57,10 @@ function findNodePath(nodes: WorkspaceFileNode[], id: string, trail: WorkspaceFi
   return null
 }
 
+const DEPARTMENT_ROOT_ID_TO_ID = new Map(
+  Object.entries(DEPARTMENT_FOLDER_MAP).map(([id, meta]) => [meta.id, id as DepartmentId]),
+)
+
 export function WorkspaceSidePanel({
   node,
   open = true,
@@ -62,18 +68,29 @@ export function WorkspaceSidePanel({
   departmentId,
   isManagedZone,
   onToggleManagedZone,
+  folderVariant,
 }: WorkspaceSidePanelProps) {
   const isFolder = node?.type === 'folder'
+  const FolderIcon = folderVariant === 'shared' ? FolderSymlink
+    : folderVariant === 'restricted' ? FolderLock
+    : Folder
   const fileCount = isFolder && node ? countChildFiles(node) : 0
   const { getInheritedGrants } = useAccess()
   const { tree: fileTree } = useFileTree()
+  const nodePath = useMemo(() => {
+    return node ? findNodePath(fileTree as WorkspaceFileNode[], node.id) : null
+  }, [node, fileTree])
 
   const resolvedDepartmentId = useMemo(() => {
     if (departmentId) return departmentId
     if (!node) return undefined
+    if (node.departmentId) return node.departmentId
     const match = Object.entries(DEPARTMENT_FOLDER_MAP).find(([, meta]) => meta.id === node.id)
-    return match?.[0] as DepartmentId | undefined
-  }, [departmentId, node])
+    if (match) return match[0] as DepartmentId
+
+    const departmentRootId = nodePath?.find((entry) => DEPARTMENT_ROOT_ID_TO_ID.has(entry.id))?.id
+    return departmentRootId ? DEPARTMENT_ROOT_ID_TO_ID.get(departmentRootId) : undefined
+  }, [departmentId, node, nodePath])
 
   const resourceRef: ResourceRef | undefined = node ? {
     id: node.id,
@@ -94,7 +111,6 @@ export function WorkspaceSidePanel({
 
     const departmentRootId = DEPARTMENT_FOLDER_MAP[resolvedDepartmentId].id
     const departmentName = departmentConfigs[resolvedDepartmentId].name
-    const nodePath = findNodePath(fileTree as WorkspaceFileNode[], node.id)
 
     if (!nodePath || nodePath.length === 0) {
       return `${rootPath}/${departmentName}/${node.name}`
@@ -104,7 +120,7 @@ export function WorkspaceSidePanel({
       .map((entry) => entry.id === departmentRootId ? departmentName : entry.name)
 
     return `${rootPath}/${pathNames.join('/')}`
-  }, [node, resolvedDepartmentId, fileTree])
+  }, [node, nodePath, resolvedDepartmentId])
 
   return (
     <ResponsivePanel open={open} onClose={onClose}>
@@ -130,7 +146,7 @@ export function WorkspaceSidePanel({
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               {isFolder ? (
-                <Folder className="w-8 h-8 text-foreground-dim flex-shrink-0" />
+                <FolderIcon className="w-8 h-8 text-foreground-dim flex-shrink-0" />
               ) : (
                 <File className="w-8 h-8 text-foreground-dim flex-shrink-0" />
               )}

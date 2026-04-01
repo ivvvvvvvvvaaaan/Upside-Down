@@ -92,6 +92,22 @@ function findNodeById(nodes: WorkspaceFileNode[], id: string): WorkspaceFileNode
   return null
 }
 
+function findDepartmentIdForNode(
+  node: WorkspaceFileNode,
+  getDepartmentFiles: (id: DepartmentId) => WorkspaceFileNode[],
+): DepartmentId | undefined {
+  if (node.departmentId) return node.departmentId
+  if (isDepartmentLandingNode(node.id)) return node.id
+
+  for (const deptId of ALL_DEPARTMENT_IDS) {
+    if (findNodeById(getDepartmentFiles(deptId), node.id)) {
+      return deptId
+    }
+  }
+
+  return undefined
+}
+
 function isDepartmentLandingNode(nodeId: string): nodeId is DepartmentId {
   return Object.prototype.hasOwnProperty.call(DEPARTMENT_FOLDER_MAP, nodeId)
 }
@@ -184,12 +200,18 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
       .map((entry) => {
         const departmentFiles = entry.departmentId ? (getFileTreeDeptFiles(entry.departmentId) as WorkspaceFileNode[]) : []
         const sourceNode = findNodeById(departmentFiles, entry.resourceId)
-        if (sourceNode?.type === 'folder') return sourceNode
+        if (sourceNode?.type === 'folder') {
+          return {
+            ...sourceNode,
+            departmentId: entry.departmentId,
+          }
+        }
 
         return {
           id: entry.resourceId,
           name: entry.label,
           type: 'folder' as const,
+          departmentId: entry.departmentId,
           modifiedAt: entry.grantedAt,
           children: [],
         }
@@ -238,11 +260,12 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
     return ALL_DEPARTMENT_IDS
       .filter((id) => canAccess(DEPARTMENT_FOLDER_MAP[id].id))
       .map((id) => ({
-      id,
-      name: departmentConfigs[id].name,
-      type: 'folder' as const,
-      children: getFileTreeDeptFiles(id) as WorkspaceFileNode[],
-    }))
+        id,
+        name: departmentConfigs[id].name,
+        type: 'folder' as const,
+        departmentId: id,
+        children: getFileTreeDeptFiles(id) as WorkspaceFileNode[],
+      }))
   }, [isLanding, canAccess, getFileTreeDeptFiles])
 
   // Resolve URL path segments to actual folder nodes
@@ -336,12 +359,16 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   // Flat asset list for selection — on landing each folder's "department" is itself
   const currentGridAssets = useMemo(() => {
     return currentGridItems.map((node) => {
+      const nodeDepartmentId = departmentId
+        ?? findDepartmentIdForNode(node, getFileTreeDeptFiles)
+        ?? activePersona?.departmentId
+        ?? ALL_DEPARTMENT_IDS[0]
       if (node.type === 'file') {
-        return assetBySourceFileId.get(node.id) ?? folderNodeToAsset(node, departmentId!)
+        return assetBySourceFileId.get(node.id) ?? folderNodeToAsset(node, nodeDepartmentId)
       }
-      return folderNodeToAsset(node, (departmentId ?? node.id) as DepartmentId)
+      return folderNodeToAsset(node, nodeDepartmentId)
     })
-  }, [currentGridItems, departmentId, assetBySourceFileId])
+  }, [currentGridItems, departmentId, assetBySourceFileId, getFileTreeDeptFiles, activePersona])
 
   const selectedAssets = useMemo(() => {
     return currentGridAssets.filter((a) => selectedIds.has(a.id))
@@ -438,6 +465,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
           id: DEPARTMENT_FOLDER_MAP[selectedDeptId].id,
           name: selectedNode.name,
           type: 'folder' as const,
+          departmentId: selectedDeptId,
           children: getFileTreeDeptFiles(selectedDeptId) as WorkspaceFileNode[],
         }
       }
@@ -451,12 +479,23 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
         id: DEPARTMENT_FOLDER_MAP[departmentId].id,
         name: departmentName,
         type: 'folder' as const,
+        departmentId,
         children: processedFiles,
       }
     }
 
     return null
   }, [selectedNode, isLanding, currentFolder, departmentId, departmentName, processedFiles, getFileTreeDeptFiles])
+  const selectedNodeDepartmentId = useMemo(() => {
+    return selectedNode
+      ? departmentId ?? findDepartmentIdForNode(selectedNode, getFileTreeDeptFiles)
+      : undefined
+  }, [selectedNode, departmentId, getFileTreeDeptFiles])
+  const effectiveNodeDepartmentId = useMemo(() => {
+    return effectiveNode
+      ? departmentId ?? findDepartmentIdForNode(effectiveNode, getFileTreeDeptFiles)
+      : undefined
+  }, [effectiveNode, departmentId, getFileTreeDeptFiles])
   const pageTitle = landingDrillFolder?.name ?? currentFolder?.name ?? departmentName
   const backHref = isLanding
     ? undefined
@@ -732,9 +771,9 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
         </div>
 
         {/* Side Panel — AssetDetailPanel for files, WorkspaceSidePanel for folders */}
-        {selectedNode?.type === 'file' && departmentId ? (
+        {selectedNode?.type === 'file' && selectedNodeDepartmentId ? (
           <AssetDetailPanel
-            asset={assetBySourceFileId.get(selectedNode.id) ?? folderNodeToAsset(selectedNode, departmentId)}
+            asset={assetBySourceFileId.get(selectedNode.id) ?? folderNodeToAsset(selectedNode, selectedNodeDepartmentId)}
             open={showPanel}
             onClose={() => { setSelectedNode(null); setShowPanel(false) }}
           />
@@ -743,9 +782,10 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
             node={effectiveNode}
             open={showPanel}
             onClose={() => setShowPanel(false)}
-            departmentId={departmentId}
+            departmentId={effectiveNodeDepartmentId}
             isManagedZone={selectedNode?.type === 'folder' ? managedFolderIds.has(selectedNode.id) : undefined}
             onToggleManagedZone={selectedNode?.type === 'folder' ? toggleManagedZone : undefined}
+            folderVariant={selectedNode && sharedFolderIds.has(selectedNode.id) ? 'shared' : selectedNode && !canAccess(getAclResourceId(selectedNode)) ? 'restricted' : undefined}
           />
         )}
         </div>

@@ -14,6 +14,8 @@ export interface UnifiedFileNode {
 
 export interface WorkspaceFileNode extends UnifiedFileNode {
   children?: WorkspaceFileNode[]
+  /** Provenance: which department tree this node belongs to */
+  departmentId?: DepartmentId
   /** Folder-level: zone designation (default: wip) */
   zone?: 'managed' | 'wip'
   /** Computed: true if this node is inside a managed zone */
@@ -551,4 +553,3 @@ export function getFinderWorkspaceTree(): UnifiedFileNode[] {
 
   return departmentFolders
 }
-
