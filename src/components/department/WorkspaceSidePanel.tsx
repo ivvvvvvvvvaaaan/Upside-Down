@@ -146,7 +146,7 @@ export function WorkspaceSidePanel({
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               {isFolder ? (
-                <FolderIcon className="w-8 h-8 text-foreground-dim flex-shrink-0" />
+                <FolderIcon className="w-8 h-8 text-foreground flex-shrink-0" />
               ) : (
                 <File className="w-8 h-8 text-foreground-dim flex-shrink-0" />
               )}
