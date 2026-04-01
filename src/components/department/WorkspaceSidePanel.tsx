@@ -177,9 +177,9 @@ export function WorkspaceSidePanel({
               </div>
               )}
               {fullPath && (
-              <div className="text-body-0-regular">
+              <div className="flex justify-between text-body-0-regular">
                 <span className="text-foreground-dim">Path</span>
-                <p className="text-foreground break-all">{fullPath}</p>
+                <span className="text-foreground text-right truncate ml-2">{fullPath}</span>
               </div>
               )}
             </div>
