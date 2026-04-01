@@ -178,7 +178,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   const [searchQuery, setSearchQuery] = useState('')
   const [newFolderModalOpen, setNewFolderModalOpen] = useState(false)
   const [newFolderParentPath, setNewFolderParentPath] = useState<string[]>([])
-  const [landingDrillFolder, setLandingDrillFolder] = useState<WorkspaceFileNode | null>(null)
+  const [landingDrillPath, setLandingDrillPath] = useState<WorkspaceFileNode[]>([])
   const { createFolder: fileTreeCreateFolder, tree: fileTree, getDepartmentFiles: getFileTreeDeptFiles } = useFileTree()
   // Workspace-level folders: top-level folders created by user (exclude department folders already rendered via departmentNodes)
   const landingFolders = useMemo(() => {
@@ -220,6 +220,10 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
 
   // O(1) lookup for shared folder IDs
   const sharedFolderIds = useMemo(() => new Set(sharedFolderNodes.map(n => n.id)), [sharedFolderNodes])
+  const landingFolderIds = useMemo(
+    () => new Set(landingFolders.map((folder) => folder.id)),
+    [landingFolders],
+  )
   const assetBySourceFileId = useMemo(() => {
     return new Map(assetInstances.map((instance) => [
       instance.sourceFileId,
@@ -237,7 +241,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   useEffect(() => {
     if (landingFolderId && isLanding) {
       const folder = [...sharedFolderNodes, ...landingFolders].find((candidate) => candidate.id === landingFolderId)
-      if (folder) setLandingDrillFolder(folder)
+      if (folder) setLandingDrillPath([folder])
     }
   }, [landingFolderId, isLanding, landingFolders, sharedFolderNodes])
 
@@ -329,8 +333,9 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   const currentGridItems: WorkspaceFileNode[] = useMemo(() => {
     let items: WorkspaceFileNode[]
     if (isLanding) {
-      if (landingDrillFolder) {
-        items = landingDrillFolder.children ?? []
+      const currentLandingFolder = landingDrillPath[landingDrillPath.length - 1]
+      if (currentLandingFolder) {
+        items = currentLandingFolder.children ?? []
       } else {
         return [...departmentNodes, ...sharedFolderNodes, ...landingFolders]
       }
@@ -348,7 +353,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
       if (node.type === 'folder') return activePersona?.role === 'manager'
       return false
     })
-  }, [isLanding, landingDrillFolder, departmentNodes, sharedFolderNodes, landingFolders, processedFiles, resolvedFolderPath, canAccess, activePersona, getAclResourceId])
+  }, [isLanding, landingDrillPath, departmentNodes, sharedFolderNodes, landingFolders, processedFiles, resolvedFolderPath, canAccess, activePersona, getAclResourceId])
 
   // Access-filtered total file count for compact bar
   const filteredFileCount = useMemo(
@@ -397,8 +402,8 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   const handleFolderDrilldown = useCallback((folder: WorkspaceFileNode) => {
     if (isLanding) {
       // Transient folders and shared collections on landing: drill down locally (no URL change)
-      if (folder.id.startsWith('new-folder-') || sharedFolderIds.has(folder.id) || landingDrillFolder) {
-        setLandingDrillFolder(folder)
+      if (folder.id.startsWith('new-folder-') || sharedFolderIds.has(folder.id) || landingFolderIds.has(folder.id) || landingDrillPath.length > 0) {
+        setLandingDrillPath((prev) => [...prev, folder])
       } else {
         router.push(`/nextgen/workspace/${folder.id}`)
       }
@@ -406,7 +411,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
       const newPath = [...urlPath, folder.id]
       router.push(`/nextgen/workspace/${departmentId}/${newPath.join('/')}`)
     }
-  }, [departmentId, isLanding, landingDrillFolder, router, sharedFolderIds, urlPath])
+  }, [departmentId, isLanding, landingDrillPath.length, landingFolderIds, router, sharedFolderIds, urlPath])
 
   const contextMenuItems: ContextMenuItem[] = (() => {
     if (!contextMenu) return []
@@ -496,6 +501,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
       ? departmentId ?? findDepartmentIdForNode(effectiveNode, getFileTreeDeptFiles)
       : undefined
   }, [effectiveNode, departmentId, getFileTreeDeptFiles])
+  const landingDrillFolder = landingDrillPath[landingDrillPath.length - 1] ?? null
   const pageTitle = landingDrillFolder?.name ?? currentFolder?.name ?? departmentName
   const backHref = isLanding
     ? undefined
@@ -606,7 +612,13 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                   <div className="flex items-center justify-between gap-4">
                     {landingDrillFolder ? (
                       <div className="flex items-center gap-3">
-                        <Button variant="icon" size="icon" aria-label="Back" className="-my-4" onClick={() => setLandingDrillFolder(null)}>
+                        <Button
+                          variant="icon"
+                          size="icon"
+                          aria-label="Back"
+                          className="-my-4"
+                          onClick={() => setLandingDrillPath((prev) => prev.slice(0, -1))}
+                        >
                           <ArrowLeft className="w-4 h-4" />
                         </Button>
                         <PageHeader title={pageTitle} />
