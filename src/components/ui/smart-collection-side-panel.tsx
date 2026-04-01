@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { X, Trash2, Users, Film, MapPin, Pencil } from 'lucide-react'
+import { X, Trash2, Users, Film, MapPin, Pencil, LayoutGrid } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from './button'
 import { Tag } from './tag'
@@ -132,19 +132,19 @@ export function SmartCollectionSidePanel({
 
   return (
     <ResponsivePanel open={open} onClose={handleClose}>
-      {/* Header */}
-      <div className="flex items-center justify-between p-4">
-        <div>
-          <span className="text-body-1-bold text-foreground">
-            {editing ? 'Edit Collection' : collection.name}
-          </span>
-          {!editing && matchingCount !== undefined && (
-            <p className="text-label-1-regular text-foreground-dim">
-              {matchingCount} matching asset{matchingCount !== 1 ? 's' : ''}
+      <div className="flex items-center justify-between gap-3 p-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <LayoutGrid className="w-8 h-8 text-foreground flex-shrink-0" />
+          <div className="min-w-0">
+            <p className="text-body-0-bold text-foreground truncate">
+              {editing ? 'Edit Collection' : collection.name}
             </p>
-          )}
+            <p className="text-body-0-regular text-foreground-dim">
+              {editing ? 'Smart Collection' : matchingCount !== undefined ? `${matchingCount} matching asset${matchingCount !== 1 ? 's' : ''}` : 'Smart Collection'}
+            </p>
+          </div>
         </div>
-        <Button variant="icon" compact onClick={handleClose}>
+        <Button variant="icon" compact onClick={handleClose} className="flex-shrink-0">
           <X className="w-4 h-4" />
         </Button>
       </div>
@@ -166,13 +166,13 @@ export function SmartCollectionSidePanel({
               const { label, Icon } = DIMENSION_CONFIG[dimension]
               return (
                 <section key={dimension} className="space-y-2">
-                  <h3 className="text-label-0-bold text-foreground-dim">{label}</h3>
+                  <h3 className="text-body-0-bold text-foreground-dim">{label}</h3>
                   <div className="space-y-2">
                     {items.map(item => (
                       <Link
                         key={item.id}
                         href={`/nextgen/smart-collections/${item.id}`}
-                        className="flex items-center gap-2 text-body-1-regular text-foreground hover:text-foreground-system-link transition-colors"
+                        className="flex items-center gap-2 text-body-0-regular text-foreground hover:text-foreground-system-link transition-colors"
                       >
                         <Icon className="w-4 h-4 text-foreground-dim flex-shrink-0" />
                         {item.name}
@@ -185,7 +185,7 @@ export function SmartCollectionSidePanel({
             {relationships.characters.length === 0 &&
               relationships.scenes.length === 0 &&
               relationships.locations.length === 0 && (
-              <p className="text-label-1-regular text-foreground-dim">
+              <p className="text-body-0-regular text-foreground-dim">
                 No related collections found
               </p>
             )}
@@ -193,18 +193,18 @@ export function SmartCollectionSidePanel({
         ) : (
           <div className="space-y-4">
             <section>
-              <h3 className="text-label-0-bold text-foreground-dim mb-3">
+              <h3 className="text-body-0-bold text-foreground-dim mb-3">
                 Includes assets matching
               </h3>
               {filterSummary.length === 0 ? (
-                <p className="text-label-1-regular text-foreground-dim">
+                <p className="text-body-0-regular text-foreground-dim">
                   No filters. Matches all assets.
                 </p>
               ) : (
                 <div className="space-y-2">
                   {filterSummary.map((item) => (
                     <div key={item.label} className="flex items-center gap-2 p-2 rounded bg-surface-2">
-                      <span className="text-label-0-regular text-foreground-dim">{item.label}</span>
+                      <span className="text-body-0-regular text-foreground-dim">{item.label}</span>
                       <Tag size="compact">{item.value}</Tag>
                     </div>
                   ))}
