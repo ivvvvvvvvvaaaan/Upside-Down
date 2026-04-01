@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import { Avatar } from './avatar'
 import { Button } from './button'
 import { Card } from './card'
-import { Folder, MoreVertical, Zap } from 'lucide-react'
+import { Folder, FolderSymlink, FolderLock, MoreVertical, Zap } from 'lucide-react'
 import Image from 'next/image'
 
 const EMPTY_COLLECTION_PLACEHOLDER = '/assets/clapper-img.png'
@@ -176,6 +176,11 @@ export function CollectionCard({
     ? Math.max(0, assetCount - 2)
     : 0
 
+  // Pick folder icon variant based on access state
+  const FolderIcon = type === 'folder' && accessIcon
+    ? (className?.includes('cursor-not-allowed') ? FolderLock : FolderSymlink)
+    : Folder
+
   // Render thumbnail grid based on numberOfAssets
   const renderThumbnails = () => {
     if (type === 'folder') {
@@ -187,7 +192,7 @@ export function CollectionCard({
             sizeStyles.thumbnail
           )}
         >
-          <Folder className="w-10 h-10 text-foreground-dim" />
+          <FolderIcon className="w-10 h-10 text-foreground-dim" />
           {autoIngest && (
             <div className="absolute top-1.5 right-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400">
               <Zap className="w-3 h-3" />
@@ -408,7 +413,7 @@ export function CollectionCard({
               {assetCount === 0 ? 'No items' : `${assetCount} items`}
             </div>
           </div>
-          {accessIcon && (
+          {type !== 'folder' && accessIcon && (
             <div className="shrink-0 text-foreground-dim">
               {accessIcon}
             </div>
