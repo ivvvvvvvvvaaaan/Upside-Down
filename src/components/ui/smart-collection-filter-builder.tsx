@@ -252,14 +252,12 @@ function FilterEditor({ type, filter, onUpdate }: FilterEditorProps) {
   switch (type) {
     case 'query':
       return (
-        <input
+        <Input
           type="text"
           value={filter.query || ''}
           onChange={(e) => onUpdate({ query: e.target.value || undefined })}
           placeholder="Search text..."
-          className="w-full h-8 px-3 rounded text-body-0-regular bg-surface-flat dark:bg-white/[0.04] border border-border-dim text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-system-focus focus:ring-1 focus:ring-inset focus:ring-border-system-focus"
           autoComplete="off"
-          data-1p-ignore
         />
       )
 
@@ -345,40 +343,36 @@ function FilterEditor({ type, filter, onUpdate }: FilterEditorProps) {
 
     case 'aiScene':
       return (
-        <input
+        <Input
           type="text"
           value={filter.aiScene || ''}
           onChange={(e) => onUpdate({ aiScene: e.target.value || undefined })}
           placeholder="Scene name..."
-          className="w-full h-8 px-3 rounded text-body-0-regular bg-surface-flat dark:bg-white/[0.04] border border-border-dim text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-system-focus focus:ring-1 focus:ring-inset focus:ring-border-system-focus"
           autoComplete="off"
-          data-1p-ignore
         />
       )
 
     case 'aiLocation':
       return (
-        <input
+        <Input
           type="text"
           value={filter.aiLocation || ''}
           onChange={(e) => onUpdate({ aiLocation: e.target.value || undefined })}
           placeholder="Location name..."
-          className="w-full h-8 px-3 rounded text-body-0-regular bg-surface-flat dark:bg-white/[0.04] border border-border-dim text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-system-focus focus:ring-1 focus:ring-inset focus:ring-border-system-focus"
           autoComplete="off"
-          data-1p-ignore
         />
       )
 
     case 'aiConfidenceBelow':
       return (
-        <input
+        <Input
           type="number"
           min={0}
           max={1}
           step={0.1}
           value={filter.aiConfidenceBelow ?? 0.7}
           onChange={(e) => onUpdate({ aiConfidenceBelow: parseFloat(e.target.value) || undefined })}
-          className="w-24 h-8 px-3 rounded text-body-0-regular bg-surface-flat dark:bg-white/[0.04] border border-border-dim text-foreground focus:outline-none focus:border-border-system-focus focus:ring-1 focus:ring-inset focus:ring-border-system-focus"
+          className="w-24"
         />
       )
 

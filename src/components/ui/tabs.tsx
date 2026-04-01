@@ -99,7 +99,7 @@ function Tab({ value, children, className, disabled = false }: TabProps) {
       onClick={() => !disabled && onChange(value)}
       className={cn(
         // Base styles
-        'relative px-4 py-3 text-tab transition-colors',
+        'relative px-4 py-3 text-label-1-bold transition-colors',
         // Bottom border indicator positioning
         '-mb-px',
         // Active state: foreground text + blue underline

@@ -144,7 +144,7 @@ describe('project-level roles', () => {
   it('project roles apply to the project settings resource only', () => {
     const projectAccess = resolveAccess('studio-alex', PROJECT_RESOURCE.id, DEFAULT_GRANTS)
     expect(projectAccess.hasAccess).toBe(true)
-    expect(projectAccess.effectiveProfile).toBe('owner')
+    expect(projectAccess.effectiveProfile).toBe('manager')
     expect(projectAccess.source).toBe('project-direct')
 
     const unrelatedAccess = resolveAccess('studio-alex', 'some-random-resource', DEFAULT_GRANTS)

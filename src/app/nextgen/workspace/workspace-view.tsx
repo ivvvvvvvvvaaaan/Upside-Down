@@ -17,6 +17,7 @@ import {
   CollectionCard,
   SelectionBar,
   NewFolderModal,
+  AccessModal,
 } from '@/components/ui'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
@@ -32,7 +33,7 @@ import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { instanceToAsset } from '@/lib/asset-instances'
 import type { AssetInstance } from '@/lib/asset-instances'
 import { WorkspaceSidePanel } from '@/components/department/WorkspaceSidePanel'
-import { ArrowLeft, List, Columns, LayoutGrid, PanelRight, X, Lock, Users, FolderPlus, Link2 } from 'lucide-react'
+import { ArrowLeft, List, Columns, LayoutGrid, PanelRight, X, Lock, Users, FolderPlus } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { departmentConfigs } from '@/lib/department-configs'
@@ -141,7 +142,7 @@ interface WorkspaceViewProps {
 export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolderId }: WorkspaceViewProps) {
   const router = useRouter()
   const isLanding = !departmentId
-  const { canAccess, sharesReceivedByMe } = useAccess()
+  const { canAccess, sharesReceivedByMe, getInheritedGrants } = useAccess()
   const { activePersona } = usePersona()
   const menuHref = departmentId
     ? `/nextgen/menu?return=%2Fnextgen%2Fworkspace%2F${departmentId}`
@@ -165,6 +166,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   } = useWorkspaceState(departmentId ?? 'art-design', 'files')
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const [accessModalNode, setAccessModalNode] = useState<WorkspaceFileNode | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [newFolderModalOpen, setNewFolderModalOpen] = useState(false)
   const [newFolderParentPath, setNewFolderParentPath] = useState<string[]>([])
@@ -394,6 +396,11 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
           checked: managedFolderIds.has(contextMenu.node.id),
           onClick: () => toggleManagedZone(contextMenu.node.id),
         },
+        {
+          label: 'Manage Access',
+          icon: <Users className="w-4 h-4" />,
+          onClick: () => setAccessModalNode(contextMenu.node),
+        },
       ]
     }
     return []
@@ -403,11 +410,39 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   const currentFolder = isInsideFolder ? resolvedFolderPath[resolvedFolderPath.length - 1] : null
   const departmentName = departmentId ? (departmentConfigs[departmentId]?.name ?? departmentId) : 'Workspace'
 
-  // Default panel context: show current folder or department when nothing is explicitly selected
-  const effectiveNode: WorkspaceFileNode | null =
-    selectedNode ?? currentFolder ?? (departmentId
-      ? { id: DEPARTMENT_FOLDER_MAP[departmentId].id, name: departmentName, type: 'folder' as const, children: processedFiles }
-      : null)
+  // Default panel context: show current folder or department when nothing is explicitly selected.
+  // On the landing page, department cards use department ids for routing, but ACL lives on the
+  // department wrapper folder ids from DEPARTMENT_FOLDER_MAP.
+  const effectiveNode: WorkspaceFileNode | null = useMemo(() => {
+    if (selectedNode) {
+      if (
+        isLanding &&
+        Object.prototype.hasOwnProperty.call(DEPARTMENT_FOLDER_MAP, selectedNode.id)
+      ) {
+        const selectedDeptId = selectedNode.id as DepartmentId
+        return {
+          id: DEPARTMENT_FOLDER_MAP[selectedDeptId].id,
+          name: selectedNode.name,
+          type: 'folder' as const,
+          children: getFileTreeDeptFiles(selectedDeptId) as WorkspaceFileNode[],
+        }
+      }
+      return selectedNode
+    }
+
+    if (currentFolder) return currentFolder
+
+    if (departmentId) {
+      return {
+        id: DEPARTMENT_FOLDER_MAP[departmentId].id,
+        name: departmentName,
+        type: 'folder' as const,
+        children: processedFiles,
+      }
+    }
+
+    return null
+  }, [selectedNode, isLanding, currentFolder, departmentId, departmentName, processedFiles, getFileTreeDeptFiles])
   const pageTitle = landingDrillFolder?.name ?? currentFolder?.name ?? departmentName
   const backHref = isLanding
     ? undefined
@@ -601,9 +636,9 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                             const folderAccessible = canAccess(node.id)
                             const isRestricted = !folderAccessible && !isSharedFolder
                             const accessIcon = isSharedFolder
-                              ? <Link2 className="w-4 h-4" />
+                              ? <Users className="w-3.5 h-3.5" />
                               : isRestricted
-                              ? <Lock className="w-4 h-4" />
+                              ? <Lock className="w-3.5 h-3.5" />
                               : undefined
                             const isLocked = isRestricted || (isSharedFolder && !folderAccessible)
                             return (
@@ -624,6 +659,9 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                                   }
                                 }
                                 onDoubleClick={isLocked ? undefined : () => handleFolderDrilldown(node)}
+                                onMenuClick={isLocked ? undefined : (e) => {
+                                  setContextMenu({ x: e.clientX, y: e.clientY, node })
+                                }}
                               />
                             )
                           }
@@ -710,6 +748,23 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
           onOpenChange={setNewFolderModalOpen}
           onCreate={handleCreateFolder}
         />
+        {accessModalNode && (
+          <AccessModal
+            open={!!accessModalNode}
+            onClose={() => setAccessModalNode(null)}
+            resourceId={accessModalNode.id}
+            resourceRef={{
+              id: accessModalNode.id,
+              type: accessModalNode.type === 'folder' ? 'folder' : 'asset',
+              departmentId,
+            }}
+            inheritedGrants={getInheritedGrants(accessModalNode.id).map(({ grant, fromResourceName }) => ({
+              grant,
+              fromResourceName,
+            }))}
+            title={accessModalNode.name}
+          />
+        )}
       </div>
     </AppLayout>
   )

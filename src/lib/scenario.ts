@@ -76,7 +76,7 @@ export const SCENARIO: Scenario = {
 
   roleGroups: [
     { id: 'owner',       name: 'Owner',       permissions: ['open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl'] },
-    { id: 'manager',     name: 'Manager',     permissions: ['open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl'] },
+    { id: 'manager',     name: 'Full access',  permissions: ['open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl'] },
     { id: 'editor',      name: 'Can edit & share', permissions: ['open', 'download', 'write', 'comment', 'share'] },
     { id: 'contributor', name: 'Can edit',         permissions: ['open', 'write'] },
     { id: 'commenter',   name: 'Can comment', permissions: ['open', 'comment'] },
@@ -85,8 +85,8 @@ export const SCENARIO: Scenario = {
   ],
 
   people: [
-    { id: 'studio-alex',           name: 'Alex Rivera',   email: 'arivera@netflix.com',  role: 'studio-exec', title: 'VP Content',             dept: undefined,    teams: ['studio'] },
-    { id: 'creative-david',        name: 'David Park',    email: 'dpark@netflix.com',    role: 'creative',    title: 'Director',               dept: undefined,    teams: ['dailies-review', 'show-creative'] },
+    { id: 'studio-alex',           name: 'Alex Rivera',   email: 'arivera@netflix.com',  role: 'studio-exec', title: 'VP Content',             dept: undefined,    teams: ['studio-leadership'] },
+    { id: 'creative-david',        name: 'David Park',    email: 'dpark@netflix.com',    role: 'creative',    title: 'Director',               dept: undefined,    teams: ['studio-leadership', 'dailies-review'] },
     { id: 'vfx-supervisor',        name: 'Mike Torres',   email: 'mtorres@netflix.com',  role: 'manager',     title: 'VFX Supervisor',         dept: 'vfx',        teams: ['vfx-core'] },
     { id: 'vfx-coordinator',       name: 'Sarah Chen',    email: 'schen@netflix.com',    role: 'manager',     title: 'VFX Coordinator',        dept: 'vfx',        teams: ['vfx-core', 'dailies-review'] },
     { id: 'editorial-coordinator', name: 'Lisa Kim',      email: 'lkim@netflix.com',     role: 'manager',     title: 'Editorial Coordinator',  dept: 'editorial',  teams: ['editorial', 'dailies-review'] },
@@ -99,13 +99,14 @@ export const SCENARIO: Scenario = {
     { id: 'vfx-core',       name: 'VFX Core',       members: ['vfx-supervisor', 'vfx-coordinator'],                        dept: 'vfx' },
     { id: 'editorial',      name: 'Editorial',      members: ['editorial-coordinator', 'editorial-artist'],                 dept: 'editorial' },
     { id: 'art-design',     name: 'Art & Design',   members: ['art-artist'],                                               dept: 'art-design' },
+    { id: 'studio-leadership', name: 'Studio Leadership', members: ['studio-alex', 'creative-david'] },
     { id: 'framestore-la',  name: 'Framestore LA',  members: ['vendor-framestore'] },
     { id: 'dailies-review', name: 'Dailies Review', members: ['creative-david', 'vfx-coordinator', 'editorial-coordinator'] },
   ],
 
   projectRoles: {
     people: {
-      'studio-alex':           'owner',
+      'studio-alex':           'manager',
       'creative-david':        'manager',
       'vfx-supervisor':        'editor',
       'vfx-coordinator':       'editor',

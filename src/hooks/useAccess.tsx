@@ -67,7 +67,10 @@ interface AccessContextValue {
 
   // Role group management
   roleGroups: RoleGroup[]
-  updateRoleGroup: (id: AccessProfileId, permissions: Permission[]) => void
+  updateRoleGroup: (id: string, permissions: Permission[]) => void
+  renameRoleGroup: (id: string, name: string) => void
+  addRoleGroup: (name: string, permissions: Permission[]) => void
+  removeRoleGroup: (id: string) => void
   resetRoleGroups: () => void
 
   // Inheritance display
@@ -136,7 +139,7 @@ function getMorePermissiveTemplate(
 }
 
 // Bump this when grant schema or seed data changes — forces localStorage re-seed
-const GRANTS_VERSION = 2
+const GRANTS_VERSION = 3
 
 export function AccessProvider({ children }: { children: ReactNode }) {
   const { activePersona } = usePersona()
@@ -198,7 +201,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
     for (const dept of ALL_DEPARTMENTS) {
       // Walk static seed data
-      walk(getDepartmentWorkspaceFiles(dept), dept)
+      walk(getDepartmentWorkspaceFiles(dept), dept, DEPARTMENT_WRAPPER_IDS[dept])
       // Walk live tree (includes user-created folders)
       const deptRoot = fileTree.find(n => n.id === DEPARTMENT_WRAPPER_IDS[dept])
       if (deptRoot?.children) walk(deptRoot.children, dept, deptRoot.id)
@@ -339,11 +342,29 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return canEditAclForResource(userId, resource, currentGrants, roleGroups)
   }, [activePersona, userId, grants, roleGroups, currentUserPermissionsForResource])
 
-  const updateRoleGroup = useCallback((id: AccessProfileId, permissions: Permission[]) => {
+  const updateRoleGroup = useCallback((id: string, permissions: Permission[]) => {
     if (!canEditAclFn(PROJECT_RESOURCE)) return
     setRoleGroups((prev) =>
       prev.map((rg) => (rg.id === id ? { ...rg, permissions } : rg)),
     )
+  }, [canEditAclFn])
+
+  const renameRoleGroup = useCallback((id: string, name: string) => {
+    if (!canEditAclFn(PROJECT_RESOURCE)) return
+    setRoleGroups((prev) =>
+      prev.map((rg) => (rg.id === id ? { ...rg, name } : rg)),
+    )
+  }, [canEditAclFn])
+
+  const addRoleGroup = useCallback((name: string, permissions: Permission[]) => {
+    if (!canEditAclFn(PROJECT_RESOURCE)) return
+    const id = `custom-${name.toLowerCase().replace(/\s+/g, '-')}` as AccessProfileId
+    setRoleGroups((prev) => [...prev, { id, name, permissions, builtIn: false }])
+  }, [canEditAclFn])
+
+  const removeRoleGroup = useCallback((id: string) => {
+    if (!canEditAclFn(PROJECT_RESOURCE)) return
+    setRoleGroups((prev) => prev.filter((rg) => rg.id !== id))
   }, [canEditAclFn])
 
   const resetRoleGroups = useCallback(() => {
@@ -597,6 +618,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     updateGrantProfile,
     roleGroups,
     updateRoleGroup,
+    renameRoleGroup,
+    addRoleGroup,
+    removeRoleGroup,
     resetRoleGroups,
     getInheritedGrants,
     getCollectionRippleGrants,
@@ -625,6 +649,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     updateGrantProfile,
     roleGroups,
     updateRoleGroup,
+    renameRoleGroup,
+    addRoleGroup,
+    removeRoleGroup,
     resetRoleGroups,
     getInheritedGrants,
     getCollectionRippleGrants,

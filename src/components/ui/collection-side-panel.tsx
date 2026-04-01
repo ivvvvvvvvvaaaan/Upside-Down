@@ -3,7 +3,7 @@
 import { X, Trash2, Droplets, ExternalLink } from 'lucide-react'
 import { Button } from './button'
 import { ResponsivePanel } from './responsive-panel'
-import { AccessPanel } from './access-panel'
+import { AccessSummary } from './access-summary'
 import { Tag } from './tag'
 import { SettingToggle } from './settings-panel'
 import type { UserCollection } from '@/hooks'
@@ -55,9 +55,10 @@ export function CollectionSidePanel({
           </div>
         </section>
 
-        <AccessPanel
+        <AccessSummary
           resourceId={collection.id}
           resourceRef={resourceRef}
+          resourceName={collection.name}
         />
 
         <section className="space-y-2">

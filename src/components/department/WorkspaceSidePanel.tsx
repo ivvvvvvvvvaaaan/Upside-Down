@@ -4,7 +4,7 @@ import { X, Folder, File } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
-import { AccessPanel } from '@/components/ui/access-panel'
+import { AccessSummary } from '@/components/ui/access-summary'
 import { Tag } from '@/components/ui/tag'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import type { DepartmentId } from '@/components/department/types'
@@ -127,10 +127,11 @@ export function WorkspaceSidePanel({
         </section>
 
 
-        <AccessPanel
+        <AccessSummary
           resourceId={node?.id ?? ''}
           resourceRef={resourceRef}
           inheritedGrants={inheritedGrants}
+          resourceName={node.name}
         />
 
         {/* AI tags (files only) */}

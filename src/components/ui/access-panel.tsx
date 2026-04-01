@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { X, Users, ChevronDown } from 'lucide-react'
 import { Tag } from './tag'
+import { Input } from './input'
 import { cn } from '@/lib/utils'
 import { useAccess } from '@/hooks'
 import type { Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
@@ -98,12 +99,13 @@ function PermissionDropdown({
   )
 }
 
-function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile }: {
+function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sourceName }: {
   grant: Grant
   readOnly: boolean
   roleGroups: RoleGroup[]
   onRemove?: (grantId: string) => void
   onUpdateProfile?: (grantId: string, profileId: AccessProfileId) => void
+  sourceName?: string
 }) {
   const isOwner = grant.templateId === 'owner'
   const principal = grant.principal
@@ -131,6 +133,11 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile }: {
           </span>
           <div className="min-w-0">
             <span className="text-body-0-regular text-foreground truncate block">{name}</span>
+            {sourceName && (
+              <span className="text-label-0-regular text-foreground-dim truncate block">
+                Via {sourceName}
+              </span>
+            )}
             {subtitle && (
               <span className="text-label-0-regular text-foreground-dim truncate block">{subtitle}</span>
             )}
@@ -221,17 +228,23 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
     setShowDropdown(false)
   }
 
-  // Group inherited grants by source
-  const inheritedBySource = useMemo(() => {
-    if (!inheritedGrants?.length) return []
-    const groups = new Map<string, { name: string; grants: Grant[] }>()
-    for (const { grant, fromResourceName } of inheritedGrants) {
-      const existing = groups.get(fromResourceName) ?? { name: fromResourceName, grants: [] }
-      existing.grants.push(grant)
-      groups.set(fromResourceName, existing)
-    }
-    return Array.from(groups.values())
-  }, [inheritedGrants])
+  const effectiveEntries = useMemo(() => {
+    const directEntries = grants.map((grant) => ({
+      key: `direct-${grant.id}`,
+      grant,
+      readOnly: grantsReadOnly,
+      sourceName: undefined as string | undefined,
+    }))
+
+    const inheritedEntries = (inheritedGrants ?? []).map(({ grant, fromResourceName }) => ({
+      key: `inherited-${grant.id}-${fromResourceName}`,
+      grant,
+      readOnly: true,
+      sourceName: fromResourceName,
+    }))
+
+    return [...directEntries, ...inheritedEntries]
+  }, [grants, grantsReadOnly, inheritedGrants])
 
   return (
     <section className="space-y-2">
@@ -245,18 +258,18 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
           <p className="text-label-0-regular text-foreground-dim">You can add new shares, but only people with admin access can change or remove existing entries</p>
         )}
 
-        {/* Direct grants */}
-        {grants.length === 0 && inheritedBySource.length === 0 && (
+        {effectiveEntries.length === 0 && (
           <p className="text-label-1-regular text-foreground-dim">{emptyLabel}</p>
         )}
-        {grants.length > 0 && (
+        {effectiveEntries.length > 0 && (
           <div className="space-y-0">
-            {grants.map((grant) => (
+            {effectiveEntries.map((entry) => (
               <GrantRow
-                key={grant.id}
-                grant={grant}
-                readOnly={grantsReadOnly}
+                key={entry.key}
+                grant={entry.grant}
+                readOnly={entry.readOnly}
                 roleGroups={roleGroups}
+                sourceName={entry.sourceName}
                 onRemove={revokeGrant}
                 onUpdateProfile={updateGrantProfile}
               />
@@ -264,35 +277,15 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
           </div>
         )}
 
-        {/* Inherited grants */}
-        {inheritedBySource.map((group) => (
-          <div key={group.name} className="space-y-0">
-            <p className="text-label-0-regular text-foreground-dim mb-1">Inherited from {group.name}</p>
-            {group.grants.map((grant) => (
-              <GrantRow
-                key={grant.id}
-                grant={grant}
-                readOnly={true}
-                roleGroups={roleGroups}
-              />
-            ))}
-          </div>
-        ))}
-
         {/* Add person/team */}
         {!readOnly && resourceRef && canAddGrants && (
           <div ref={dropdownRef} className="relative">
-            <input
+            <Input
               type="text"
               value={query}
               onChange={e => { setQuery(e.target.value); setShowDropdown(true) }}
               onFocus={() => query.trim() && setShowDropdown(true)}
               placeholder="Add person or team..."
-              className={cn(
-                'w-full px-2 py-1.5 rounded text-body-0-regular',
-                'bg-surface-flat border border-border-dim text-foreground placeholder:text-foreground-dim',
-                'focus:outline-none focus:border-indigo-500'
-              )}
             />
             {showDropdown && query.trim() && (
               <div className="absolute left-0 right-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 max-h-[240px] overflow-y-auto">

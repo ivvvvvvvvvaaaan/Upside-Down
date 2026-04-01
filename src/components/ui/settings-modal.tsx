@@ -1,44 +1,27 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, RotateCcw, ChevronDown, Plus, Users, X, Shield } from 'lucide-react'
+import { Search, ChevronDown, Plus, X } from 'lucide-react'
 import { Modal } from './modal'
 import { Button } from './button'
-import { Tag } from './tag'
-import { useAccess, usePersona } from '@/hooks'
+import { Input } from './input'
+import { Select } from './select'
+import { Tabs, TabsList, Tab, TabsContent } from './tabs'
+import { useAccess } from '@/hooks'
 import { cn } from '@/lib/utils'
 import { PERSONAS, initials } from '@/lib/personas'
-import { TEAMS, getTeamsForUser, getTeamById } from '@/lib/teams'
-import { getRoleGroup, profileLabel } from '@/lib/grants'
+import { TEAMS, getTeamsForUser } from '@/lib/teams'
+import { getRoleGroup } from '@/lib/grants'
 import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef } from '@/lib/grants'
 
-type TabId = 'people' | 'departments' | 'role-groups'
-
-// --- Permission labels for the Role Groups matrix ---
-
-const CAPABILITY_GROUPS = [
-  {
-    label: 'Core',
-    permissions: [
-      { id: 'open' as Permission, name: 'Read' },
-      { id: 'write' as Permission, name: 'Write' },
-      { id: 'delete' as Permission, name: 'Delete' },
-    ],
-  },
-  {
-    label: 'Collaborate',
-    permissions: [
-      { id: 'comment' as Permission, name: 'Comment' },
-      { id: 'share' as Permission, name: 'Share' },
-      { id: 'download' as Permission, name: 'Download' },
-    ],
-  },
-  {
-    label: 'Admin',
-    permissions: [
-      { id: 'edit-acl' as Permission, name: 'Manage Access' },
-    ],
-  },
+const ALL_PERMISSIONS: { id: Permission; name: string }[] = [
+  { id: 'open', name: 'Read' },
+  { id: 'download', name: 'Download' },
+  { id: 'write', name: 'Write' },
+  { id: 'delete', name: 'Delete' },
+  { id: 'comment', name: 'Comment' },
+  { id: 'share', name: 'Share' },
+  { id: 'edit-acl', name: 'Admin' },
 ]
 
 // --- Shared components ---
@@ -46,23 +29,18 @@ const CAPABILITY_GROUPS = [
 function PermissionCheckbox({
   checked,
   onChange,
-  disabled,
 }: {
   checked: boolean
   onChange: (v: boolean) => void
-  disabled?: boolean
 }) {
   return (
     <button
-      onClick={() => !disabled && onChange(!checked)}
-      disabled={disabled}
+      onClick={() => onChange(!checked)}
       className={cn(
         'w-5 h-5 rounded-sm border flex items-center justify-center transition-colors',
         checked
           ? 'bg-indigo-500 border-indigo-500'
-          : 'bg-surface-flat border-border-subtle',
-        disabled && 'opacity-50 cursor-not-allowed',
-        !disabled && !checked && 'hover:border-foreground-dim',
+          : 'bg-surface-flat border-border-subtle hover:border-foreground-dim',
       )}
     >
       {checked && (
@@ -74,61 +52,10 @@ function PermissionCheckbox({
   )
 }
 
-function RoleDropdown({
-  value,
-  onChange,
-  disabled,
-  roleGroups,
-}: {
-  value: AccessProfileId
-  onChange: (v: AccessProfileId) => void
-  disabled?: boolean
-  roleGroups: RoleGroup[]
-}) {
-  const [open, setOpen] = useState(false)
-  const currentGroup = getRoleGroup(roleGroups, value)
-  const label = currentGroup?.name ?? value
-
-  const options = useMemo(
-    () => roleGroups.filter((rg) => rg.id !== 'owner' && rg.id !== 'link-viewer'),
-    [roleGroups],
-  )
-
-  if (disabled) {
-    return (
-      <span className="text-label-0-regular text-foreground-dim px-2 py-1">
-        Owner
-      </span>
-    )
-  }
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 px-2 py-1 rounded text-label-0-regular text-foreground-dim hover:bg-surface-2 transition-colors"
-      >
-        {label}
-        <ChevronDown className="w-3 h-3" />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 min-w-[160px]">
-          {options.map((rg) => (
-            <button
-              key={rg.id}
-              onClick={() => { onChange(rg.id); setOpen(false) }}
-              className={cn(
-                'w-full text-left px-3 py-2 text-body-0-regular hover:bg-surface-2 transition-colors',
-                value === rg.id ? 'text-foreground' : 'text-foreground-subtle',
-              )}
-            >
-              {rg.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
+function roleGroupOptions(roleGroups: RoleGroup[]) {
+  return roleGroups
+    .filter((rg) => rg.id !== 'owner' && rg.id !== 'link-viewer')
+    .map((rg) => ({ value: rg.id, label: rg.name }))
 }
 
 // --- People tab ---
@@ -146,20 +73,7 @@ function PeopleTab({
   onRemove: (grantId: string) => void
   onAdd: (principal: PrincipalRef, profileId: AccessProfileId) => void
 }) {
-  const [search, setSearch] = useState('')
   const [newEmail, setNewEmail] = useState('')
-
-  const filtered = useMemo(() => {
-    if (!search.trim()) return grants
-    const q = search.toLowerCase()
-    return grants.filter((g) => {
-      const principal = g.principal
-      if (principal.type !== 'user') return false
-      const persona = PERSONAS.find((p) => p.id === principal.userId)
-      if (!persona) return false
-      return persona.name.toLowerCase().includes(q) || persona.email.toLowerCase().includes(q)
-    })
-  }, [grants, search])
 
   const handleAdd = () => {
     const email = newEmail.trim().toLowerCase()
@@ -171,37 +85,42 @@ function PeopleTab({
     setNewEmail('')
   }
 
+  const options = useMemo(() => roleGroupOptions(roleGroups), [roleGroups])
+
   return (
     <div className="space-y-3">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-dim" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Filter people..."
-          className={cn(
-            'w-full pl-9 pr-3 py-2 rounded text-body-0-regular',
-            'bg-surface-flat border border-border-dim text-foreground placeholder:text-foreground-dim',
-            'focus:outline-none focus:border-indigo-500',
-          )}
-        />
+      <div className="space-y-2">
+        <h4 className="text-label-1-bold text-foreground">Search Users</h4>
+        <div className="flex gap-2">
+          <Input
+            icon={<Search />}
+            iconPosition="left"
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            placeholder="Search..."
+          />
+          <Button variant="secondary" onClick={handleAdd} disabled={!newEmail.trim()}>
+            <Plus className="w-3 h-3 mr-1" />
+            Add
+          </Button>
+        </div>
       </div>
 
-      {filtered.length === 0 ? (
-        <p className="text-body-0-regular text-foreground-dim py-4 text-center">No people found.</p>
+      {grants.length === 0 ? (
+        <p className="text-body-0-regular text-foreground-dim py-4 text-center">No people added yet.</p>
       ) : (
         <div className="space-y-1">
-          {filtered.map((grant) => {
+          {grants.map((grant) => {
             const principal = grant.principal
             if (principal.type !== 'user') return null
             const persona = PERSONAS.find((p) => p.id === principal.userId)
             if (!persona) return null
-            const isOwner = grant.templateId === 'owner'
             const teams = getTeamsForUser(persona.id)
 
             return (
-              <div key={grant.id} className="flex items-center justify-between gap-2 py-2 px-1">
+              <div key={grant.id} className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-surface-1 transition-colors">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <span className="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center text-label-0-bold flex-shrink-0">
                     {initials(persona.name)}
@@ -224,189 +143,198 @@ function PeopleTab({
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <RoleDropdown
+                  <Select
+                    options={options}
                     value={grant.templateId ?? 'viewer'}
-                    onChange={(v) => onRoleChange(grant.id, v)}
-                    disabled={isOwner}
-                    roleGroups={roleGroups}
+                    onChange={(v) => onRoleChange(grant.id, v as AccessProfileId)}
+                    size="compact"
+                    className="w-auto flex-shrink-0"
                   />
-                  {!isOwner && (
-                    <button
-                      onClick={() => onRemove(grant.id)}
-                      className="p-1 rounded hover:bg-surface-3 text-foreground-dim hover:text-foreground-negative transition-colors"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
+                  <Button variant="icon" size="compact-icon" onClick={() => onRemove(grant.id)}>
+                    <X className="w-3 h-3" />
+                  </Button>
                 </div>
               </div>
             )
           })}
         </div>
       )}
-
-      <div className="flex gap-1 pt-2 border-t border-border-dim">
-        <input
-          type="email"
-          value={newEmail}
-          onChange={(e) => setNewEmail(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-          placeholder="Add person by email..."
-          className={cn(
-            'flex-1 px-2 py-1 rounded text-body-0-regular',
-            'bg-surface-flat border border-border-dim text-foreground placeholder:text-foreground-dim',
-            'focus:outline-none focus:border-indigo-500',
-          )}
-        />
-        <Button variant="icon" compact onClick={handleAdd} disabled={!newEmail.trim()}>
-          <Plus className="w-3 h-3" />
-        </Button>
-      </div>
     </div>
   )
 }
 
-// --- Teams tab ---
+// --- Departments tab ---
 
-function TeamsTab({
+function DepartmentsTab({
   grants,
   roleGroups,
   onRoleChange,
-  onRemove,
-  onAdd,
 }: {
   grants: Grant[]
   roleGroups: RoleGroup[]
   onRoleChange: (grantId: string, profileId: AccessProfileId) => void
-  onRemove: (grantId: string) => void
-  onAdd: (principal: PrincipalRef, profileId: AccessProfileId) => void
 }) {
-  const [addOpen, setAddOpen] = useState(false)
-  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set())
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [customDepts, setCustomDepts] = useState<{ id: string; name: string }[]>([])
 
-  const toggleTeam = (teamId: string) => {
-    setExpandedTeams(prev => {
+  const toggle = (id: string) => {
+    setExpanded(prev => {
       const next = new Set(prev)
-      if (next.has(teamId)) next.delete(teamId)
-      else next.add(teamId)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }
 
-  const grantedTeamIds = useMemo(
-    () => new Set(grants.map((g) => g.principal.type === 'team' ? g.principal.teamId : '').filter(Boolean)),
-    [grants],
+  const unassignedUsers = useMemo(
+    () => {
+      const assignedIds = new Set(TEAMS.flatMap(t => t.memberUserIds))
+      return PERSONAS.filter(p => !assignedIds.has(p.id))
+    },
+    [],
   )
 
-  const availableTeams = useMemo(
-    () => TEAMS.filter((t) => !grantedTeamIds.has(t.id)),
-    [grantedTeamIds],
-  )
+  const options = useMemo(() => roleGroupOptions(roleGroups), [roleGroups])
 
   return (
     <div className="space-y-3">
       <p className="text-body-0-regular text-foreground-dim">
-        Teams control who can access content. All members inherit the team's permissions and content scope.
+        Departments control who can access content. Members inherit the department's permissions and content scope.
       </p>
 
-      {grants.length === 0 ? (
-        <p className="text-body-0-regular text-foreground-dim py-4 text-center">No teams added yet.</p>
-      ) : (
-        <div className="space-y-1">
-          {grants.map((grant) => {
-            if (grant.principal.type !== 'team') return null
-            const team = getTeamById(grant.principal.teamId)
-            if (!team) return null
-            const isExpanded = expandedTeams.has(team.id)
-            const members = team.memberUserIds
-              .map(uid => PERSONAS.find(p => p.id === uid))
-              .filter(Boolean)
+      <div className="space-y-1">
+        {TEAMS.map((team) => {
+          const isOpen = expanded.has(team.id)
+          const members = team.memberUserIds
+            .map(uid => PERSONAS.find(p => p.id === uid))
+            .filter(Boolean)
+          const grant = grants.find(
+            g => g.principal.type === 'team' && g.principal.teamId === team.id,
+          )
 
-            return (
-              <div key={grant.id} className="rounded border border-border-dim">
-                <div className="flex items-center justify-between gap-2 py-3 px-3">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <button
-                      onClick={() => toggleTeam(team.id)}
-                      className="w-7 h-7 rounded-full bg-surface-3 text-foreground-dim flex items-center justify-center flex-shrink-0 hover:bg-surface-highlight transition-colors"
-                    >
-                      <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', !isExpanded && '-rotate-90')} />
-                    </button>
-                    <div className="min-w-0 flex-1">
-                      <button onClick={() => toggleTeam(team.id)} className="text-body-0-bold text-foreground truncate hover:underline">
-                        {team.name}
-                      </button>
-                      <div className="flex items-center gap-2">
-                        <span className="text-label-0-regular text-foreground-dim">
-                          {members.length} {members.length === 1 ? 'member' : 'members'}
-                        </span>
-                        {team.departmentId && (
-                          <Tag size="compact" type="neutral">{team.departmentId}</Tag>
-                        )}
-                      </div>
-                    </div>
+          return (
+            <div key={team.id} className="rounded">
+              <div className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-surface-1 transition-colors">
+                <button
+                  onClick={() => toggle(team.id)}
+                  className="flex items-center gap-2 min-w-0 flex-1"
+                >
+                  <ChevronDown className={cn('w-3.5 h-3.5 text-foreground-dim transition-transform flex-shrink-0', !isOpen && '-rotate-90')} />
+                  <div className="min-w-0 flex-1 text-left">
+                    <span className="text-body-0-bold text-foreground truncate block">{team.name}</span>
+                    <span className="text-label-0-regular text-foreground-dim block">
+                      {members.length} {members.length === 1 ? 'member' : 'members'}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <RoleDropdown
-                      value={grant.templateId ?? 'viewer'}
-                      onChange={(v) => onRoleChange(grant.id, v)}
-                      disabled={false}
-                      roleGroups={roleGroups}
-                    />
-                    <button
-                      onClick={() => onRemove(grant.id)}
-                      className="p-1 rounded hover:bg-surface-3 text-foreground-dim hover:text-foreground-negative transition-colors"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-                {isExpanded && (
-                  <div className="border-t border-border-dim px-3 py-2 space-y-1 bg-surface-flat">
-                    {members.map(persona => persona && (
-                      <div key={persona.id} className="flex items-center gap-2 py-1.5">
-                        <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center text-label-0-bold flex-shrink-0 text-[10px]">
-                          {initials(persona.name)}
-                        </span>
-                        <span className="text-body-0-regular text-foreground truncate flex-1">{persona.name}</span>
-                        <span className="text-label-0-regular text-foreground-dim truncate">{persona.title}</span>
-                        <span className="text-label-0-regular text-foreground-dim truncate">{persona.email}</span>
-                      </div>
-                    ))}
-                  </div>
+                </button>
+                {grant && (
+                  <Select
+                    options={options}
+                    value={grant.templateId ?? 'viewer'}
+                    onChange={(v) => onRoleChange(grant.id, v as AccessProfileId)}
+                    size="compact"
+                    className="w-auto flex-shrink-0"
+                  />
                 )}
               </div>
-            )
-          })}
-        </div>
-      )}
-
-      {availableTeams.length > 0 && (
-        <div className="relative pt-2 border-t border-border-dim">
-          <Button variant="secondary" compact onClick={() => setAddOpen(!addOpen)}>
-            <Plus className="w-3 h-3 mr-1" />
-            Add Team
-          </Button>
-          {addOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 min-w-[240px]">
-              {availableTeams.map((team) => (
-                <button
-                  key={team.id}
-                  onClick={() => {
-                    onAdd({ type: 'team', teamId: team.id }, 'viewer')
-                    setAddOpen(false)
-                  }}
-                  className="w-full text-left px-3 py-2 text-body-0-regular hover:bg-surface-2 transition-colors flex items-center gap-2"
-                >
-                  <Users className="w-3.5 h-3.5 text-foreground-dim" />
-                  <span className="text-foreground flex-1">{team.name}</span>
-                  <span className="text-label-0-regular text-foreground-dim">{team.memberUserIds.length} members</span>
-                </button>
-              ))}
+              {isOpen && (
+                <div className="ml-6 py-1 space-y-1">
+                  {members.map(persona => persona && (
+                    <div key={persona.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-surface-1 transition-colors group">
+                      <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center text-label-0-bold flex-shrink-0 text-[10px]">
+                        {initials(persona.name)}
+                      </span>
+                      <span className="text-body-0-regular text-foreground truncate flex-1">{persona.name}</span>
+                      <span className="text-label-0-regular text-foreground-dim truncate">{persona.title}</span>
+                      <span className="text-label-0-regular text-foreground-dim truncate">{persona.email}</span>
+                      <Button variant="icon" size="compact-icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                  {members.length === 0 && (
+                    <p className="text-label-0-regular text-foreground-dim py-2 text-center">No members yet</p>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      )}
+          )
+        })}
+
+        {customDepts.map((dept) => {
+          const isOpen = expanded.has(dept.id)
+          return (
+            <div key={dept.id} className="rounded">
+              <div className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-surface-1 transition-colors">
+                <button
+                  onClick={() => toggle(dept.id)}
+                  className="flex items-center gap-2 min-w-0 flex-1"
+                >
+                  <ChevronDown className={cn('w-3.5 h-3.5 text-foreground-dim transition-transform flex-shrink-0', !isOpen && '-rotate-90')} />
+                  <div className="min-w-0 flex-1 text-left">
+                    <span className="text-body-0-bold text-foreground truncate block">{dept.name}</span>
+                    <span className="text-label-0-regular text-foreground-dim block">0 members</span>
+                  </div>
+                </button>
+                <Button variant="icon" size="compact-icon" onClick={() => setCustomDepts(prev => prev.filter(d => d.id !== dept.id))}>
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+              {isOpen && (
+                <div className="ml-6 py-2">
+                  <p className="text-label-0-regular text-foreground-dim text-center">No members yet</p>
+                </div>
+              )}
+            </div>
+          )
+        })}
+
+        {unassignedUsers.length > 0 && (
+          <div className="rounded">
+            <div className="flex items-center gap-2 py-2 px-2 rounded hover:bg-surface-1 transition-colors">
+              <button
+                onClick={() => toggle('unassigned')}
+                className="flex items-center gap-2 min-w-0 flex-1"
+              >
+                <ChevronDown className={cn('w-3.5 h-3.5 text-foreground-dim transition-transform flex-shrink-0', !expanded.has('unassigned') && '-rotate-90')} />
+                <div className="min-w-0 flex-1 text-left">
+                  <span className="text-body-0-bold text-foreground-dim truncate block">Not in a department</span>
+                  <span className="text-label-0-regular text-foreground-dim block">
+                    {unassignedUsers.length} {unassignedUsers.length === 1 ? 'person' : 'people'}
+                  </span>
+                </div>
+              </button>
+            </div>
+            {expanded.has('unassigned') && (
+              <div className="ml-6 py-1 space-y-1">
+                {unassignedUsers.map(persona => (
+                  <div key={persona.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-surface-1 transition-colors">
+                    <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center text-label-0-bold flex-shrink-0 text-[10px]">
+                      {initials(persona.name)}
+                    </span>
+                    <span className="text-body-0-regular text-foreground truncate flex-1">{persona.name}</span>
+                    <span className="text-label-0-regular text-foreground-dim truncate">{persona.title}</span>
+                    <span className="text-label-0-regular text-foreground-dim truncate">{persona.email}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <Button variant="secondary" onClick={() => {
+        const name = prompt('Department name')
+        if (name?.trim()) {
+          const id = `custom-${name.trim().toLowerCase().replace(/\s+/g, '-')}`
+          if (!customDepts.some(d => d.id === id)) {
+            setCustomDepts(prev => [...prev, { id, name: name.trim() }])
+          }
+        }
+      }}>
+        <Plus className="w-3 h-3 mr-1" />
+        New Department
+      </Button>
     </div>
   )
 }
@@ -416,80 +344,84 @@ function TeamsTab({
 function RoleGroupsTab({
   roleGroups,
   onUpdate,
-  onReset,
+  onRename,
+  onAdd,
+  onRemove,
 }: {
   roleGroups: RoleGroup[]
   onUpdate: (id: string, permissions: Permission[]) => void
-  onReset: () => void
+  onRename: (id: string, name: string) => void
+  onAdd: (name: string, permissions: Permission[]) => void
+  onRemove: (id: string) => void
 }) {
+  const visible = roleGroups.filter(rg => rg.id !== 'owner' && rg.id !== 'link-viewer')
+
   return (
     <div className="space-y-4">
       <p className="text-body-0-regular text-foreground-dim">
-        Role groups define what actions users can take. Assign a role group to a person or team to grant capabilities.
+        Role groups define what actions users can take. Assign a role group to a person or department to grant capabilities.
       </p>
 
-      {CAPABILITY_GROUPS.map((group) => (
-        <div key={group.label}>
-          <h4 className="text-label-0-bold uppercase text-foreground-dim mb-2">{group.label}</h4>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border-dim">
-                  <th className="text-left text-label-0-regular text-foreground-dim py-2 pr-4 pl-2 w-[200px]">
-                    Role
-                  </th>
-                  {group.permissions.map((perm) => (
-                    <th key={perm.id} className="text-center text-label-0-regular text-foreground-dim py-2 px-4">
-                      {perm.name}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {roleGroups.map((rg) => {
-                  const isOwner = rg.id === 'owner'
-                  return (
-                    <tr key={rg.id} className="border-b border-border-dim hover:bg-surface-1 transition-colors">
-                      <td className="py-2.5 pr-4 pl-2">
-                        <div className="flex items-center gap-2">
-                          <Shield className="w-3.5 h-3.5 text-foreground-dim" />
-                          <span className="text-body-0-regular text-foreground">{rg.name}</span>
-                          {isOwner && (
-                            <Tag size="compact" type="neutral">system</Tag>
-                          )}
-                        </div>
-                      </td>
-                      {group.permissions.map((perm) => (
-                        <td key={perm.id} className="py-2.5 px-4 text-center">
-                          <div className="flex justify-center">
-                            <PermissionCheckbox
-                              checked={rg.permissions.includes(perm.id)}
-                              disabled={isOwner}
-                              onChange={(checked) => {
-                                const next = checked
-                                  ? [...rg.permissions, perm.id]
-                                  : rg.permissions.filter((p) => p !== perm.id)
-                                onUpdate(rg.id, next)
-                              }}
-                            />
-                          </div>
-                        </td>
-                      ))}
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ))}
-
-      <div className="flex justify-end">
-        <Button variant="secondary" onClick={onReset}>
-          <RotateCcw className="w-3 h-3 mr-2" />
-          Reset to Defaults
-        </Button>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th className="text-left text-label-0-bold uppercase text-foreground-dim py-2 pr-4 pl-2 w-[180px]">
+                Role
+              </th>
+              {ALL_PERMISSIONS.map((perm) => (
+                <th key={perm.id} className="text-center text-label-0-bold uppercase text-foreground-dim py-2 px-3">
+                  {perm.name}
+                </th>
+              ))}
+              <th className="w-8" />
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((rg) => (
+              <tr key={rg.id} className="hover:bg-surface-1 transition-colors group">
+                <td className="py-2.5 pr-4 pl-2">
+                  <input
+                    value={rg.name}
+                    onChange={(e) => onRename(rg.id, e.target.value)}
+                    className="text-body-0-regular text-foreground bg-transparent border-none outline-none w-full hover:bg-surface-2 focus:bg-surface-2 rounded px-1 -mx-1 py-0.5 transition-colors"
+                  />
+                </td>
+                {ALL_PERMISSIONS.map((perm) => (
+                  <td key={perm.id} className="py-2.5 px-3 text-center">
+                    <div className="flex justify-center">
+                      <PermissionCheckbox
+                        checked={rg.permissions.includes(perm.id)}
+                        onChange={(checked) => {
+                          const next = checked
+                            ? [...rg.permissions, perm.id]
+                            : rg.permissions.filter((p) => p !== perm.id)
+                          onUpdate(rg.id, next)
+                        }}
+                      />
+                    </div>
+                  </td>
+                ))}
+                <td className="py-2.5 px-1">
+                  {!rg.builtIn && (
+                    <Button variant="icon" size="compact-icon" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => onRemove(rg.id)}>
+                      <X className="w-3 h-3" />
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
+
+      <Button variant="secondary" onClick={() => {
+        const name = prompt('Role group name')
+        if (name?.trim()) onAdd(name.trim(), ['open'])
+      }}>
+        <Plus className="w-3 h-3 mr-1" />
+        New Role Group
+      </Button>
     </div>
   )
 }
@@ -502,11 +434,12 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<TabId>('people')
   const {
     roleGroups,
     updateRoleGroup,
-    resetRoleGroups,
+    renameRoleGroup,
+    addRoleGroup,
+    removeRoleGroup,
     projectUserGrants,
     projectTeamGrants,
     createProjectGrant,
@@ -514,67 +447,50 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     revokeGrant,
   } = useAccess()
 
-  const tabs: { id: TabId; label: string }[] = [
-    { id: 'people', label: 'People' },
-    { id: 'teams', label: 'Teams' },
-    { id: 'role-groups', label: 'Role Groups' },
-  ]
-
   return (
     <Modal open={open} onOpenChange={onOpenChange} size="md">
       <div className="flex flex-col max-h-[80vh]">
-        <div className="p-6 pb-0 space-y-5">
-          <div>
-            <h2 className="text-heading-2 text-foreground">Access Control</h2>
-            <p className="text-body-0-regular text-foreground-dim mt-1">
-              Manage who can access content and what actions they can take.
-            </p>
-          </div>
+        <div className="p-6 pb-0">
+          <h2 className="text-heading-2 text-foreground">Access Control</h2>
+          <p className="text-body-0-regular text-foreground-dim mt-1 mb-4">
+            Manage who can access content and what actions they can take.
+          </p>
 
-          <div className="flex gap-1 border-b border-border-dim">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  'px-4 py-2 text-body-0-bold transition-colors border-b-2 -mb-px',
-                  activeTab === tab.id
-                    ? 'border-indigo-500 text-foreground'
-                    : 'border-transparent text-foreground-dim hover:text-foreground',
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
+          <Tabs defaultValue="people">
+            <TabsList>
+              <Tab value="people">People</Tab>
+              <Tab value="departments">Departments</Tab>
+              <Tab value="role-groups">Role Groups</Tab>
+            </TabsList>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5">
-          {activeTab === 'people' && (
-            <PeopleTab
-              grants={projectUserGrants}
-              roleGroups={roleGroups}
-              onRoleChange={updateGrantProfile}
-              onRemove={revokeGrant}
-              onAdd={createProjectGrant}
-            />
-          )}
-          {activeTab === 'teams' && (
-            <TeamsTab
-              grants={projectTeamGrants}
-              roleGroups={roleGroups}
-              onRoleChange={updateGrantProfile}
-              onRemove={revokeGrant}
-              onAdd={createProjectGrant}
-            />
-          )}
-          {activeTab === 'role-groups' && (
-            <RoleGroupsTab
-              roleGroups={roleGroups}
-              onUpdate={updateRoleGroup}
-              onReset={resetRoleGroups}
-            />
-          )}
+            <div className="flex-1 overflow-y-auto max-h-[50vh] px-1 pb-4">
+              <TabsContent value="people">
+                <PeopleTab
+                  grants={projectUserGrants}
+                  roleGroups={roleGroups}
+                  onRoleChange={updateGrantProfile}
+                  onRemove={revokeGrant}
+                  onAdd={createProjectGrant}
+                />
+              </TabsContent>
+              <TabsContent value="departments">
+                <DepartmentsTab
+                  grants={projectTeamGrants}
+                  roleGroups={roleGroups}
+                  onRoleChange={updateGrantProfile}
+                />
+              </TabsContent>
+              <TabsContent value="role-groups">
+                <RoleGroupsTab
+                  roleGroups={roleGroups}
+                  onUpdate={updateRoleGroup}
+                  onRename={renameRoleGroup}
+                  onAdd={addRoleGroup}
+                  onRemove={removeRoleGroup}
+                />
+              </TabsContent>
+            </div>
+          </Tabs>
         </div>
 
         <div className="flex justify-end px-6 py-4 border-t border-border-dim">

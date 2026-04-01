@@ -1,7 +1,8 @@
 import { cn } from '@/lib/utils'
 import { Avatar } from './avatar'
+import { Button } from './button'
 import { Card } from './card'
-import { Folder, Zap } from 'lucide-react'
+import { Folder, MoreVertical, Zap } from 'lucide-react'
 import Image from 'next/image'
 
 const EMPTY_COLLECTION_PLACEHOLDER = '/assets/clapper-img.png'
@@ -94,6 +95,8 @@ export interface CollectionCardProps extends React.HTMLAttributes<HTMLDivElement
   isSelected?: boolean
   /** Double-click handler (e.g. navigate) */
   onDoubleClick?: () => void
+  /** Three-dots menu click handler (folders) */
+  onMenuClick?: (e: React.MouseEvent) => void
 }
 
 export function CollectionCard({
@@ -111,6 +114,7 @@ export function CollectionCard({
   autoIngest,
   isSelected: isSelectedProp,
   onDoubleClick,
+  onMenuClick,
   onClick,
   className,
   ...props
@@ -405,9 +409,22 @@ export function CollectionCard({
             </div>
           </div>
           {accessIcon && (
-            <div className="shrink-0 p-1 rounded bg-surface-3 border border-border-dim text-foreground-dim">
+            <div className="shrink-0 text-foreground-dim">
               {accessIcon}
             </div>
+          )}
+          {onMenuClick && (
+            <Button
+              variant="icon"
+              compact
+              onClick={(e) => {
+                e.stopPropagation()
+                onMenuClick(e)
+              }}
+              className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </Button>
           )}
         </div>
       )
