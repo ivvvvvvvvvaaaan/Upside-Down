@@ -1,61 +1,45 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, RotateCcw, X, ChevronDown, Plus, Users } from 'lucide-react'
+import { Search, RotateCcw, ChevronDown, Plus, Users, X, Shield } from 'lucide-react'
 import { Modal } from './modal'
 import { Button } from './button'
 import { Tag } from './tag'
-import { useAccess } from '@/hooks'
+import { useAccess, usePersona } from '@/hooks'
 import { cn } from '@/lib/utils'
 import { PERSONAS, initials } from '@/lib/personas'
-import { TEAMS, getTeamById } from '@/lib/teams'
-import { PROJECT_RESOURCE, getRoleGroup } from '@/lib/grants'
+import { TEAMS, getTeamsForUser, getTeamById } from '@/lib/teams'
+import { getRoleGroup, profileLabel } from '@/lib/grants'
 import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef } from '@/lib/grants'
 
-const ALL_PERMISSIONS: Permission[] = [
-  'open',
-  'download',
-  'write',
-  'delete',
-  'comment',
-  'share',
-  'edit-acl',
+type TabId = 'people' | 'departments' | 'role-groups'
+
+// --- Permission labels for the Role Groups matrix ---
+
+const CAPABILITY_GROUPS = [
+  {
+    label: 'Core',
+    permissions: [
+      { id: 'open' as Permission, name: 'Read' },
+      { id: 'write' as Permission, name: 'Write' },
+      { id: 'delete' as Permission, name: 'Delete' },
+    ],
+  },
+  {
+    label: 'Collaborate',
+    permissions: [
+      { id: 'comment' as Permission, name: 'Comment' },
+      { id: 'share' as Permission, name: 'Share' },
+      { id: 'download' as Permission, name: 'Download' },
+    ],
+  },
+  {
+    label: 'Admin',
+    permissions: [
+      { id: 'edit-acl' as Permission, name: 'Manage Access' },
+    ],
+  },
 ]
-
-const PERM_LABELS: Record<Permission, string> = {
-  'discover': 'View',
-  'open': 'View',
-  'download': 'Save',
-  'write': 'Edit',
-  'delete': 'Delete',
-  'comment': 'Note',
-  'share': 'Share',
-  'edit-acl': 'Admin',
-}
-
-const PERM_TAG_TYPE: Record<Permission, 'neutral'> = {
-  'discover': 'neutral',
-  'open': 'neutral',
-  'download': 'neutral',
-  'write': 'neutral',
-  'delete': 'neutral',
-  'comment': 'neutral',
-  'share': 'neutral',
-  'edit-acl': 'neutral',
-}
-
-const PERM_SHORT: Record<Permission, string> = {
-  'discover': 'View',
-  'open': 'View',
-  'download': 'Save',
-  'write': 'Edit',
-  'delete': 'Delete',
-  'comment': 'Note',
-  'share': 'Share',
-  'edit-acl': 'Admin',
-}
-
-type TabId = 'people' | 'groups' | 'role-groups'
 
 // --- Shared components ---
 
@@ -90,19 +74,7 @@ function PermissionCheckbox({
   )
 }
 
-function PermissionBadges({ permissions }: { permissions: Permission[] }) {
-  return (
-    <div className="flex flex-wrap gap-1">
-      {permissions.map((perm) => (
-        <Tag key={perm} size="compact" type={PERM_TAG_TYPE[perm]}>
-          {PERM_SHORT[perm]}
-        </Tag>
-      ))}
-    </div>
-  )
-}
-
-function PermissionDropdown({
+function RoleDropdown({
   value,
   onChange,
   disabled,
@@ -125,7 +97,7 @@ function PermissionDropdown({
   if (disabled) {
     return (
       <span className="text-label-0-regular text-foreground-dim px-2 py-1">
-        {label}
+        Owner
       </span>
     )
   }
@@ -140,7 +112,7 @@ function PermissionDropdown({
         <ChevronDown className="w-3 h-3" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 min-w-[140px]">
+        <div className="absolute right-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 min-w-[160px]">
           {options.map((rg) => (
             <button
               key={rg.id}
@@ -167,16 +139,12 @@ function PeopleTab({
   onRoleChange,
   onRemove,
   onAdd,
-  canManage,
-  canAdd,
 }: {
   grants: Grant[]
   roleGroups: RoleGroup[]
   onRoleChange: (grantId: string, profileId: AccessProfileId) => void
   onRemove: (grantId: string) => void
   onAdd: (principal: PrincipalRef, profileId: AccessProfileId) => void
-  canManage: boolean
-  canAdd: boolean
 }) {
   const [search, setSearch] = useState('')
   const [newEmail, setNewEmail] = useState('')
@@ -185,8 +153,8 @@ function PeopleTab({
     if (!search.trim()) return grants
     const q = search.toLowerCase()
     return grants.filter((g) => {
-      if (g.principal.type !== 'user') return false
       const principal = g.principal
+      if (principal.type !== 'user') return false
       const persona = PERSONAS.find((p) => p.id === principal.userId)
       if (!persona) return false
       return persona.name.toLowerCase().includes(q) || persona.email.toLowerCase().includes(q)
@@ -198,7 +166,6 @@ function PeopleTab({
     if (!email) return
     const persona = PERSONAS.find((p) => p.email === email)
     if (!persona) return
-    // Don't add if already has a project grant
     if (grants.some((g) => g.principal.type === 'user' && g.principal.userId === persona.id)) return
     onAdd({ type: 'user', userId: persona.id }, 'viewer')
     setNewEmail('')
@@ -206,12 +173,6 @@ function PeopleTab({
 
   return (
     <div className="space-y-3">
-      {!canAdd && !canManage && (
-        <p className="text-label-0-regular text-foreground-dim">You don&apos;t have permission to manage project access</p>
-      )}
-      {canAdd && !canManage && (
-        <p className="text-label-0-regular text-foreground-dim">You can add people, but only people with admin access can change or remove existing roles</p>
-      )}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-dim" />
         <input
@@ -232,11 +193,12 @@ function PeopleTab({
       ) : (
         <div className="space-y-1">
           {filtered.map((grant) => {
-            if (grant.principal.type !== 'user') return null
             const principal = grant.principal
+            if (principal.type !== 'user') return null
             const persona = PERSONAS.find((p) => p.id === principal.userId)
             if (!persona) return null
             const isOwner = grant.templateId === 'owner'
+            const teams = getTeamsForUser(persona.id)
 
             return (
               <div key={grant.id} className="flex items-center justify-between gap-2 py-2 px-1">
@@ -247,19 +209,28 @@ function PeopleTab({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-body-0-regular text-foreground truncate">{persona.name}</span>
-                      <PermissionBadges permissions={grant.permissions} />
+                      {persona.title && (
+                        <span className="text-label-0-regular text-foreground-dim truncate hidden sm:inline">{persona.title}</span>
+                      )}
                     </div>
-                    <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-label-0-regular text-foreground-dim truncate">{persona.email}</span>
+                      {teams.length > 0 && (
+                        <span className="text-label-0-regular text-foreground-dim">
+                          · {teams.map(t => t.name).join(', ')}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <PermissionDropdown
+                  <RoleDropdown
                     value={grant.templateId ?? 'viewer'}
                     onChange={(v) => onRoleChange(grant.id, v)}
-                    disabled={isOwner || !canManage}
+                    disabled={isOwner}
                     roleGroups={roleGroups}
                   />
-                  {!isOwner && canManage && (
+                  {!isOwner && (
                     <button
                       onClick={() => onRemove(grant.id)}
                       className="p-1 rounded hover:bg-surface-3 text-foreground-dim hover:text-foreground-negative transition-colors"
@@ -274,50 +245,53 @@ function PeopleTab({
         </div>
       )}
 
-      {/* Add person */}
-      {canAdd && (
-        <div className="flex gap-1 pt-2 border-t border-border-dim">
-          <input
-            type="email"
-            value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            placeholder="Add person by email..."
-            className={cn(
-              'flex-1 px-2 py-1 rounded text-body-0-regular',
-              'bg-surface-flat border border-border-dim text-foreground placeholder:text-foreground-dim',
-              'focus:outline-none focus:border-indigo-500',
-            )}
-          />
-          <Button variant="icon" compact onClick={handleAdd} disabled={!newEmail.trim()}>
-            <Plus className="w-3 h-3" />
-          </Button>
-        </div>
-      )}
+      <div className="flex gap-1 pt-2 border-t border-border-dim">
+        <input
+          type="email"
+          value={newEmail}
+          onChange={(e) => setNewEmail(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+          placeholder="Add person by email..."
+          className={cn(
+            'flex-1 px-2 py-1 rounded text-body-0-regular',
+            'bg-surface-flat border border-border-dim text-foreground placeholder:text-foreground-dim',
+            'focus:outline-none focus:border-indigo-500',
+          )}
+        />
+        <Button variant="icon" compact onClick={handleAdd} disabled={!newEmail.trim()}>
+          <Plus className="w-3 h-3" />
+        </Button>
+      </div>
     </div>
   )
 }
 
-// --- Groups tab ---
+// --- Teams tab ---
 
-function GroupsTab({
+function TeamsTab({
   grants,
   roleGroups,
   onRoleChange,
   onRemove,
   onAdd,
-  canManage,
-  canAdd,
 }: {
   grants: Grant[]
   roleGroups: RoleGroup[]
   onRoleChange: (grantId: string, profileId: AccessProfileId) => void
   onRemove: (grantId: string) => void
   onAdd: (principal: PrincipalRef, profileId: AccessProfileId) => void
-  canManage: boolean
-  canAdd: boolean
 }) {
   const [addOpen, setAddOpen] = useState(false)
+  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set())
+
+  const toggleTeam = (teamId: string) => {
+    setExpandedTeams(prev => {
+      const next = new Set(prev)
+      if (next.has(teamId)) next.delete(teamId)
+      else next.add(teamId)
+      return next
+    })
+  }
 
   const grantedTeamIds = useMemo(
     () => new Set(grants.map((g) => g.principal.type === 'team' ? g.principal.teamId : '').filter(Boolean)),
@@ -331,12 +305,10 @@ function GroupsTab({
 
   return (
     <div className="space-y-3">
-      {!canAdd && !canManage && (
-        <p className="text-label-0-regular text-foreground-dim">You don&apos;t have permission to manage project access</p>
-      )}
-      {canAdd && !canManage && (
-        <p className="text-label-0-regular text-foreground-dim">You can add groups, but only people with admin access can change or remove existing roles</p>
-      )}
+      <p className="text-body-0-regular text-foreground-dim">
+        Teams control who can access content. All members inherit the team's permissions and content scope.
+      </p>
+
       {grants.length === 0 ? (
         <p className="text-body-0-regular text-foreground-dim py-4 text-center">No teams added yet.</p>
       ) : (
@@ -345,53 +317,78 @@ function GroupsTab({
             if (grant.principal.type !== 'team') return null
             const team = getTeamById(grant.principal.teamId)
             if (!team) return null
+            const isExpanded = expandedTeams.has(team.id)
+            const members = team.memberUserIds
+              .map(uid => PERSONAS.find(p => p.id === uid))
+              .filter(Boolean)
+
             return (
-              <div key={grant.id} className="flex items-center justify-between gap-2 py-2 px-1">
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <span className="w-7 h-7 rounded-full bg-surface-3 text-foreground-dim flex items-center justify-center flex-shrink-0">
-                    <Users className="w-3.5 h-3.5" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-body-0-regular text-foreground truncate">{team.name}</span>
-                      <PermissionBadges permissions={grant.permissions} />
+              <div key={grant.id} className="rounded border border-border-dim">
+                <div className="flex items-center justify-between gap-2 py-3 px-3">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <button
+                      onClick={() => toggleTeam(team.id)}
+                      className="w-7 h-7 rounded-full bg-surface-3 text-foreground-dim flex items-center justify-center flex-shrink-0 hover:bg-surface-highlight transition-colors"
+                    >
+                      <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', !isExpanded && '-rotate-90')} />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <button onClick={() => toggleTeam(team.id)} className="text-body-0-bold text-foreground truncate hover:underline">
+                        {team.name}
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <span className="text-label-0-regular text-foreground-dim">
+                          {members.length} {members.length === 1 ? 'member' : 'members'}
+                        </span>
+                        {team.departmentId && (
+                          <Tag size="compact" type="neutral">{team.departmentId}</Tag>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-label-0-regular text-foreground-dim">
-                      {team.memberUserIds.length} {team.memberUserIds.length === 1 ? 'member' : 'members'}
-                    </span>
                   </div>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <PermissionDropdown
-                    value={grant.templateId ?? 'viewer'}
-                    onChange={(v) => onRoleChange(grant.id, v)}
-                    disabled={!canManage}
-                    roleGroups={roleGroups}
-                  />
-                  {canManage && (
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <RoleDropdown
+                      value={grant.templateId ?? 'viewer'}
+                      onChange={(v) => onRoleChange(grant.id, v)}
+                      disabled={false}
+                      roleGroups={roleGroups}
+                    />
                     <button
                       onClick={() => onRemove(grant.id)}
                       className="p-1 rounded hover:bg-surface-3 text-foreground-dim hover:text-foreground-negative transition-colors"
                     >
                       <X className="w-3 h-3" />
                     </button>
-                  )}
+                  </div>
                 </div>
+                {isExpanded && (
+                  <div className="border-t border-border-dim px-3 py-2 space-y-1 bg-surface-flat">
+                    {members.map(persona => persona && (
+                      <div key={persona.id} className="flex items-center gap-2 py-1.5">
+                        <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center text-label-0-bold flex-shrink-0 text-[10px]">
+                          {initials(persona.name)}
+                        </span>
+                        <span className="text-body-0-regular text-foreground truncate flex-1">{persona.name}</span>
+                        <span className="text-label-0-regular text-foreground-dim truncate">{persona.title}</span>
+                        <span className="text-label-0-regular text-foreground-dim truncate">{persona.email}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )
           })}
         </div>
       )}
 
-      {/* Add group */}
-      {canAdd && availableTeams.length > 0 && (
+      {availableTeams.length > 0 && (
         <div className="relative pt-2 border-t border-border-dim">
           <Button variant="secondary" compact onClick={() => setAddOpen(!addOpen)}>
             <Plus className="w-3 h-3 mr-1" />
-            Add Group
+            Add Team
           </Button>
           {addOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 min-w-[200px]">
+            <div className="absolute left-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 min-w-[240px]">
               {availableTeams.map((team) => (
                 <button
                   key={team.id}
@@ -401,9 +398,9 @@ function GroupsTab({
                   }}
                   className="w-full text-left px-3 py-2 text-body-0-regular hover:bg-surface-2 transition-colors flex items-center gap-2"
                 >
-                  <Users className="w-3 h-3 text-foreground-dim" />
-                  <span className="text-foreground">{team.name}</span>
-                  <span className="text-label-0-regular text-foreground-dim ml-auto">{team.memberUserIds.length} members</span>
+                  <Users className="w-3.5 h-3.5 text-foreground-dim" />
+                  <span className="text-foreground flex-1">{team.name}</span>
+                  <span className="text-label-0-regular text-foreground-dim">{team.memberUserIds.length} members</span>
                 </button>
               ))}
             </div>
@@ -420,70 +417,75 @@ function RoleGroupsTab({
   roleGroups,
   onUpdate,
   onReset,
-  readOnly,
 }: {
   roleGroups: RoleGroup[]
   onUpdate: (id: string, permissions: Permission[]) => void
   onReset: () => void
-  readOnly: boolean
 }) {
   return (
     <div className="space-y-4">
-      {readOnly && (
-        <p className="text-label-0-regular text-foreground-dim">You don&apos;t have permission to edit role groups</p>
-      )}
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border-dim">
-              <th className="text-left text-label-0-bold uppercase text-foreground-dim py-3 pr-4 pl-2">
-                Role Group
-              </th>
-              {ALL_PERMISSIONS.map((perm) => (
-                <th key={perm} className="text-center text-label-0-bold uppercase text-foreground-dim py-3 px-3">
-                  {PERM_LABELS[perm]}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {roleGroups.map((group) => {
-              const isOwner = group.id === 'owner'
-              return (
-                <tr key={group.id} className="border-b border-border-dim hover:bg-surface-1 transition-colors">
-                  <td className="py-3 pr-4 pl-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-body-0-bold text-foreground">{group.name}</span>
-                      {isOwner && (
-                        <span className="text-label-0-regular text-foreground-dim">(system)</span>
-                      )}
-                    </div>
-                  </td>
-                  {ALL_PERMISSIONS.map((perm) => (
-                    <td key={perm} className="py-3 px-3 text-center">
-                      <div className="flex justify-center">
-                        <PermissionCheckbox
-                          checked={group.permissions.includes(perm)}
-                          disabled={isOwner || readOnly}
-                          onChange={(checked) => {
-                            const next = checked
-                              ? [...group.permissions, perm]
-                              : group.permissions.filter((p) => p !== perm)
-                            onUpdate(group.id, next)
-                          }}
-                        />
-                      </div>
-                    </td>
+      <p className="text-body-0-regular text-foreground-dim">
+        Role groups define what actions users can take. Assign a role group to a person or team to grant capabilities.
+      </p>
+
+      {CAPABILITY_GROUPS.map((group) => (
+        <div key={group.label}>
+          <h4 className="text-label-0-bold uppercase text-foreground-dim mb-2">{group.label}</h4>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border-dim">
+                  <th className="text-left text-label-0-regular text-foreground-dim py-2 pr-4 pl-2 w-[200px]">
+                    Role
+                  </th>
+                  {group.permissions.map((perm) => (
+                    <th key={perm.id} className="text-center text-label-0-regular text-foreground-dim py-2 px-4">
+                      {perm.name}
+                    </th>
                   ))}
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {roleGroups.map((rg) => {
+                  const isOwner = rg.id === 'owner'
+                  return (
+                    <tr key={rg.id} className="border-b border-border-dim hover:bg-surface-1 transition-colors">
+                      <td className="py-2.5 pr-4 pl-2">
+                        <div className="flex items-center gap-2">
+                          <Shield className="w-3.5 h-3.5 text-foreground-dim" />
+                          <span className="text-body-0-regular text-foreground">{rg.name}</span>
+                          {isOwner && (
+                            <Tag size="compact" type="neutral">system</Tag>
+                          )}
+                        </div>
+                      </td>
+                      {group.permissions.map((perm) => (
+                        <td key={perm.id} className="py-2.5 px-4 text-center">
+                          <div className="flex justify-center">
+                            <PermissionCheckbox
+                              checked={rg.permissions.includes(perm.id)}
+                              disabled={isOwner}
+                              onChange={(checked) => {
+                                const next = checked
+                                  ? [...rg.permissions, perm.id]
+                                  : rg.permissions.filter((p) => p !== perm.id)
+                                onUpdate(rg.id, next)
+                              }}
+                            />
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
 
       <div className="flex justify-end">
-        <Button variant="secondary" onClick={onReset} disabled={readOnly}>
+        <Button variant="secondary" onClick={onReset}>
           <RotateCcw className="w-3 h-3 mr-2" />
           Reset to Defaults
         </Button>
@@ -510,82 +512,76 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     createProjectGrant,
     updateGrantProfile,
     revokeGrant,
-    canShare,
-    canEditAcl,
   } = useAccess()
-  const canAddProjectGrants = canShare(PROJECT_RESOURCE)
-  const canManageProjectGrants = canEditAcl(PROJECT_RESOURCE)
-  const canEditRoleGroups = canEditAcl(PROJECT_RESOURCE)
+
+  const tabs: { id: TabId; label: string }[] = [
+    { id: 'people', label: 'People' },
+    { id: 'teams', label: 'Teams' },
+    { id: 'role-groups', label: 'Role Groups' },
+  ]
 
   return (
     <Modal open={open} onOpenChange={onOpenChange} size="md">
-      <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col max-h-[80vh]">
+        <div className="p-6 pb-0 space-y-5">
           <div>
-            <h2 className="text-heading-2 text-foreground">Permissions Settings</h2>
+            <h2 className="text-heading-2 text-foreground">Access Control</h2>
             <p className="text-body-0-regular text-foreground-dim mt-1">
-              Manage project roles, teams, and permission templates.
+              Manage who can access content and what actions they can take.
             </p>
           </div>
-          <Button variant="icon" compact onClick={() => onOpenChange(false)}>
-            <X className="w-4 h-4" />
+
+          <div className="flex gap-1 border-b border-border-dim">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  'px-4 py-2 text-body-0-bold transition-colors border-b-2 -mb-px',
+                  activeTab === tab.id
+                    ? 'border-indigo-500 text-foreground'
+                    : 'border-transparent text-foreground-dim hover:text-foreground',
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {activeTab === 'people' && (
+            <PeopleTab
+              grants={projectUserGrants}
+              roleGroups={roleGroups}
+              onRoleChange={updateGrantProfile}
+              onRemove={revokeGrant}
+              onAdd={createProjectGrant}
+            />
+          )}
+          {activeTab === 'teams' && (
+            <TeamsTab
+              grants={projectTeamGrants}
+              roleGroups={roleGroups}
+              onRoleChange={updateGrantProfile}
+              onRemove={revokeGrant}
+              onAdd={createProjectGrant}
+            />
+          )}
+          {activeTab === 'role-groups' && (
+            <RoleGroupsTab
+              roleGroups={roleGroups}
+              onUpdate={updateRoleGroup}
+              onReset={resetRoleGroups}
+            />
+          )}
+        </div>
+
+        <div className="flex justify-end px-6 py-4 border-t border-border-dim">
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>
+            Close
           </Button>
         </div>
-
-        {/* Tab bar */}
-        <div className="flex gap-1 border-b border-border-dim">
-          {([
-            { id: 'people' as TabId, label: 'People' },
-            { id: 'groups' as TabId, label: 'Groups' },
-            { id: 'role-groups' as TabId, label: 'Role Groups' },
-          ]).map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                'px-4 py-2 text-body-0-bold transition-colors border-b-2 -mb-px',
-                activeTab === tab.id
-                  ? 'border-indigo-500 text-foreground'
-                  : 'border-transparent text-foreground-dim hover:text-foreground',
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab content */}
-        {activeTab === 'people' && (
-          <PeopleTab
-            grants={projectUserGrants}
-            roleGroups={roleGroups}
-            onRoleChange={updateGrantProfile}
-            onRemove={revokeGrant}
-            onAdd={createProjectGrant}
-            canManage={canManageProjectGrants}
-            canAdd={canAddProjectGrants}
-          />
-        )}
-        {activeTab === 'groups' && (
-          <GroupsTab
-            grants={projectTeamGrants}
-            roleGroups={roleGroups}
-            onRoleChange={updateGrantProfile}
-            onRemove={revokeGrant}
-            onAdd={createProjectGrant}
-            canManage={canManageProjectGrants}
-            canAdd={canAddProjectGrants}
-          />
-        )}
-        {activeTab === 'role-groups' && (
-          <RoleGroupsTab
-            roleGroups={roleGroups}
-            onUpdate={updateRoleGroup}
-            onReset={resetRoleGroups}
-            readOnly={!canEditRoleGroups}
-          />
-        )}
       </div>
     </Modal>
   )
