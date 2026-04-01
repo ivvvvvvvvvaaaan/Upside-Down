@@ -29,6 +29,7 @@ import {
 import { useUserCollections, useSmartCollections, useFileTree, useAccess, usePersona } from '@/hooks'
 import { matchesFilter } from '@/lib/smart-collection-filters'
 import type { DepartmentId } from '@/components/department/types'
+import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { cn } from '@/lib/utils'
 import { Tag } from './tag'
@@ -534,9 +535,9 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
   const { sharesReceivedByMe, allProjectShares, canAccess } = useAccess()
   const { activePersona, isAdmin } = usePersona()
   // Workspace-level folders: top-level folders created by user (exclude department folders already rendered above)
-  const DEPT_FOLDER_IDS = new Set(['ws-art', 'ws-vfx', 'ws-camera', 'ws-editorial', 'ws-audio'])
+  const DEPT_FOLDER_IDS = new Set(Object.values(DEPARTMENT_FOLDER_MAP).map(d => d.id))
   const workspaceFolders = fileTree.filter((f) => f.type === 'folder' && !DEPT_FOLDER_IDS.has(f.id)) as WorkspaceFileNode[]
-  const accessibleDepartments = DEPARTMENT_NAV_ITEMS.filter((item) => canAccess(item.id))
+  const accessibleDepartments = DEPARTMENT_NAV_ITEMS.filter((item) => canAccess(DEPARTMENT_FOLDER_MAP[item.id].id))
   const receivedSharedFolders = sharesReceivedByMe.filter((entry) => entry.resourceType === 'folder')
   const showWorkspaceLink = accessibleDepartments.length > 0 || workspaceFolders.length > 0 || receivedSharedFolders.length > 0
   const sharedCollectionIds = new Set(

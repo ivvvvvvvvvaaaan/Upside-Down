@@ -151,7 +151,21 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       return next
     })
   }, [])
-  const [roleGroups, setRoleGroups] = useState<RoleGroup[]>(() => structuredClone(DEFAULT_ROLE_GROUPS))
+  const [roleGroups, setRoleGroupsState] = useState<RoleGroup[]>(() => {
+    if (typeof window === 'undefined') return structuredClone(DEFAULT_ROLE_GROUPS)
+    try {
+      const stored = localStorage.getItem('access-role-groups')
+      if (stored) return JSON.parse(stored) as RoleGroup[]
+    } catch { /* fall through */ }
+    return structuredClone(DEFAULT_ROLE_GROUPS)
+  })
+  const setRoleGroups: typeof setRoleGroupsState = useCallback((action) => {
+    setRoleGroupsState((prev) => {
+      const next = typeof action === 'function' ? action(prev) : action
+      try { localStorage.setItem('access-role-groups', JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+  }, [])
   const [readShareIds, setReadShareIds] = useState<Set<string>>(() => new Set())
 
   // Reactive maps derived from the live file tree (handles user-created folders)
@@ -275,30 +289,25 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return accessById
   }, [collections, collectionAccessById, grants])
 
-  // canAccess: check grants + implicit department access
+  // canAccess: all access flows through grants (no implicit department check)
   const canAccess = useCallback((id: string): boolean => {
-    // Admin mode (null persona) → full access
     if (!activePersona) return true
     if (!userId) return false
 
-    // Check explicit grants
+    // Explicit grants (direct, team, inherited via folder tree walking in resolveAccess)
     if (userHasAccess(userId, id, grants)) return true
+    // Collection access
     if (collectionAccessById.has(id)) return true
     if (collectionAssetAccessById.has(id)) return true
-
-    // Check implicit department access for workspace items
-    if (activePersona.departmentId && isDepartmentRole(activePersona.role)) {
-      // Check if this is a department ID
-      if (id === activePersona.departmentId) return true
-      // Check if this is a department wrapper ID
-      if (DEPARTMENT_WRAPPER_IDS[activePersona.departmentId] === id) return true
-      // Check if this node belongs to the user's department
-      const nodeDept = nodeToDepartment.get(id)
-      if (nodeDept === activePersona.departmentId) return true
+    // Folder inheritance: check if any ancestor has a grant
+    let parentId = nodeToParent.get(id)
+    while (parentId) {
+      if (userHasAccess(userId, parentId, grants)) return true
+      parentId = nodeToParent.get(parentId)
     }
 
     return false
-  }, [activePersona, userId, grants, collectionAccessById, collectionAssetAccessById, nodeToDepartment])
+  }, [activePersona, userId, grants, collectionAccessById, collectionAssetAccessById, nodeToParent])
 
   // filterByAccess: filter assets by persona access
   const filterByAccess = useCallback((assets: Asset[]): Asset[] => {
@@ -327,25 +336,29 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       return ids
     }
 
-    // Department folders
-    if (activePersona.departmentId && isDepartmentRole(activePersona.role)) {
-      ids.add(activePersona.departmentId)
-      ids.add(DEPARTMENT_WRAPPER_IDS[activePersona.departmentId])
-      collectFolderIds(getDepartmentWorkspaceFiles(activePersona.departmentId)).forEach((id) => ids.add(id))
-    }
-
-    // Granted folder access
+    // All access flows through grants — add granted folders + their descendants
     for (const grant of grants) {
       if (grant.revokedAt) continue
       if (grant.resource.type !== 'folder') continue
       const isGrantee =
         (grant.principal.type === 'user' && grant.principal.userId === activePersona.id) ||
         (grant.principal.type === 'team' && activePersona.teamIds.some((tid) => tid === (grant.principal as { type: 'team'; teamId: string }).teamId))
-      if (isGrantee) ids.add(grant.resource.id)
+      if (isGrantee) {
+        ids.add(grant.resource.id)
+        // Add all descendant folders (inheritance)
+        collectFolderIds(getDepartmentWorkspaceFiles(grant.resource.departmentId as DepartmentId)).forEach((childId) => {
+          // Only add if this child is actually under the granted folder
+          let parent = nodeToParent.get(childId)
+          while (parent) {
+            if (parent === grant.resource.id) { ids.add(childId); break }
+            parent = nodeToParent.get(parent)
+          }
+        })
+      }
     }
 
     return ids
-  }, [activePersona, grants])
+  }, [activePersona, grants, nodeToParent])
 
   // Share views
   const sharesCreatedByMe = useMemo(() => {

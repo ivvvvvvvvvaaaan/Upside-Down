@@ -178,8 +178,15 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   // Shared folder/collection nodes injected into the workspace landing
   const sharedFolderNodes: WorkspaceFileNode[] = useMemo(() => {
     if (!isLanding) return []
+    // Only show folders shared from OTHER departments (not your own department's internal folders)
     return sharesReceivedByMe
-      .filter(e => e.resourceType === 'folder')
+      .filter(e => {
+        if (e.resourceType !== 'folder') return false
+        if (DEPT_FOLDER_IDS.has(e.resourceId)) return false
+        // Skip folders within the user's own department
+        if (activePersona?.departmentId && e.departmentId === activePersona.departmentId) return false
+        return true
+      })
       .map(entry => ({
         id: entry.resourceId,
         name: entry.label,
@@ -187,7 +194,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
         modifiedAt: entry.grantedAt,
         children: [],
       }))
-  }, [isLanding, sharesReceivedByMe])
+  }, [isLanding, sharesReceivedByMe, activePersona])
 
   // O(1) lookup for shared folder IDs
   const sharedFolderIds = useMemo(() => new Set(sharedFolderNodes.map(n => n.id)), [sharedFolderNodes])
@@ -211,7 +218,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
     { field: 'name', direction: 'asc' },
   ])
-  const departmentAccessible = departmentId ? canAccess(departmentId) : true
+  const departmentAccessible = departmentId ? canAccess(DEPARTMENT_FOLDER_MAP[departmentId].id) : true
 
   // Department folder nodes for landing view — real WorkspaceFileNode shapes
   const departmentNodes: WorkspaceFileNode[] = useMemo(() => {
