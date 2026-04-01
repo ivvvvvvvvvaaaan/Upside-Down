@@ -356,6 +356,49 @@ export function buildGrants(): Grant[] {
     })
   }
 
+  // Department root folder grants — each department team gets access on the dept wrapper folder
+  // This models "onboarding" where an admin assigns teams to department workspaces
+  const DEPT_FOLDER_IDS: Record<string, string> = {
+    'art-design': 'ws-art',
+    'vfx': 'ws-vfx',
+    'camera': 'ws-camera',
+    'editorial': 'ws-editorial',
+    'audio-sound': 'ws-audio',
+  }
+
+  for (const team of SCENARIO.teams) {
+    if (!team.dept) continue
+    const folderId = DEPT_FOLDER_IDS[team.dept]
+    if (!folderId) continue
+    // Team gets editor access on their department root folder
+    grants.push({
+      id: grantId(),
+      resource: { id: folderId, type: 'folder' as const, departmentId: team.dept },
+      principal: { type: 'team', teamId: team.id },
+      templateId: 'editor' as AccessProfileId,
+      permissions: permissionsForTemplate('editor' as AccessProfileId),
+      grantedByUserId: 'studio-alex',
+      grantedAt: '2026-01-01',
+    })
+  }
+
+  // Department people — each person with a dept gets an implicit grant on their dept root folder
+  for (const person of SCENARIO.people) {
+    if (!person.dept) continue
+    const folderId = DEPT_FOLDER_IDS[person.dept]
+    if (!folderId) continue
+    const profileId: AccessProfileId = person.role === 'manager' ? 'manager' : 'editor'
+    grants.push({
+      id: grantId(),
+      resource: { id: folderId, type: 'folder' as const, departmentId: person.dept },
+      principal: { type: 'user', userId: person.id },
+      templateId: profileId,
+      permissions: permissionsForTemplate(profileId),
+      grantedByUserId: 'studio-alex',
+      grantedAt: '2026-01-01',
+    })
+  }
+
   return grants
 }
 
