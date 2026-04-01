@@ -40,7 +40,7 @@ function CharacterChips({ items }: { items: SmartCollection[] }) {
             <div className="w-12 h-12 rounded-full overflow-hidden relative bg-surface-2">
               {mainImage && <Image src={mainImage} alt={item.name} fill sizes="48px" className="object-cover" />}
             </div>
-            <span className="text-body-0-regular text-foreground-dim group-hover:text-foreground-system-link text-center transition-colors whitespace-nowrap">
+            <span className="text-body-0-regular text-foreground group-hover:text-foreground-system-link text-center transition-colors whitespace-nowrap">
               {item.name}
             </span>
           </Link>
@@ -177,7 +177,7 @@ function RelationshipGraph({
             })}
             <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle"
               fill="var(--foreground, #fff)" fontSize="11" fontWeight="600" className="center-label pointer-events-none">
-              {center.name}
+              {center.name.length > 14 ? center.name.slice(0, 13) + '…' : center.name}
             </text>
           </svg>
         </div>
