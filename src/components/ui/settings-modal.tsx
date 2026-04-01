@@ -5,11 +5,11 @@ import { Search, RotateCcw, X, ChevronDown, Plus, Users } from 'lucide-react'
 import { Modal } from './modal'
 import { Button } from './button'
 import { Tag } from './tag'
-import { useAccess, usePersona } from '@/hooks'
+import { useAccess } from '@/hooks'
 import { cn } from '@/lib/utils'
 import { PERSONAS, initials } from '@/lib/personas'
 import { TEAMS, getTeamById } from '@/lib/teams'
-import { getRoleGroup, profileLabel } from '@/lib/grants'
+import { PROJECT_RESOURCE, getRoleGroup } from '@/lib/grants'
 import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef } from '@/lib/grants'
 
 const ALL_PERMISSIONS: Permission[] = [
@@ -125,7 +125,7 @@ function PermissionDropdown({
   if (disabled) {
     return (
       <span className="text-label-0-regular text-foreground-dim px-2 py-1">
-        Owner
+        {label}
       </span>
     )
   }
@@ -167,12 +167,16 @@ function PeopleTab({
   onRoleChange,
   onRemove,
   onAdd,
+  canManage,
+  canAdd,
 }: {
   grants: Grant[]
   roleGroups: RoleGroup[]
   onRoleChange: (grantId: string, profileId: AccessProfileId) => void
   onRemove: (grantId: string) => void
   onAdd: (principal: PrincipalRef, profileId: AccessProfileId) => void
+  canManage: boolean
+  canAdd: boolean
 }) {
   const [search, setSearch] = useState('')
   const [newEmail, setNewEmail] = useState('')
@@ -202,6 +206,12 @@ function PeopleTab({
 
   return (
     <div className="space-y-3">
+      {!canAdd && !canManage && (
+        <p className="text-label-0-regular text-foreground-dim">You don&apos;t have permission to manage project access</p>
+      )}
+      {canAdd && !canManage && (
+        <p className="text-label-0-regular text-foreground-dim">You can add people, but only people with admin access can change or remove existing roles</p>
+      )}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-dim" />
         <input
@@ -246,10 +256,10 @@ function PeopleTab({
                   <PermissionDropdown
                     value={grant.templateId ?? 'viewer'}
                     onChange={(v) => onRoleChange(grant.id, v)}
-                    disabled={isOwner}
+                    disabled={isOwner || !canManage}
                     roleGroups={roleGroups}
                   />
-                  {!isOwner && (
+                  {!isOwner && canManage && (
                     <button
                       onClick={() => onRemove(grant.id)}
                       className="p-1 rounded hover:bg-surface-3 text-foreground-dim hover:text-foreground-negative transition-colors"
@@ -265,23 +275,25 @@ function PeopleTab({
       )}
 
       {/* Add person */}
-      <div className="flex gap-1 pt-2 border-t border-border-dim">
-        <input
-          type="email"
-          value={newEmail}
-          onChange={(e) => setNewEmail(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-          placeholder="Add person by email..."
-          className={cn(
-            'flex-1 px-2 py-1 rounded text-body-0-regular',
-            'bg-surface-flat border border-border-dim text-foreground placeholder:text-foreground-dim',
-            'focus:outline-none focus:border-indigo-500',
-          )}
-        />
-        <Button variant="icon" compact onClick={handleAdd} disabled={!newEmail.trim()}>
-          <Plus className="w-3 h-3" />
-        </Button>
-      </div>
+      {canAdd && (
+        <div className="flex gap-1 pt-2 border-t border-border-dim">
+          <input
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            placeholder="Add person by email..."
+            className={cn(
+              'flex-1 px-2 py-1 rounded text-body-0-regular',
+              'bg-surface-flat border border-border-dim text-foreground placeholder:text-foreground-dim',
+              'focus:outline-none focus:border-indigo-500',
+            )}
+          />
+          <Button variant="icon" compact onClick={handleAdd} disabled={!newEmail.trim()}>
+            <Plus className="w-3 h-3" />
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
@@ -294,12 +306,16 @@ function GroupsTab({
   onRoleChange,
   onRemove,
   onAdd,
+  canManage,
+  canAdd,
 }: {
   grants: Grant[]
   roleGroups: RoleGroup[]
   onRoleChange: (grantId: string, profileId: AccessProfileId) => void
   onRemove: (grantId: string) => void
   onAdd: (principal: PrincipalRef, profileId: AccessProfileId) => void
+  canManage: boolean
+  canAdd: boolean
 }) {
   const [addOpen, setAddOpen] = useState(false)
 
@@ -315,6 +331,12 @@ function GroupsTab({
 
   return (
     <div className="space-y-3">
+      {!canAdd && !canManage && (
+        <p className="text-label-0-regular text-foreground-dim">You don&apos;t have permission to manage project access</p>
+      )}
+      {canAdd && !canManage && (
+        <p className="text-label-0-regular text-foreground-dim">You can add groups, but only people with admin access can change or remove existing roles</p>
+      )}
       {grants.length === 0 ? (
         <p className="text-body-0-regular text-foreground-dim py-4 text-center">No teams added yet.</p>
       ) : (
@@ -343,15 +365,17 @@ function GroupsTab({
                   <PermissionDropdown
                     value={grant.templateId ?? 'viewer'}
                     onChange={(v) => onRoleChange(grant.id, v)}
-                    disabled={false}
+                    disabled={!canManage}
                     roleGroups={roleGroups}
                   />
-                  <button
-                    onClick={() => onRemove(grant.id)}
-                    className="p-1 rounded hover:bg-surface-3 text-foreground-dim hover:text-foreground-negative transition-colors"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+                  {canManage && (
+                    <button
+                      onClick={() => onRemove(grant.id)}
+                      className="p-1 rounded hover:bg-surface-3 text-foreground-dim hover:text-foreground-negative transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               </div>
             )
@@ -360,7 +384,7 @@ function GroupsTab({
       )}
 
       {/* Add group */}
-      {availableTeams.length > 0 && (
+      {canAdd && availableTeams.length > 0 && (
         <div className="relative pt-2 border-t border-border-dim">
           <Button variant="secondary" compact onClick={() => setAddOpen(!addOpen)}>
             <Plus className="w-3 h-3 mr-1" />
@@ -396,13 +420,18 @@ function RoleGroupsTab({
   roleGroups,
   onUpdate,
   onReset,
+  readOnly,
 }: {
   roleGroups: RoleGroup[]
   onUpdate: (id: string, permissions: Permission[]) => void
   onReset: () => void
+  readOnly: boolean
 }) {
   return (
     <div className="space-y-4">
+      {readOnly && (
+        <p className="text-label-0-regular text-foreground-dim">You don&apos;t have permission to edit role groups</p>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -435,7 +464,7 @@ function RoleGroupsTab({
                       <div className="flex justify-center">
                         <PermissionCheckbox
                           checked={group.permissions.includes(perm)}
-                          disabled={isOwner}
+                          disabled={isOwner || readOnly}
                           onChange={(checked) => {
                             const next = checked
                               ? [...group.permissions, perm]
@@ -454,7 +483,7 @@ function RoleGroupsTab({
       </div>
 
       <div className="flex justify-end">
-        <Button variant="secondary" onClick={onReset}>
+        <Button variant="secondary" onClick={onReset} disabled={readOnly}>
           <RotateCcw className="w-3 h-3 mr-2" />
           Reset to Defaults
         </Button>
@@ -481,7 +510,12 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     createProjectGrant,
     updateGrantProfile,
     revokeGrant,
+    canShare,
+    canEditAcl,
   } = useAccess()
+  const canAddProjectGrants = canShare(PROJECT_RESOURCE)
+  const canManageProjectGrants = canEditAcl(PROJECT_RESOURCE)
+  const canEditRoleGroups = canEditAcl(PROJECT_RESOURCE)
 
   return (
     <Modal open={open} onOpenChange={onOpenChange} size="md">
@@ -529,6 +563,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             onRoleChange={updateGrantProfile}
             onRemove={revokeGrant}
             onAdd={createProjectGrant}
+            canManage={canManageProjectGrants}
+            canAdd={canAddProjectGrants}
           />
         )}
         {activeTab === 'groups' && (
@@ -538,6 +574,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             onRoleChange={updateGrantProfile}
             onRemove={revokeGrant}
             onAdd={createProjectGrant}
+            canManage={canManageProjectGrants}
+            canAdd={canAddProjectGrants}
           />
         )}
         {activeTab === 'role-groups' && (
@@ -545,6 +583,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             roleGroups={roleGroups}
             onUpdate={updateRoleGroup}
             onReset={resetRoleGroups}
+            readOnly={!canEditRoleGroups}
           />
         )}
       </div>

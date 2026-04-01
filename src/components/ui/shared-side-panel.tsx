@@ -6,9 +6,10 @@ import { Button } from './button'
 import { ResponsivePanel } from './responsive-panel'
 import { Tag } from './tag'
 import { AccessPanel } from './access-panel'
+import { useAccess } from '@/hooks'
 import { kindLabel, kindTagType } from '@/lib/access'
 import type { AccessEntryKind } from '@/lib/access'
-import { getPersonaName, PERSONAS } from '@/lib/personas'
+import { PERSONAS } from '@/lib/personas'
 import { formatDate } from '@/lib/utils'
 import type { GrantView, ResourceRef, Permission } from '@/lib/grants'
 import { profileLabel } from '@/lib/grants'
@@ -56,6 +57,7 @@ const PERM_LABELS: Record<Permission, string> = {
 }
 
 export function SharedSidePanel({ entry, onClose, isCreator = false, onRevokeShare, href, panelClassName }: SharedSidePanelProps) {
+  const { canEditAcl } = useAccess()
   const kind = entry.resourceType as AccessEntryKind
   const grantor = PERSONAS.find((p) => p.id === entry.grantedByUserId)
   const granterName = grantor?.name ?? entry.grantedByUserId
@@ -65,6 +67,7 @@ export function SharedSidePanel({ entry, onClose, isCreator = false, onRevokeSha
     type: entry.resourceType,
     departmentId: entry.departmentId,
   }
+  const canRevokeShare = Boolean(isCreator && onRevokeShare && canEditAcl(resourceRef))
 
   return (
     <ResponsivePanel open={true} onClose={onClose} className={panelClassName}>
@@ -137,7 +140,7 @@ export function SharedSidePanel({ entry, onClose, isCreator = false, onRevokeSha
         />
 
         {/* Revoke button — creator only */}
-        {isCreator && onRevokeShare && (
+        {canRevokeShare && onRevokeShare && (
           <div className="pt-2">
             <Button
               variant="secondary"

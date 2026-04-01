@@ -4,6 +4,8 @@ import {
   DEFAULT_ROLE_GROUPS,
   userHasAccess,
   resolveAccess,
+  canCreateGrantForResource,
+  canEditAclForResource,
   buildSharesReceivedByMe,
   buildSharesCreatedByMe,
   buildAllProjectShares,
@@ -12,7 +14,7 @@ import {
   profileCanEdit,
   PROJECT_RESOURCE,
 } from '@/lib/grants'
-import type { RoleGroup, Permission } from '@/lib/grants'
+import type { Grant, ResourceRef, RoleGroup, Permission } from '@/lib/grants'
 
 describe('grant-based access model', () => {
   it('gives department users implicit access inside their own department', () => {
@@ -105,6 +107,36 @@ describe('capability decomposition', () => {
     expect(result.effectiveProfile).toBe('manager')
     expect(result.canEdit).toBe(false)
     expect(result.permissions).toEqual(['open'])
+  })
+
+  it('userHasAccess requires open permission on matching grants', () => {
+    const customGrant: Grant = {
+      id: 'custom-grant',
+      resource: { id: 'custom-asset', type: 'asset' },
+      principal: { type: 'user', userId: 'vendor-framestore' },
+      templateId: 'viewer',
+      permissions: ['download'],
+      grantedByUserId: 'studio-alex',
+      grantedAt: '2026-03-31',
+    }
+
+    const result = resolveAccess('vendor-framestore', 'custom-asset', [customGrant])
+    expect(result.permissions).toEqual(['download'])
+    expect(result.hasAccess).toBe(false)
+    expect(userHasAccess('vendor-framestore', 'custom-asset', [customGrant])).toBe(false)
+  })
+
+  it('resource-level ACL helpers distinguish sharing from admin rights', () => {
+    const vfxFolder: ResourceRef = { id: 'ws-vfx-shots', type: 'folder', departmentId: 'vfx' }
+
+    expect(canCreateGrantForResource('vfx-coordinator', vfxFolder, DEFAULT_GRANTS)).toBe(true)
+    expect(canEditAclForResource('vfx-coordinator', vfxFolder, DEFAULT_GRANTS)).toBe(true)
+
+    expect(canCreateGrantForResource('vfx-supervisor', PROJECT_RESOURCE, DEFAULT_GRANTS)).toBe(true)
+    expect(canEditAclForResource('vfx-supervisor', PROJECT_RESOURCE, DEFAULT_GRANTS)).toBe(false)
+
+    expect(canCreateGrantForResource('vendor-framestore', PROJECT_RESOURCE, DEFAULT_GRANTS)).toBe(false)
+    expect(canEditAclForResource('vendor-framestore', PROJECT_RESOURCE, DEFAULT_GRANTS)).toBe(false)
   })
 })
 

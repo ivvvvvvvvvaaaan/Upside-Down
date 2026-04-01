@@ -64,7 +64,7 @@ function PermissionDropdown({
   if (disabled) {
     return (
       <span className="text-label-0-regular text-foreground-dim px-2 py-1">
-        Owner
+        {label}
       </span>
     )
   }
@@ -166,13 +166,15 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile }: {
 }
 
 export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLabel = 'Not shared', inheritedGrants }: AccessPanelProps) {
-  const { getResourceGrants, createGrant, revokeGrant, updateGrantProfile, roleGroups, canShare } = useAccess()
+  const { getResourceGrants, createGrant, revokeGrant, updateGrantProfile, roleGroups, canShare, canEditAcl } = useAccess()
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const grants = getResourceGrants(resourceId)
-  const isReadOnly = readOnly || !canShare()
+  const canAddGrants = Boolean(resourceRef) && canShare(resourceRef)
+  const canManageExistingGrants = Boolean(resourceRef) && canEditAcl(resourceRef)
+  const grantsReadOnly = readOnly || !canManageExistingGrants
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -202,7 +204,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
   const hasResults = results.people.length > 0 || results.teams.length > 0
 
   const handleAddUser = (userId: string) => {
-    if (!resourceRef) return
+    if (!resourceRef || !canAddGrants) return
     if (grants.some(g => g.principal.type === 'user' && g.principal.userId === userId)) return
     const principal: PrincipalRef = { type: 'user', userId }
     createGrant(resourceRef, principal, 'viewer')
@@ -211,7 +213,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
   }
 
   const handleAddTeam = (teamId: string) => {
-    if (!resourceRef) return
+    if (!resourceRef || !canAddGrants) return
     if (grants.some(g => g.principal.type === 'team' && g.principal.teamId === teamId)) return
     const principal: PrincipalRef = { type: 'team', teamId }
     createGrant(resourceRef, principal, 'viewer')
@@ -236,8 +238,11 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
       <h3 className="text-label-0-bold uppercase text-foreground-dim">Access</h3>
       <div className="space-y-3">
         {/* Read-only hint for unauthorized roles */}
-        {isReadOnly && !readOnly && (
+        {!readOnly && !canAddGrants && !canManageExistingGrants && (
           <p className="text-label-0-regular text-foreground-dim">You don&apos;t have permission to manage access</p>
+        )}
+        {!readOnly && canAddGrants && !canManageExistingGrants && (
+          <p className="text-label-0-regular text-foreground-dim">You can add new shares, but only people with admin access can change or remove existing entries</p>
         )}
 
         {/* Direct grants */}
@@ -250,7 +255,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
               <GrantRow
                 key={grant.id}
                 grant={grant}
-                readOnly={isReadOnly}
+                readOnly={grantsReadOnly}
                 roleGroups={roleGroups}
                 onRemove={revokeGrant}
                 onUpdateProfile={updateGrantProfile}
@@ -275,7 +280,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
         ))}
 
         {/* Add person/team */}
-        {!isReadOnly && resourceRef && (
+        {!readOnly && resourceRef && canAddGrants && (
           <div ref={dropdownRef} className="relative">
             <input
               type="text"

@@ -279,31 +279,52 @@ export function resolveAccess(
   return NO_ACCESS
 }
 
+export function resolveAccessForResource(
+  userId: string,
+  resource: ResourceRef,
+  grants: Grant[],
+  roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
+): ResolvedAccess {
+  return resolveAccess(userId, resource.id, grants, roleGroups, resource.departmentId)
+}
+
+export function userHasPermissionOnResource(
+  userId: string,
+  resource: ResourceRef,
+  grants: Grant[],
+  permission: Permission,
+  roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
+): boolean {
+  return resolveAccessForResource(userId, resource, grants, roleGroups).permissions.includes(permission)
+}
+
+export function canCreateGrantForResource(
+  userId: string,
+  resource: ResourceRef,
+  grants: Grant[],
+  roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
+): boolean {
+  const permissions = resolveAccessForResource(userId, resource, grants, roleGroups).permissions
+  return permissions.includes('share') || permissions.includes('edit-acl')
+}
+
+export function canEditAclForResource(
+  userId: string,
+  resource: ResourceRef,
+  grants: Grant[],
+  roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
+): boolean {
+  return userHasPermissionOnResource(userId, resource, grants, 'edit-acl', roleGroups)
+}
+
 export function userHasAccess(
   userId: string,
   resourceId: string,
   grants: Grant[],
   resourceDepartmentId?: DepartmentId,
+  roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
 ): boolean {
-  const user = PERSONAS.find((persona) => persona.id === userId)
-  if (!user) return false
-  if (user.isAdmin) return true
-
-  const resourceMatches = resolveMatchingGrants(grants, userId, resourceId)
-  if (resourceMatches.direct.length > 0 || resourceMatches.team.length > 0) {
-    return true
-  }
-
-  if (resourceId === PROJECT_RESOURCE.id) {
-    const projectMatches = resolveMatchingGrants(grants, userId, PROJECT_RESOURCE.id)
-    return projectMatches.direct.length > 0 || projectMatches.team.length > 0
-  }
-
-  if (user.departmentId && isDepartmentRole(user.role)) {
-    return resourceDepartmentId === user.departmentId || resourceId === user.departmentId
-  }
-
-  return false
+  return resolveAccess(userId, resourceId, grants, roleGroups, resourceDepartmentId).hasAccess
 }
 
 export type GrantView = {
