@@ -41,8 +41,8 @@ describe('grant-based access model', () => {
     expect(userHasAccess('studio-alex', 'vfx', DEFAULT_GRANTS)).toBe(false)
     expect(userHasAccess('creative-david', 'vfx', DEFAULT_GRANTS)).toBe(false)
 
-    expect(userHasAccess('studio-alex', 'inst-ws-edit-cut-1', DEFAULT_GRANTS)).toBe(true)
-    expect(userHasAccess('creative-david', 'inst-ws-art-concept-1', DEFAULT_GRANTS)).toBe(true)
+    expect(userHasAccess('studio-alex', 'ws-edit-cut-1', DEFAULT_GRANTS)).toBe(true)
+    expect(userHasAccess('creative-david', 'ws-art-concept-1', DEFAULT_GRANTS)).toBe(true)
   })
 
   it('keeps vendor access explicit-share only', () => {

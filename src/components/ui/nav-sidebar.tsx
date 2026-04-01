@@ -583,7 +583,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
               {receivedSharedFolders.map((entry) => (
                 <TreeNavLink
                   key={entry.id}
-                  href={`/nextgen/workspace/${entry.resourceId}`}
+                  href={entry.departmentId ? `/nextgen/workspace/${entry.departmentId}/${entry.resourceId}` : `/nextgen/workspace/${entry.resourceId}`}
                   label={entry.label}
                   trailingIcon={<FolderSymlink className="w-3.5 h-3.5 text-foreground-dim" />}
                   indent

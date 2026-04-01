@@ -108,7 +108,7 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sour
                 <Avatar name={member.name} size="compact" />
                 <div className="min-w-0">
                   <span className="text-body-0-regular text-foreground truncate block">
-                    {member.name}{member.isCurrentUser ? ' You' : ''}
+                    {member.name}
                   </span>
                   {member.email && (
                     <span className="text-body-0-regular text-foreground-dim truncate block">{member.email}</span>

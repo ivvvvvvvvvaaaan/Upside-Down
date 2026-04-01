@@ -522,7 +522,11 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
     }
   }
 
-  if (!isLanding && !departmentAccessible) {
+  // Allow access if user can access the department root OR the specific folder they're navigating to
+  const targetFolderId = urlPath.length > 0 ? urlPath[urlPath.length - 1] : null
+  const folderAccessible = targetFolderId ? canAccess(targetFolderId) : false
+
+  if (!isLanding && !departmentAccessible && !folderAccessible) {
     return (
       <AppLayout>
         <div className="h-full flex flex-col">

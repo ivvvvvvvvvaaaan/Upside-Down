@@ -269,23 +269,29 @@ export function resolveAccess(
 
   const resourceMatches = resolveMatchingGrants(grants, userId, resourceId)
   const resourceAccess = buildResolvedAccess(resourceMatches.direct, resourceMatches.team, roleGroups, 'team')
-  if (resourceAccess) return resourceAccess
 
+  let departmentAccess: ResolvedAccess | null = null
   if (resourceDepartmentId) {
     const departmentRootId = DEPARTMENT_FOLDER_MAP[resourceDepartmentId]?.id
     if (departmentRootId && departmentRootId !== resourceId) {
       const departmentRootMatches = resolveMatchingGrants(grants, userId, departmentRootId)
-      const departmentRootAccess = buildResolvedAccess(
+      departmentAccess = buildResolvedAccess(
         departmentRootMatches.direct,
         departmentRootMatches.team,
         roleGroups,
         'team',
       )
-      if (departmentRootAccess) return departmentRootAccess
     }
   }
 
-  return NO_ACCESS
+  // Take whichever level grants higher privilege
+  if (resourceAccess && departmentAccess) {
+    const rRank = resourceAccess.effectiveProfile ? TEMPLATE_RANK[resourceAccess.effectiveProfile] : 0
+    const dRank = departmentAccess.effectiveProfile ? TEMPLATE_RANK[departmentAccess.effectiveProfile] : 0
+    return rRank >= dRank ? resourceAccess : departmentAccess
+  }
+
+  return resourceAccess ?? departmentAccess ?? NO_ACCESS
 }
 
 export function resolveAccessForResource(
@@ -410,7 +416,9 @@ export function buildSharesCreatedByMe(userId: string, grants: Grant[]): GrantVi
 }
 
 export function buildSharesReceivedByMe(userId: string, grants: Grant[]): GrantView[] {
-  const received = getGrantsForUser(userId, grants).filter((grant) => !isPolicyResource(grant.resource))
+  const received = getGrantsForUser(userId, grants).filter((grant) =>
+    !isPolicyResource(grant.resource) && grant.grantedByUserId !== userId
+  )
   const seen = new Set<string>()
   const views: GrantView[] = []
 

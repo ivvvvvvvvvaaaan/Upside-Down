@@ -1,14 +1,17 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { Folder, FileText, LayoutGrid } from 'lucide-react'
 import { Button } from './button'
 import { ResponsivePanel } from './responsive-panel'
 import { Tag } from './tag'
 import { AccessSummary } from './access-summary'
-import { useAccess } from '@/hooks'
-import { kindLabel, kindTagType } from '@/lib/access'
+import { useAccess, useUserCollections } from '@/hooks'
+import { kindLabel } from '@/lib/access'
 import type { AccessEntryKind } from '@/lib/access'
+import { getSharePreviewImages } from '@/lib/data-client'
+import { getSharedResourceHref } from '@/lib/shared-resources'
 import { PERSONAS } from '@/lib/personas'
 import { formatDate } from '@/lib/utils'
 import type { GrantView, ResourceRef, Permission } from '@/lib/grants'
@@ -19,12 +22,16 @@ interface SharedSidePanelProps {
   onClose: () => void
   isCreator?: boolean
   onRevokeShare?: (resourceId: string) => void
-  /** Link to the shared resource (collection/folder) */
-  href?: string
   /** Additional className for the ResponsivePanel */
   panelClassName?: string
 }
 
+export interface SharedDetailContentProps {
+  entry: GrantView
+  isCreator?: boolean
+  onRevokeShare?: (resourceId: string) => void
+  showAccess?: boolean
+}
 
 function kindIcon(kind: AccessEntryKind) {
   if (kind === 'folder') return <Folder className="w-5 h-5 text-foreground-dim flex-shrink-0" />
@@ -32,7 +39,6 @@ function kindIcon(kind: AccessEntryKind) {
   if (kind === 'review-set') return <FileText className="w-5 h-5 text-foreground-dim flex-shrink-0" />
   return <FileText className="w-5 h-5 text-foreground-dim flex-shrink-0" />
 }
-
 
 const PERM_TAG_TYPE: Record<Permission, 'neutral'> = {
   'discover': 'neutral',
@@ -56,8 +62,9 @@ const PERM_LABELS: Record<Permission, string> = {
   'edit-acl': 'Admin',
 }
 
-export function SharedSidePanel({ entry, onClose, isCreator = false, onRevokeShare, href, panelClassName }: SharedSidePanelProps) {
-  const { canEditAcl } = useAccess()
+export function SharedDetailContent({ entry, isCreator = false, onRevokeShare, showAccess = true }: SharedDetailContentProps) {
+  const { canEditAcl, getInheritedGrants } = useAccess()
+  const { collections } = useUserCollections()
   const kind = entry.resourceType as AccessEntryKind
   const grantor = PERSONAS.find((p) => p.id === entry.grantedByUserId)
   const granterName = grantor?.name ?? entry.grantedByUserId
@@ -68,76 +75,85 @@ export function SharedSidePanel({ entry, onClose, isCreator = false, onRevokeSha
     departmentId: entry.departmentId,
   }
   const canRevokeShare = Boolean(isCreator && onRevokeShare && canEditAcl(resourceRef))
+  const resolvedHref = getSharedResourceHref({
+    resourceId: entry.resourceId,
+    resourceType: kind,
+    departmentId: entry.departmentId,
+  })
+  const resolvedPreviewImages = getSharePreviewImages(entry, collections)
 
   return (
-    <ResponsivePanel open={true} onClose={onClose} className={panelClassName}>
+    <>
       {/* Header */}
-      <div className="p-4">
-        <span className="text-body-1-bold text-foreground">Sharing Details</span>
+      <div className="flex items-center gap-2 px-4 pt-4">
+        {kindIcon(kind)}
+        <span className="text-body-2-bold text-foreground truncate">{entry.label}</span>
       </div>
+
+      {/* Preview */}
+      {resolvedPreviewImages && resolvedPreviewImages.length > 0 && (() => {
+        const visible = resolvedPreviewImages.slice(0, 3)
+        const remaining = resolvedPreviewImages.length - 3
+        const cols = visible.length === 1 ? 'grid-cols-1' : visible.length === 2 ? 'grid-cols-2' : 'grid-cols-3'
+        return (
+          <div className="px-4 pt-2">
+            <div className={`grid ${cols} gap-1 rounded overflow-hidden`}>
+              {visible.map((src, i) => (
+                <div key={i} className="relative aspect-video bg-surface-2">
+                  <Image src={src} alt="" fill className="object-cover" sizes={visible.length === 1 ? '600px' : '200px'} />
+                  {i === visible.length - 1 && remaining > 0 && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <span className="text-body-2-bold text-white">+{remaining}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Item section */}
-        <section className="space-y-2">
-          <h3 className="text-label-0-bold text-foreground-dim">Item</h3>
-          <div className="flex items-center gap-3">
-            {kindIcon(kind)}
-            <div className="min-w-0 flex-1">
-              <p className="text-body-1-bold text-foreground truncate">{entry.label}</p>
-              <div className="flex items-center gap-2">
-                <Tag size="compact" type={kindTagType(kind)}>
-                  {kindLabel(kind)}
-                </Tag>
-                <Tag size="compact" type="neutral">
-                  {profileLabel(entry.templateId)}
-                </Tag>
-              </div>
-            </div>
-          </div>
-          {href && (
-            <Button variant="secondary" compact asChild className="w-full mt-3">
-              <Link href={href}>
-                Open {kindLabel(kind).toLowerCase()}
-              </Link>
-            </Button>
-          )}
-        </section>
+        {resolvedHref && (
+          <Button variant="secondary" asChild className="w-full">
+            <Link href={resolvedHref}>
+              Open {kindLabel(kind).toLowerCase()}
+            </Link>
+          </Button>
+        )}
 
         {/* Details section */}
         <section className="space-y-2">
-          <h3 className="text-label-0-bold text-foreground-dim">Details</h3>
+          <h3 className="text-body-0-bold text-foreground-dim">Details</h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-label-1-regular text-foreground-dim">Shared by</span>
+              <span className="text-body-0-regular text-foreground-dim">Shared by</span>
               <span className="text-body-0-regular text-foreground">{granterName}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-label-1-regular text-foreground-dim">Date</span>
+              <span className="text-body-0-regular text-foreground-dim">Date</span>
               <span className="text-body-0-regular text-foreground">{formatDate(entry.grantedAt)}</span>
             </div>
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-label-1-regular text-foreground-dim">Template</span>
-                <span className="text-body-0-regular text-foreground">{profileLabel(entry.templateId)}</span>
-              </div>
-              <div className="flex flex-wrap gap-1 justify-end">
-                {entry.permissions.map((perm) => (
-                  <Tag key={perm} size="compact" type={PERM_TAG_TYPE[perm]}>
-                    {PERM_LABELS[perm]}
-                  </Tag>
-                ))}
-              </div>
+            <div className="flex items-center justify-between">
+              <span className="text-body-0-regular text-foreground-dim">Permission</span>
+              <span className="text-body-0-regular text-foreground">{profileLabel(entry.templateId)}</span>
             </div>
           </div>
         </section>
 
-        {/* Access section — readOnly when not creator */}
-        <AccessSummary
-          resourceId={entry.resourceId}
-          resourceRef={resourceRef}
-          resourceName={entry.label}
-        />
+        {/* Access section */}
+        {showAccess && (
+          <AccessSummary
+            resourceId={entry.resourceId}
+            resourceRef={resourceRef}
+            inheritedGrants={getInheritedGrants(entry.resourceId).map(({ grant, fromResourceName }) => ({
+              grant,
+              fromResourceName,
+            }))}
+            resourceName={entry.label}
+          />
+        )}
 
         {/* Revoke button — creator only */}
         {canRevokeShare && onRevokeShare && (
@@ -152,6 +168,18 @@ export function SharedSidePanel({ entry, onClose, isCreator = false, onRevokeSha
           </div>
         )}
       </div>
+    </>
+  )
+}
+
+export function SharedSidePanel({ entry, onClose, isCreator = false, onRevokeShare, panelClassName }: SharedSidePanelProps) {
+  return (
+    <ResponsivePanel open={true} onClose={onClose} className={panelClassName}>
+      <SharedDetailContent
+        entry={entry}
+        isCreator={isCreator}
+        onRevokeShare={onRevokeShare}
+      />
     </ResponsivePanel>
   )
 }

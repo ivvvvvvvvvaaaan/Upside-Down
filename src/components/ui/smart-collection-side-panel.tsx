@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { X, Trash2, Users, Film, MapPin, Pencil, LayoutGrid } from 'lucide-react'
+import { X, Trash2, Users, Film, MapPin, Pencil, LayoutGrid, ChevronDown } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from './button'
@@ -87,12 +87,9 @@ function RelationshipGraph({
   center: { name: string; id: string }
   related: { name: string; id: string; dimension: string }[]
 }) {
+  const [expanded, setExpanded] = useState(true)
+
   if (related.length === 0) return null
-  const cx = 160, cy = 100, r = 70
-  const nodes = related.map((item, i) => {
-    const angle = (2 * Math.PI * i) / related.length - Math.PI / 2
-    return { ...item, x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) }
-  })
 
   const dimensionColor: Record<string, string> = {
     characters: 'var(--indigo-500, #6366f1)',
@@ -100,29 +97,52 @@ function RelationshipGraph({
     locations: 'var(--emerald-500, #10b981)',
   }
 
+  // Dynamic viewBox: wider when more nodes to avoid text overlap
+  const nodeCount = related.length
+  const width = Math.max(400, nodeCount * 50)
+  const height = 220
+  const cx = width / 2, cy = height / 2, r = Math.min(90, width / 2 - 60)
+  const nodes = related.map((item, i) => {
+    const angle = (2 * Math.PI * i) / related.length - Math.PI / 2
+    return { ...item, x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) }
+  })
+
   return (
-    <svg viewBox="0 0 320 200" className="w-full h-[200px]">
-      {nodes.map(n => (
-        <line key={`line-${n.id}`} x1={cx} y1={cy} x2={n.x} y2={n.y}
-          stroke="var(--border-dim, #333)" strokeWidth={1} opacity={0.5} />
-      ))}
-      <circle cx={cx} cy={cy} r={22} fill="var(--surface-3, #333)" stroke="var(--border-dim, #555)" strokeWidth={1} />
-      <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle"
-        fill="var(--foreground, #fff)" fontSize="9" fontWeight="600">
-        {center.name.length > 10 ? center.name.slice(0, 9) + '…' : center.name}
-      </text>
-      {nodes.map(n => (
-        <a key={n.id} href={`/nextgen/smart-collections/${n.id}`}>
-          <circle cx={n.x} cy={n.y} r={18}
-            fill="var(--surface-2, #222)" stroke={dimensionColor[n.dimension] ?? 'var(--border-dim, #555)'} strokeWidth={1.5}
-            className="hover:brightness-125 cursor-pointer transition-all" />
-          <text x={n.x} y={n.y + 1} textAnchor="middle" dominantBaseline="middle"
-            fill="var(--foreground-dim, #aaa)" fontSize="7" className="pointer-events-none">
-            {n.name.length > 12 ? n.name.slice(0, 11) + '…' : n.name}
-          </text>
-        </a>
-      ))}
-    </svg>
+    <section className="space-y-1">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1 text-body-0-bold text-foreground-dim hover:text-foreground transition-colors"
+      >
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expanded ? '' : '-rotate-90'}`} />
+        Relationship Graph
+      </button>
+      {expanded && (
+        <div className="overflow-x-auto">
+          <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ minWidth: 320, height: 220 }}>
+            {nodes.map(n => (
+              <line key={`line-${n.id}`} x1={cx} y1={cy} x2={n.x} y2={n.y}
+                stroke="var(--border-dim, #333)" strokeWidth={1} opacity={0.5} />
+            ))}
+            <circle cx={cx} cy={cy} r={24} fill="var(--surface-3, #333)" stroke="var(--border-dim, #555)" strokeWidth={1} />
+            <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle"
+              fill="var(--foreground, #fff)" fontSize="9" fontWeight="600">
+              {center.name}
+            </text>
+            {nodes.map(n => (
+              <a key={n.id} href={`/nextgen/smart-collections/${n.id}`}>
+                <circle cx={n.x} cy={n.y} r={20}
+                  fill="var(--surface-2, #222)" stroke={dimensionColor[n.dimension] ?? 'var(--border-dim, #555)'} strokeWidth={1.5}
+                  className="hover:brightness-125 cursor-pointer transition-all" />
+                <text x={n.x} y={n.y + 1} textAnchor="middle" dominantBaseline="middle"
+                  fill="var(--foreground-dim, #aaa)" fontSize="7" className="pointer-events-none">
+                  {n.name}
+                </text>
+              </a>
+            ))}
+          </svg>
+        </div>
+      )}
+    </section>
   )
 }
 

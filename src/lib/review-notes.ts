@@ -7,28 +7,28 @@ export type ReviewNoteSummary = {
 }
 
 const REVIEW_NOTE_SUMMARIES: Record<string, ReviewNoteSummary> = {
-  'inst-ws-edit-cut-1': {
+  'ws-edit-cut-1': {
     totalNotes: 14,
     unresolvedCount: 3,
     latestSummary: 'Director wants to compare Alt B against the tighter performance read.',
     updatedAt: '2026-02-14',
     externalUrl: 'https://review.example.com/race-sequence/directors-cut-v4',
   },
-  'inst-ws-cam-sel-1': {
+  'ws-cam-sel-1': {
     totalNotes: 6,
     unresolvedCount: 1,
     latestSummary: 'Show side flagged this take as the preferred emotional read for Scene 12.',
     updatedAt: '2026-02-13',
     externalUrl: 'https://review.example.com/scene-12/take-b-select',
   },
-  'inst-ws-edit-exp-2': {
+  'ws-edit-exp-2': {
     totalNotes: 9,
     unresolvedCount: 2,
     latestSummary: 'Editorial marked the pit stop beats and temp timing notes for VFX pull review.',
     updatedAt: '2026-02-12',
     externalUrl: 'https://review.example.com/editorial/ep301-reference-cut-v4',
   },
-  'inst-ws-vfx-010-010': {
+  'ws-vfx-010-010': {
     totalNotes: 4,
     unresolvedCount: 0,
     latestSummary: 'VFX marked this comp as ready for downstream editorial review.',
@@ -63,49 +63,49 @@ const REVIEW_NOTE_SUMMARIES: Record<string, ReviewNoteSummary> = {
     updatedAt: '2026-02-09',
     externalUrl: 'https://review.example.com/collections/creature-designs',
   },
-  'inst-ws-vfx-010-020': {
+  'ws-vfx-010-020': {
     totalNotes: 3,
     unresolvedCount: 0,
     latestSummary: 'Mike signed off on the particle density after the third pass.',
     updatedAt: '2026-02-07',
     externalUrl: 'https://review.example.com/vfx/seq010-sh020-comp-v08',
   },
-  'inst-ws-vfx-020-010': {
+  'ws-vfx-020-010': {
     totalNotes: 6,
     unresolvedCount: 4,
     latestSummary: 'David flagged the pit stop timing as too fast — wants 8 more frames before the tire change.',
     updatedAt: '2026-02-11',
     externalUrl: 'https://review.example.com/vfx/seq020-sh010-comp-v03',
   },
-  'inst-ws-vfx-comp-eleven': {
+  'ws-vfx-comp-eleven': {
     totalNotes: 10,
     unresolvedCount: 2,
     latestSummary: 'Sarah noted the helmet visor CG needs to track tighter on the close-up.',
     updatedAt: '2026-02-08',
     externalUrl: 'https://review.example.com/vfx/vitale-halo-gfx-comp-v4',
   },
-  'inst-ws-art-concept-1': {
+  'ws-art-concept-1': {
     totalNotes: 7,
     unresolvedCount: 0,
     latestSummary: 'Priya incorporated all of David\'s silhouette feedback — approved.',
     updatedAt: '2026-02-06',
     externalUrl: 'https://review.example.com/art/hero-pose-v3',
   },
-  'inst-ws-art-concept-demogorgon': {
+  'ws-art-concept-demogorgon': {
     totalNotes: 12,
     unresolvedCount: 3,
     latestSummary: 'David wants the front wing redesigned to allow better airflow for the reveal shot.',
     updatedAt: '2026-02-05',
     externalUrl: 'https://review.example.com/art/concept-ar24',
   },
-  'inst-ws-cam-sel-billy': {
+  'ws-cam-sel-billy': {
     totalNotes: 3,
     unresolvedCount: 0,
     latestSummary: 'Lisa confirmed this is the preferred take for the confrontation beat.',
     updatedAt: '2026-02-03',
     externalUrl: 'https://review.example.com/camera/ferreira-closeup-select',
   },
-  'inst-ws-edit-cut-locked': {
+  'ws-edit-cut-locked': {
     totalNotes: 16,
     unresolvedCount: 0,
     latestSummary: 'Picture lock approved by Alex — all review notes resolved.',

@@ -144,7 +144,7 @@ function getMorePermissiveTemplate(
 }
 
 // Bump this when grant schema or seed data changes — forces localStorage re-seed
-const GRANTS_VERSION = 5
+const GRANTS_VERSION = 11
 
 export function AccessProvider({ children }: { children: ReactNode }) {
   const { activePersona } = usePersona()
@@ -516,10 +516,35 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
   const createGrant = useCallback((resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId) => {
     if (!userId) return
+
+    // Folders can only be shared with write-capable profiles (editor, contributor, manager)
+    if (resource.type === 'folder') {
+      const perms = getPermissionsForProfile(profileId, roleGroups)
+      if (!perms.includes('write')) return
+    }
+
     setGrants((prev) => {
       if (!canShareFn(resource, prev)) return prev
 
-      const newGrant: Grant = {
+      const newGrants: Grant[] = []
+
+      // Ensure sharer has an explicit manager grant on the resource
+      const sharerHasGrant = prev.some(
+        (g) => g.resource.id === resource.id && g.principal.type === 'user' && g.principal.userId === userId && !g.revokedAt
+      )
+      if (!sharerHasGrant) {
+        newGrants.push({
+          id: `grant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          resource,
+          principal: { type: 'user', userId },
+          templateId: 'manager',
+          permissions: getPermissionsForProfile('manager', roleGroups),
+          grantedByUserId: userId,
+          grantedAt: new Date().toISOString().slice(0, 10),
+        })
+      }
+
+      newGrants.push({
         id: `grant-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         resource,
         principal,
@@ -527,8 +552,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         permissions: getPermissionsForProfile(profileId, roleGroups),
         grantedByUserId: userId,
         grantedAt: new Date().toISOString().slice(0, 10),
-      }
-      return [...prev, newGrant]
+      })
+      return [...prev, ...newGrants]
     })
   }, [userId, roleGroups, canShareFn])
 
