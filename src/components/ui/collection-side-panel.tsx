@@ -1,11 +1,10 @@
 'use client'
 
-import { X, Trash2, Droplets, ExternalLink, LayoutGrid } from 'lucide-react'
+import { X, Trash2, ExternalLink, LayoutGrid } from 'lucide-react'
 import { Button } from './button'
 import { ResponsivePanel } from './responsive-panel'
 import { AccessSummary } from './access-summary'
 import { Tag } from './tag'
-import { SettingToggle } from './settings-panel'
 import type { UserCollection } from '@/hooks'
 import type { ReviewNoteSummary } from '@/lib/review-notes'
 import type { ResourceRef } from '@/lib/grants'
@@ -84,21 +83,6 @@ export function CollectionSidePanel({
           resourceRef={resourceRef}
           resourceName={collection.name}
         />
-
-        <section className="space-y-2">
-          <h3 className="text-body-0-bold text-foreground-dim">Sharing</h3>
-          <div className="space-y-3">
-            <SettingToggle
-              label="Apply watermark"
-              checked={false}
-              onChange={() => console.log('Toggle watermark')}
-            />
-            <div className="flex items-center gap-2 text-body-0-regular text-foreground-dim">
-              <Droplets className="w-3 h-3" />
-              <span>Watermark shared downloads</span>
-            </div>
-          </div>
-        </section>
 
         <section className="space-y-2">
           <h3 className="text-body-0-bold text-foreground-dim">Creative Review</h3>
