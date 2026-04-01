@@ -150,7 +150,24 @@ export function SmartCollectionSidePanel({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {!editing && (
+          <section className="space-y-1">
+            <div className="flex justify-between text-body-0-regular">
+              <span className="text-foreground-dim">Assets</span>
+              <span className="text-foreground">{matchingCount ?? 0}</span>
+            </div>
+            <div className="flex justify-between text-body-0-regular">
+              <span className="text-foreground-dim">Created</span>
+              <span className="text-foreground">{collection.createdAt.toLocaleDateString()}</span>
+            </div>
+            <div className="flex justify-between text-body-0-regular">
+              <span className="text-foreground-dim">Type</span>
+              <span className="text-foreground">Smart Collection</span>
+            </div>
+          </section>
+        )}
+
         {editing ? (
           <SmartCollectionFilterBuilder
             name={draftName}
