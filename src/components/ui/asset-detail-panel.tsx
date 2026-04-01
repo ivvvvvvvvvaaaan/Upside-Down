@@ -39,7 +39,7 @@ function AddTagButton({ onAdd }: { onAdd: (label: string) => void }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-0.5 px-1 py-0 rounded border border-dashed border-border-dim text-label-0-bold text-foreground-dim hover:text-foreground hover:border-border-subtle transition-colors"
+        className="inline-flex items-center gap-0.5 px-1 py-0 rounded border border-border-dim text-label-0-bold text-foreground-dim hover:text-foreground hover:border-border-subtle transition-colors"
       >
         <Plus className="w-3 h-3" />
         Add
