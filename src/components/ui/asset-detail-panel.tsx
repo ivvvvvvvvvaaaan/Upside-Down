@@ -182,23 +182,19 @@ export function AssetDetailPanel({
           </div>
         </section>
 
-        {/* Tags */}
-        <section className="space-y-2">
-          <h3 className="text-label-0-bold uppercase text-foreground-dim">Tags</h3>
-          <div className="flex flex-wrap gap-1.5">
-            <Tag size="compact" variant="border">{typeTag}</Tag>
-            {asset.isKeyArt && <Tag size="compact" type="announcement" variant="border">Key Art</Tag>}
-            {asset.isFinal && <Tag size="compact" type="positive" variant="border">Final</Tag>}
-            {asset.department && (
-              <Tag size="compact" type="neutral" variant="border">
-                {DEPARTMENT_NAMES[asset.department]}
-              </Tag>
-            )}
-            {asset.aiMeta?.keywords?.map(k => (
-              <Tag key={k} size="compact" type="neutral" variant="border">{k}</Tag>
-            ))}
-          </div>
-        </section>
+        {/* Tags — status indicators + AI keywords only (type and department are in Details) */}
+        {(asset.isKeyArt || asset.isFinal || (asset.aiMeta?.keywords?.length ?? 0) > 0) && (
+          <section className="space-y-2">
+            <h3 className="text-label-0-bold uppercase text-foreground-dim">Tags</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {asset.isKeyArt && <Tag size="compact" type="announcement" variant="border">Key Art</Tag>}
+              {asset.isFinal && <Tag size="compact" type="positive" variant="border">Final</Tag>}
+              {asset.aiMeta?.keywords?.map(k => (
+                <Tag key={k} size="compact" type="neutral" variant="border">{k}</Tag>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Collections — user collections + smart collection relationships */}
         <section className="space-y-2">
