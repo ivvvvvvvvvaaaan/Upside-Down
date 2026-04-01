@@ -16,6 +16,13 @@ export type AccessDisplayEntry = AccessDisplaySourceEntry & {
   name: string
   subtitle?: string
   roleLabel: string
+  members?: {
+    id: string
+    name: string
+    email?: string
+    roleLabel?: string
+    isCurrentUser?: boolean
+  }[]
 }
 
 function formatOthers(count: number): string {
@@ -79,6 +86,21 @@ export function buildAccessDisplayEntries(
       const team = TEAMS.find((candidate) => candidate.id === teamPrincipal.teamId)
       const collapsedUsers = collapsedUsersByEntryKey.get(entry.key) ?? []
       const teamRoleLabel = profileLabel(grant.templateId, roleGroups)
+      const members = team?.memberUserIds.map((userId) => {
+        const persona = PERSONAS.find((candidate) => candidate.id === userId)
+        const explicitGrant = collapsedUsers.find((collapsedGrant) =>
+          collapsedGrant.principal.type === 'user' && collapsedGrant.principal.userId === userId,
+        )
+        const explicitRoleLabel = explicitGrant ? profileLabel(explicitGrant.templateId, roleGroups) : undefined
+
+        return {
+          id: userId,
+          name: persona?.name ?? userId,
+          email: persona?.email,
+          roleLabel: explicitRoleLabel && explicitRoleLabel !== teamRoleLabel ? explicitRoleLabel : undefined,
+          isCurrentUser: activeUserId === userId,
+        }
+      })
 
       let subtitle = team
         ? `${team.memberUserIds.length} member${team.memberUserIds.length === 1 ? '' : 's'}`
@@ -101,6 +123,7 @@ export function buildAccessDisplayEntries(
         name: team?.name ?? teamPrincipal.teamId,
         subtitle,
         roleLabel: teamRoleLabel,
+        members,
       }
     })
 }

@@ -122,12 +122,12 @@ export function groupInstancesByCategory(
   }))
 }
 
-import { pick, CLIENT_IMAGE_POOL } from '@/lib/image-pool'
+import { pick, IMAGE_POOL } from '@/lib/images'
 
 /** Only visual media types get preview thumbnails */
 function getThumbnail(instance: AssetInstance): string | undefined {
   if (instance.type === 'image' || instance.type === 'video') {
-    return pick(CLIENT_IMAGE_POOL, instance.id, 1)[0]
+    return pick(IMAGE_POOL, instance.id, 1)[0]
   }
   return undefined
 }

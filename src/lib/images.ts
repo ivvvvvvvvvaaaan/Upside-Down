@@ -1,26 +1,7 @@
-import fs from 'fs'
-import path from 'path'
-
-const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif'])
-
-/** Recursively scan public/images/ for all image files */
-function scanImages(dir: string, prefix: string = ''): string[] {
-  try {
-    const entries = fs.readdirSync(dir, { withFileTypes: true })
-    const results: string[] = []
-    for (const entry of entries) {
-      const rel = prefix ? `${prefix}/${entry.name}` : entry.name
-      if (entry.isDirectory()) {
-        results.push(...scanImages(path.join(dir, entry.name), rel))
-      } else if (IMAGE_EXTS.has(path.extname(entry.name).toLowerCase())) {
-        results.push(`/images/${rel}`)
-      }
-    }
-    return results
-  } catch {
-    return []
-  }
-}
+/**
+ * Client-safe image utilities.
+ * No fs/path dependencies — safe for use in 'use client' components.
+ */
 
 function hashCode(s: string): number {
   let h = 0
@@ -28,6 +9,7 @@ function hashCode(s: string): number {
   return Math.abs(h)
 }
 
+/** Deterministic pick from an image array using a string seed */
 export function pick(images: string[], seed: string, count: number = 1): string[] {
   if (images.length === 0) return []
   const results: string[] = []
@@ -38,14 +20,11 @@ export function pick(images: string[], seed: string, count: number = 1): string[
   return results
 }
 
-/** All images found under public/images/ — server-only (uses fs) */
-export const allImages = scanImages(path.join(process.cwd(), 'public', 'images'))
-
 /**
- * Static image pool for client-side use (no fs dependency).
- * Must match the contents of public/images/ — update when images change.
+ * Static image pool — all images under public/images/.
+ * Update this array when images are added or removed.
  */
-export const CLIENT_IMAGE_POOL = [
+export const IMAGE_POOL = [
   '/images/characters/23ace3be-36cb-4ba5-95bc-a479112cb5e6.jpeg',
   '/images/characters/545c203dbd67064a6f0a3a9c47e1bcae82639e8b.webp',
   '/images/characters/MV5BZDFiMTc2YmMtODJmZS00YTAxLThhODYtYTZlY2RjZjE5M2NmXkEyXkFqcGdeQWRpZWdtb25n._V1_QL75_UX500_CR0,0,500,281_.jpg',

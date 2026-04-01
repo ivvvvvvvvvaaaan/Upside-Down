@@ -96,7 +96,7 @@ export const SCENARIO: Scenario = {
   ],
 
   teams: [
-    { id: 'vfx-core',       name: 'VFX Core',       members: ['vfx-supervisor', 'vfx-coordinator'],                        dept: 'vfx' },
+    { id: 'vfx-core',       name: 'VFX',            members: ['vfx-supervisor', 'vfx-coordinator'],                        dept: 'vfx' },
     { id: 'editorial',      name: 'Editorial',      members: ['editorial-coordinator', 'editorial-artist'],                 dept: 'editorial' },
     { id: 'art-design',     name: 'Art & Design',   members: ['art-artist'],                                               dept: 'art-design' },
     { id: 'studio-leadership', name: 'Studio Leadership', members: ['studio-alex', 'creative-david'] },

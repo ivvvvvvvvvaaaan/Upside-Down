@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { DepartmentId } from '@/components/department/types'
 import { mergePrototypeAssets } from '@/lib/prototype-assets'
-import { pick, allImages } from '@/lib/image-pool'
+import { pick, IMAGE_POOL as allImages } from '@/lib/images'
 import { getFileIdsByCharacter, getFileIdsByLocation, getFileIdsByScene } from '@/lib/ai-tags'
 
 // Asset Types

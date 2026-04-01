@@ -11,6 +11,7 @@ import { TEAMS } from '@/lib/teams'
 import { getRoleGroup } from '@/lib/grants'
 import type { RoleGroup } from '@/lib/grants'
 import { buildAccessDisplayEntries } from './access-display'
+import type { AccessDisplayEntry } from './access-display'
 
 interface AccessPanelProps {
   resourceId: string
@@ -77,7 +78,7 @@ function PermissionDropdown({
   )
 }
 
-function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sourceName, name, subtitle, roleLabel }: {
+function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sourceName, name, subtitle, roleLabel, members }: {
   grant: Grant
   readOnly: boolean
   roleGroups: RoleGroup[]
@@ -87,6 +88,7 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sour
   name: string
   subtitle?: string
   roleLabel: string
+  members?: AccessDisplayEntry['members']
 }) {
   const isOwner = grant.templateId === 'owner'
   const principal = grant.principal
@@ -103,11 +105,6 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sour
           </span>
           <div className="min-w-0">
             <span className="text-body-0-regular text-foreground truncate block">{name}</span>
-            {sourceName && (
-              <span className="text-label-0-regular text-foreground-dim truncate block">
-                Via {sourceName}
-              </span>
-            )}
             {subtitle && (
               <span className="text-label-0-regular text-foreground-dim truncate block">{subtitle}</span>
             )}
@@ -138,6 +135,30 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sour
           )}
         </div>
       </div>
+      {principal.type === 'team' && members && members.length > 0 && (
+        <div className="ml-8 space-y-1 pt-1">
+          {members.map((member) => (
+            <div key={member.id} className="flex items-center justify-between gap-2 py-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center text-[10px] font-medium flex-shrink-0">
+                  {initials(member.name)}
+                </span>
+                <div className="min-w-0">
+                  <span className="text-label-0-regular text-foreground truncate block">
+                    {member.name}{member.isCurrentUser ? ' You' : ''}
+                  </span>
+                  {member.email && (
+                    <span className="text-label-0-regular text-foreground-dim truncate block">{member.email}</span>
+                  )}
+                </div>
+              </div>
+              {member.roleLabel && (
+                <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{member.roleLabel}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -298,6 +319,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
                 name={entry.name}
                 subtitle={entry.subtitle}
                 roleLabel={entry.roleLabel}
+                members={entry.members}
                 onRemove={revokeGrant}
                 onUpdateProfile={updateGrantProfile}
               />
