@@ -129,11 +129,13 @@ function RelationshipGraph({
               {center.name}
             </text>
             <style>{`
-              .graph-node .node-icon { opacity: 1; }
-              .graph-node .node-label { opacity: 0; }
+              .graph-node { transform-origin: center; }
+              .graph-node .node-icon { opacity: 1; transition: opacity 0.15s; }
+              .graph-node .node-label { opacity: 0; transition: opacity 0.15s; }
+              .graph-node .node-scale { transition: transform 0.15s ease; transform-box: fill-box; transform-origin: center; }
               .graph-node:hover .node-icon { opacity: 0; }
-              .graph-node:hover .node-label { opacity: 1; }
-              .graph-node:hover circle { filter: brightness(1.25); }
+              .graph-node:hover .node-label { opacity: 1; font-size: 11px; font-weight: 600; fill: var(--foreground, #fff); }
+              .graph-node:hover .node-scale { transform: scale(1.35); }
             `}</style>
             {nodes.map(n => {
               const { mainImage } = getCollectionImages(n.id)
@@ -144,31 +146,32 @@ function RelationshipGraph({
                 : 'M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0zM12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'
               return (
                 <a key={n.id} href={`/nextgen/smart-collections/${n.id}`} className="graph-node" style={{ cursor: 'pointer' }}>
-                  {isCharacter ? (
-                    <>
-                      <defs>
-                        <clipPath id={`clip-${n.id}`}>
-                          <circle cx={n.x} cy={n.y} r={18} />
-                        </clipPath>
-                      </defs>
-                      <circle cx={n.x} cy={n.y} r={19} fill="none" stroke={dimensionColor[n.dimension] ?? '#555'} strokeWidth={2} className="transition-all" />
-                      <image href={mainImage} x={n.x - 18} y={n.y - 18} width={36} height={36} clipPath={`url(#clip-${n.id})`} className="node-icon" style={{ transition: 'opacity 0.15s' }} />
-                    </>
-                  ) : (
-                    <>
-                      <circle cx={n.x} cy={n.y} r={20}
-                        fill="var(--surface-2, #222)" stroke={dimensionColor[n.dimension] ?? 'var(--border-dim, #555)'} strokeWidth={1.5}
-                        className="transition-all" />
-                      <g className="node-icon pointer-events-none" style={{ transition: 'opacity 0.15s' }}>
-                        <g transform={`translate(${n.x - 8}, ${n.y - 8}) scale(0.67)`}>
-                          <path d={iconPath} fill="none" stroke={dimensionColor[n.dimension] ?? 'var(--foreground-dim, #aaa)'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                  <g className="node-scale">
+                    {isCharacter ? (
+                      <>
+                        <defs>
+                          <clipPath id={`clip-${n.id}`}>
+                            <circle cx={n.x} cy={n.y} r={13} />
+                          </clipPath>
+                        </defs>
+                        <circle cx={n.x} cy={n.y} r={14} fill="none" stroke={dimensionColor[n.dimension] ?? '#555'} strokeWidth={1.5} />
+                        <image href={mainImage} x={n.x - 13} y={n.y - 13} width={26} height={26} preserveAspectRatio="xMidYMid slice" clipPath={`url(#clip-${n.id})`} className="node-icon" />
+                      </>
+                    ) : (
+                      <>
+                        <circle cx={n.x} cy={n.y} r={14}
+                          fill="var(--surface-2, #222)" stroke={dimensionColor[n.dimension] ?? 'var(--border-dim, #555)'} strokeWidth={1.5} />
+                        <g className="node-icon pointer-events-none">
+                          <g transform={`translate(${n.x - 6}, ${n.y - 6}) scale(0.5)`}>
+                            <path d={iconPath} fill="none" stroke={dimensionColor[n.dimension] ?? 'var(--foreground-dim, #aaa)'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                          </g>
                         </g>
-                      </g>
-                    </>
-                  )}
+                      </>
+                    )}
+                  </g>
                   <text x={n.x} y={n.y + 1} textAnchor="middle" dominantBaseline="middle"
                     fill="var(--foreground-dim, #aaa)" fontSize="9"
-                    className="node-label pointer-events-none" style={{ transition: 'opacity 0.15s' }}>
+                    className="node-label pointer-events-none">
                     {n.name}
                   </text>
                 </a>
