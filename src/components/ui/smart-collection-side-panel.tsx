@@ -136,21 +136,36 @@ function RelationshipGraph({
               .graph-node:hover circle { filter: brightness(1.25); }
             `}</style>
             {nodes.map(n => {
-              const iconPath = n.dimension === 'characters'
-                ? 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M12 3a4 4 0 1 1-8 0 4 4 0 0 1 8 0M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'
-                : n.dimension === 'scenes'
-                ? 'M7 2v4M17 2v4M2 10h20M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z'
-                : 'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0zM12 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0z'
+              const { mainImage } = getCollectionImages(n.id)
+              const isCharacter = n.dimension === 'characters'
+              // Lucide Film path for scenes, MapPin path for locations
+              const iconPath = n.dimension === 'scenes'
+                ? 'M7 2v4M17 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6c0-1.1.9-2 2-2z'
+                : 'M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0zM12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'
               return (
                 <a key={n.id} href={`/nextgen/smart-collections/${n.id}`} className="graph-node" style={{ cursor: 'pointer' }}>
-                  <circle cx={n.x} cy={n.y} r={20}
-                    fill="var(--surface-2, #222)" stroke={dimensionColor[n.dimension] ?? 'var(--border-dim, #555)'} strokeWidth={1.5}
-                    className="transition-all" />
-                  <g className="node-icon pointer-events-none" style={{ transition: 'opacity 0.15s' }}>
-                    <g transform={`translate(${n.x - 8}, ${n.y - 8}) scale(0.67)`}>
-                      <path d={iconPath} fill="none" stroke={dimensionColor[n.dimension] ?? 'var(--foreground-dim, #aaa)'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                    </g>
-                  </g>
+                  {isCharacter ? (
+                    <>
+                      <defs>
+                        <clipPath id={`clip-${n.id}`}>
+                          <circle cx={n.x} cy={n.y} r={18} />
+                        </clipPath>
+                      </defs>
+                      <circle cx={n.x} cy={n.y} r={19} fill="none" stroke={dimensionColor[n.dimension] ?? '#555'} strokeWidth={2} className="transition-all" />
+                      <image href={mainImage} x={n.x - 18} y={n.y - 18} width={36} height={36} clipPath={`url(#clip-${n.id})`} className="node-icon" style={{ transition: 'opacity 0.15s' }} />
+                    </>
+                  ) : (
+                    <>
+                      <circle cx={n.x} cy={n.y} r={20}
+                        fill="var(--surface-2, #222)" stroke={dimensionColor[n.dimension] ?? 'var(--border-dim, #555)'} strokeWidth={1.5}
+                        className="transition-all" />
+                      <g className="node-icon pointer-events-none" style={{ transition: 'opacity 0.15s' }}>
+                        <g transform={`translate(${n.x - 8}, ${n.y - 8}) scale(0.67)`}>
+                          <path d={iconPath} fill="none" stroke={dimensionColor[n.dimension] ?? 'var(--foreground-dim, #aaa)'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                        </g>
+                      </g>
+                    </>
+                  )}
                   <text x={n.x} y={n.y + 1} textAnchor="middle" dominantBaseline="middle"
                     fill="var(--foreground-dim, #aaa)" fontSize="9"
                     className="node-label pointer-events-none" style={{ transition: 'opacity 0.15s' }}>
