@@ -191,7 +191,8 @@ export function AssetDetailPanel({
     } catch { return {} }
   })
 
-  const addUserTag = useCallback((assetId: string, label: string) => {
+  const addUserTag = useCallback((assetId: string, rawLabel: string) => {
+    const label = rawLabel.replace(/\b\w/g, c => c.toUpperCase())
     setUserTagsMap(prev => {
       const existing = prev[assetId] ?? []
       if (existing.includes(label)) return prev

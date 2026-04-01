@@ -172,14 +172,15 @@ export function promotedInstanceToAsset(instance: AssetInstance): Asset {
     base.aiMeta = toAIMeta(instance.aiTags)
   }
 
-  // Build unified tags
+  // Build unified tags (Title Case all labels)
+  const toTitleCase = (s: string) => s.replace(/\b\w/g, c => c.toUpperCase())
   const tags: AssetTag[] = []
-  if (typeTag) tags.push({ label: typeTag, source: 'system' })
+  if (typeTag) tags.push({ label: toTitleCase(typeTag), source: 'system' })
   if (base.isKeyArt) tags.push({ label: 'Key Art', source: 'system' })
   if (base.isFinal) tags.push({ label: 'Final', source: 'system' })
   if (instance.aiTags?.keywords) {
     for (const k of instance.aiTags.keywords) {
-      tags.push({ label: k, source: 'ai' })
+      tags.push({ label: toTitleCase(k), source: 'ai' })
     }
   }
   base.tags = tags
