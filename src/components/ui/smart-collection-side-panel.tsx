@@ -140,7 +140,7 @@ export function SmartCollectionSidePanel({
               {editing ? 'Edit Collection' : collection.name}
             </p>
             <p className="text-body-0-regular text-foreground-dim">
-              {editing ? 'Smart Collection' : matchingCount !== undefined ? `${matchingCount} matching asset${matchingCount !== 1 ? 's' : ''}` : 'Smart Collection'}
+              Smart Collection
             </p>
           </div>
         </div>
@@ -160,10 +160,6 @@ export function SmartCollectionSidePanel({
             <div className="flex justify-between text-body-0-regular">
               <span className="text-foreground-dim">Created</span>
               <span className="text-foreground">{collection.createdAt.toLocaleDateString()}</span>
-            </div>
-            <div className="flex justify-between text-body-0-regular">
-              <span className="text-foreground-dim">Type</span>
-              <span className="text-foreground">Smart Collection</span>
             </div>
           </section>
         )}
