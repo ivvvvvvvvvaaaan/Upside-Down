@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo, useState, useCallback } from 'react'
-import { X, LayoutGrid, Folder, ExternalLink, Clapperboard } from 'lucide-react'
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
+import { X, Plus, LayoutGrid, Folder, ExternalLink, Clapperboard } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from './button'
 import { ResponsivePanel } from './responsive-panel'
@@ -16,6 +16,56 @@ import type { RelatedAssetGroup } from '@/lib/context-relationships'
 import type { ReviewNoteSummary } from '@/lib/review-notes'
 import { PERSONAS } from '@/lib/personas'
 import { slugify } from '@/lib/smart-collection-filters'
+
+function AddTagButton({ onAdd }: { onAdd: (label: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus()
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-0.5 px-1 py-0 rounded border border-dashed border-border-dim text-label-0-bold text-foreground-dim hover:text-foreground hover:border-border-subtle transition-colors"
+      >
+        <Plus className="w-3 h-3" />
+        Add
+      </button>
+    )
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <input
+        ref={inputRef}
+        type="text"
+        placeholder="Tag name..."
+        className="w-32 px-2 py-0.5 rounded text-label-0-regular bg-surface-flat border border-border-dim text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-indigo-500"
+        onKeyDown={e => {
+          if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+            onAdd(e.currentTarget.value.trim())
+            e.currentTarget.value = ''
+            setOpen(false)
+          }
+          if (e.key === 'Escape') setOpen(false)
+        }}
+      />
+    </div>
+  )
+}
 
 const DEPARTMENT_NAMES: Record<DepartmentId, string> = {
   'art-design': 'Art & Design',
@@ -286,31 +336,19 @@ export function AssetDetailPanel({
             return (
               <section className="space-y-2">
                 <h3 className="text-label-0-bold uppercase text-foreground-dim">Tags</h3>
-                {displayTags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {displayTags.map(tag => (
-                      <Tag
-                        key={tag.label}
-                        size="compact"
-                        type={tag.label === 'Key Art' ? 'announcement' : tag.label === 'Final' ? 'positive' : 'neutral'}
-                        variant="border"
-                      >
-                        {tag.label}
-                      </Tag>
-                    ))}
-                  </div>
-                )}
-                <input
-                  type="text"
-                  placeholder="Add tag..."
-                  className="w-full px-2 py-1 rounded text-body-0-regular bg-surface-flat border border-border-dim text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-indigo-500"
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                      addUserTag(asset.id, e.currentTarget.value.trim())
-                      e.currentTarget.value = ''
-                    }
-                  }}
-                />
+                <div className="flex flex-wrap gap-1.5">
+                  {displayTags.map(tag => (
+                    <Tag
+                      key={tag.label}
+                      size="compact"
+                      type={tag.label === 'Key Art' ? 'announcement' : tag.label === 'Final' ? 'positive' : 'neutral'}
+                      variant="border"
+                    >
+                      {tag.label}
+                    </Tag>
+                  ))}
+                  <AddTagButton onAdd={(label) => addUserTag(asset.id, label)} />
+                </div>
               </section>
             )
           })()}
