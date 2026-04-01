@@ -17,11 +17,24 @@ import {
 import type { Grant, ResourceRef, RoleGroup, Permission } from '@/lib/grants'
 
 describe('grant-based access model', () => {
-  it('gives department users implicit access inside their own department', () => {
-    const result = resolveAccess('vfx-coordinator', 'vfx', DEFAULT_GRANTS)
+  it('uses explicit department-root grants for default department access', () => {
+    const result = resolveAccess('vfx-coordinator', 'ws-vfx', DEFAULT_GRANTS)
     expect(result.hasAccess).toBe(true)
-    expect(result.source).toBe('department-role')
+    expect(result.source).toBe('team')
     expect(result.effectiveProfile).toBe('manager')
+  })
+
+  it('keeps per-person department overrides explicit', () => {
+    const lisa = resolveAccess('editorial-coordinator', 'ws-editorial', DEFAULT_GRANTS)
+    const maria = resolveAccess('editorial-artist', 'ws-editorial', DEFAULT_GRANTS)
+
+    expect(lisa.hasAccess).toBe(true)
+    expect(lisa.source).toBe('direct')
+    expect(lisa.effectiveProfile).toBe('manager')
+
+    expect(maria.hasAccess).toBe(true)
+    expect(maria.source).toBe('team')
+    expect(maria.effectiveProfile).toBe('editor')
   })
 
   it('keeps studio and creative users explicit-share only for resource access', () => {
@@ -95,14 +108,14 @@ describe('capability decomposition', () => {
     expect(result.canEdit).toBe(false)
   })
 
-  it('resolveAccess respects custom role groups for implicit department access', () => {
+  it('resolveAccess respects custom role groups for explicit department-root access', () => {
     const customGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS.map((group) =>
       group.id === 'manager'
         ? { ...group, permissions: ['open'] as Permission[] }
         : group,
     )
 
-    const result = resolveAccess('vfx-supervisor', 'vfx', DEFAULT_GRANTS, customGroups)
+    const result = resolveAccess('vfx-supervisor', 'ws-vfx', DEFAULT_GRANTS, customGroups)
     expect(result.hasAccess).toBe(true)
     expect(result.effectiveProfile).toBe('manager')
     expect(result.canEdit).toBe(false)
@@ -114,7 +127,6 @@ describe('capability decomposition', () => {
       id: 'custom-grant',
       resource: { id: 'custom-asset', type: 'asset' },
       principal: { type: 'user', userId: 'vendor-framestore' },
-      templateId: 'viewer',
       permissions: ['download'],
       grantedByUserId: 'studio-alex',
       grantedAt: '2026-03-31',

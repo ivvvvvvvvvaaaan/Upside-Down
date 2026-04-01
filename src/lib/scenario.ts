@@ -56,11 +56,22 @@ type ScenarioCollection = {
   assetIds: string[]
 }
 
+type ScenarioDepartmentAccess = {
+  dept: DepartmentId
+  defaultTeamId: string
+  defaultProfile: AccessProfileId
+  overrides?: {
+    userId: string
+    profile: AccessProfileId
+  }[]
+}
+
 type Scenario = {
   projectName: string
   roleGroups: ScenarioRoleGroup[]
   people: ScenarioPerson[]
   teams: ScenarioTeam[]
+  departmentAccess: ScenarioDepartmentAccess[]
   projectRoles: {
     people: Record<string, AccessProfileId>
     teams: Record<string, AccessProfileId>
@@ -102,6 +113,19 @@ export const SCENARIO: Scenario = {
     { id: 'studio-leadership', name: 'Studio Leadership', members: ['studio-alex', 'creative-david'] },
     { id: 'framestore-la',  name: 'Framestore LA',  members: ['vendor-framestore'] },
     { id: 'dailies-review', name: 'Dailies Review', members: ['creative-david', 'vfx-coordinator', 'editorial-coordinator'] },
+  ],
+
+  departmentAccess: [
+    { dept: 'vfx', defaultTeamId: 'vfx-core', defaultProfile: 'manager' },
+    {
+      dept: 'editorial',
+      defaultTeamId: 'editorial',
+      defaultProfile: 'editor',
+      overrides: [
+        { userId: 'editorial-coordinator', profile: 'manager' },
+      ],
+    },
+    { dept: 'art-design', defaultTeamId: 'art-design', defaultProfile: 'editor' },
   ],
 
   projectRoles: {
@@ -358,38 +382,32 @@ export function buildGrants(): Grant[] {
     })
   }
 
-  // Department root folder grants — each department team gets access on the dept wrapper folder
-  for (const team of SCENARIO.teams) {
-    if (!team.dept) continue
-    const folderId = DEPARTMENT_FOLDER_MAP[team.dept]?.id
+  // Department root folder grants — each department has a team default plus explicit person overrides.
+  for (const policy of SCENARIO.departmentAccess) {
+    const folderId = DEPARTMENT_FOLDER_MAP[policy.dept]?.id
     if (!folderId) continue
-    // Team gets editor access on their department root folder
-    grants.push({
-      id: grantId(),
-      resource: { id: folderId, type: 'folder' as const, departmentId: team.dept },
-      principal: { type: 'team', teamId: team.id },
-      templateId: 'editor' as AccessProfileId,
-      permissions: permissionsForTemplate('editor' as AccessProfileId),
-      grantedByUserId: 'studio-alex',
-      grantedAt: '2026-01-01',
-    })
-  }
 
-  // Department people — each person with a dept gets an implicit grant on their dept root folder
-  for (const person of SCENARIO.people) {
-    if (!person.dept) continue
-    const folderId = DEPARTMENT_FOLDER_MAP[person.dept]?.id
-    if (!folderId) continue
-    const profileId: AccessProfileId = person.role === 'manager' ? 'manager' : 'editor'
     grants.push({
       id: grantId(),
-      resource: { id: folderId, type: 'folder' as const, departmentId: person.dept },
-      principal: { type: 'user', userId: person.id },
-      templateId: profileId,
-      permissions: permissionsForTemplate(profileId),
+      resource: { id: folderId, type: 'folder' as const, departmentId: policy.dept },
+      principal: { type: 'team', teamId: policy.defaultTeamId },
+      templateId: policy.defaultProfile,
+      permissions: permissionsForTemplate(policy.defaultProfile),
       grantedByUserId: 'studio-alex',
       grantedAt: '2026-01-01',
     })
+
+    for (const override of policy.overrides ?? []) {
+      grants.push({
+        id: grantId(),
+        resource: { id: folderId, type: 'folder' as const, departmentId: policy.dept },
+        principal: { type: 'user', userId: override.userId },
+        templateId: override.profile,
+        permissions: permissionsForTemplate(override.profile),
+        grantedByUserId: 'studio-alex',
+        grantedAt: '2026-01-01',
+      })
+    }
   }
 
   return grants

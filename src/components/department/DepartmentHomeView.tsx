@@ -27,11 +27,11 @@ import { AppLayout } from '@/components/layouts'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAssetSelection, useViewPreferences, useCompactBar, useUserCollections, useWorkspaceState, usePersona } from '@/hooks'
-import { isDepartmentRole } from '@/lib/personas'
+import { useAssetSelection, useViewPreferences, useCompactBar, useUserCollections, useWorkspaceState, usePersona, useAccess } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
 import { mergeWorkspaceAssets } from '@/lib/asset-instances'
 import type { DepartmentConfig } from './types'
+import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 
 interface DepartmentHomeViewProps {
   config: DepartmentConfig
@@ -56,7 +56,8 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
   const pathname = usePathname()
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
-  const { activePersona, isAdmin } = usePersona()
+  const { isAdmin } = usePersona()
+  const { canAccess } = useAccess()
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
   const { createCollection } = useUserCollections()
 
@@ -165,9 +166,7 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
 
 
   // Check department access
-  const hasDeptAccess = isAdmin || (
-    activePersona?.departmentId === config.id && isDepartmentRole(activePersona.role)
-  )
+  const hasDeptAccess = isAdmin || canAccess(DEPARTMENT_FOLDER_MAP[config.id].id)
 
   // Settings panel component (shared across all views)
   const settingsPanel = (

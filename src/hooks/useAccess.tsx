@@ -31,12 +31,10 @@ import type {
   RoleGroup,
   Permission,
 } from '@/lib/grants'
-import { isDepartmentRole } from '@/lib/personas'
 import { getTeamById } from '@/lib/teams'
 import { useFileTree } from './useFileTree'
 import { getDepartmentWorkspaceFiles, findNodeInTree, DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
-import { departmentConfigs } from '@/lib/department-configs'
 
 // Re-export types consumers may need
 export type { Grant, GrantView, ResourceRef, ResourceType, PrincipalRef, AccessProfileId, RoleGroup, Permission }
@@ -158,7 +156,7 @@ function pickMostPermissiveGrant(grants: Grant[]): Grant | null {
 }
 
 // Bump this when grant schema or seed data changes — forces localStorage re-seed
-const GRANTS_VERSION = 3
+const GRANTS_VERSION = 4
 
 export function AccessProvider({ children }: { children: ReactNode }) {
   const { activePersona } = usePersona()
@@ -404,16 +402,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      const resolved = resolveAccess(userId, resourceId, grants, roleGroups, resourceDepartmentId)
-      if (resolved.source === 'department-role') {
-        const departmentId = resourceDepartmentId ?? nodeToDepartment.get(resourceId) ?? activePersona.departmentId
-        return {
-          templateId: resolved.effectiveProfile,
-          permissions: resolved.permissions,
-          viaLabel: departmentId ? departmentConfigs[departmentId].name : 'Department access',
-        }
-      }
-
       return null
     }
 
@@ -511,10 +499,10 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return assets.filter((asset) => {
       // Direct access via grants
       if (canAccess(asset.id)) return true
-      // Department membership
-      if (asset.department && activePersona.departmentId === asset.department && isDepartmentRole(activePersona.role)) return true
       // Source folder access
       if (asset.sourceFolderIds?.some((fid) => canAccess(fid))) return true
+      // Department-root policy for curated department assets
+      if (asset.department && canAccess(DEPARTMENT_FOLDER_MAP[asset.department].id)) return true
       return false
     })
   }, [activePersona, canAccess])

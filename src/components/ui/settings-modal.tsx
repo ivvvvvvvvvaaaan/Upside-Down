@@ -12,7 +12,8 @@ import { cn } from '@/lib/utils'
 import { PERSONAS, initials } from '@/lib/personas'
 import { TEAMS, getTeamsForUser } from '@/lib/teams'
 import { getRoleGroup } from '@/lib/grants'
-import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef } from '@/lib/grants'
+import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef, ResourceRef } from '@/lib/grants'
+import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 
 const ALL_PERMISSIONS: { id: Permission; name: string }[] = [
   { id: 'open', name: 'Read' },
@@ -166,13 +167,23 @@ function PeopleTab({
 // --- Departments tab ---
 
 function DepartmentsTab({
-  grants,
+  projectTeamGrants,
   roleGroups,
+  getResourceGrants,
   onRoleChange,
+  onAddOverride,
+  onRemoveOverride,
+  canShareResource,
+  canEditResource,
 }: {
-  grants: Grant[]
+  projectTeamGrants: Grant[]
   roleGroups: RoleGroup[]
+  getResourceGrants: (resourceId: string) => Grant[]
   onRoleChange: (grantId: string, profileId: AccessProfileId) => void
+  onAddOverride: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId) => void
+  onRemoveOverride: (grantId: string) => void
+  canShareResource: (resource: ResourceRef) => boolean
+  canEditResource: (resource: ResourceRef) => boolean
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [customDepts, setCustomDepts] = useState<{ id: string; name: string }[]>([])
@@ -195,6 +206,8 @@ function DepartmentsTab({
   )
 
   const options = useMemo(() => roleGroupOptions(roleGroups), [roleGroups])
+  const departmentTeams = useMemo(() => TEAMS.filter((team) => team.departmentId), [])
+  const crossFunctionalTeams = useMemo(() => TEAMS.filter((team) => !team.departmentId), [])
 
   return (
     <div className="space-y-3">
@@ -203,14 +216,25 @@ function DepartmentsTab({
       </p>
 
       <div className="space-y-1">
-        {TEAMS.map((team) => {
+        {departmentTeams.map((team) => {
           const isOpen = expanded.has(team.id)
           const members = team.memberUserIds
             .map(uid => PERSONAS.find(p => p.id === uid))
             .filter(Boolean)
-          const grant = grants.find(
+          const resourceRef: ResourceRef = {
+            id: DEPARTMENT_FOLDER_MAP[team.departmentId!].id,
+            type: 'folder',
+            departmentId: team.departmentId,
+          }
+          const rootGrants = getResourceGrants(resourceRef.id)
+          const grant = rootGrants.find(
             g => g.principal.type === 'team' && g.principal.teamId === team.id,
           )
+          const canShareDepartment = canShareResource(resourceRef)
+          const canEditDepartment = canEditResource(resourceRef)
+          const inheritedRoleLabel = grant
+            ? getRoleGroup(roleGroups, grant.templateId ?? 'viewer')?.name ?? grant.templateId ?? 'Viewer'
+            : 'No default access'
 
           return (
             <div key={team.id} className="rounded">
@@ -234,22 +258,64 @@ function DepartmentsTab({
                     onChange={(v) => onRoleChange(grant.id, v as AccessProfileId)}
                     size="compact"
                     className="w-auto flex-shrink-0"
+                    disabled={!canEditDepartment}
                   />
                 )}
               </div>
               {isOpen && (
                 <div className="ml-6 py-1 space-y-1">
                   {members.map(persona => persona && (
-                    <div key={persona.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-surface-1 transition-colors group">
+                    <div key={persona.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-surface-1 transition-colors">
                       <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center text-label-0-bold flex-shrink-0 text-[10px]">
                         {initials(persona.name)}
                       </span>
-                      <span className="text-body-0-regular text-foreground truncate flex-1">{persona.name}</span>
-                      <span className="text-label-0-regular text-foreground-dim truncate">{persona.title}</span>
-                      <span className="text-label-0-regular text-foreground-dim truncate">{persona.email}</span>
-                      <Button variant="icon" size="compact-icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <X className="w-3 h-3" />
-                      </Button>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-body-0-regular text-foreground truncate block">{persona.name}</span>
+                        <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
+                      </div>
+                      {(() => {
+                        const overrideGrant = rootGrants.find(
+                          (candidate) => candidate.principal.type === 'user' && candidate.principal.userId === persona.id,
+                        )
+                        const memberOptions = [
+                          { value: '__inherit__', label: `Inherits ${inheritedRoleLabel}` },
+                          ...options,
+                        ]
+
+                        return (
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <Select
+                              options={memberOptions}
+                              value={overrideGrant?.templateId ?? '__inherit__'}
+                              onChange={(value) => {
+                                if (value === '__inherit__') {
+                                  if (overrideGrant) onRemoveOverride(overrideGrant.id)
+                                  return
+                                }
+
+                                if (overrideGrant) {
+                                  onRoleChange(overrideGrant.id, value as AccessProfileId)
+                                  return
+                                }
+
+                                onAddOverride(
+                                  resourceRef,
+                                  { type: 'user', userId: persona.id },
+                                  value as AccessProfileId,
+                                )
+                              }}
+                              size="compact"
+                              className="w-auto min-w-[160px]"
+                              disabled={overrideGrant ? !canEditDepartment : !canShareDepartment}
+                            />
+                            {overrideGrant && canEditDepartment && (
+                              <Button variant="icon" size="compact-icon" onClick={() => onRemoveOverride(overrideGrant.id)}>
+                                <X className="w-3 h-3" />
+                              </Button>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </div>
                   ))}
                   {members.length === 0 && (
@@ -260,6 +326,36 @@ function DepartmentsTab({
             </div>
           )
         })}
+
+        {crossFunctionalTeams.length > 0 && (
+          <div className="pt-3 space-y-1">
+            <p className="text-label-0-bold uppercase text-foreground-dim px-2">Other Teams</p>
+            {crossFunctionalTeams.map((team) => {
+              const grant = projectTeamGrants.find(
+                (candidate) => candidate.principal.type === 'team' && candidate.principal.teamId === team.id,
+              )
+              if (!grant) return null
+
+              return (
+                <div key={team.id} className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-surface-1 transition-colors">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-body-0-bold text-foreground truncate block">{team.name}</span>
+                    <span className="text-label-0-regular text-foreground-dim block">
+                      {team.memberUserIds.length} {team.memberUserIds.length === 1 ? 'member' : 'members'}
+                    </span>
+                  </div>
+                  <Select
+                    options={options}
+                    value={grant.templateId ?? 'viewer'}
+                    onChange={(value) => onRoleChange(grant.id, value as AccessProfileId)}
+                    size="compact"
+                    className="w-auto flex-shrink-0"
+                  />
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         {customDepts.map((dept) => {
           const isOpen = expanded.has(dept.id)
@@ -440,11 +536,15 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     renameRoleGroup,
     addRoleGroup,
     removeRoleGroup,
+    getResourceGrants,
     projectUserGrants,
     projectTeamGrants,
     createProjectGrant,
+    createGrant,
     updateGrantProfile,
     revokeGrant,
+    canShare,
+    canEditAcl,
   } = useAccess()
 
   return (
@@ -475,9 +575,14 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               </TabsContent>
               <TabsContent value="departments">
                 <DepartmentsTab
-                  grants={projectTeamGrants}
+                  projectTeamGrants={projectTeamGrants}
                   roleGroups={roleGroups}
+                  getResourceGrants={getResourceGrants}
                   onRoleChange={updateGrantProfile}
+                  onAddOverride={createGrant}
+                  onRemoveOverride={revokeGrant}
+                  canShareResource={canShare}
+                  canEditResource={canEditAcl}
                 />
               </TabsContent>
               <TabsContent value="role-groups">

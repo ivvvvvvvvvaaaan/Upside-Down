@@ -1,6 +1,7 @@
 import type { DepartmentId } from '@/components/department/types'
-import { PERSONAS, isDepartmentRole } from '@/lib/personas'
+import { PERSONAS } from '@/lib/personas'
 import { isUserInTeam, getTeamById } from '@/lib/teams'
+import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 import {
   buildGrants,
   buildLabels,
@@ -128,8 +129,8 @@ export function getGrantPermissions(
   grant: Pick<Grant, 'permissions' | 'templateId'>,
   roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
 ): Permission[] {
-  if (grant.permissions.length > 0) return [...grant.permissions]
-  return getPermissionsForProfile(grant.templateId, roleGroups)
+  if (grant.templateId) return getPermissionsForProfile(grant.templateId, roleGroups)
+  return [...grant.permissions]
 }
 
 function uniquePermissions(permissions: Permission[]): Permission[] {
@@ -222,7 +223,7 @@ export type ResolvedAccess = {
   effectiveProfile: AccessProfileId | null
   canEdit: boolean
   permissions: Permission[]
-  source: 'direct' | 'team' | 'project-direct' | 'project-team' | 'department-role' | 'admin' | null
+  source: 'direct' | 'team' | 'project-direct' | 'project-team' | 'admin' | null
 }
 
 const NO_ACCESS: ResolvedAccess = {
@@ -262,17 +263,17 @@ export function resolveAccess(
   const resourceAccess = buildResolvedAccess(resourceMatches.direct, resourceMatches.team, roleGroups, 'team')
   if (resourceAccess) return resourceAccess
 
-  if (user.departmentId && isDepartmentRole(user.role)) {
-    if (resourceDepartmentId === user.departmentId || resourceId === user.departmentId) {
-      const implicitProfile: AccessProfileId = user.role === 'manager' ? 'manager' : 'editor'
-      const permissions = getPermissionsForProfile(implicitProfile, roleGroups)
-      return {
-        hasAccess: true,
-        effectiveProfile: implicitProfile,
-        canEdit: permissions.includes('write'),
-        permissions,
-        source: 'department-role',
-      }
+  if (resourceDepartmentId) {
+    const departmentRootId = DEPARTMENT_FOLDER_MAP[resourceDepartmentId]?.id
+    if (departmentRootId && departmentRootId !== resourceId) {
+      const departmentRootMatches = resolveMatchingGrants(grants, userId, departmentRootId)
+      const departmentRootAccess = buildResolvedAccess(
+        departmentRootMatches.direct,
+        departmentRootMatches.team,
+        roleGroups,
+        'team',
+      )
+      if (departmentRootAccess) return departmentRootAccess
     }
   }
 

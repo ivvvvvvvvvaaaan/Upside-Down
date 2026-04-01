@@ -2,16 +2,12 @@
 
 import { useMemo } from 'react'
 import { X, Folder, File } from 'lucide-react'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
 import { AccessSummary } from '@/components/ui/access-summary'
-import { Tag } from '@/components/ui/tag'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import type { DepartmentId } from '@/components/department/types'
 import type { ResourceRef } from '@/lib/grants'
-import { getAITagsForFile } from '@/lib/ai-tags'
-import { slugify } from '@/lib/smart-collection-filters'
 import { formatDate } from '@/lib/utils'
 import { useAccess, useFileTree } from '@/hooks'
 import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
@@ -69,7 +65,6 @@ export function WorkspaceSidePanel({
 }: WorkspaceSidePanelProps) {
   const isFolder = node?.type === 'folder'
   const fileCount = isFolder && node ? countChildFiles(node) : 0
-  const aiTags = !isFolder && node ? getAITagsForFile(node.id) : undefined
   const { getInheritedGrants } = useAccess()
   const { tree: fileTree } = useFileTree()
 
@@ -176,42 +171,6 @@ export function WorkspaceSidePanel({
           inheritedGrants={inheritedGrants}
           resourceName={node.name}
         />
-
-        {/* AI tags (files only) */}
-        {!isFolder && aiTags && (
-          <section className="space-y-2">
-            <h3 className="text-label-0-bold uppercase text-foreground-dim">Tags</h3>
-            <div className="space-y-2">
-
-              {aiTags.characters.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {aiTags.characters.map(c => (
-                    <Tag key={c} type="neutral" variant="border" size="compact">{c}</Tag>
-                  ))}
-                </div>
-              )}
-
-              {aiTags.location && (
-                <div className="flex justify-between text-label-1-regular">
-                  <span className="text-foreground-dim">Location</span>
-                  <span className="text-foreground">{aiTags.location}</span>
-                </div>
-              )}
-
-              {aiTags.scene && (
-                <div className="flex justify-between text-label-1-regular">
-                  <span className="text-foreground-dim">Scene</span>
-                  <Link
-                    href={`/nextgen/smart-collections/smart-scene--${slugify(aiTags.scene)}`}
-                    className="text-foreground hover:text-foreground-system-link transition-colors truncate ml-2"
-                  >
-                    {aiTags.scene}
-                  </Link>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
 
         {/* Path */}
         <section className="space-y-2">

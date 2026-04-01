@@ -33,6 +33,7 @@ import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { promotedInstanceToAsset } from '@/lib/asset-instances'
 import type { AssetInstance } from '@/lib/asset-instances'
 import { WorkspaceSidePanel } from '@/components/department/WorkspaceSidePanel'
+import { AssetDetailPanel } from '@/components/ui/asset-detail-panel'
 import { ArrowLeft, List, Columns, LayoutGrid, PanelRight, X, Lock, Users, FolderPlus } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -226,7 +227,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   const departmentNodes: WorkspaceFileNode[] = useMemo(() => {
     if (!isLanding) return []
     return ALL_DEPARTMENT_IDS
-      .filter((id) => canAccess(id))
+      .filter((id) => canAccess(DEPARTMENT_FOLDER_MAP[id].id))
       .map((id) => ({
       id,
       name: departmentConfigs[id].name,
@@ -715,15 +716,23 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
 
         </div>
 
-        {/* Side Panel — flush right, full height */}
-        <WorkspaceSidePanel
-          node={effectiveNode}
-          open={showPanel}
-          onClose={() => setShowPanel(false)}
-          departmentId={departmentId}
-          isManagedZone={selectedNode?.type === 'folder' ? managedFolderIds.has(selectedNode.id) : undefined}
-          onToggleManagedZone={selectedNode?.type === 'folder' ? toggleManagedZone : undefined}
-        />
+        {/* Side Panel — AssetDetailPanel for files, WorkspaceSidePanel for folders */}
+        {selectedNode?.type === 'file' && departmentId ? (
+          <AssetDetailPanel
+            asset={promotedInstanceToAsset(fileToInstance(selectedNode, departmentId))}
+            open={showPanel}
+            onClose={() => { setSelectedNode(null); setShowPanel(false) }}
+          />
+        ) : (
+          <WorkspaceSidePanel
+            node={effectiveNode}
+            open={showPanel}
+            onClose={() => setShowPanel(false)}
+            departmentId={departmentId}
+            isManagedZone={selectedNode?.type === 'folder' ? managedFolderIds.has(selectedNode.id) : undefined}
+            onToggleManagedZone={selectedNode?.type === 'folder' ? toggleManagedZone : undefined}
+          />
+        )}
         </div>
 
         {/* Context Menu */}
