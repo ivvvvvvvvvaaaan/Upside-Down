@@ -61,7 +61,7 @@ describe('capability decomposition', () => {
   it('getRoleGroup returns the correct group', () => {
     const editor = getRoleGroup(DEFAULT_ROLE_GROUPS, 'editor')
     expect(editor).toBeDefined()
-    expect(editor!.name).toBe('Editor')
+    expect(editor!.name).toBe('Can edit & share')
     expect(editor!.permissions).toContain('write')
     expect(editor!.permissions).not.toContain('edit-acl')
   })

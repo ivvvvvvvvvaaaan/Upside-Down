@@ -87,7 +87,7 @@ export function useBreadcrumbExtras() {
 
 function getBreadcrumbs(pathname: string): BreadcrumbItem[] {
   const crumbs: BreadcrumbItem[] = [
-    { label: 'Stranger Things S6', href: '/nextgen' },
+    { label: 'Apex S1', href: '/nextgen' },
   ]
 
   // Check if we're in a section

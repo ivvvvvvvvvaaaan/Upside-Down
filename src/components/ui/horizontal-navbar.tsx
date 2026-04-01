@@ -142,7 +142,8 @@ export function HorizontalNavbar({
             alt="Logo"
             width={24}
             height={24}
-            className="h-6 w-auto"
+            className="h-6"
+            style={{ width: 'auto' }}
           />
           <span className="text-body-1-bold text-foreground">{productName}</span>
         </Link>

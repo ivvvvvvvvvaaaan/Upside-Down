@@ -71,7 +71,7 @@ type Scenario = {
 // --- The scenario ---
 
 export const SCENARIO: Scenario = {
-  projectName: 'Stranger Things S6',
+  projectName: 'Apex S1',
 
   roleGroups: [
     { id: 'owner',       name: 'Owner',       permissions: ['open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl'] },
@@ -218,8 +218,8 @@ export const SCENARIO: Scenario = {
     { id: 'ws-vfx-coll-for-vendor',    name: 'Framestore Handoff - EP301',     createdBy: 'schen@netflix.com',   assetIds: ['inst-ws-vfx-010-030', 'inst-ws-vfx-020-020', 'inst-ws-vfx-ref-brief'] },
     { id: 'ws-edit-coll-for-vfx',      name: 'Offline Ref + Temp VFX',         createdBy: 'msantos@netflix.com', assetIds: ['inst-ws-edit-vfx-2', 'inst-ws-edit-exp-2'] },
     // Everyday organising collections
-    { id: 'coll-creature-designs',  name: 'Creature Designs', createdBy: 'psharma@netflix.com', assetIds: ['inst-ws-art-concept-demogorgon', 'inst-ws-art-concept-creature', 'inst-ws-art-char-eleven'] },
-    { id: 'coll-key-locations',     name: 'Key Locations',    createdBy: 'psharma@netflix.com', assetIds: ['inst-ws-art-concept-ud-env', 'inst-ws-art-concept-lab', 'inst-ws-art-env-byers', 'inst-ws-art-env-starcourt'] },
+    { id: 'coll-creature-designs',  name: 'Car Designs', createdBy: 'psharma@netflix.com', assetIds: ['inst-ws-art-concept-demogorgon', 'inst-ws-art-concept-creature', 'inst-ws-art-char-eleven'] },
+    { id: 'coll-key-locations',     name: 'Key Circuits',    createdBy: 'psharma@netflix.com', assetIds: ['inst-ws-art-concept-ud-env', 'inst-ws-art-concept-lab', 'inst-ws-art-env-byers', 'inst-ws-art-env-starcourt'] },
     { id: 'coll-hero-shots',        name: 'Hero Shots',       createdBy: 'schen@netflix.com',   assetIds: ['inst-ws-vfx-010-010', 'inst-ws-vfx-020-010', 'inst-ws-vfx-comp-eleven'] },
   ],
 }

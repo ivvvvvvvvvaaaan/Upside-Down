@@ -20,7 +20,8 @@ export function PrimaryNavRail({ className }: PrimaryNavRailProps) {
         alt="Logo"
         width={120}
         height={40}
-        className="h-10 w-auto"
+        className="h-10"
+        style={{ width: 'auto' }}
       />
       {/* First group: Library icon (selected) + 1 ghost box */}
       <div className="flex flex-col gap-4 items-center">

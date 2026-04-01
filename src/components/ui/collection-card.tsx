@@ -209,6 +209,7 @@ export function CollectionCard({
                 src={EMPTY_COLLECTION_PLACEHOLDER}
                 alt={`${title} empty`}
                 fill
+                sizes="25vw"
                 className="object-contain mix-blend-luminosity"
               />
             </div>
@@ -225,6 +226,7 @@ export function CollectionCard({
               src={mainImage}
               alt={title}
               fill
+              sizes="25vw"
               className="object-cover rounded"
             />
           ) : (
@@ -241,7 +243,7 @@ export function CollectionCard({
             {/* Main image - takes 2/3 */}
             <div className="flex-[2] relative rounded overflow-hidden">
               {mainImage ? (
-                <Image src={mainImage} alt={title} fill className="object-cover" />
+                <Image src={mainImage} alt={title} fill sizes="25vw" className="object-cover" />
               ) : (
                 <div className="absolute inset-0 bg-surface-highlight rounded" />
               )}
@@ -249,7 +251,7 @@ export function CollectionCard({
             {/* Thumbnail - takes 1/3 */}
             <div className="flex-[1] relative rounded overflow-hidden">
               {thumbnailImages[0] ? (
-                <Image src={thumbnailImages[0]} alt="" fill className="object-cover" />
+                <Image src={thumbnailImages[0]} alt="" fill sizes="25vw" className="object-cover" />
               ) : (
                 <div className="absolute inset-0 bg-surface-2 rounded" />
               )}
@@ -266,7 +268,7 @@ export function CollectionCard({
           {/* Main large image - left half */}
           <div className="flex-1 relative rounded overflow-hidden">
             {mainImage ? (
-              <Image src={mainImage} alt={title} fill className="object-cover" />
+              <Image src={mainImage} alt={title} fill sizes="25vw" className="object-cover" />
             ) : (
               <div className="absolute inset-0 bg-surface-highlight rounded" />
             )}
@@ -277,7 +279,7 @@ export function CollectionCard({
             {/* Top thumbnail */}
             <div className="flex-1 relative rounded overflow-hidden">
               {thumbnailImages[0] ? (
-                <Image src={thumbnailImages[0]} alt="" fill className="object-cover" />
+                <Image src={thumbnailImages[0]} alt="" fill sizes="25vw" className="object-cover" />
               ) : (
                 <div className="absolute inset-0 bg-surface-2 rounded" />
               )}
@@ -286,7 +288,7 @@ export function CollectionCard({
             <div className="flex-1 relative rounded overflow-hidden">
               {thumbnailImages[1] ? (
                 <>
-                  <Image src={thumbnailImages[1]} alt="" fill className="object-cover" />
+                  <Image src={thumbnailImages[1]} alt="" fill sizes="25vw" className="object-cover" />
                   <div className="absolute bg-surface-overlay inset-0" />
                   {remainingAssets > 0 && (
                     <div className="absolute inset-0 flex items-center justify-center text-foreground text-body-2-bold">

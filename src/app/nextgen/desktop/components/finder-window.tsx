@@ -47,7 +47,7 @@ const sidebarItems: SidebarItem[] = [
   { id: 'documents', name: 'Documents', icon: Folder, type: 'favorite' },
   { id: 'downloads', name: 'Downloads', icon: Download, type: 'favorite' },
   { id: 'macintosh', name: 'Macintosh HD', icon: HardDrive, type: 'location' },
-  { id: 'workspace', name: 'Stranger Things S6 / 7168465', icon: Briefcase, type: 'location' },
+  { id: 'workspace', name: 'Apex S1 / 7168465', icon: Briefcase, type: 'location' },
 ]
 
 // Use UnifiedFileNode as the file node type throughout Finder

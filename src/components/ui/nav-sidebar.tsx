@@ -48,16 +48,19 @@ import type { NavConfig, NavSection, NavItem } from '@/types/navigation'
 const NAV_STORAGE_KEY = 'nav-expanded'
 
 function usePersistedExpand(key: string, fallback: boolean): [boolean, (v: boolean) => void] {
-  const [value, setValue] = useState(() => {
+  // Start with fallback to match server render and avoid hydration mismatch
+  const [value, setValue] = useState(fallback)
+
+  // Sync from localStorage after mount
+  useEffect(() => {
     try {
       const stored = localStorage.getItem(NAV_STORAGE_KEY)
       if (stored) {
         const map = JSON.parse(stored)
-        if (key in map) return map[key] as boolean
+        if (key in map) setValue(map[key] as boolean)
       }
     } catch {}
-    return fallback
-  })
+  }, [key])
 
   const setPersisted = useCallback((next: boolean) => {
     setValue(next)

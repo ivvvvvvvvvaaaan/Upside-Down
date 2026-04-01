@@ -55,20 +55,20 @@ describe('generateChildCollections', () => {
     })
 
     const assets: Asset[] = [
-      makeAsset({ id: 'a1', aiMeta: { characters: ['Mike Wheeler', 'Eleven'] } }),
-      makeAsset({ id: 'a2', aiMeta: { characters: ['Eleven', 'Dustin Henderson'] } }),
+      makeAsset({ id: 'a1', aiMeta: { characters: ['James Ashworth', 'Marco Vitale'] } }),
+      makeAsset({ id: 'a2', aiMeta: { characters: ['Marco Vitale', 'Elena Richter'] } }),
     ]
 
     const children = generateChildCollections(parent, assets)
 
     expect(children).toHaveLength(3)
-    expect(children.map(c => c.name)).toEqual(['Dustin Henderson', 'Eleven', 'Mike Wheeler'])
-    expect(children[0].id).toBe('sc-char--dustin-henderson')
-    expect(children[1].id).toBe('sc-char--eleven')
-    expect(children[2].id).toBe('sc-char--mike-wheeler')
+    expect(children.map(c => c.name)).toEqual(['Elena Richter', 'James Ashworth', 'Marco Vitale'])
+    expect(children[0].id).toBe('sc-char--elena-richter')
+    expect(children[1].id).toBe('sc-char--james-ashworth')
+    expect(children[2].id).toBe('sc-char--marco-vitale')
 
     // Each child has correct filter
-    expect(children[1].filter).toEqual({ aiCharacters: ['Eleven'] })
+    expect(children[2].filter).toEqual({ aiCharacters: ['Marco Vitale'] })
     // Each child references parent
     expect(children[0].parentId).toBe('sc-char')
   })
@@ -81,17 +81,17 @@ describe('generateChildCollections', () => {
     })
 
     const assets: Asset[] = [
-      makeAsset({ id: 'a1', aiMeta: { location: 'Hawkins Lab' } }),
-      makeAsset({ id: 'a2', aiMeta: { location: 'Byers House' } }),
-      makeAsset({ id: 'a3', aiMeta: { location: 'Hawkins Lab' } }),
+      makeAsset({ id: 'a1', aiMeta: { location: 'Apex Garage' } }),
+      makeAsset({ id: 'a2', aiMeta: { location: 'FIA Stewards Office' } }),
+      makeAsset({ id: 'a3', aiMeta: { location: 'Apex Garage' } }),
     ]
 
     const children = generateChildCollections(parent, assets)
 
     expect(children).toHaveLength(2)
-    expect(children.map(c => c.name)).toEqual(['Byers House', 'Hawkins Lab'])
-    expect(children[0].id).toBe('sc-loc--byers-house')
-    expect(children[0].filter).toEqual({ aiLocation: 'Byers House' })
+    expect(children.map(c => c.name)).toEqual(['Apex Garage', 'FIA Stewards Office'])
+    expect(children[0].id).toBe('sc-loc--apex-garage')
+    expect(children[0].filter).toEqual({ aiLocation: 'Apex Garage' })
   })
 
   it('groups by scenes', () => {
@@ -102,15 +102,15 @@ describe('generateChildCollections', () => {
     })
 
     const assets: Asset[] = [
-      makeAsset({ id: 'a1', aiMeta: { scene: 'INT. HAWKINS LAB - NIGHT' } }),
-      makeAsset({ id: 'a2', aiMeta: { scene: 'EXT. FOREST CHASE - DUSK' } }),
+      makeAsset({ id: 'a1', aiMeta: { scene: 'INT. APEX GARAGE - RACE DAY' } }),
+      makeAsset({ id: 'a2', aiMeta: { scene: 'EXT. CIRCUIT - LAP 52' } }),
     ]
 
     const children = generateChildCollections(parent, assets)
 
     expect(children).toHaveLength(2)
-    expect(children.map(c => c.name)).toEqual(['EXT. FOREST CHASE - DUSK', 'INT. HAWKINS LAB - NIGHT'])
-    expect(children[1].filter).toEqual({ aiScene: 'INT. HAWKINS LAB - NIGHT' })
+    expect(children.map(c => c.name)).toEqual(['EXT. CIRCUIT - LAP 52', 'INT. APEX GARAGE - RACE DAY'])
+    expect(children[1].filter).toEqual({ aiScene: 'INT. APEX GARAGE - RACE DAY' })
   })
 
   it('returns empty array when no assets match parent filter', () => {
@@ -120,7 +120,7 @@ describe('generateChildCollections', () => {
     })
 
     const assets: Asset[] = [
-      makeAsset({ department: 'art-design', aiMeta: { characters: ['Eleven'] } }),
+      makeAsset({ department: 'art-design', aiMeta: { characters: ['Marco Vitale'] } }),
     ]
 
     expect(generateChildCollections(parent, assets)).toEqual([])
@@ -135,11 +135,11 @@ describe('generateChildCollections', () => {
 
     const assets: Asset[] = [
       makeAsset({ id: 'a1' }), // no aiMeta
-      makeAsset({ id: 'a2', aiMeta: { characters: ['Eleven'] } }),
+      makeAsset({ id: 'a2', aiMeta: { characters: ['Marco Vitale'] } }),
     ]
 
     const children = generateChildCollections(parent, assets)
     expect(children).toHaveLength(1)
-    expect(children[0].name).toBe('Eleven')
+    expect(children[0].name).toBe('Marco Vitale')
   })
 })

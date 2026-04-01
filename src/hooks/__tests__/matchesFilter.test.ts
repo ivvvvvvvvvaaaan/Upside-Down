@@ -25,23 +25,23 @@ describe('matchesFilter', () => {
     })
 
     it('matches substring in aiMeta characters', () => {
-      const asset = makeAsset({ aiMeta: { characters: ['Eleven'] } })
-      expect(matchesFilter(asset, { query: 'eleven' })).toBe(true)
+      const asset = makeAsset({ aiMeta: { characters: ['Marco Vitale'] } })
+      expect(matchesFilter(asset, { query: 'vitale' })).toBe(true)
     })
 
     it('matches substring in aiMeta keywords', () => {
-      const asset = makeAsset({ aiMeta: { keywords: ['telekinesis'] } })
-      expect(matchesFilter(asset, { query: 'telekinesis' })).toBe(true)
+      const asset = makeAsset({ aiMeta: { keywords: ['overtake'] } })
+      expect(matchesFilter(asset, { query: 'overtake' })).toBe(true)
     })
 
     it('matches substring in aiMeta location', () => {
-      const asset = makeAsset({ aiMeta: { location: 'Hawkins Lab' } })
-      expect(matchesFilter(asset, { query: 'hawkins' })).toBe(true)
+      const asset = makeAsset({ aiMeta: { location: 'Apex Garage' } })
+      expect(matchesFilter(asset, { query: 'apex' })).toBe(true)
     })
 
     it('matches substring in aiMeta scene', () => {
-      const asset = makeAsset({ aiMeta: { scene: 'INT. HAWKINS LAB - NIGHT' } })
-      expect(matchesFilter(asset, { query: 'hawkins lab' })).toBe(true)
+      const asset = makeAsset({ aiMeta: { scene: 'INT. APEX GARAGE - RACE DAY' } })
+      expect(matchesFilter(asset, { query: 'apex garage' })).toBe(true)
     })
 
     it('returns false when query does not match', () => {
@@ -139,7 +139,7 @@ describe('matchesFilter', () => {
   // ── AI presence filters ──
   describe('aiHasCharacters', () => {
     it('passes when characters exist', () => {
-      const asset = makeAsset({ aiMeta: { characters: ['Eleven'] } })
+      const asset = makeAsset({ aiMeta: { characters: ['Marco Vitale'] } })
       expect(matchesFilter(asset, { aiHasCharacters: true })).toBe(true)
     })
 
@@ -155,7 +155,7 @@ describe('matchesFilter', () => {
 
   describe('aiHasLocation', () => {
     it('passes when location exists', () => {
-      const asset = makeAsset({ aiMeta: { location: 'Hawkins' } })
+      const asset = makeAsset({ aiMeta: { location: 'Monaco' } })
       expect(matchesFilter(asset, { aiHasLocation: true })).toBe(true)
     })
 
@@ -179,48 +179,48 @@ describe('matchesFilter', () => {
   // ── aiCharacters (intersection) ──
   describe('aiCharacters', () => {
     it('matches when ANY character intersects (case-insensitive)', () => {
-      const asset = makeAsset({ aiMeta: { characters: ['Eleven', 'Mike Wheeler'] } })
-      expect(matchesFilter(asset, { aiCharacters: ['eleven'] })).toBe(true)
-      expect(matchesFilter(asset, { aiCharacters: ['MIKE WHEELER'] })).toBe(true)
+      const asset = makeAsset({ aiMeta: { characters: ['Marco Vitale', 'James Ashworth'] } })
+      expect(matchesFilter(asset, { aiCharacters: ['marco vitale'] })).toBe(true)
+      expect(matchesFilter(asset, { aiCharacters: ['JAMES ASHWORTH'] })).toBe(true)
     })
 
     it('rejects when no intersection', () => {
-      const asset = makeAsset({ aiMeta: { characters: ['Eleven'] } })
-      expect(matchesFilter(asset, { aiCharacters: ['Dustin'] })).toBe(false)
+      const asset = makeAsset({ aiMeta: { characters: ['Marco Vitale'] } })
+      expect(matchesFilter(asset, { aiCharacters: ['Elena'] })).toBe(false)
     })
 
     it('rejects when aiMeta has no characters', () => {
       const asset = makeAsset({ aiMeta: { characters: [] } })
-      expect(matchesFilter(asset, { aiCharacters: ['Eleven'] })).toBe(false)
+      expect(matchesFilter(asset, { aiCharacters: ['Marco Vitale'] })).toBe(false)
     })
   })
 
   // ── aiLocation / aiScene (exact, case-insensitive) ──
   describe('aiLocation', () => {
     it('matches exact location case-insensitively', () => {
-      const asset = makeAsset({ aiMeta: { location: 'Hawkins Lab' } })
-      expect(matchesFilter(asset, { aiLocation: 'hawkins lab' })).toBe(true)
+      const asset = makeAsset({ aiMeta: { location: 'Apex Garage' } })
+      expect(matchesFilter(asset, { aiLocation: 'apex garage' })).toBe(true)
     })
 
     it('rejects different location', () => {
-      const asset = makeAsset({ aiMeta: { location: 'Hawkins Lab' } })
-      expect(matchesFilter(asset, { aiLocation: 'Byers House' })).toBe(false)
+      const asset = makeAsset({ aiMeta: { location: 'Apex Garage' } })
+      expect(matchesFilter(asset, { aiLocation: 'FIA Stewards Office' })).toBe(false)
     })
 
     it('rejects when aiMeta has no location', () => {
       const asset = makeAsset({ aiMeta: {} })
-      expect(matchesFilter(asset, { aiLocation: 'Hawkins Lab' })).toBe(false)
+      expect(matchesFilter(asset, { aiLocation: 'Apex Garage' })).toBe(false)
     })
   })
 
   describe('aiScene', () => {
     it('matches exact scene case-insensitively', () => {
-      const asset = makeAsset({ aiMeta: { scene: 'INT. HAWKINS LAB - NIGHT' } })
-      expect(matchesFilter(asset, { aiScene: 'int. hawkins lab - night' })).toBe(true)
+      const asset = makeAsset({ aiMeta: { scene: 'INT. APEX GARAGE - RACE DAY' } })
+      expect(matchesFilter(asset, { aiScene: 'int. apex garage - race day' })).toBe(true)
     })
 
     it('rejects different scene', () => {
-      const asset = makeAsset({ aiMeta: { scene: 'INT. HAWKINS LAB - NIGHT' } })
+      const asset = makeAsset({ aiMeta: { scene: 'INT. APEX GARAGE - RACE DAY' } })
       expect(matchesFilter(asset, { aiScene: 'EXT. FOREST' })).toBe(false)
     })
   })
@@ -232,7 +232,7 @@ describe('matchesFilter', () => {
         type: 'image',
         department: 'art-design',
         imageMeta: { typeTag: 'Concept Art' },
-        aiMeta: { characters: ['Eleven'], location: 'Hawkins Lab' },
+        aiMeta: { characters: ['Marco Vitale'], location: 'Apex Garage' },
       })
 
       const filter: AssetFilter = {
@@ -240,7 +240,7 @@ describe('matchesFilter', () => {
         department: 'art-design',
         typeTags: ['Concept Art'],
         aiHasCharacters: true,
-        aiLocation: 'Hawkins Lab',
+        aiLocation: 'Apex Garage',
       }
 
       expect(matchesFilter(asset, filter)).toBe(true)
@@ -250,7 +250,7 @@ describe('matchesFilter', () => {
       const asset = makeAsset({
         type: 'image',
         department: 'art-design',
-        aiMeta: { characters: ['Eleven'] },
+        aiMeta: { characters: ['Marco Vitale'] },
       })
 
       // department mismatch
@@ -275,11 +275,11 @@ describe('matchesFilter', () => {
     })
 
     it('fails aiCharacters gracefully', () => {
-      expect(matchesFilter(asset, { aiCharacters: ['Eleven'] })).toBe(false)
+      expect(matchesFilter(asset, { aiCharacters: ['Marco Vitale'] })).toBe(false)
     })
 
     it('fails aiLocation gracefully', () => {
-      expect(matchesFilter(asset, { aiLocation: 'Hawkins' })).toBe(false)
+      expect(matchesFilter(asset, { aiLocation: 'Monaco' })).toBe(false)
     })
 
     it('fails aiScene gracefully', () => {
