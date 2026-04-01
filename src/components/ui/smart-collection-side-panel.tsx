@@ -128,17 +128,37 @@ function RelationshipGraph({
               fill="var(--foreground, #fff)" fontSize="11" fontWeight="600">
               {center.name}
             </text>
-            {nodes.map(n => (
-              <a key={n.id} href={`/nextgen/smart-collections/${n.id}`}>
-                <circle cx={n.x} cy={n.y} r={20}
-                  fill="var(--surface-2, #222)" stroke={dimensionColor[n.dimension] ?? 'var(--border-dim, #555)'} strokeWidth={1.5}
-                  className="hover:brightness-125 cursor-pointer transition-all" />
-                <text x={n.x} y={n.y + 1} textAnchor="middle" dominantBaseline="middle"
-                  fill="var(--foreground-dim, #aaa)" fontSize="9" className="pointer-events-none">
-                  {n.name}
-                </text>
-              </a>
-            ))}
+            <style>{`
+              .graph-node .node-icon { opacity: 1; }
+              .graph-node .node-label { opacity: 0; }
+              .graph-node:hover .node-icon { opacity: 0; }
+              .graph-node:hover .node-label { opacity: 1; }
+              .graph-node:hover circle { filter: brightness(1.25); }
+            `}</style>
+            {nodes.map(n => {
+              const iconPath = n.dimension === 'characters'
+                ? 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M12 3a4 4 0 1 1-8 0 4 4 0 0 1 8 0M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'
+                : n.dimension === 'scenes'
+                ? 'M7 2v4M17 2v4M2 10h20M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z'
+                : 'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0zM12 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0z'
+              return (
+                <a key={n.id} href={`/nextgen/smart-collections/${n.id}`} className="graph-node" style={{ cursor: 'pointer' }}>
+                  <circle cx={n.x} cy={n.y} r={20}
+                    fill="var(--surface-2, #222)" stroke={dimensionColor[n.dimension] ?? 'var(--border-dim, #555)'} strokeWidth={1.5}
+                    className="transition-all" />
+                  <g className="node-icon pointer-events-none" style={{ transition: 'opacity 0.15s' }}>
+                    <g transform={`translate(${n.x - 8}, ${n.y - 8}) scale(0.67)`}>
+                      <path d={iconPath} fill="none" stroke={dimensionColor[n.dimension] ?? 'var(--foreground-dim, #aaa)'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                    </g>
+                  </g>
+                  <text x={n.x} y={n.y + 1} textAnchor="middle" dominantBaseline="middle"
+                    fill="var(--foreground-dim, #aaa)" fontSize="9"
+                    className="node-label pointer-events-none" style={{ transition: 'opacity 0.15s' }}>
+                    {n.name}
+                  </text>
+                </a>
+              )
+            })}
           </svg>
         </div>
       )}
