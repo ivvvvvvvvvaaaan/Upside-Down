@@ -10,6 +10,7 @@ export function matchesFilter(asset: Asset, filter: AssetFilter): boolean {
   if (filter.query && filter.query.trim()) {
     const query = filter.query.toLowerCase().trim()
     const searchParts = [asset.name]
+    if (asset.tags) searchParts.push(...asset.tags.map(t => t.label))
     if (asset.aiMeta) {
       if (asset.aiMeta.characters) searchParts.push(...asset.aiMeta.characters)
       if (asset.aiMeta.keywords) searchParts.push(...asset.aiMeta.keywords)

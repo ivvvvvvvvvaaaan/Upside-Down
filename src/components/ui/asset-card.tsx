@@ -289,10 +289,27 @@ export function AssetCard({
             {asset.name}
           </Link>
 
-          {/* Tag + Metadata - 2nd line with 8px gap */}
+          {/* Tag + Metadata - 2nd line: type tag + status from unified tags */}
           <div className="flex items-center gap-2 overflow-hidden">
-            {renderTypeTag()}
-            {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
+            {(() => {
+              // Prefer unified tags, fall back to legacy
+              if (asset.tags?.length) {
+                const typeTag = asset.tags.find(t => t.source === 'system' && t.label !== 'Key Art' && t.label !== 'Final')
+                const statusTag = asset.tags.find(t => t.label === 'Key Art' || t.label === 'Final')
+                return (
+                  <>
+                    {typeTag && <Tag>{typeTag.label}</Tag>}
+                    {statusTag && <Tag type={statusTag.label === 'Final' ? 'positive' : 'announcement'}>{statusTag.label}</Tag>}
+                  </>
+                )
+              }
+              return (
+                <>
+                  {renderTypeTag()}
+                  {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
+                </>
+              )
+            })()}
             {renderMetadata()}
           </div>
         </div>

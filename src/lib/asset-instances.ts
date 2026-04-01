@@ -1,5 +1,5 @@
 import type { DepartmentId } from '@/components/department/types'
-import type { Asset, AssetType } from '@/lib/data'
+import type { Asset, AssetType, AssetTag } from '@/lib/data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { getAITagsForFile, toAIMeta } from '@/lib/ai-tags'
 import type { AITagResult } from '@/lib/ai-tags'
@@ -171,6 +171,18 @@ export function promotedInstanceToAsset(instance: AssetInstance): Asset {
   if (instance.aiTags) {
     base.aiMeta = toAIMeta(instance.aiTags)
   }
+
+  // Build unified tags
+  const tags: AssetTag[] = []
+  if (typeTag) tags.push({ label: typeTag, source: 'system' })
+  if (base.isKeyArt) tags.push({ label: 'Key Art', source: 'system' })
+  if (base.isFinal) tags.push({ label: 'Final', source: 'system' })
+  if (instance.aiTags?.keywords) {
+    for (const k of instance.aiTags.keywords) {
+      tags.push({ label: k, source: 'ai' })
+    }
+  }
+  base.tags = tags
 
   return base
 }

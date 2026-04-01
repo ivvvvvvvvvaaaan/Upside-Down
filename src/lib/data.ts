@@ -71,6 +71,13 @@ export type SmartCollection = {
   category?: SmartCollectionCategory // Pipeline stage grouping
 }
 
+export type TagSource = 'ai' | 'system' | 'user'
+
+export type AssetTag = {
+  label: string
+  source: TagSource
+}
+
 export type AIMeta = {
   characters?: string[]
   scene?: string
@@ -114,6 +121,9 @@ export type Asset = {
   modifiedBy?: string        // Email of last person to modify this asset
 
   created_at?: string
+
+  // Unified tags
+  tags?: AssetTag[]
 }
 
 // Collection Type

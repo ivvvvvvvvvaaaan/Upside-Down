@@ -181,14 +181,20 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
         if (activePersona?.departmentId && e.departmentId === activePersona.departmentId) return false
         return true
       })
-      .map(entry => ({
-        id: entry.resourceId,
-        name: entry.label,
-        type: 'folder' as const,
-        modifiedAt: entry.grantedAt,
-        children: [],
-      }))
-  }, [isLanding, sharesReceivedByMe, activePersona])
+      .map((entry) => {
+        const departmentFiles = entry.departmentId ? (getFileTreeDeptFiles(entry.departmentId) as WorkspaceFileNode[]) : []
+        const sourceNode = findNodeById(departmentFiles, entry.resourceId)
+        if (sourceNode?.type === 'folder') return sourceNode
+
+        return {
+          id: entry.resourceId,
+          name: entry.label,
+          type: 'folder' as const,
+          modifiedAt: entry.grantedAt,
+          children: [],
+        }
+      })
+  }, [isLanding, sharesReceivedByMe, activePersona, getFileTreeDeptFiles])
 
   // O(1) lookup for shared folder IDs
   const sharedFolderIds = useMemo(() => new Set(sharedFolderNodes.map(n => n.id)), [sharedFolderNodes])
@@ -208,10 +214,10 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   // Auto-drill into a workspace-level transient folder when navigated to via URL
   useEffect(() => {
     if (landingFolderId && isLanding) {
-      const folder = landingFolders.find(f => f.id === landingFolderId)
+      const folder = [...sharedFolderNodes, ...landingFolders].find((candidate) => candidate.id === landingFolderId)
       if (folder) setLandingDrillFolder(folder)
     }
-  }, [landingFolderId, isLanding, landingFolders])
+  }, [landingFolderId, isLanding, landingFolders, sharedFolderNodes])
 
   const handleCreateFolder = useCallback((name: string) => {
     if (isLanding) {
