@@ -397,7 +397,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   const handleFolderDrilldown = useCallback((folder: WorkspaceFileNode) => {
     if (isLanding) {
       // Transient folders and shared collections on landing: drill down locally (no URL change)
-      if (folder.id.startsWith('new-folder-') || sharedFolderIds.has(folder.id)) {
+      if (folder.id.startsWith('new-folder-') || sharedFolderIds.has(folder.id) || landingDrillFolder) {
         setLandingDrillFolder(folder)
       } else {
         router.push(`/nextgen/workspace/${folder.id}`)
