@@ -166,7 +166,7 @@ export function SmartCollectionSidePanel({
               const { label, Icon } = DIMENSION_CONFIG[dimension]
               return (
                 <section key={dimension} className="space-y-2">
-                  <h3 className="text-label-0-bold uppercase text-foreground-dim">{label}</h3>
+                  <h3 className="text-label-0-bold text-foreground-dim">{label}</h3>
                   <div className="space-y-2">
                     {items.map(item => (
                       <Link
@@ -193,7 +193,7 @@ export function SmartCollectionSidePanel({
         ) : (
           <div className="space-y-4">
             <section>
-              <h3 className="text-label-0-bold uppercase text-foreground-dim mb-3">
+              <h3 className="text-label-0-bold text-foreground-dim mb-3">
                 Includes assets matching
               </h3>
               {filterSummary.length === 0 ? (

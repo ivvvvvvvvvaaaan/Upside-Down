@@ -106,7 +106,7 @@ export function WorkspaceSidePanel({
   const fullPath = useMemo(() => {
     if (!node) return null
 
-    const rootPath = '/Workspaces/Apex S1'
+    const rootPath = '/Apex S1'
     if (!resolvedDepartmentId) return `${rootPath}/${node.name}`
 
     const departmentRootId = DEPARTMENT_FOLDER_MAP[resolvedDepartmentId].id
@@ -142,7 +142,7 @@ export function WorkspaceSidePanel({
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Details */}
         <section className="space-y-2">
-          <h3 className="text-label-0-bold uppercase text-foreground-dim">Details</h3>
+          <h3 className="text-body-0-bold text-foreground-dim">Details</h3>
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               {isFolder ? (
@@ -151,8 +151,8 @@ export function WorkspaceSidePanel({
                 <File className="w-8 h-8 text-foreground-dim flex-shrink-0" />
               )}
               <div className="min-w-0">
-                <p className="text-body-1-bold text-foreground truncate">{node.name}</p>
-                <p className="text-label-0-regular text-foreground-dim">
+                <p className="text-body-0-bold text-foreground truncate">{node.name}</p>
+                <p className="text-body-0-regular text-foreground-dim">
                   {isFolder ? 'Folder' : node.extension?.toUpperCase() || 'File'}
                 </p>
               </div>
@@ -160,18 +160,18 @@ export function WorkspaceSidePanel({
 
             <div className="space-y-1">
               {isFolder ? (
-                <div className="flex justify-between text-label-1-regular">
+                <div className="flex justify-between text-body-0-regular">
                   <span className="text-foreground-dim">Items</span>
                   <span className="text-foreground">{node.children?.length ?? 0} ({fileCount} files)</span>
                 </div>
               ) : (
-                <div className="flex justify-between text-label-1-regular">
+                <div className="flex justify-between text-body-0-regular">
                   <span className="text-foreground-dim">Size</span>
                   <span className="text-foreground">{formatFileSize(node.size)}</span>
                 </div>
               )}
               {node.modifiedAt && (
-              <div className="flex justify-between text-label-1-regular">
+              <div className="flex justify-between text-body-0-regular">
                 <span className="text-foreground-dim">Modified</span>
                 <span className="text-foreground">{formatDate(node.modifiedAt)}</span>
               </div>
@@ -190,8 +190,8 @@ export function WorkspaceSidePanel({
 
         {/* Path */}
         <section className="space-y-2">
-          <h3 className="text-label-0-bold uppercase text-foreground-dim">Path</h3>
-          <p className="text-label-0-regular text-foreground-dim font-mono break-all">
+          <h3 className="text-body-0-bold text-foreground-dim">Path</h3>
+          <p className="text-body-0-regular text-foreground-dim break-all">
             {fullPath}
           </p>
         </section>

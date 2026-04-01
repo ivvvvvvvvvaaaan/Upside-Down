@@ -684,8 +684,13 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                           if (node.type === 'folder') {
                             const fileCount = countAccessibleFiles(node.children ?? [], canAccess)
                             const isSharedFolder = sharedFolderIds.has(node.id)
-                            const dept = (departmentId ?? node.id) as DepartmentId
-                            const folderAsset = folderNodeToAsset(node, dept)
+                            const folderAsset = folderNodeToAsset(
+                              node,
+                              departmentId
+                                ?? findDepartmentIdForNode(node, getFileTreeDeptFiles)
+                                ?? activePersona?.departmentId
+                                ?? ALL_DEPARTMENT_IDS[0],
+                            )
                             const folderAccessible = isLanding && isDepartmentLandingNode(node.id)
                               ? canAccess(DEPARTMENT_FOLDER_MAP[node.id].id)
                               : canAccess(node.id)
@@ -720,7 +725,13 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                               />
                             )
                           }
-                          const workspaceAsset = assetBySourceFileId.get(node.id) ?? folderNodeToAsset(node, departmentId!)
+                          const workspaceAsset = assetBySourceFileId.get(node.id) ?? folderNodeToAsset(
+                            node,
+                            departmentId
+                              ?? findDepartmentIdForNode(node, getFileTreeDeptFiles)
+                              ?? activePersona?.departmentId
+                              ?? ALL_DEPARTMENT_IDS[0],
+                          )
                           return (
                             <AssetCard
                               key={node.id}

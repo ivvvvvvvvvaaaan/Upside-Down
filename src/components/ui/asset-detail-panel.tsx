@@ -56,7 +56,7 @@ function TagManagerModal({
 
         {systemTags.length > 0 && (
           <div className="space-y-1.5">
-            <p className="text-label-0-regular text-foreground-dim">System</p>
+            <p className="text-body-0-regular text-foreground-dim">System</p>
             <div className="flex flex-wrap gap-1.5">
               {systemTags.map(t => (
                 <Tag key={t.label} size="compact" type={t.label === 'Key Art' ? 'announcement' : t.label === 'Final' ? 'positive' : 'neutral'} variant="border">
@@ -69,7 +69,7 @@ function TagManagerModal({
 
         {aiTags.length > 0 && (
           <div className="space-y-1.5">
-            <p className="text-label-0-regular text-foreground-dim">AI</p>
+            <p className="text-body-0-regular text-foreground-dim">AI</p>
             <div className="flex flex-wrap gap-1.5">
               {aiTags.map(t => (
                 <Tag key={t.label} size="compact" type="neutral" variant="border">{t.label}</Tag>
@@ -79,17 +79,17 @@ function TagManagerModal({
         )}
 
         <div className="space-y-1.5">
-          <p className="text-label-0-regular text-foreground-dim">Custom</p>
+          <p className="text-body-0-regular text-foreground-dim">Custom</p>
           <div className="flex flex-wrap gap-1.5">
             {userTags.map(label => (
-              <span key={label} className="inline-flex items-center gap-1 px-1 rounded border border-border-dim text-label-0-bold text-foreground">
+              <span key={label} className="inline-flex items-center gap-1 px-1 rounded border border-border-dim text-body-0-bold text-foreground">
                 {label}
                 <button onClick={() => onRemoveTag(label)} className="hover:text-foreground-system-error transition-colors">
                   <X className="w-3 h-3" />
                 </button>
               </span>
             ))}
-            {userTags.length === 0 && <span className="text-label-0-regular text-foreground-dim">None yet</span>}
+            {userTags.length === 0 && <span className="text-body-0-regular text-foreground-dim">None yet</span>}
           </div>
         </div>
 
@@ -219,7 +219,7 @@ export function AssetDetailPanel({
 
     const pathParts = asset.workspacePath.split(' / ').filter(Boolean)
     const folderNames = pathParts.slice(0, -1)
-    const fullLabel = `/${DEPARTMENT_NAMES[asset.department]}${folderNames.length > 0 ? `/${folderNames.join(' / ')}` : ''}`
+    const fullLabel = `/Apex S1/${DEPARTMENT_NAMES[asset.department]}${folderNames.length > 0 ? `/${folderNames.join('/')}` : ''}`
 
     if (folderNames.length === 0) {
       return {
@@ -346,64 +346,64 @@ export function AssetDetailPanel({
         <div className="space-y-4">
           {/* Details Section */}
           <section className="space-y-2">
-            <h3 className="text-label-0-bold uppercase text-foreground-dim">Details</h3>
+            <h3 className="text-body-0-bold text-foreground-dim">Details</h3>
             <div className="space-y-2">
               <div>
-                <p className="text-label-0-regular text-foreground-dim">File name</p>
-                <p className="text-body-1-regular text-foreground">{asset.name}</p>
+                <p className="text-body-0-regular text-foreground-dim">File name</p>
+                <p className="text-body-0-regular text-foreground">{asset.name}</p>
               </div>
               <div>
-                <p className="text-label-0-regular text-foreground-dim">Type</p>
-                <p className="text-body-1-regular text-foreground capitalize">{asset.type}</p>
+                <p className="text-body-0-regular text-foreground-dim">Type</p>
+                <p className="text-body-0-regular text-foreground capitalize">{asset.type}</p>
               </div>
               {asset.department && (
                 <div>
-                  <p className="text-label-0-regular text-foreground-dim">Department</p>
-                  <p className="text-body-1-regular text-foreground">
+                  <p className="text-body-0-regular text-foreground-dim">Department</p>
+                  <p className="text-body-0-regular text-foreground">
                     {DEPARTMENT_NAMES[asset.department]}
                   </p>
                 </div>
               )}
               {duration && (
                 <div>
-                  <p className="text-label-0-regular text-foreground-dim">Duration</p>
-                  <p className="text-body-1-regular text-foreground">{duration}</p>
+                  <p className="text-body-0-regular text-foreground-dim">Duration</p>
+                  <p className="text-body-0-regular text-foreground">{duration}</p>
                 </div>
               )}
               {asset.type === 'shot' && asset.shotMeta && (
                 <>
                   {asset.shotMeta.scene && (
                     <div>
-                      <p className="text-label-0-regular text-foreground-dim">Scene</p>
-                      <p className="text-body-1-regular text-foreground">{asset.shotMeta.scene}</p>
+                      <p className="text-body-0-regular text-foreground-dim">Scene</p>
+                      <p className="text-body-0-regular text-foreground">{asset.shotMeta.scene}</p>
                     </div>
                   )}
                   {asset.shotMeta.take && (
                     <div>
-                      <p className="text-label-0-regular text-foreground-dim">Take</p>
-                      <p className="text-body-1-regular text-foreground">{asset.shotMeta.take}</p>
+                      <p className="text-body-0-regular text-foreground-dim">Take</p>
+                      <p className="text-body-0-regular text-foreground">{asset.shotMeta.take}</p>
                     </div>
                   )}
                   {asset.shotMeta.camera && (
                     <div>
-                      <p className="text-label-0-regular text-foreground-dim">Camera</p>
-                      <p className="text-body-1-regular text-foreground">{asset.shotMeta.camera}</p>
+                      <p className="text-body-0-regular text-foreground-dim">Camera</p>
+                      <p className="text-body-0-regular text-foreground">{asset.shotMeta.camera}</p>
                     </div>
                   )}
                 </>
               )}
               {asset.created_at && (
                 <div>
-                  <p className="text-label-0-regular text-foreground-dim">Created</p>
-                  <p className="text-body-1-regular text-foreground">
+                  <p className="text-body-0-regular text-foreground-dim">Created</p>
+                  <p className="text-body-0-regular text-foreground">
                     {new Date(asset.created_at).toLocaleDateString()}
                   </p>
                 </div>
               )}
               {asset.modifiedBy && (
                 <div>
-                  <p className="text-label-0-regular text-foreground-dim">Modified by</p>
-                  <p className="text-body-1-regular text-foreground">
+                  <p className="text-body-0-regular text-foreground-dim">Modified by</p>
+                  <p className="text-body-0-regular text-foreground">
                     {PERSONAS.find(p => p.email === asset.modifiedBy)?.name ?? asset.modifiedBy}
                   </p>
                 </div>
@@ -420,7 +420,7 @@ export function AssetDetailPanel({
             const displayTags = allTags.filter(t => !(t.source === 'system' && t.label !== 'Key Art' && t.label !== 'Final'))
             return (
               <section className="space-y-2">
-                <h3 className="text-label-0-bold uppercase text-foreground-dim">Tags</h3>
+                <h3 className="text-body-0-bold text-foreground-dim">Tags</h3>
                 <div className="flex flex-wrap gap-1.5">
                   {displayTags.map(tag => (
                     <Tag
@@ -454,7 +454,7 @@ export function AssetDetailPanel({
 
           {/* Appears in — workspace folder + visible collection relationships */}
           <section className="space-y-2">
-            <h3 className="text-label-0-bold uppercase text-foreground-dim">Appears in</h3>
+            <h3 className="text-body-0-bold text-foreground-dim">Appears in</h3>
             <div>
               {appearanceItems.map((item) => {
                 const Icon = item.icon === 'folder' ? Folder : LayoutGrid
@@ -464,7 +464,7 @@ export function AssetDetailPanel({
                       <Icon className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
                       <span className={cn('truncate', item.isActive && 'text-foreground-dim')}>{item.label}</span>
                     </span>
-                    <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{item.kind}</span>
+                    <span className="text-body-0-regular text-foreground-dim flex-shrink-0">{item.kind}</span>
                   </span>
                 )
 
@@ -475,7 +475,7 @@ export function AssetDetailPanel({
                 )
               })}
               {appearanceItems.length === 0 && (
-                <p className="text-label-1-regular text-foreground-dim">None</p>
+                <p className="text-body-0-regular text-foreground-dim">None</p>
               )}
             </div>
           </section>
@@ -483,11 +483,11 @@ export function AssetDetailPanel({
 
         {reviewNoteSummary && (
           <section className="space-y-2">
-            <h3 className="text-label-0-bold uppercase text-foreground-dim">Creative Review</h3>
+            <h3 className="text-body-0-bold text-foreground-dim">Creative Review</h3>
             <div className="space-y-3">
               <div>
-                <p className="text-label-0-regular text-foreground-dim">Latest</p>
-                <p className="text-body-1-regular text-foreground">{reviewNoteSummary.latestSummary}</p>
+                <p className="text-body-0-regular text-foreground-dim">Latest</p>
+                <p className="text-body-0-regular text-foreground">{reviewNoteSummary.latestSummary}</p>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <Tag type="announcement">{reviewNoteSummary.totalNotes} notes</Tag>
@@ -496,8 +496,8 @@ export function AssetDetailPanel({
                 </Tag>
               </div>
               <div>
-                <p className="text-label-0-regular text-foreground-dim">Updated</p>
-                <p className="text-body-1-regular text-foreground">
+                <p className="text-body-0-regular text-foreground-dim">Updated</p>
+                <p className="text-body-0-regular text-foreground">
                   {new Date(reviewNoteSummary.updatedAt).toLocaleDateString()}
                 </p>
               </div>
@@ -505,7 +505,7 @@ export function AssetDetailPanel({
                 href={reviewNoteSummary.externalUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 text-body-1-regular text-foreground hover:text-foreground-system-link transition-colors"
+                className="inline-flex items-center gap-2 text-body-0-regular text-foreground hover:text-foreground-system-link transition-colors"
               >
                 <ExternalLink className="w-4 h-4 flex-shrink-0" />
                 Open in Creative Review
@@ -516,7 +516,7 @@ export function AssetDetailPanel({
 
         {relatedGroups.length > 0 && (
           <section className="space-y-2">
-            <h3 className="text-label-0-bold uppercase text-foreground-dim">Explore Context</h3>
+            <h3 className="text-body-0-bold text-foreground-dim">Explore Context</h3>
             <div className="space-y-4">
               {relatedGroups.map((group) => (
                 <div key={group.type} className="space-y-2">
@@ -529,7 +529,7 @@ export function AssetDetailPanel({
                       <Link
                         key={`${group.type}-${relatedAsset.id}`}
                         href={`/nextgen/assets/${relatedAsset.id}`}
-                        className="block text-body-1-regular text-foreground hover:text-foreground-system-link transition-colors"
+                        className="block text-body-0-regular text-foreground hover:text-foreground-system-link transition-colors"
                       >
                         {relatedAsset.name}
                       </Link>

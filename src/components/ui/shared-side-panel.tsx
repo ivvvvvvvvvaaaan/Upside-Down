@@ -80,7 +80,7 @@ export function SharedSidePanel({ entry, onClose, isCreator = false, onRevokeSha
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Item section */}
         <section className="space-y-2">
-          <h3 className="text-label-0-bold uppercase text-foreground-dim">Item</h3>
+          <h3 className="text-label-0-bold text-foreground-dim">Item</h3>
           <div className="flex items-center gap-3">
             {kindIcon(kind)}
             <div className="min-w-0 flex-1">
@@ -106,7 +106,7 @@ export function SharedSidePanel({ entry, onClose, isCreator = false, onRevokeSha
 
         {/* Details section */}
         <section className="space-y-2">
-          <h3 className="text-label-0-bold uppercase text-foreground-dim">Details</h3>
+          <h3 className="text-label-0-bold text-foreground-dim">Details</h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-label-1-regular text-foreground-dim">Shared by</span>

@@ -43,7 +43,7 @@ export function CollectionSidePanel({
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         <section className="space-y-2">
-          <h3 className="text-label-0-bold uppercase text-foreground-dim">Collection</h3>
+          <h3 className="text-label-0-bold text-foreground-dim">Collection</h3>
           <div className="space-y-1">
             <p className="text-body-1-bold text-foreground">{collection.name}</p>
             <p className="text-label-1-regular text-foreground-subtle">
@@ -62,7 +62,7 @@ export function CollectionSidePanel({
         />
 
         <section className="space-y-2">
-          <h3 className="text-label-0-bold uppercase text-foreground-dim">Sharing</h3>
+          <h3 className="text-label-0-bold text-foreground-dim">Sharing</h3>
           <div className="space-y-3">
             <SettingToggle
               label="Apply watermark"
@@ -77,7 +77,7 @@ export function CollectionSidePanel({
         </section>
 
         <section className="space-y-2">
-          <h3 className="text-label-0-bold uppercase text-foreground-dim">Creative Review</h3>
+          <h3 className="text-label-0-bold text-foreground-dim">Creative Review</h3>
           {reviewNoteSummary ? (
             <div className="space-y-3">
               <div className="space-y-1">

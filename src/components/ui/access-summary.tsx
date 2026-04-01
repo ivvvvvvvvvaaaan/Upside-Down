@@ -46,10 +46,10 @@ export function AccessSummary({
   return (
     <>
       <section className="space-y-2">
-        <h3 className="text-label-0-bold uppercase text-foreground-dim">Access</h3>
+        <h3 className="text-body-0-bold text-foreground-dim">Access</h3>
         <div className="space-y-1">
           {effectiveRows.length === 0 && (
-            <p className="text-label-1-regular text-foreground-dim">Not shared</p>
+            <p className="text-body-0-regular text-foreground-dim">Not shared</p>
           )}
           {effectiveRows.map((row) => (
             <div key={row.key} className="flex items-start justify-between gap-2 py-0.5">
@@ -58,11 +58,11 @@ export function AccessSummary({
                 <div className="min-w-0">
                   <span className="text-body-0-regular text-foreground truncate block">{row.name}</span>
                   {row.subtitle && (
-                    <span className="text-label-0-regular text-foreground-dim truncate block">{row.subtitle}</span>
+                    <span className="text-body-0-regular text-foreground-dim truncate block">{row.subtitle}</span>
                   )}
                 </div>
               </div>
-              <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{row.roleLabel}</span>
+              <span className="text-body-0-regular text-foreground-dim flex-shrink-0">{row.roleLabel}</span>
             </div>
           ))}
         </div>
