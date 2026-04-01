@@ -335,7 +335,7 @@ export function AssetDetailPanel({
     <ResponsivePanel open={open} onClose={onClose}>
       {/* Header */}
       <div className="flex items-center justify-between p-4">
-        <span className="text-body-1-bold text-foreground">Asset Info</span>
+        <span className="text-heading-2 text-foreground">Asset Info</span>
         <Button variant="icon" compact onClick={onClose}>
           <X className="w-4 h-4" />
         </Button>

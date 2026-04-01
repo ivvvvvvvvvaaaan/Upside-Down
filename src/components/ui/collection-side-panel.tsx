@@ -45,7 +45,7 @@ export function CollectionSidePanel({
   return (
     <ResponsivePanel open={open} onClose={onClose}>
       <div className="flex items-center justify-between p-4">
-        <span className="text-body-1-bold text-foreground">Collection Settings</span>
+        <span className="text-heading-2 text-foreground">Collection Settings</span>
         <Button variant="icon" compact onClick={onClose}>
           <X className="w-4 h-4" />
         </Button>
