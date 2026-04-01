@@ -30,7 +30,7 @@ import { useViewPreferences, useCompactBar, useWorkspaceState, useAssetSelection
 import type { DepartmentId } from '@/components/department/types'
 import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
-import { instanceToAsset } from '@/lib/asset-instances'
+import { promotedInstanceToAsset } from '@/lib/asset-instances'
 import type { AssetInstance } from '@/lib/asset-instances'
 import { WorkspaceSidePanel } from '@/components/department/WorkspaceSidePanel'
 import { ArrowLeft, List, Columns, LayoutGrid, PanelRight, X, Lock, Users, FolderPlus } from 'lucide-react'
@@ -325,7 +325,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   // Flat asset list for selection — on landing each folder's "department" is itself
   const currentGridAssets = useMemo(() => {
     return currentGridItems.map((n) =>
-      instanceToAsset(fileToInstance(n, (departmentId ?? n.id) as DepartmentId))
+      promotedInstanceToAsset(fileToInstance(n, (departmentId ?? n.id) as DepartmentId))
     )
   }, [currentGridItems, departmentId])
 
@@ -632,7 +632,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                             const fileCount = countAccessibleFiles(node.children ?? [], canAccess)
                             const isSharedFolder = sharedFolderIds.has(node.id)
                             const dept = (departmentId ?? node.id) as DepartmentId
-                            const folderAsset = instanceToAsset(fileToInstance(node, dept))
+                            const folderAsset = promotedInstanceToAsset(fileToInstance(node, dept))
                             const folderAccessible = canAccess(node.id)
                             const isRestricted = !folderAccessible && !isSharedFolder
                             const accessIcon = isSharedFolder
@@ -665,7 +665,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                               />
                             )
                           }
-                          const asset = instanceToAsset(fileToInstance(node, departmentId!))
+                          const asset = promotedInstanceToAsset(fileToInstance(node, departmentId!))
                           return (
                             <AssetCard
                               key={node.id}

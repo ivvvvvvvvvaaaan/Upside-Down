@@ -132,21 +132,8 @@ function getThumbnail(instance: AssetInstance): string | undefined {
   return undefined
 }
 
-/** Convert an AssetInstance to an Asset-compatible shape for AssetCard rendering.
- *  This is the basic mapper — no AI enrichment. Used by workspace grid views. */
-export function instanceToAsset(instance: AssetInstance): Asset {
-  return {
-    id: instance.id,
-    name: instance.name,
-    type: instance.type,
-    department: instance.department,
-    created_at: instance.modifiedAt,
-    thumbnail: getThumbnail(instance),
-  }
-}
-
-/** Convert an AssetInstance to a promoted Asset with AI metadata.
- *  Sets typeTag from category/AI, populates aiMeta. Used by department/search views. */
+/** Convert an AssetInstance to an Asset with full metadata (AI tags, typeTag, workspacePath).
+ *  Single conversion function — same asset data everywhere. */
 export function promotedInstanceToAsset(instance: AssetInstance): Asset {
   const base: Asset = {
     id: instance.id,

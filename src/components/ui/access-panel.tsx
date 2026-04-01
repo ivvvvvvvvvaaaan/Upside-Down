@@ -152,9 +152,27 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sour
                   )}
                 </div>
               </div>
-              {member.roleLabel && (
-                <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{member.roleLabel}</span>
-              )}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {!readOnly && member.grantId && onUpdateProfile ? (
+                  <>
+                    <PermissionDropdown
+                      value={member.roleValue ?? 'viewer'}
+                      onChange={(value) => onUpdateProfile(member.grantId!, value)}
+                      roleGroups={roleGroups}
+                    />
+                    {onRemove && (
+                      <button
+                        onClick={() => onRemove(member.grantId!)}
+                        className="p-1 rounded hover:bg-surface-3 text-foreground-dim hover:text-foreground transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </>
+                ) : member.roleLabel ? (
+                  <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{member.roleLabel}</span>
+                ) : null}
+              </div>
             </div>
           ))}
         </div>

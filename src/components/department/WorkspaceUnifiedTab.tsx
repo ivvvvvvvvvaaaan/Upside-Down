@@ -9,7 +9,7 @@ import { useWorkspaceState } from '@/hooks/useWorkspaceState'
 import type { FileNode, FileViewMode } from '@/components/ui/file-explorer'
 import type { DepartmentId } from '@/components/department/types'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
-import { instanceToAsset } from '@/lib/asset-instances'
+import { promotedInstanceToAsset } from '@/lib/asset-instances'
 import type { AssetInstance } from '@/lib/asset-instances'
 import { WorkspaceSidePanel } from './WorkspaceSidePanel'
 import { List, Columns, LayoutGrid } from 'lucide-react'
@@ -208,7 +208,7 @@ export function WorkspaceUnifiedTab({ departmentId }: WorkspaceUnifiedTabProps) 
             {allFiles.map((file) => (
               <AssetCard
                 key={file.id}
-                asset={instanceToAsset(file)}
+                asset={promotedInstanceToAsset(file)}
                 fromWorkspace={managedFileIds.has(file.id)}
                 onClick={() => {
                   const wsNode = findNodeById(processedFiles, file.sourceFileId)

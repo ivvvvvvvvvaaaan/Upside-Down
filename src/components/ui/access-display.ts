@@ -1,7 +1,7 @@
 'use client'
 
 import { profileLabel } from '@/lib/grants'
-import type { Grant, RoleGroup } from '@/lib/grants'
+import type { Grant, RoleGroup, AccessProfileId } from '@/lib/grants'
 import { PERSONAS } from '@/lib/personas'
 import { TEAMS } from '@/lib/teams'
 
@@ -20,7 +20,9 @@ export type AccessDisplayEntry = AccessDisplaySourceEntry & {
     id: string
     name: string
     email?: string
+    grantId?: string
     roleLabel?: string
+    roleValue?: AccessProfileId
     isCurrentUser?: boolean
   }[]
 }
@@ -97,7 +99,9 @@ export function buildAccessDisplayEntries(
           id: userId,
           name: persona?.name ?? userId,
           email: persona?.email,
+          grantId: explicitGrant?.id,
           roleLabel: explicitRoleLabel && explicitRoleLabel !== teamRoleLabel ? explicitRoleLabel : undefined,
+          roleValue: explicitGrant?.templateId,
           isCurrentUser: activeUserId === userId,
         }
       })
