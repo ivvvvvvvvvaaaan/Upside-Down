@@ -165,7 +165,7 @@ export function AssetDetailPanel({
   reviewNoteSummary = null,
   activeCollectionId,
 }: AssetDetailPanelProps) {
-  const { getInheritedGrants, getCollectionRippleGrants, visibleCollections } = useAccess()
+  const { getInheritedGrants, getCollectionRippleGrants, visibleCollections, canEdit } = useAccess()
   const { getDepartmentFiles } = useFileTree()
   const allCollections = collections ?? visibleCollections
 
@@ -432,21 +432,25 @@ export function AssetDetailPanel({
                       {tag.label}
                     </Tag>
                   ))}
-                  <button
-                    onClick={() => setTagModalOpen(true)}
-                    className="inline-flex items-center gap-0.5 px-1 py-0 rounded border border-border-dim text-label-0-bold text-foreground-dim hover:text-foreground hover:border-border-subtle transition-colors"
-                  >
-                    <Plus className="w-3 h-3" />
-                    Add
-                  </button>
-                  <TagManagerModal
-                    open={tagModalOpen}
-                    onClose={() => setTagModalOpen(false)}
-                    tags={asset.tags ?? []}
-                    userTags={userTagsMap[asset.id] ?? []}
-                    onAddTag={(label) => addUserTag(asset.id, label)}
-                    onRemoveTag={(label) => removeUserTag(asset.id, label)}
-                  />
+                  {canEdit(asset.id) && (
+                    <>
+                      <button
+                        onClick={() => setTagModalOpen(true)}
+                        className="inline-flex items-center gap-0.5 px-1 py-0 rounded border border-border-dim text-label-0-bold text-foreground-dim hover:text-foreground hover:border-border-subtle transition-colors"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Add
+                      </button>
+                      <TagManagerModal
+                        open={tagModalOpen}
+                        onClose={() => setTagModalOpen(false)}
+                        tags={asset.tags ?? []}
+                        userTags={userTagsMap[asset.id] ?? []}
+                        onAddTag={(label) => addUserTag(asset.id, label)}
+                        onRemoveTag={(label) => removeUserTag(asset.id, label)}
+                      />
+                    </>
+                  )}
                 </div>
               </section>
             )
