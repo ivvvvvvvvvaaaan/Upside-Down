@@ -192,7 +192,7 @@ export function CollectionCard({
             sizeStyles.thumbnail
           )}
         >
-          <FolderIcon className="w-10 h-10 text-foreground-dim" />
+          <FolderIcon className="w-10 h-10 text-gray-500" />
           {autoIngest && (
             <div className="absolute top-1.5 right-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400">
               <Zap className="w-3 h-3" />
