@@ -5,7 +5,7 @@ import { X, Plus, LayoutGrid, Folder, ExternalLink, Clapperboard } from 'lucide-
 import Link from 'next/link'
 import { Button } from './button'
 import { ResponsivePanel } from './responsive-panel'
-import { AccessPanel } from './access-panel'
+import { AccessSummary } from './access-summary'
 import { Tag } from './tag'
 import { cn } from '@/lib/utils'
 import type { Asset, DepartmentId } from '@/lib/data'
@@ -17,53 +17,96 @@ import type { ReviewNoteSummary } from '@/lib/review-notes'
 import { PERSONAS } from '@/lib/personas'
 import { slugify } from '@/lib/smart-collection-filters'
 
-function AddTagButton({ onAdd }: { onAdd: (label: string) => void }) {
-  const [open, setOpen] = useState(false)
+import { Modal } from './modal'
+import type { AssetTag } from '@/lib/data'
+
+function TagManagerModal({
+  open,
+  onClose,
+  tags,
+  userTags,
+  onAddTag,
+  onRemoveTag,
+}: {
+  open: boolean
+  onClose: () => void
+  tags: AssetTag[]
+  userTags: string[]
+  onAddTag: (label: string) => void
+  onRemoveTag: (label: string) => void
+}) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (open) inputRef.current?.focus()
+    if (open) setTimeout(() => inputRef.current?.focus(), 100)
   }, [open])
 
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-0.5 px-1 py-0 rounded border border-border-dim text-label-0-bold text-foreground-dim hover:text-foreground hover:border-border-subtle transition-colors"
-      >
-        <Plus className="w-3 h-3" />
-        Add
-      </button>
-    )
-  }
+  const systemTags = tags.filter(t => t.source === 'system')
+  const aiTags = tags.filter(t => t.source === 'ai')
 
   return (
-    <div ref={containerRef} className="relative">
-      <input
-        ref={inputRef}
-        type="text"
-        placeholder="Tag name..."
-        className="w-32 px-2 py-0.5 rounded text-label-0-regular bg-surface-flat border border-border-dim text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-indigo-500"
-        onKeyDown={e => {
-          if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-            onAdd(e.currentTarget.value.trim())
-            e.currentTarget.value = ''
-            setOpen(false)
-          }
-          if (e.key === 'Escape') setOpen(false)
-        }}
-      />
-    </div>
+    <Modal open={open} onOpenChange={(v) => !v && onClose()} size="xs">
+      <div className="p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-body-1-bold text-foreground">Manage Tags</h2>
+          <button onClick={onClose} className="p-1 rounded hover:bg-surface-3 text-foreground-dim hover:text-foreground transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {systemTags.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-label-0-regular text-foreground-dim">System</p>
+            <div className="flex flex-wrap gap-1.5">
+              {systemTags.map(t => (
+                <Tag key={t.label} size="compact" type={t.label === 'Key Art' ? 'announcement' : t.label === 'Final' ? 'positive' : 'neutral'} variant="border">
+                  {t.label}
+                </Tag>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {aiTags.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-label-0-regular text-foreground-dim">AI</p>
+            <div className="flex flex-wrap gap-1.5">
+              {aiTags.map(t => (
+                <Tag key={t.label} size="compact" type="neutral" variant="border">{t.label}</Tag>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <p className="text-label-0-regular text-foreground-dim">Custom</p>
+          <div className="flex flex-wrap gap-1.5">
+            {userTags.map(label => (
+              <span key={label} className="inline-flex items-center gap-1 px-1 rounded border border-border-dim text-label-0-bold text-foreground">
+                {label}
+                <button onClick={() => onRemoveTag(label)} className="hover:text-foreground-system-error transition-colors">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+            {userTags.length === 0 && <span className="text-label-0-regular text-foreground-dim">None yet</span>}
+          </div>
+        </div>
+
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Type a tag and press Enter..."
+          className="w-full px-2 py-1.5 rounded text-body-0-regular bg-surface-flat border border-border-dim text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-indigo-500"
+          onKeyDown={e => {
+            if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+              onAddTag(e.currentTarget.value.trim())
+              e.currentTarget.value = ''
+            }
+          }}
+        />
+      </div>
+    </Modal>
   )
 }
 
@@ -158,6 +201,17 @@ export function AssetDetailPanel({
     })
   }, [])
 
+  const removeUserTag = useCallback((assetId: string, label: string) => {
+    setUserTagsMap(prev => {
+      const existing = prev[assetId] ?? []
+      const next = { ...prev, [assetId]: existing.filter(t => t !== label) }
+      try { localStorage.setItem('user-tags', JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+  }, [])
+
+  const [tagModalOpen, setTagModalOpen] = useState(false)
+
   const workspaceFolderInfo = useMemo(() => {
     if (!asset) return null
     if (!asset.department || !asset.workspacePath) return null
@@ -200,23 +254,31 @@ export function AssetDetailPanel({
     c.assetIds.includes(asset.id)
   )
 
-  const appearanceItems = [
-    ...(workspaceFolderInfo ? [{
-      key: `workspace-${workspaceFolderInfo.label}`,
-      label: workspaceFolderInfo.label,
-      href: workspaceFolderInfo.href,
-      kind: 'Folder' as const,
-      icon: 'folder' as const,
-      isActive: false,
-    }] : []),
-    ...assetCollections.map((collection) => ({
+  const orderedCollectionItems = [...assetCollections]
+    .map((collection, index) => ({ collection, index }))
+    .sort((left, right) => {
+      const leftIsCurrent = left.collection.id === activeCollectionId
+      const rightIsCurrent = right.collection.id === activeCollectionId
+
+      if (leftIsCurrent !== rightIsCurrent) {
+        return leftIsCurrent ? -1 : 1
+      }
+
+      const createdAtDiff = right.collection.createdAt.getTime() - left.collection.createdAt.getTime()
+      if (createdAtDiff !== 0) return createdAtDiff
+
+      return left.index - right.index
+    })
+    .map(({ collection }) => ({
       key: collection.id,
       label: collection.name,
       href: collection.id === activeCollectionId ? null : `/nextgen/collections/${collection.id}`,
       kind: 'Collection' as const,
       icon: 'collection' as const,
       isActive: collection.id === activeCollectionId,
-    })),
+    }))
+
+  const smartAppearanceItems = [
     ...(asset.aiMeta?.characters?.map((character) => {
       const id = `smart-character--${slugify(character)}`
       return {
@@ -244,6 +306,28 @@ export function AssetDetailPanel({
       icon: 'collection' as const,
       isActive: `smart-location--${slugify(asset.aiMeta.location)}` === activeCollectionId,
     }] : []),
+  ]
+
+  const nonFolderAppearanceItems = [...orderedCollectionItems, ...smartAppearanceItems]
+  const activeAppearanceIndex = nonFolderAppearanceItems.findIndex((item) => item.isActive)
+  const orderedAppearanceItems = activeAppearanceIndex > 0
+    ? [
+        nonFolderAppearanceItems[activeAppearanceIndex],
+        ...nonFolderAppearanceItems.slice(0, activeAppearanceIndex),
+        ...nonFolderAppearanceItems.slice(activeAppearanceIndex + 1),
+      ]
+    : nonFolderAppearanceItems
+
+  const appearanceItems = [
+    ...(workspaceFolderInfo ? [{
+      key: `workspace-${workspaceFolderInfo.label}`,
+      label: workspaceFolderInfo.label,
+      href: workspaceFolderInfo.href,
+      kind: 'Folder' as const,
+      icon: 'folder' as const,
+      isActive: false,
+    }] : []),
+    ...orderedAppearanceItems,
   ]
 
   return (
@@ -347,7 +431,21 @@ export function AssetDetailPanel({
                       {tag.label}
                     </Tag>
                   ))}
-                  <AddTagButton onAdd={(label) => addUserTag(asset.id, label)} />
+                  <button
+                    onClick={() => setTagModalOpen(true)}
+                    className="inline-flex items-center gap-0.5 px-1 py-0 rounded border border-border-dim text-label-0-bold text-foreground-dim hover:text-foreground hover:border-border-subtle transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Add
+                  </button>
+                  <TagManagerModal
+                    open={tagModalOpen}
+                    onClose={() => setTagModalOpen(false)}
+                    tags={asset.tags ?? []}
+                    userTags={userTagsMap[asset.id] ?? []}
+                    onAddTag={(label) => addUserTag(asset.id, label)}
+                    onRemoveTag={(label) => removeUserTag(asset.id, label)}
+                  />
                 </div>
               </section>
             )
@@ -443,10 +541,11 @@ export function AssetDetailPanel({
         )}
 
 
-        <AccessPanel
+        <AccessSummary
           resourceId={asset.id}
           resourceRef={resourceRef}
           inheritedGrants={inheritedGrants}
+          resourceName={asset.name}
         />
 
       </div>

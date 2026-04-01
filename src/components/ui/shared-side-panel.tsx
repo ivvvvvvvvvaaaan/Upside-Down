@@ -5,7 +5,7 @@ import { Folder, FileText, LayoutGrid } from 'lucide-react'
 import { Button } from './button'
 import { ResponsivePanel } from './responsive-panel'
 import { Tag } from './tag'
-import { AccessPanel } from './access-panel'
+import { AccessSummary } from './access-summary'
 import { useAccess } from '@/hooks'
 import { kindLabel, kindTagType } from '@/lib/access'
 import type { AccessEntryKind } from '@/lib/access'
@@ -133,10 +133,10 @@ export function SharedSidePanel({ entry, onClose, isCreator = false, onRevokeSha
         </section>
 
         {/* Access section — readOnly when not creator */}
-        <AccessPanel
+        <AccessSummary
           resourceId={entry.resourceId}
           resourceRef={resourceRef}
-          readOnly={!isCreator}
+          resourceName={entry.label}
         />
 
         {/* Revoke button — creator only */}
