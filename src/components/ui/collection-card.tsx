@@ -444,7 +444,7 @@ export function CollectionCard({
           <Avatar
             src={avatarSrc}
             name={avatarName || title}
-            size="xs"
+            size="compact"
             className="shrink-0"
           />
         )}

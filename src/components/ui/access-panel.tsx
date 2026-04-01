@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { X, Users, ChevronDown } from 'lucide-react'
+import { X, Users, Search, Info } from 'lucide-react'
 import { Input } from './input'
+import { Select } from './select'
+import { Button } from './button'
+import { Avatar } from './avatar'
 import { cn } from '@/lib/utils'
 import { useAccess, usePersona } from '@/hooks'
 import type { Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
@@ -21,61 +24,10 @@ interface AccessPanelProps {
   inheritedGrants?: { grant: Grant; fromResourceName: string }[]
 }
 
-function PermissionDropdown({
-  value,
-  onChange,
-  disabled,
-  roleGroups,
-}: {
-  value: AccessProfileId
-  onChange: (v: AccessProfileId) => void
-  disabled?: boolean
-  roleGroups: RoleGroup[]
-}) {
-  const [open, setOpen] = useState(false)
-  const currentGroup = getRoleGroup(roleGroups, value)
-  const label = currentGroup?.name ?? value
-
-  const options = useMemo(
-    () => roleGroups.filter((rg) => rg.id !== 'owner' && rg.id !== 'link-viewer'),
-    [roleGroups],
-  )
-
-  if (disabled) {
-    return (
-      <span className="text-body-0-regular text-foreground-dim px-2 py-1">
-        {label}
-      </span>
-    )
-  }
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 px-2 py-1 rounded text-body-0-regular text-foreground-dim hover:bg-surface-2 transition-colors"
-      >
-        {label}
-        <ChevronDown className="w-3 h-3" />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 min-w-[140px]">
-          {options.map((rg) => (
-            <button
-              key={rg.id}
-              onClick={() => { onChange(rg.id); setOpen(false) }}
-              className={cn(
-                'w-full text-left px-3 py-2 text-body-0-regular hover:bg-surface-2 transition-colors',
-                value === rg.id ? 'text-foreground' : 'text-foreground-subtle',
-              )}
-            >
-              {rg.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
+function roleGroupOptions(roleGroups: RoleGroup[]) {
+  return roleGroups
+    .filter((rg) => rg.id !== 'owner' && rg.id !== 'link-viewer')
+    .map((rg) => ({ value: rg.id, label: rg.name }))
 }
 
 function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sourceName, name, subtitle, roleLabel, members }: {
@@ -97,12 +49,13 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sour
     <div className="py-1.5 space-y-1">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <span className={cn(
-            'w-6 h-6 rounded-full flex items-center justify-center text-body-0-bold flex-shrink-0',
-            principal.type === 'user' ? 'bg-indigo-500/20 text-indigo-500' : 'bg-surface-3 text-foreground-dim',
-          )}>
-            {principal.type === 'user' ? initials(name) : <Users className="w-3 h-3" />}
-          </span>
+          {principal.type === 'user' ? (
+            <Avatar name={name} size="sm" />
+          ) : (
+            <span className="w-6 h-6 rounded-full flex items-center justify-center bg-surface-3 text-foreground-dim flex-shrink-0">
+              <Users className="w-3 h-3" />
+            </span>
+          )}
           <div className="min-w-0">
             <span className="text-body-0-regular text-foreground truncate block">{name}</span>
             {subtitle && (
@@ -113,19 +66,24 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sour
         <div className="flex items-center gap-1 flex-shrink-0">
           {!readOnly && onUpdateProfile ? (
             <>
-              <PermissionDropdown
-                value={grant.templateId ?? 'viewer'}
-                onChange={(value) => onUpdateProfile(grant.id, value)}
-                disabled={isOwner}
-                roleGroups={roleGroups}
-              />
+              {isOwner ? (
+                <span className="text-body-0-regular text-foreground-dim px-2 py-1">
+                  {getRoleGroup(roleGroups, grant.templateId ?? 'owner')?.name ?? 'Owner'}
+                </span>
+              ) : (
+                <Select
+                  options={roleGroupOptions(roleGroups)}
+                  value={grant.templateId ?? 'viewer'}
+                  onChange={(value) => onUpdateProfile(grant.id, value as AccessProfileId)}
+                  size="compact"
+                  borderless
+                  className="w-auto flex-shrink-0"
+                />
+              )}
               {!isOwner && onRemove && (
-                <button
-                  onClick={() => onRemove(grant.id)}
-                  className="p-1 rounded hover:bg-surface-3 text-foreground-dim hover:text-foreground transition-colors"
-                >
+                <Button variant="icon" size="compact-icon" onClick={() => onRemove(grant.id)}>
                   <X className="w-3 h-3" />
-                </button>
+                </Button>
               )}
             </>
           ) : (
@@ -136,13 +94,18 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sour
         </div>
       </div>
       {principal.type === 'team' && members && members.length > 0 && (
-        <div className="ml-8 space-y-1 pt-1">
-          {members.map((member) => (
-            <div key={member.id} className="flex items-center justify-between gap-2 py-1">
+        <div className="relative ml-1 pt-1">
+          {members.map((member, i) => (
+            <div key={member.id} className="relative flex items-center justify-between gap-2 py-1 pl-4">
+              {/* Vertical trunk: top half always, bottom half except last */}
+              <div className="absolute left-1.5 top-0 h-1/2 border-l border-border-dim" />
+              {i < members.length - 1 && (
+                <div className="absolute left-1.5 top-1/2 bottom-0 border-l border-border-dim" />
+              )}
+              {/* Horizontal branch */}
+              <div className="absolute left-1.5 top-1/2 w-2.5 border-t border-border-dim" />
               <div className="flex items-center gap-2 min-w-0">
-                <span className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center text-[10px] font-medium flex-shrink-0">
-                  {initials(member.name)}
-                </span>
+                <Avatar name={member.name} size="compact" />
                 <div className="min-w-0">
                   <span className="text-body-0-regular text-foreground truncate block">
                     {member.name}{member.isCurrentUser ? ' You' : ''}
@@ -155,18 +118,18 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sour
               <div className="flex items-center gap-1 flex-shrink-0">
                 {!readOnly && member.grantId && onUpdateProfile ? (
                   <>
-                    <PermissionDropdown
+                    <Select
+                      options={roleGroupOptions(roleGroups)}
                       value={member.roleValue ?? 'viewer'}
-                      onChange={(value) => onUpdateProfile(member.grantId!, value)}
-                      roleGroups={roleGroups}
+                      onChange={(value) => onUpdateProfile(member.grantId!, value as AccessProfileId)}
+                      size="compact"
+                      borderless
+                      className="w-auto flex-shrink-0"
                     />
                     {onRemove && (
-                      <button
-                        onClick={() => onRemove(member.grantId!)}
-                        className="p-1 rounded hover:bg-surface-3 text-foreground-dim hover:text-foreground transition-colors"
-                      >
+                      <Button variant="icon" size="compact-icon" onClick={() => onRemove(member.grantId!)}>
                         <X className="w-3 h-3" />
-                      </button>
+                      </Button>
                     )}
                   </>
                 ) : member.roleLabel ? (
@@ -186,6 +149,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
   const { activePersona } = usePersona()
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
+  const [addAsRole, setAddAsRole] = useState<AccessProfileId>('viewer')
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const grants = getResourceGrants(resourceId)
@@ -224,7 +188,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
     if (!resourceRef || !canAddGrants) return
     if (grants.some(g => g.principal.type === 'user' && g.principal.userId === userId)) return
     const principal: PrincipalRef = { type: 'user', userId }
-    createGrant(resourceRef, principal, 'viewer')
+    createGrant(resourceRef, principal, addAsRole)
     setQuery('')
     setShowDropdown(false)
   }
@@ -233,20 +197,20 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
     if (!resourceRef || !canAddGrants) return
     if (grants.some(g => g.principal.type === 'team' && g.principal.teamId === teamId)) return
     const principal: PrincipalRef = { type: 'team', teamId }
-    createGrant(resourceRef, principal, 'viewer')
+    createGrant(resourceRef, principal, addAsRole)
     setQuery('')
     setShowDropdown(false)
   }
 
-  const displayEntries = useMemo(() => {
-    const directEntries = grants.map((grant) => ({
+  const allEntries = useMemo(() => {
+    const directRaw = grants.map((grant) => ({
       key: `direct-${grant.id}`,
       grant,
       readOnly: grantsReadOnly,
       sourceName: undefined as string | undefined,
     }))
 
-    const inheritedEntries = (inheritedGrants ?? []).map(({ grant, fromResourceName }) => ({
+    const inheritedRaw = (inheritedGrants ?? []).map(({ grant, fromResourceName }) => ({
       key: `inherited-${grant.id}-${fromResourceName}`,
       grant,
       readOnly: true,
@@ -254,33 +218,49 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
     }))
 
     return buildAccessDisplayEntries(
-      [...directEntries, ...inheritedEntries],
+      [...directRaw, ...inheritedRaw],
       roleGroups,
       activePersona?.id,
     )
   }, [grants, grantsReadOnly, inheritedGrants, roleGroups, activePersona])
 
-  return (
-    <section className="space-y-2">
-      <h3 className="text-body-0-bold text-foreground-dim">Access</h3>
-      <div className="space-y-3">
-        {/* Read-only hint for unauthorized roles */}
-        {!readOnly && !canAddGrants && !canManageExistingGrants && (
-          <p className="text-body-0-regular text-foreground-dim">You don&apos;t have permission to manage access</p>
-        )}
-        {!readOnly && canAddGrants && !canManageExistingGrants && (
-          <p className="text-body-0-regular text-foreground-dim">You can add new shares, but only people with admin access can change or remove existing entries</p>
-        )}
+  const directEntries = useMemo(() => allEntries.filter(e => !e.sourceName), [allEntries])
+  const inheritedEntries = useMemo(() => allEntries.filter(e => !!e.sourceName), [allEntries])
 
-        {/* Add person/team — placed at top for easy access */}
-        {!readOnly && resourceRef && canAddGrants && (
-          <div ref={dropdownRef} className="relative">
+  const userEntries = useMemo(() =>
+    [...directEntries, ...inheritedEntries].filter(e => e.grant.principal.type === 'user'),
+    [directEntries, inheritedEntries],
+  )
+  const groupEntries = useMemo(() =>
+    [...directEntries, ...inheritedEntries].filter(e => e.grant.principal.type === 'team'),
+    [directEntries, inheritedEntries],
+  )
+
+  return (
+    <div className="space-y-4">
+      {/* Permission hints */}
+      {!readOnly && !canAddGrants && !canManageExistingGrants && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded bg-surface-mid text-body-0-regular text-foreground">
+          <Info className="w-4 h-4 flex-shrink-0" />
+          <span>You don&apos;t have permission to manage access</span>
+        </div>
+      )}
+      {!readOnly && canAddGrants && !canManageExistingGrants && (
+        <p className="text-body-0-regular text-foreground">You can add new shares, but only people with admin access can change or remove existing entries</p>
+      )}
+
+      {/* Search row: input + role dropdown */}
+      {!readOnly && resourceRef && canAddGrants && (
+        <div className="flex items-start gap-2">
+          <div ref={dropdownRef} className="relative flex-1">
             <Input
               type="text"
               value={query}
               onChange={e => { setQuery(e.target.value); setShowDropdown(true) }}
               onFocus={() => query.trim() && setShowDropdown(true)}
-              placeholder="Add person or team..."
+              placeholder="Add people or teams..."
+              icon={<Search className="w-4 h-4" />}
+              iconPosition="left"
             />
             {showDropdown && query.trim() && (
               <div className="absolute left-0 right-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 max-h-[240px] overflow-y-auto">
@@ -290,9 +270,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
                     onClick={() => handleAddUser(p.id)}
                     className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors"
                   >
-                    <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center text-body-0-bold flex-shrink-0">
-                      {initials(p.name)}
-                    </span>
+                    <Avatar name={p.name} size="sm" />
                     <div className="min-w-0">
                       <span className="text-body-0-regular text-foreground truncate block">{p.name}</span>
                       <span className="text-body-0-regular text-foreground-dim truncate block">{p.email}</span>
@@ -320,14 +298,21 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
               </div>
             )}
           </div>
-        )}
+          <Select
+            options={roleGroupOptions(roleGroups)}
+            value={addAsRole}
+            onChange={(value) => setAddAsRole(value as AccessProfileId)}
+            className="w-auto flex-shrink-0"
+          />
+        </div>
+      )}
 
-        {displayEntries.length === 0 && (
-          <p className="text-body-0-regular text-foreground-dim">{emptyLabel}</p>
-        )}
-        {displayEntries.length > 0 && (
+      {/* Users */}
+      {userEntries.length > 0 && (
+        <div className="space-y-1">
+          <h3 className="text-label-1-bold text-foreground-dim">Users</h3>
           <div className="space-y-0">
-            {displayEntries.map((entry) => (
+            {userEntries.map((entry) => (
               <GrantRow
                 key={entry.key}
                 grant={entry.grant}
@@ -338,13 +323,41 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
                 subtitle={entry.subtitle}
                 roleLabel={entry.roleLabel}
                 members={entry.members}
-                onRemove={revokeGrant}
-                onUpdateProfile={updateGrantProfile}
+                onRemove={!entry.sourceName ? revokeGrant : undefined}
+                onUpdateProfile={!entry.sourceName ? updateGrantProfile : undefined}
               />
             ))}
           </div>
-        )}
-      </div>
-    </section>
+        </div>
+      )}
+
+      {/* Groups */}
+      {groupEntries.length > 0 && (
+        <div className="space-y-1">
+          <h3 className="text-label-1-bold text-foreground-dim">Groups</h3>
+          <div className="space-y-0">
+            {groupEntries.map((entry) => (
+              <GrantRow
+                key={entry.key}
+                grant={entry.grant}
+                readOnly={entry.readOnly}
+                roleGroups={roleGroups}
+                sourceName={entry.sourceName}
+                name={entry.name}
+                subtitle={entry.subtitle}
+                roleLabel={entry.roleLabel}
+                members={entry.members}
+                onRemove={!entry.sourceName ? revokeGrant : undefined}
+                onUpdateProfile={!entry.sourceName ? updateGrantProfile : undefined}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {userEntries.length === 0 && groupEntries.length === 0 && (
+        <p className="text-body-0-regular text-foreground-dim">Not shared</p>
+      )}
+    </div>
   )
 }

@@ -134,10 +134,8 @@ export function NewCollectionModal({
           >
             {/* Step 0: Type selection */}
             <div className="w-full flex-shrink-0" ref={step0Ref}>
-              <div className="p-6 flex flex-col gap-4">
-                <p className="text-body-2-bold text-foreground">
-                  New Collection
-                </p>
+              <Modal.Header title="New Collection" />
+              <div className="px-6 pb-6 flex flex-col gap-4">
                 <p className="text-body-0-regular text-foreground-subtle">
                   What kind of collection?
                 </p>
@@ -161,18 +159,15 @@ export function NewCollectionModal({
 
             {/* Step 1: Name & details */}
             <div className="w-full flex-shrink-0" ref={step1Ref}>
-              <div className="p-6 flex flex-col gap-4">
-                {/* Header with back button */}
-                <div className="flex items-center gap-2">
-                  {!hasSelectedAssets && (
-                    <Button variant="icon" compact onClick={handleBack} aria-label="Back">
-                      <ChevronLeft />
-                    </Button>
-                  )}
-                  <p className="text-body-2-bold text-foreground">
-                    {isManual ? 'Manual collection' : 'Smart collection'}
-                  </p>
-                </div>
+              <Modal.Header
+                title={isManual ? 'Manual collection' : 'Smart collection'}
+                backButton={!hasSelectedAssets ? (
+                  <Button variant="icon" compact onClick={handleBack} aria-label="Back">
+                    <ChevronLeft />
+                  </Button>
+                ) : undefined}
+              />
+              <div className="px-6 pb-6 flex flex-col gap-4">
 
                 {/* Name input */}
                 <Input

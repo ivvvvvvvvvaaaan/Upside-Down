@@ -6,6 +6,7 @@ import { Modal } from './modal'
 import { Button } from './button'
 import { Input } from './input'
 import { Select } from './select'
+import { Avatar } from './avatar'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import { useAccess } from '@/hooks'
 import { cn } from '@/lib/utils'
@@ -123,9 +124,7 @@ function PeopleTab({
             return (
               <div key={grant.id} className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-surface-1 transition-colors">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <span className="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center text-label-0-bold flex-shrink-0">
-                    {initials(persona.name)}
-                  </span>
+                  <Avatar name={persona.name} size="sm" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-body-0-regular text-foreground truncate">{persona.name}</span>
@@ -149,6 +148,7 @@ function PeopleTab({
                     value={grant.templateId ?? 'viewer'}
                     onChange={(v) => onRoleChange(grant.id, v as AccessProfileId)}
                     size="compact"
+                    borderless
                     className="w-auto flex-shrink-0"
                   />
                   <Button variant="icon" size="compact-icon" onClick={() => onRemove(grant.id)}>
@@ -206,8 +206,7 @@ function DepartmentsTab({
   )
 
   const options = useMemo(() => roleGroupOptions(roleGroups), [roleGroups])
-  const departmentTeams = useMemo(() => TEAMS.filter((team) => team.departmentId), [])
-  const crossFunctionalTeams = useMemo(() => TEAMS.filter((team) => !team.departmentId), [])
+  const allTeams = useMemo(() => TEAMS, [])
 
   return (
     <div className="space-y-3">
@@ -216,22 +215,21 @@ function DepartmentsTab({
       </p>
 
       <div className="space-y-1">
-        {departmentTeams.map((team) => {
+        {allTeams.map((team) => {
           const isOpen = expanded.has(team.id)
           const members = team.memberUserIds
             .map(uid => PERSONAS.find(p => p.id === uid))
             .filter(Boolean)
-          const resourceRef: ResourceRef = {
-            id: DEPARTMENT_FOLDER_MAP[team.departmentId!].id,
-            type: 'folder',
-            departmentId: team.departmentId,
-          }
-          const rootGrants = getResourceGrants(resourceRef.id)
-          const grant = rootGrants.find(
-            g => g.principal.type === 'team' && g.principal.teamId === team.id,
-          )
-          const canShareDepartment = canShareResource(resourceRef)
-          const canEditDepartment = canEditResource(resourceRef)
+          const deptFolder = team.departmentId ? DEPARTMENT_FOLDER_MAP[team.departmentId] : undefined
+          const resourceRef: ResourceRef | undefined = deptFolder
+            ? { id: deptFolder.id, type: 'folder', departmentId: team.departmentId }
+            : undefined
+          const rootGrants = resourceRef ? getResourceGrants(resourceRef.id) : []
+          const grant = resourceRef
+            ? rootGrants.find(g => g.principal.type === 'team' && g.principal.teamId === team.id)
+            : projectTeamGrants.find(g => g.principal.type === 'team' && g.principal.teamId === team.id)
+          const canShareDepartment = resourceRef ? canShareResource(resourceRef) : true
+          const canEditDepartment = resourceRef ? canEditResource(resourceRef) : true
           const inheritedRoleLabel = grant
             ? getRoleGroup(roleGroups, grant.templateId ?? 'viewer')?.name ?? grant.templateId ?? 'Viewer'
             : 'No default access'
@@ -257,23 +255,29 @@ function DepartmentsTab({
                     value={grant.templateId ?? 'viewer'}
                     onChange={(v) => onRoleChange(grant.id, v as AccessProfileId)}
                     size="compact"
+                    borderless
                     className="w-auto flex-shrink-0"
                     disabled={!canEditDepartment}
                   />
                 )}
               </div>
               {isOpen && (
-                <div className="ml-6 py-1 space-y-1">
-                  {members.map(persona => persona && (
-                    <div key={persona.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-surface-1 transition-colors">
-                      <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center text-label-0-bold flex-shrink-0 text-[10px]">
-                        {initials(persona.name)}
-                      </span>
+                <div className="relative py-1">
+                  {members.filter(Boolean).map((persona, i, arr) => persona && (
+                    <div key={persona.id} className="relative flex items-center gap-2 py-1.5 pl-4 pr-2 rounded hover:bg-surface-1 transition-colors">
+                      {/* Vertical trunk: top half always, bottom half except last */}
+                      <div className="absolute left-1.5 top-0 h-1/2 border-l border-border-dim" />
+                      {i < arr.length - 1 && (
+                        <div className="absolute left-1.5 top-1/2 bottom-0 border-l border-border-dim" />
+                      )}
+                      {/* Horizontal branch */}
+                      <div className="absolute left-1.5 top-1/2 w-2.5 border-t border-border-dim" />
+                      <Avatar name={persona.name} size="sm" className="relative" />
                       <div className="min-w-0 flex-1">
                         <span className="text-body-0-regular text-foreground truncate block">{persona.name}</span>
                         <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
                       </div>
-                      {(() => {
+                      {resourceRef && (() => {
                         const overrideGrant = rootGrants.find(
                           (candidate) => candidate.principal.type === 'user' && candidate.principal.userId === persona.id,
                         )
@@ -305,6 +309,7 @@ function DepartmentsTab({
                                 )
                               }}
                               size="compact"
+                              borderless
                               className="w-auto min-w-[160px]"
                               disabled={overrideGrant ? !canEditDepartment : !canShareDepartment}
                             />
@@ -319,43 +324,13 @@ function DepartmentsTab({
                     </div>
                   ))}
                   {members.length === 0 && (
-                    <p className="text-label-0-regular text-foreground-dim py-2 text-center">No members yet</p>
+                    <p className="text-label-0-regular text-foreground-dim py-2 pl-4 text-center">No members yet</p>
                   )}
                 </div>
               )}
             </div>
           )
         })}
-
-        {crossFunctionalTeams.length > 0 && (
-          <div className="pt-3 space-y-1">
-            <p className="text-label-0-bold uppercase text-foreground-dim px-2">Other Teams</p>
-            {crossFunctionalTeams.map((team) => {
-              const grant = projectTeamGrants.find(
-                (candidate) => candidate.principal.type === 'team' && candidate.principal.teamId === team.id,
-              )
-              if (!grant) return null
-
-              return (
-                <div key={team.id} className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-surface-1 transition-colors">
-                  <div className="min-w-0 flex-1">
-                    <span className="text-body-0-bold text-foreground truncate block">{team.name}</span>
-                    <span className="text-label-0-regular text-foreground-dim block">
-                      {team.memberUserIds.length} {team.memberUserIds.length === 1 ? 'member' : 'members'}
-                    </span>
-                  </div>
-                  <Select
-                    options={options}
-                    value={grant.templateId ?? 'viewer'}
-                    onChange={(value) => onRoleChange(grant.id, value as AccessProfileId)}
-                    size="compact"
-                    className="w-auto flex-shrink-0"
-                  />
-                </div>
-              )
-            })}
-          </div>
-        )}
 
         {customDepts.map((dept) => {
           const isOpen = expanded.has(dept.id)
@@ -377,8 +352,8 @@ function DepartmentsTab({
                 </Button>
               </div>
               {isOpen && (
-                <div className="ml-6 py-2">
-                  <p className="text-label-0-regular text-foreground-dim text-center">No members yet</p>
+                <div className="py-2">
+                  <p className="text-label-0-regular text-foreground-dim text-center pl-4">No members yet</p>
                 </div>
               )}
             </div>
@@ -402,12 +377,17 @@ function DepartmentsTab({
               </button>
             </div>
             {expanded.has('unassigned') && (
-              <div className="ml-6 py-1 space-y-1">
-                {unassignedUsers.map(persona => (
-                  <div key={persona.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-surface-1 transition-colors">
-                    <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center text-label-0-bold flex-shrink-0 text-[10px]">
-                      {initials(persona.name)}
-                    </span>
+              <div className="relative py-1">
+                {unassignedUsers.map((persona, i) => (
+                  <div key={persona.id} className="relative flex items-center gap-2 py-1.5 pl-4 pr-2 rounded hover:bg-surface-1 transition-colors">
+                    {/* Vertical trunk: top half always, bottom half except last */}
+                    <div className="absolute left-1.5 top-0 h-1/2 border-l border-border-dim" />
+                    {i < unassignedUsers.length - 1 && (
+                      <div className="absolute left-1.5 top-1/2 bottom-0 border-l border-border-dim" />
+                    )}
+                    {/* Horizontal branch */}
+                    <div className="absolute left-1.5 top-1/2 w-2.5 border-t border-border-dim" />
+                    <Avatar name={persona.name} size="sm" className="relative" />
                     <span className="text-body-0-regular text-foreground truncate flex-1">{persona.name}</span>
                     <span className="text-label-0-regular text-foreground-dim truncate">{persona.title}</span>
                     <span className="text-label-0-regular text-foreground-dim truncate">{persona.email}</span>
@@ -550,13 +530,13 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   return (
     <Modal open={open} onOpenChange={onOpenChange} size="md">
       <div className="flex flex-col max-h-[80vh]">
-        <div className="p-6 pb-0">
-          <h2 className="text-heading-2 text-foreground">Access Control</h2>
-          <p className="text-body-0-regular text-foreground-dim mt-1 mb-4">
-            Manage who can access content and what actions they can take.
-          </p>
+        <div className="pb-0">
+          <Modal.Header
+            title="Access Control"
+            subtitle="Manage who can access content and what actions they can take."
+          />
 
-          <Tabs defaultValue="people">
+          <Tabs defaultValue="people" className="px-6 pt-4">
             <TabsList>
               <Tab value="people">People</Tab>
               <Tab value="departments">Departments</Tab>

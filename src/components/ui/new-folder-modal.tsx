@@ -30,22 +30,20 @@ export function NewFolderModal({ open, onOpenChange, onCreate }: NewFolderModalP
 
   return (
     <Modal open={open} onOpenChange={onOpenChange} size="xs">
+      <Modal.Header title="New folder" />
       <Card.Body>
-        <div className="flex flex-col gap-4">
-          <p className="text-body-2-bold text-foreground">New folder</p>
-          <Input
-            label="Folder name"
-            placeholder="Untitled Folder"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && canCreate) handleCreate()
-            }}
-            autoComplete="off"
-            data-1p-ignore
-            autoFocus
-          />
-        </div>
+        <Input
+          label="Folder name"
+          placeholder="Untitled Folder"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && canCreate) handleCreate()
+          }}
+          autoComplete="off"
+          data-1p-ignore
+          autoFocus
+        />
       </Card.Body>
       <Card.Footer>
         <Button variant="secondary" onClick={() => onOpenChange(false)}>

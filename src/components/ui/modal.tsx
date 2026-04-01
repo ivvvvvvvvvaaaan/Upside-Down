@@ -2,8 +2,10 @@
 
 import * as React from 'react'
 import { useState, useEffect, useCallback } from 'react'
+import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Card } from './card'
+import { Button } from './button'
 
 /*
  * Modal - Centered overlay with backdrop.
@@ -67,7 +69,7 @@ function Modal({
       />
       <Card
         variant="outlined"
-        className={cn('relative mx-4 shadow-high max-w-[calc(100vw-2rem)]', !width && sizes[size])}
+        className={cn('relative mx-4 shadow-high max-w-[calc(100vw-2rem)] border-border-elevation', !width && sizes[size])}
         style={width ? { width: `${width}px` } : undefined}
       >
         {children}
@@ -76,4 +78,49 @@ function Modal({
   )
 }
 
-export { Modal }
+/* ── Compound components ── */
+
+interface ModalHeaderProps {
+  title: string
+  subtitle?: string
+  onClose?: () => void
+  backButton?: React.ReactNode
+}
+
+function ModalHeader({ title, subtitle, onClose, backButton }: ModalHeaderProps) {
+  return (
+    <div className="flex items-center justify-between px-6 pt-6 pb-0">
+      <div className="flex items-center gap-2 min-w-0">
+        {backButton}
+        <div className="min-w-0">
+          <h2 className="text-body-2-bold text-foreground truncate">{title}</h2>
+          {subtitle && (
+            <p className="text-body-0-regular text-foreground-dim mt-1">{subtitle}</p>
+          )}
+        </div>
+      </div>
+      {onClose && (
+        <Button variant="icon" compact onClick={onClose} className="flex-shrink-0">
+          <X className="w-4 h-4" />
+        </Button>
+      )}
+    </div>
+  )
+}
+
+interface ModalBodyProps {
+  children: React.ReactNode
+  className?: string
+}
+
+function ModalBody({ children, className }: ModalBodyProps) {
+  return <div className={cn('p-6', className)}>{children}</div>
+}
+
+const ModalNamespace = Object.assign(Modal, {
+  Header: ModalHeader,
+  Body: ModalBody,
+})
+
+export { ModalNamespace as Modal }
+export type { ModalHeaderProps, ModalBodyProps }

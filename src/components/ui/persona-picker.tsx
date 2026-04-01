@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, X, Shield } from 'lucide-react'
 import { usePersona } from '@/hooks'
-import { initials } from '@/lib/personas'
+import { Avatar } from './avatar'
 import { cn } from '@/lib/utils'
 
 export function PersonaPicker({ compact = false, showLabel = false }: { compact?: boolean; showLabel?: boolean } = {}) {
@@ -34,9 +34,7 @@ export function PersonaPicker({ compact = false, showLabel = false }: { compact?
         >
           {activePersona ? (
             <>
-              <span className="w-7 h-7 rounded-full bg-foreground-dim text-surface-flat flex items-center justify-center text-label-0-bold flex-shrink-0">
-                {initials(activePersona.name)}
-              </span>
+              <Avatar name={activePersona.name} size="sm" />
               {showLabel && (
                 <span className="hidden md:flex flex-col leading-tight text-left">
                   <span className="text-label-0-regular text-foreground">{activePersona.name}</span>
@@ -61,9 +59,7 @@ export function PersonaPicker({ compact = false, showLabel = false }: { compact?
         >
           {activePersona ? (
             <>
-              <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center text-label-0-bold flex-shrink-0">
-                {initials(activePersona.name)}
-              </span>
+              <Avatar name={activePersona.name} size="sm" />
               <span className="truncate">{activePersona.name}</span>
               <span className="text-label-0-regular text-foreground-dim truncate hidden sm:inline">
                 {activePersona.title}
@@ -112,9 +108,7 @@ export function PersonaPicker({ compact = false, showLabel = false }: { compact?
                 activePersona?.id === persona.id && 'bg-indigo-500/10'
               )}
             >
-              <span className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center text-label-1-bold flex-shrink-0">
-                {initials(persona.name)}
-              </span>
+              <Avatar name={persona.name} size="md" />
               <div className="min-w-0">
                 <div className="text-body-0-bold text-foreground">{persona.name}</div>
                 <div className="text-label-0-regular text-foreground-dim">{persona.title}</div>

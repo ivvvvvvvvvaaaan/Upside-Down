@@ -24,7 +24,7 @@ export interface FacepileProps {
   /** Maximum avatars to show before "+X" overflow */
   max?: number
   /** Avatar size */
-  size?: 'xs' | 'sm' | 'md'
+  size?: 'compact' | 'sm' | 'md'
   className?: string
 }
 
@@ -32,7 +32,7 @@ export function Facepile({ users, max = 5, size = 'sm', className }: FacepilePro
   const visibleUsers = users.slice(0, max)
   const overflowCount = users.length - max
 
-  const overlapClass = size === 'xs' ? '-ml-2' : size === 'sm' ? '-ml-2.5' : '-ml-3'
+  const overlapClass = size === 'compact' ? '-ml-2' : size === 'sm' ? '-ml-2.5' : '-ml-3'
   const ringClass = 'ring-2 ring-surface-flat'
 
   return (
@@ -53,9 +53,9 @@ export function Facepile({ users, max = 5, size = 'sm', className }: FacepilePro
             'flex items-center justify-center rounded-full bg-surface-3 text-foreground-dim',
             ringClass,
             overlapClass,
-            size === 'xs' && 'w-6 h-6 text-label-0-bold',
-            size === 'sm' && 'w-8 h-8 text-label-0-bold',
-            size === 'md' && 'w-10 h-10 text-label-1-bold'
+            size === 'compact' && 'w-5 h-5 text-label-0-bold',
+            size === 'sm' && 'w-6 h-6 text-label-0-bold',
+            size === 'md' && 'w-8 h-8 text-body-2-bold'
           )}
           title={`${overflowCount} more members`}
         >

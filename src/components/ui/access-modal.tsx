@@ -1,7 +1,7 @@
 'use client'
 
-import { X } from 'lucide-react'
 import { Modal } from './modal'
+import { Card } from './card'
 import { Button } from './button'
 import { AccessPanel } from './access-panel'
 import type { ResourceRef, Grant } from '@/lib/grants'
@@ -15,6 +15,15 @@ export interface AccessModalProps {
   title?: string
 }
 
+const KIND_LABELS: Record<string, string> = {
+  asset: 'Asset',
+  folder: 'Workspace',
+  collection: 'Collection',
+  'smart-collection': 'Smart Collection',
+  'review-set': 'Review Set',
+  project: 'Project',
+}
+
 export function AccessModal({
   open,
   onClose,
@@ -23,23 +32,24 @@ export function AccessModal({
   inheritedGrants,
   title,
 }: AccessModalProps) {
+  const kindLabel = resourceRef ? KIND_LABELS[resourceRef.type] ?? '' : ''
+  const heading = title ? `Share ${title} ${kindLabel}`.trim() : 'Share'
+
   return (
     <Modal open={open} onOpenChange={(v) => !v && onClose()} size="sm">
-      <div className="flex items-center justify-between p-4 border-b border-border-dim">
-        <span className="text-body-1-bold text-foreground">
-          {title ? `Access — ${title}` : 'Access'}
-        </span>
-        <Button variant="icon" compact onClick={onClose}>
-          <X className="w-4 h-4" />
-        </Button>
-      </div>
-      <div className="p-4">
+      <Modal.Header title={heading} />
+      <Modal.Body>
         <AccessPanel
           resourceId={resourceId}
           resourceRef={resourceRef}
           inheritedGrants={inheritedGrants}
         />
-      </div>
+      </Modal.Body>
+      <Card.Footer>
+        <Button variant="secondary" onClick={onClose}>
+          Close
+        </Button>
+      </Card.Footer>
     </Modal>
   )
 }

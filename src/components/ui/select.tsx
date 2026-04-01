@@ -60,6 +60,8 @@ export interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectE
   onClear?: () => void
   /** Size variant */
   size?: 'standard' | 'compact'
+  /** Borderless style for inline/list usage */
+  borderless?: boolean
 }
 
 const Select = forwardRef<HTMLSelectElement, SelectProps>(
@@ -77,6 +79,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
     onClear,
     clearable = false,
     size = 'standard',
+    borderless = false,
     disabled,
     id,
     ...props
@@ -143,12 +146,15 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
             value={value}
             disabled={disabled}
             className={cn(
-              'w-full rounded text-body-0-regular appearance-none',
-              'bg-surface-flat dark:bg-white/[0.04] border',
+              'w-full rounded appearance-none',
+              size === 'compact' ? 'text-label-0-regular' : 'text-body-0-regular',
+              borderless
+                ? 'bg-transparent border-transparent hover:bg-surface-highlight'
+                : 'bg-surface-flat dark:bg-white/[0.04] border',
               sizeClasses[size],
               'px-3',
               showClear ? 'pr-16' : 'pr-8',
-              validationBorderClasses[validationStatus],
+              !borderless && validationBorderClasses[validationStatus],
               hasValue ? 'text-foreground' : 'text-foreground-subtle',
               'transition-colors',
               // Focus state - 2px indigo border

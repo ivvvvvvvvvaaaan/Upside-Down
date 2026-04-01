@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { X, Trash2, Users, Film, MapPin, Pencil, LayoutGrid } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from './button'
 import { Tag } from './tag'
 import { ResponsivePanel } from './responsive-panel'
 import { SmartCollectionFilterBuilder } from './smart-collection-filter-builder'
+import { pick, IMAGE_POOL } from '@/lib/images'
 import type { SmartCollection, AssetFilter } from '@/lib/data'
 import type { RelatedCollections } from '@/hooks/useSmartCollections'
 
@@ -18,6 +20,110 @@ interface SmartCollectionSidePanelProps {
   onDelete?: () => void
   matchingCount?: number
   relationships?: RelatedCollections
+}
+
+function getCollectionImages(collectionId: string) {
+  return {
+    mainImage: pick(IMAGE_POOL, collectionId, 1)[0],
+    thumbnails: pick(IMAGE_POOL, collectionId + '-thumb', 2),
+  }
+}
+
+function CharacterChips({ items }: { items: SmartCollection[] }) {
+  return (
+    <div className="flex gap-3 overflow-x-auto pb-1">
+      {items.map(item => {
+        const { mainImage } = getCollectionImages(item.id)
+        return (
+          <Link key={item.id} href={`/nextgen/smart-collections/${item.id}`}
+            className="flex flex-col items-center gap-1 shrink-0 group">
+            <div className="w-12 h-12 rounded-full overflow-hidden relative bg-surface-2">
+              {mainImage && <Image src={mainImage} alt={item.name} fill sizes="48px" className="object-cover" />}
+            </div>
+            <span className="text-body-0-regular text-foreground-dim group-hover:text-foreground-system-link truncate max-w-[64px] text-center transition-colors">
+              {item.name}
+            </span>
+          </Link>
+        )
+      })}
+    </div>
+  )
+}
+
+function EntityCards({ items }: { items: SmartCollection[] }) {
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-1">
+      {items.map(item => {
+        const { mainImage, thumbnails } = getCollectionImages(item.id)
+        return (
+          <Link key={item.id} href={`/nextgen/smart-collections/${item.id}`}
+            className="shrink-0 w-[140px] rounded overflow-hidden border border-border-dim group hover:border-border-subtle transition-colors">
+            <div className="flex h-16 gap-px bg-surface-2">
+              <div className="flex-[2] relative">
+                {mainImage && <Image src={mainImage} alt={item.name} fill sizes="90px" className="object-cover" />}
+              </div>
+              {thumbnails.map((t, i) => (
+                <div key={i} className="flex-1 relative">
+                  <Image src={t} alt="" fill sizes="45px" className="object-cover" />
+                </div>
+              ))}
+            </div>
+            <div className="px-2 py-1">
+              <p className="text-body-0-regular text-foreground truncate group-hover:text-foreground-system-link transition-colors">
+                {item.name}
+              </p>
+            </div>
+          </Link>
+        )
+      })}
+    </div>
+  )
+}
+
+function RelationshipGraph({
+  center,
+  related,
+}: {
+  center: { name: string; id: string }
+  related: { name: string; id: string; dimension: string }[]
+}) {
+  if (related.length === 0) return null
+  const cx = 160, cy = 100, r = 70
+  const nodes = related.map((item, i) => {
+    const angle = (2 * Math.PI * i) / related.length - Math.PI / 2
+    return { ...item, x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) }
+  })
+
+  const dimensionColor: Record<string, string> = {
+    characters: 'var(--indigo-500, #6366f1)',
+    scenes: 'var(--amber-500, #f59e0b)',
+    locations: 'var(--emerald-500, #10b981)',
+  }
+
+  return (
+    <svg viewBox="0 0 320 200" className="w-full h-[200px]">
+      {nodes.map(n => (
+        <line key={`line-${n.id}`} x1={cx} y1={cy} x2={n.x} y2={n.y}
+          stroke="var(--border-dim, #333)" strokeWidth={1} opacity={0.5} />
+      ))}
+      <circle cx={cx} cy={cy} r={22} fill="var(--surface-3, #333)" stroke="var(--border-dim, #555)" strokeWidth={1} />
+      <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle"
+        fill="var(--foreground, #fff)" fontSize="9" fontWeight="600">
+        {center.name.length > 10 ? center.name.slice(0, 9) + '…' : center.name}
+      </text>
+      {nodes.map(n => (
+        <a key={n.id} href={`/nextgen/smart-collections/${n.id}`}>
+          <circle cx={n.x} cy={n.y} r={18}
+            fill="var(--surface-2, #222)" stroke={dimensionColor[n.dimension] ?? 'var(--border-dim, #555)'} strokeWidth={1.5}
+            className="hover:brightness-125 cursor-pointer transition-all" />
+          <text x={n.x} y={n.y + 1} textAnchor="middle" dominantBaseline="middle"
+            fill="var(--foreground-dim, #aaa)" fontSize="7" className="pointer-events-none">
+            {n.name.length > 12 ? n.name.slice(0, 11) + '…' : n.name}
+          </text>
+        </a>
+      ))}
+    </svg>
+  )
 }
 
 const DIMENSION_CONFIG = {
@@ -173,28 +279,32 @@ export function SmartCollectionSidePanel({
           />
         ) : isRelationshipMode ? (
           <div className="space-y-4">
-            {(Object.keys(DIMENSION_CONFIG) as (keyof RelatedCollections)[]).map(dimension => {
-              const items = relationships[dimension]
-              if (items.length === 0) return null
-              const { label, Icon } = DIMENSION_CONFIG[dimension]
-              return (
-                <section key={dimension} className="space-y-2">
-                  <h3 className="text-body-0-bold text-foreground-dim">{label}</h3>
-                  <div className="space-y-2">
-                    {items.map(item => (
-                      <Link
-                        key={item.id}
-                        href={`/nextgen/smart-collections/${item.id}`}
-                        className="flex items-center gap-2 text-body-0-regular text-foreground hover:text-foreground-system-link transition-colors"
-                      >
-                        <Icon className="w-4 h-4 text-foreground-dim flex-shrink-0" />
-                        {item.name}
-                      </Link>
-                    ))}
-                  </div>
-                </section>
-              )
-            })}
+            <RelationshipGraph
+              center={{ name: collection.name, id: collection.id }}
+              related={[
+                ...relationships.characters.map(c => ({ name: c.name, id: c.id, dimension: 'characters' })),
+                ...relationships.scenes.map(s => ({ name: s.name, id: s.id, dimension: 'scenes' })),
+                ...relationships.locations.map(l => ({ name: l.name, id: l.id, dimension: 'locations' })),
+              ]}
+            />
+            {relationships.characters.length > 0 && (
+              <section className="space-y-2">
+                <h3 className="text-body-0-bold text-foreground-dim">Characters</h3>
+                <CharacterChips items={relationships.characters} />
+              </section>
+            )}
+            {relationships.scenes.length > 0 && (
+              <section className="space-y-2">
+                <h3 className="text-body-0-bold text-foreground-dim">Scenes</h3>
+                <EntityCards items={relationships.scenes} />
+              </section>
+            )}
+            {relationships.locations.length > 0 && (
+              <section className="space-y-2">
+                <h3 className="text-body-0-bold text-foreground-dim">Locations</h3>
+                <EntityCards items={relationships.locations} />
+              </section>
+            )}
             {relationships.characters.length === 0 &&
               relationships.scenes.length === 0 &&
               relationships.locations.length === 0 && (
