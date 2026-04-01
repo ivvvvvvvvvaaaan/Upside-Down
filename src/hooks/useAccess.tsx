@@ -31,7 +31,7 @@ import type {
 } from '@/lib/grants'
 import { isDepartmentRole } from '@/lib/personas'
 import { useFileTree } from './useFileTree'
-import { getDepartmentWorkspaceFiles, findNodeInTree } from '@/lib/workspace-data'
+import { getDepartmentWorkspaceFiles, findNodeInTree, DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 
 // Re-export types consumers may need
@@ -83,15 +83,10 @@ interface AccessContextValue {
 
 const AccessContext = createContext<AccessContextValue | null>(null)
 
-// Build workspace folder IDs for department access
-const ALL_DEPARTMENTS: DepartmentId[] = ['art-design', 'vfx', 'camera', 'editorial', 'audio-sound']
-const DEPARTMENT_WRAPPER_IDS: Record<DepartmentId, string> = {
-  'art-design': 'ws-art',
-  'vfx': 'ws-vfx',
-  'camera': 'ws-camera',
-  'editorial': 'ws-editorial',
-  'audio-sound': 'ws-audio',
-}
+const ALL_DEPARTMENTS: DepartmentId[] = Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[]
+const DEPARTMENT_WRAPPER_IDS: Record<DepartmentId, string> = Object.fromEntries(
+  ALL_DEPARTMENTS.map(d => [d, DEPARTMENT_FOLDER_MAP[d].id])
+) as Record<DepartmentId, string>
 
 const TEMPLATE_RANK: Record<AccessProfileId, number> = {
   owner: 7,

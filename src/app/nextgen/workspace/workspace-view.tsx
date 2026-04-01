@@ -27,6 +27,7 @@ import { AppLayout } from '@/components/layouts'
 import { useViewPreferences, useCompactBar, useWorkspaceState, useAssetSelection, useUserCollections, useFileTree, useAccess, usePersona } from '@/hooks'
 
 import type { DepartmentId } from '@/components/department/types'
+import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { instanceToAsset } from '@/lib/asset-instances'
 import type { AssetInstance } from '@/lib/asset-instances'
@@ -125,8 +126,8 @@ const VIEW_MODE_OPTIONS = [
   { value: 'columns', label: 'Columns', icon: <Columns className="w-4 h-4" /> },
 ]
 
-const ALL_DEPARTMENT_IDS: DepartmentId[] = ['art-design', 'camera', 'editorial', 'vfx', 'audio-sound']
-const DEPT_FOLDER_IDS = new Set(['ws-art', 'ws-vfx', 'ws-camera', 'ws-editorial', 'ws-audio'])
+const ALL_DEPARTMENT_IDS = Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[]
+const DEPT_FOLDER_IDS = new Set(Object.values(DEPARTMENT_FOLDER_MAP).map(d => d.id))
 
 interface WorkspaceViewProps {
   /** Department to display. When omitted, shows department folder landing. */
@@ -398,7 +399,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   // Default panel context: show current folder or department when nothing is explicitly selected
   const effectiveNode: WorkspaceFileNode | null =
     selectedNode ?? currentFolder ?? (departmentId
-      ? { id: departmentId, name: departmentName, type: 'folder' as const, children: processedFiles }
+      ? { id: DEPARTMENT_FOLDER_MAP[departmentId].id, name: departmentName, type: 'folder' as const, children: processedFiles }
       : null)
   const pageTitle = landingDrillFolder?.name ?? currentFolder?.name ?? departmentName
   const backHref = isLanding

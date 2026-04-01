@@ -525,7 +525,7 @@ export function findNodeInTree(nodes: WorkspaceFileNode[], id: string): Workspac
 }
 
 /** Map department IDs used in workspace-data to the wrapper folder IDs used in the Finder tree */
-const DEPARTMENT_FOLDER_MAP: Record<DepartmentId, { id: string; name: string }> = {
+export const DEPARTMENT_FOLDER_MAP: Record<DepartmentId, { id: string; name: string }> = {
   'art-design': { id: 'ws-art', name: 'Art Department' },
   'vfx': { id: 'ws-vfx', name: 'VFX' },
   'camera': { id: 'ws-camera', name: 'Camera' },

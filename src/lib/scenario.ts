@@ -1,6 +1,7 @@
 // src/lib/scenario.ts — Single source of truth for the prototype permissions scenario
 
 import type { DepartmentId } from '@/components/department/types'
+import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 import type { User, UserRole } from '@/lib/personas'
 import type { Team } from '@/lib/teams'
 import type {
@@ -357,18 +358,9 @@ export function buildGrants(): Grant[] {
   }
 
   // Department root folder grants — each department team gets access on the dept wrapper folder
-  // This models "onboarding" where an admin assigns teams to department workspaces
-  const DEPT_FOLDER_IDS: Record<string, string> = {
-    'art-design': 'ws-art',
-    'vfx': 'ws-vfx',
-    'camera': 'ws-camera',
-    'editorial': 'ws-editorial',
-    'audio-sound': 'ws-audio',
-  }
-
   for (const team of SCENARIO.teams) {
     if (!team.dept) continue
-    const folderId = DEPT_FOLDER_IDS[team.dept]
+    const folderId = DEPARTMENT_FOLDER_MAP[team.dept]?.id
     if (!folderId) continue
     // Team gets editor access on their department root folder
     grants.push({
@@ -385,7 +377,7 @@ export function buildGrants(): Grant[] {
   // Department people — each person with a dept gets an implicit grant on their dept root folder
   for (const person of SCENARIO.people) {
     if (!person.dept) continue
-    const folderId = DEPT_FOLDER_IDS[person.dept]
+    const folderId = DEPARTMENT_FOLDER_MAP[person.dept]?.id
     if (!folderId) continue
     const profileId: AccessProfileId = person.role === 'manager' ? 'manager' : 'editor'
     grants.push({
