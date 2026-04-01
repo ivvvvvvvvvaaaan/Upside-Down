@@ -10,7 +10,7 @@ import { Tag } from './tag'
 import { cn } from '@/lib/utils'
 import type { Asset, DepartmentId } from '@/lib/data'
 import type { ResourceRef } from '@/lib/grants'
-import { useAccess } from '@/hooks'
+import { useAccess, useUserCollections } from '@/hooks'
 import type { UserCollection } from '@/hooks'
 import type { RelatedAssetGroup } from '@/lib/context-relationships'
 import type { ReviewNoteSummary } from '@/lib/review-notes'
@@ -73,6 +73,8 @@ export function AssetDetailPanel({
   activeCollectionId,
 }: AssetDetailPanelProps) {
   const { getInheritedGrants, getCollectionRippleGrants } = useAccess()
+  const { collections: userCollections } = useUserCollections()
+  const allCollections = collections.length > 0 ? collections : userCollections
 
   const resourceRef: ResourceRef | undefined = asset ? {
     id: asset.id,
@@ -92,9 +94,15 @@ export function AssetDetailPanel({
   const duration = getDuration(asset)
   const typeTag = getTypeTag(asset)
 
-  const assetCollections = collections.filter(c =>
+  const assetCollections = allCollections.filter(c =>
     c.assetIds.includes(asset.id)
   )
+  const activeCollection = activeCollectionId
+    ? allCollections.find((collection) => collection.id === activeCollectionId)
+    : undefined
+  const fullWorkspacePath = asset.workspacePath && asset.department
+    ? `/Workspaces/Apex S1/${DEPARTMENT_NAMES[asset.department]}/${asset.workspacePath}`
+    : asset.workspacePath ?? `/project/assets/${asset.type}/${asset.name}`
 
   return (
     <ResponsivePanel open={open} onClose={onClose}>
@@ -307,6 +315,33 @@ export function AssetDetailPanel({
           </section>
         )}
 
+        <section className="space-y-2">
+          <h3 className="text-label-0-bold uppercase text-foreground-dim">Visibility</h3>
+          <div className="space-y-3">
+            {activeCollection && (
+              <div>
+                <p className="text-label-0-regular text-foreground-dim">Viewing here via</p>
+                <p className="text-body-1-regular text-foreground">{activeCollection.name}</p>
+                <p className="text-label-0-regular text-foreground-dim">Collection</p>
+              </div>
+            )}
+            <div>
+              <p className="text-label-0-regular text-foreground-dim">
+                {activeCollection ? 'Source workspace path' : 'Workspace path'}
+              </p>
+              <div className="mt-1 flex items-start gap-2 text-label-1-regular text-foreground-dim">
+                <FileText className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                <span className="font-mono break-all">{fullWorkspacePath}</span>
+              </div>
+            </div>
+            {activeCollection && (
+              <p className="text-label-0-regular text-foreground-dim">
+                Collections surface assets independently from the workspace folder tree.
+              </p>
+            )}
+          </div>
+        </section>
+
         {relatedGroups.length > 0 && (
           <section className="space-y-2">
             <h3 className="text-label-0-bold uppercase text-foreground-dim">Explore Context</h3>
@@ -341,18 +376,6 @@ export function AssetDetailPanel({
           inheritedGrants={inheritedGrants}
         />
 
-        {/* Workspace Path */}
-        <section className="space-y-2">
-          <h3 className="text-label-0-bold uppercase text-foreground-dim">Workspace</h3>
-          <div>
-            <div className="flex items-center gap-2 text-label-1-regular text-foreground-dim">
-              <FileText className="w-3 h-3 flex-shrink-0" />
-              <span className="truncate">
-                {asset.workspacePath ?? `/project/assets/${asset.type}/${asset.name}`}
-              </span>
-            </div>
-          </div>
-        </section>
       </div>
     </ResponsivePanel>
   )

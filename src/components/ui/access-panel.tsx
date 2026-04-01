@@ -2,37 +2,15 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { X, Users, ChevronDown } from 'lucide-react'
-import { Tag } from './tag'
 import { Input } from './input'
 import { cn } from '@/lib/utils'
-import { useAccess } from '@/hooks'
+import { useAccess, usePersona } from '@/hooks'
 import type { Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
 import { PERSONAS, initials } from '@/lib/personas'
 import { TEAMS } from '@/lib/teams'
-import { getRoleGroup, profileLabel } from '@/lib/grants'
-import type { Permission, RoleGroup } from '@/lib/grants'
-
-const PERM_TAG_TYPE: Record<Permission, 'neutral'> = {
-  'discover': 'neutral',
-  'open': 'neutral',
-  'download': 'neutral',
-  'write': 'neutral',
-  'delete': 'neutral',
-  'comment': 'neutral',
-  'share': 'neutral',
-  'edit-acl': 'neutral',
-}
-
-const PERM_SHORT: Record<Permission, string> = {
-  'discover': 'View',
-  'open': 'View',
-  'download': 'Save',
-  'write': 'Edit',
-  'delete': 'Delete',
-  'comment': 'Note',
-  'share': 'Share',
-  'edit-acl': 'Admin',
-}
+import { getRoleGroup } from '@/lib/grants'
+import type { RoleGroup } from '@/lib/grants'
+import { buildAccessDisplayEntries } from './access-display'
 
 interface AccessPanelProps {
   resourceId: string
@@ -99,27 +77,19 @@ function PermissionDropdown({
   )
 }
 
-function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sourceName }: {
+function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sourceName, name, subtitle, roleLabel }: {
   grant: Grant
   readOnly: boolean
   roleGroups: RoleGroup[]
   onRemove?: (grantId: string) => void
   onUpdateProfile?: (grantId: string, profileId: AccessProfileId) => void
   sourceName?: string
+  name: string
+  subtitle?: string
+  roleLabel: string
 }) {
   const isOwner = grant.templateId === 'owner'
   const principal = grant.principal
-  let name: string
-  let subtitle: string | undefined
-  if (principal.type === 'user') {
-    const persona = PERSONAS.find((p) => p.id === principal.userId)
-    name = persona?.name ?? principal.userId
-    subtitle = persona?.email
-  } else {
-    const team = TEAMS.find(t => t.id === principal.teamId)
-    name = team?.name ?? principal.teamId
-    subtitle = team ? `${team.memberUserIds.length} members` : undefined
-  }
 
   return (
     <div className="py-1.5 space-y-1">
@@ -163,7 +133,7 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sour
             </>
           ) : (
             <span className="text-label-0-regular text-foreground-dim px-2 py-1">
-              {profileLabel(grant.templateId, roleGroups)}
+              {roleLabel}
             </span>
           )}
         </div>
@@ -174,6 +144,7 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sour
 
 export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLabel = 'Not shared', inheritedGrants }: AccessPanelProps) {
   const { getResourceGrants, createGrant, revokeGrant, updateGrantProfile, roleGroups, canShare, canEditAcl } = useAccess()
+  const { activePersona } = usePersona()
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -228,7 +199,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
     setShowDropdown(false)
   }
 
-  const effectiveEntries = useMemo(() => {
+  const displayEntries = useMemo(() => {
     const directEntries = grants.map((grant) => ({
       key: `direct-${grant.id}`,
       grant,
@@ -243,8 +214,12 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
       sourceName: fromResourceName,
     }))
 
-    return [...directEntries, ...inheritedEntries]
-  }, [grants, grantsReadOnly, inheritedGrants])
+    return buildAccessDisplayEntries(
+      [...directEntries, ...inheritedEntries],
+      roleGroups,
+      activePersona?.id,
+    )
+  }, [grants, grantsReadOnly, inheritedGrants, roleGroups, activePersona])
 
   return (
     <section className="space-y-2">
@@ -258,26 +233,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
           <p className="text-label-0-regular text-foreground-dim">You can add new shares, but only people with admin access can change or remove existing entries</p>
         )}
 
-        {effectiveEntries.length === 0 && (
-          <p className="text-label-1-regular text-foreground-dim">{emptyLabel}</p>
-        )}
-        {effectiveEntries.length > 0 && (
-          <div className="space-y-0">
-            {effectiveEntries.map((entry) => (
-              <GrantRow
-                key={entry.key}
-                grant={entry.grant}
-                readOnly={entry.readOnly}
-                roleGroups={roleGroups}
-                sourceName={entry.sourceName}
-                onRemove={revokeGrant}
-                onUpdateProfile={updateGrantProfile}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Add person/team */}
+        {/* Add person/team — placed at top for easy access */}
         {!readOnly && resourceRef && canAddGrants && (
           <div ref={dropdownRef} className="relative">
             <Input
@@ -324,6 +280,28 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {displayEntries.length === 0 && (
+          <p className="text-label-1-regular text-foreground-dim">{emptyLabel}</p>
+        )}
+        {displayEntries.length > 0 && (
+          <div className="space-y-0">
+            {displayEntries.map((entry) => (
+              <GrantRow
+                key={entry.key}
+                grant={entry.grant}
+                readOnly={entry.readOnly}
+                roleGroups={roleGroups}
+                sourceName={entry.sourceName}
+                name={entry.name}
+                subtitle={entry.subtitle}
+                roleLabel={entry.roleLabel}
+                onRemove={revokeGrant}
+                onUpdateProfile={updateGrantProfile}
+              />
+            ))}
           </div>
         )}
       </div>

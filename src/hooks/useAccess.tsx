@@ -32,12 +32,21 @@ import type {
   Permission,
 } from '@/lib/grants'
 import { isDepartmentRole } from '@/lib/personas'
+import { getTeamById } from '@/lib/teams'
 import { useFileTree } from './useFileTree'
 import { getDepartmentWorkspaceFiles, findNodeInTree, DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
+import { departmentConfigs } from '@/lib/department-configs'
 
 // Re-export types consumers may need
 export type { Grant, GrantView, ResourceRef, ResourceType, PrincipalRef, AccessProfileId, RoleGroup, Permission }
+
+export type AccessRouteSummary = {
+  templateId: AccessProfileId | null
+  permissions: Permission[]
+  viaLabel: string
+  detail?: string
+}
 
 interface AccessContextValue {
   // Backward-compat API
@@ -80,6 +89,7 @@ interface AccessContextValue {
   // Resource-scoped ACL authority
   canShare: (resource: ResourceRef) => boolean
   canEditAcl: (resource: ResourceRef) => boolean
+  describeMyAccess: (resource: ResourceRef) => AccessRouteSummary | null
 
   // Read state tracking
   readShareIds: Set<string>
@@ -136,6 +146,15 @@ function getMorePermissiveTemplate(
   if (!next) return current
   if (!current) return next
   return TEMPLATE_RANK[next] > TEMPLATE_RANK[current] ? next : current
+}
+
+function pickMostPermissiveGrant(grants: Grant[]): Grant | null {
+  if (grants.length === 0) return null
+  return grants.slice(1).reduce<Grant>((best, candidate) => {
+    const bestRank = best.templateId ? TEMPLATE_RANK[best.templateId] : 0
+    const candidateRank = candidate.templateId ? TEMPLATE_RANK[candidate.templateId] : 0
+    return candidateRank > bestRank ? candidate : best
+  }, grants[0])
 }
 
 // Bump this when grant schema or seed data changes — forces localStorage re-seed
@@ -341,6 +360,100 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
     return canEditAclForResource(userId, resource, currentGrants, roleGroups)
   }, [activePersona, userId, grants, roleGroups, currentUserPermissionsForResource])
+
+  const describeMyAccess = useCallback((resource: ResourceRef): AccessRouteSummary | null => {
+    const describeDirectAccess = (
+      resourceId: string,
+      resourceDepartmentId?: DepartmentId,
+    ): AccessRouteSummary | null => {
+      if (!activePersona || !userId) {
+        return {
+          templateId: 'owner',
+          permissions: getPermissionsForProfile('owner', roleGroups),
+          viaLabel: 'Admin access',
+        }
+      }
+
+      const activeGrants = grants.filter((grant) => grant.resource.id === resourceId && !grant.revokedAt)
+      const directGrants = activeGrants.filter((grant) =>
+        grant.principal.type === 'user' && grant.principal.userId === userId,
+      )
+      if (directGrants.length > 0) {
+        const bestGrant = pickMostPermissiveGrant(directGrants)
+        const resolved = resolveAccess(userId, resourceId, grants, roleGroups, resourceDepartmentId)
+        return {
+          templateId: bestGrant?.templateId ?? resolved.effectiveProfile,
+          permissions: resolved.permissions,
+          viaLabel: 'Direct share',
+        }
+      }
+
+      const teamGrants = activeGrants.filter((grant) =>
+        grant.principal.type === 'team' && activePersona.teamIds.includes(grant.principal.teamId),
+      )
+      if (teamGrants.length > 0) {
+        const bestGrant = pickMostPermissiveGrant(teamGrants)
+        const teamName = bestGrant?.principal.type === 'team'
+          ? getTeamById(bestGrant.principal.teamId)?.name ?? bestGrant.principal.teamId
+          : 'Team access'
+        const resolved = resolveAccess(userId, resourceId, grants, roleGroups, resourceDepartmentId)
+        return {
+          templateId: bestGrant?.templateId ?? resolved.effectiveProfile,
+          permissions: resolved.permissions,
+          viaLabel: teamName,
+        }
+      }
+
+      const resolved = resolveAccess(userId, resourceId, grants, roleGroups, resourceDepartmentId)
+      if (resolved.source === 'department-role') {
+        const departmentId = resourceDepartmentId ?? nodeToDepartment.get(resourceId) ?? activePersona.departmentId
+        return {
+          templateId: resolved.effectiveProfile,
+          permissions: resolved.permissions,
+          viaLabel: departmentId ? departmentConfigs[departmentId].name : 'Department access',
+        }
+      }
+
+      return null
+    }
+
+    if (!activePersona || !userId) {
+      return {
+        templateId: 'owner',
+        permissions: getPermissionsForProfile('owner', roleGroups),
+        viaLabel: 'Admin access',
+      }
+    }
+
+    if (resource.type === 'collection') {
+      const collection = collections.find((candidate) => candidate.id === resource.id)
+      if (collection?.createdBy === activePersona.email) {
+        return {
+          templateId: 'owner',
+          permissions: getPermissionsForProfile('owner', roleGroups),
+          viaLabel: 'You created this collection',
+        }
+      }
+    }
+
+    const directAccess = describeDirectAccess(resource.id, resource.departmentId)
+    if (directAccess) return directAccess
+
+    let parentId = nodeToParent.get(resource.id)
+    while (parentId) {
+      const inheritedAccess = describeDirectAccess(parentId, nodeToDepartment.get(parentId))
+      if (inheritedAccess) {
+        const parentName = findNodeInTree(fileTree, parentId)?.name ?? parentId
+        return {
+          ...inheritedAccess,
+          detail: `Inherited from ${parentName}`,
+        }
+      }
+      parentId = nodeToParent.get(parentId)
+    }
+
+    return null
+  }, [activePersona, userId, roleGroups, grants, collections, nodeToDepartment, nodeToParent, fileTree])
 
   const updateRoleGroup = useCallback((id: string, permissions: Permission[]) => {
     if (!canEditAclFn(PROJECT_RESOURCE)) return
@@ -626,6 +739,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     getCollectionRippleGrants,
     canShare: canShareFn,
     canEditAcl: canEditAclFn,
+    describeMyAccess,
     readShareIds,
     markShareRead,
     unreadInboxCount,
@@ -657,6 +771,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     getCollectionRippleGrants,
     canShareFn,
     canEditAclFn,
+    describeMyAccess,
     readShareIds,
     markShareRead,
     unreadInboxCount,

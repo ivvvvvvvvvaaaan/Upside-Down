@@ -122,36 +122,12 @@ export function groupInstancesByCategory(
   }))
 }
 
-/** Deterministic placeholder thumbnails for promoted assets */
-const THUMBNAIL_POOL = [
-  '/images/characters/max.jpeg',
-  '/images/characters/perez.jpeg',
-  '/images/characters/adf11e68-7898-48cf-a7c0-d0b36816360b.jpeg',
-  '/images/characters/eb59e93b-11ec-41ef-ba06-3d226cb56e96.jpeg',
-  '/images/characters/toto-wolff-kimi-antonelli-george-russell.jpg',
-  '/images/edit/s1e1-all-to-play-for.jpg',
-  '/images/edit/s4e1-clash-of-the-titans.jpg',
-  '/images/edit/s6e1-money-talks.jpg',
-  '/images/edit/s8e6-the-duel.jpg',
-  '/images/location/7c55bc99-922b-4c28-a2b6-aa0c66ad3df3.jpeg',
-  '/images/location/56f5d5fe-c73f-45b4-9350-4014d5303d87.jpeg',
-  '/images/location/ea3b7291-d502-4351-8ae0-6f3355cd1a33.jpeg',
-  '/images/scene/img1.png',
-  '/images/scene/img2.png',
-  '/images/scene/img3.png',
-  '/images/scene/img4.png',
-]
-
-function hashCode(s: string): number {
-  let h = 0
-  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0
-  return Math.abs(h)
-}
+import { pick, CLIENT_IMAGE_POOL } from '@/lib/image-pool'
 
 /** Only visual media types get preview thumbnails */
 function getThumbnail(instance: AssetInstance): string | undefined {
   if (instance.type === 'image' || instance.type === 'video') {
-    return THUMBNAIL_POOL[hashCode(instance.id) % THUMBNAIL_POOL.length]
+    return pick(CLIENT_IMAGE_POOL, instance.id, 1)[0]
   }
   return undefined
 }

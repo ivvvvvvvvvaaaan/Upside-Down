@@ -33,7 +33,7 @@ export function AccessModal({
           <X className="w-4 h-4" />
         </Button>
       </div>
-      <div className="p-4 max-h-[60vh] overflow-y-auto">
+      <div className="p-4">
         <AccessPanel
           resourceId={resourceId}
           resourceRef={resourceRef}

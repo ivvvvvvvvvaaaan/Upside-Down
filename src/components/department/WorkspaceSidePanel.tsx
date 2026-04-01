@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { X, Folder, File } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -12,7 +13,9 @@ import type { ResourceRef } from '@/lib/grants'
 import { getAITagsForFile } from '@/lib/ai-tags'
 import { slugify } from '@/lib/smart-collection-filters'
 import { formatDate } from '@/lib/utils'
-import { useAccess } from '@/hooks'
+import { useAccess, useFileTree } from '@/hooks'
+import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
+import { departmentConfigs } from '@/lib/department-configs'
 
 interface WorkspaceSidePanelProps {
   node?: WorkspaceFileNode | null
@@ -44,6 +47,18 @@ function countChildFiles(node: WorkspaceFileNode): number {
   return count
 }
 
+function findNodePath(nodes: WorkspaceFileNode[], id: string, trail: WorkspaceFileNode[] = []): WorkspaceFileNode[] | null {
+  for (const node of nodes) {
+    const nextTrail = [...trail, node]
+    if (node.id === id) return nextTrail
+    if (node.children) {
+      const found = findNodePath(node.children, id, nextTrail)
+      if (found) return found
+    }
+  }
+  return null
+}
+
 export function WorkspaceSidePanel({
   node,
   open = true,
@@ -56,17 +71,45 @@ export function WorkspaceSidePanel({
   const fileCount = isFolder && node ? countChildFiles(node) : 0
   const aiTags = !isFolder && node ? getAITagsForFile(node.id) : undefined
   const { getInheritedGrants } = useAccess()
+  const { tree: fileTree } = useFileTree()
+
+  const resolvedDepartmentId = useMemo(() => {
+    if (departmentId) return departmentId
+    if (!node) return undefined
+    const match = Object.entries(DEPARTMENT_FOLDER_MAP).find(([, meta]) => meta.id === node.id)
+    return match?.[0] as DepartmentId | undefined
+  }, [departmentId, node])
 
   const resourceRef: ResourceRef | undefined = node ? {
     id: node.id,
     type: node.type === 'folder' ? 'folder' : 'asset',
-    departmentId,
+    departmentId: resolvedDepartmentId,
   } : undefined
 
   const inheritedGrants = node ? getInheritedGrants(node.id).map(({ grant, fromResourceName }) => ({
     grant,
     fromResourceName,
   })) : []
+
+  const fullPath = useMemo(() => {
+    if (!node) return null
+
+    const rootPath = '/Workspaces/Apex S1'
+    if (!resolvedDepartmentId) return `${rootPath}/${node.name}`
+
+    const departmentRootId = DEPARTMENT_FOLDER_MAP[resolvedDepartmentId].id
+    const departmentName = departmentConfigs[resolvedDepartmentId].name
+    const nodePath = findNodePath(fileTree as WorkspaceFileNode[], node.id)
+
+    if (!nodePath || nodePath.length === 0) {
+      return `${rootPath}/${departmentName}/${node.name}`
+    }
+
+    const pathNames = nodePath
+      .map((entry) => entry.id === departmentRootId ? departmentName : entry.name)
+
+    return `${rootPath}/${pathNames.join('/')}`
+  }, [node, resolvedDepartmentId, fileTree])
 
   return (
     <ResponsivePanel open={open} onClose={onClose}>
@@ -174,7 +217,7 @@ export function WorkspaceSidePanel({
         <section className="space-y-2">
           <h3 className="text-label-0-bold uppercase text-foreground-dim">Path</h3>
           <p className="text-label-0-regular text-foreground-dim font-mono break-all">
-            /Workspaces/Apex S1/{node.name}
+            {fullPath}
           </p>
         </section>
       </div>
