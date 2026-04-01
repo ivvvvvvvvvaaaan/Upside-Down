@@ -10,6 +10,7 @@ import {
 
   Grid,
   Folder,
+  FolderSymlink,
   Search,
   FileText,
   Home,
@@ -80,6 +81,7 @@ function usePersistedExpand(key: string, fallback: boolean): [boolean, (v: boole
 const iconMap: Record<string, LucideIcon> = {
   Grid,
   Folder,
+  FolderSymlink,
   Search,
   FileText,
   Home,
@@ -583,7 +585,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
                   key={entry.id}
                   href={`/nextgen/workspace/${entry.resourceId}`}
                   label={entry.label}
-                  trailingIcon={<Users className="w-3.5 h-3.5 text-foreground-dim" />}
+                  trailingIcon={<FolderSymlink className="w-3.5 h-3.5 text-foreground-dim" />}
                   indent
                 />
               ))}

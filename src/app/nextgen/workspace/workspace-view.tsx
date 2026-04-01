@@ -406,7 +406,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
       const newPath = [...urlPath, folder.id]
       router.push(`/nextgen/workspace/${departmentId}/${newPath.join('/')}`)
     }
-  }, [departmentId, isLanding, router, sharedFolderIds, urlPath])
+  }, [departmentId, isLanding, landingDrillFolder, router, sharedFolderIds, urlPath])
 
   const contextMenuItems: ContextMenuItem[] = (() => {
     if (!contextMenu) return []
