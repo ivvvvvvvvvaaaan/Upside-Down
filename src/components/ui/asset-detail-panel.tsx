@@ -10,7 +10,7 @@ import { Tag } from './tag'
 import { cn } from '@/lib/utils'
 import type { Asset, DepartmentId } from '@/lib/data'
 import type { ResourceRef } from '@/lib/grants'
-import { useAccess, useUserCollections } from '@/hooks'
+import { useAccess } from '@/hooks'
 import type { UserCollection } from '@/hooks'
 import type { RelatedAssetGroup } from '@/lib/context-relationships'
 import type { ReviewNoteSummary } from '@/lib/review-notes'
@@ -67,14 +67,13 @@ export function AssetDetailPanel({
   asset,
   open,
   onClose,
-  collections = [],
+  collections,
   relatedGroups = [],
   reviewNoteSummary = null,
   activeCollectionId,
 }: AssetDetailPanelProps) {
-  const { getInheritedGrants, getCollectionRippleGrants } = useAccess()
-  const { collections: userCollections } = useUserCollections()
-  const allCollections = collections.length > 0 ? collections : userCollections
+  const { getInheritedGrants, getCollectionRippleGrants, visibleCollections } = useAccess()
+  const allCollections = collections ?? visibleCollections
 
   const resourceRef: ResourceRef | undefined = asset ? {
     id: asset.id,

@@ -88,6 +88,10 @@ const ALL_PERMISSIONS: Permission[] = [
   'edit-acl',
 ]
 
+const POLICY_RESOURCE_IDS = new Set(
+  Object.values(DEPARTMENT_FOLDER_MAP).map((folder) => folder.id),
+)
+
 export function getRoleGroup(roleGroups: RoleGroup[], templateId?: AccessProfileId | null): RoleGroup | undefined {
   if (!templateId) return undefined
   return roleGroups.find((rg) => rg.id === templateId)
@@ -208,6 +212,10 @@ export function getResourceLabel(resourceId: string): string {
 
 export function getProjectLevelGrants(grants: Grant[]): Grant[] {
   return grants.filter((grant) => grant.resource.type === 'project' && !grant.revokedAt)
+}
+
+export function isPolicyResource(resource: Pick<ResourceRef, 'id' | 'type'>): boolean {
+  return resource.type === 'project' || POLICY_RESOURCE_IDS.has(resource.id)
 }
 
 export function getProjectUserGrants(grants: Grant[]): Grant[] {
@@ -388,7 +396,7 @@ export function getAllActiveGrants(grants: Grant[]): Grant[] {
 }
 
 export function buildSharesCreatedByMe(userId: string, grants: Grant[]): GrantView[] {
-  const myGrants = getGrantsByGrantor(userId, grants).filter((grant) => grant.resource.type !== 'project')
+  const myGrants = getGrantsByGrantor(userId, grants).filter((grant) => !isPolicyResource(grant.resource))
   const seen = new Set<string>()
   const views: GrantView[] = []
 
@@ -402,7 +410,7 @@ export function buildSharesCreatedByMe(userId: string, grants: Grant[]): GrantVi
 }
 
 export function buildSharesReceivedByMe(userId: string, grants: Grant[]): GrantView[] {
-  const received = getGrantsForUser(userId, grants).filter((grant) => grant.resource.type !== 'project')
+  const received = getGrantsForUser(userId, grants).filter((grant) => !isPolicyResource(grant.resource))
   const seen = new Set<string>()
   const views: GrantView[] = []
 
@@ -416,7 +424,7 @@ export function buildSharesReceivedByMe(userId: string, grants: Grant[]): GrantV
 }
 
 export function buildAllProjectShares(grants: Grant[]): GrantView[] {
-  const active = getAllActiveGrants(grants).filter((grant) => grant.resource.type !== 'project')
+  const active = getAllActiveGrants(grants).filter((grant) => !isPolicyResource(grant.resource))
   const seen = new Set<string>()
   const views: GrantView[] = []
 

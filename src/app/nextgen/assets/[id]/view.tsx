@@ -15,7 +15,7 @@ import {
   AssetDetailPanel,
 } from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
-import { useAccess, usePersona, useViewPreferences, useUserCollections } from '@/hooks'
+import { useAccess, usePersona, useViewPreferences } from '@/hooks'
 import type { Asset, DepartmentId } from '@/lib/data'
 import { mergePrototypeAssets } from '@/lib/prototype-assets'
 import { getContextAssetGroups } from '@/lib/context-relationships'
@@ -154,9 +154,8 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
   const router = useRouter()
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
 
-  const { activePersona, isAdmin, hydrated } = usePersona()
-  const { collections } = useUserCollections()
-  const { canAccess, filterByAccess } = useAccess()
+  const { hydrated } = usePersona()
+  const { filterByAccess, visibleCollections } = useAccess()
   const { sidePanelOpen, setSidePanelOpen } = useViewPreferences()
 
   const [asset, setAsset] = useState<Asset | null>(null)
@@ -211,15 +210,6 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
     if (!asset) return null
     return getReviewNoteSummary(asset.id)
   }, [asset])
-  const visibleCollections = useMemo(() => {
-    if (!hydrated) return []
-    return collections.filter((collection) => {
-      if (isAdmin) return true
-      if (collection.createdBy === activePersona?.email) return true
-      return canAccess(collection.id)
-    })
-  }, [collections, hydrated, isAdmin, activePersona?.email, canAccess])
-
   // Loading state
   if (loading) {
     return (

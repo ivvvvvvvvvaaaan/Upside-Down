@@ -33,7 +33,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
 
   const { activePersona, isAdmin, hydrated } = usePersona()
-  const { canAccess, filterByAccess, sharesReceivedByMe, allProjectShares } = useAccess()
+  const { filterByAccess, sharesReceivedByMe, allProjectShares, getVisibleCollection } = useAccess()
   const { getCollection, createCollection, deleteCollection } = useUserCollections()
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const { cardSize, sidePanelOpen, setSidePanelOpen } = useViewPreferences()
@@ -42,9 +42,10 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
 
-  const collection = getCollection(collectionId)
-  const isOwner = hydrated && (isAdmin || (!!collection && collection.createdBy === activePersona?.email))
-  const hasCollectionAccess = hydrated && !!collection && (isOwner || canAccess(collection.id))
+  const rawCollection = getCollection(collectionId)
+  const collection = getVisibleCollection(collectionId)
+  const isOwner = hydrated && (isAdmin || (!!rawCollection && rawCollection.createdBy === activePersona?.email))
+  const hasCollectionAccess = hydrated && !!collection
 
   // Find who shared this collection with the current user
   const sharedBy = useMemo(() => {

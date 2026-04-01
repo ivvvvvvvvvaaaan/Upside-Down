@@ -10,7 +10,6 @@ import type { FileNode, FileViewMode } from '@/components/ui/file-explorer'
 import type { DepartmentId } from '@/components/department/types'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { promotedInstanceToAsset } from '@/lib/asset-instances'
-import type { AssetInstance } from '@/lib/asset-instances'
 import { WorkspaceSidePanel } from './WorkspaceSidePanel'
 import { List, Columns, LayoutGrid } from 'lucide-react'
 
@@ -38,43 +37,6 @@ function toFileNodes(nodes: WorkspaceFileNode[]): FileNode[] {
     children: n.children ? toFileNodes(n.children) : undefined,
     managedZone: n.managedZone,
   }))
-}
-
-/** Flatten all files from tree into AssetInstance-like objects for grid view */
-function flattenAllFiles(
-  nodes: WorkspaceFileNode[],
-  departmentId: DepartmentId,
-  pathParts: string[] = [],
-): AssetInstance[] {
-  const result: AssetInstance[] = []
-  for (const node of nodes) {
-    if (node.type === 'file') {
-      const name = node.name.replace(/\.[^.]+$/, '')
-      const EXTENSION_MAP: Record<string, 'image' | 'video' | 'audio' | 'text'> = {
-        psd: 'image', png: 'image', jpg: 'image', jpeg: 'image', gif: 'image',
-        webp: 'image', svg: 'image', ai: 'image', tiff: 'image', exr: 'image', tx: 'image',
-        mov: 'video', mp4: 'video', avi: 'video', mkv: 'video', webm: 'video', prproj: 'video',
-        wav: 'audio', mp3: 'audio', aac: 'audio', flac: 'audio', ptx: 'audio',
-        pdf: 'text', doc: 'text', docx: 'text', txt: 'text', md: 'text', xlsx: 'text',
-      }
-      result.push({
-        id: node.id,
-        name,
-        sourceFileId: node.id,
-        sourceFileName: node.name,
-        sourcePath: [...pathParts, node.name].join(' / '),
-        department: departmentId,
-        category: pathParts[pathParts.length - 1] ?? '',
-        type: EXTENSION_MAP[node.extension?.toLowerCase() ?? ''] ?? 'text',
-        size: node.size,
-        modifiedAt: node.modifiedAt,
-      })
-    }
-    if (node.type === 'folder' && node.children) {
-      result.push(...flattenAllFiles(node.children, departmentId, [...pathParts, node.name]))
-    }
-  }
-  return result
 }
 
 /** Find a WorkspaceFileNode by id in a tree */
@@ -139,6 +101,7 @@ export function WorkspaceUnifiedTab({ departmentId }: WorkspaceUnifiedTabProps) 
     setSelectedNode,
     processedFiles,
     totalFileCount,
+    assetInstances,
   } = useWorkspaceState(departmentId, 'files')
 
   const [viewMode, setViewMode] = useState<WorkspaceViewMode>('list')
@@ -146,10 +109,7 @@ export function WorkspaceUnifiedTab({ departmentId }: WorkspaceUnifiedTabProps) 
 
   const fileNodes = toFileNodes(processedFiles)
 
-  const allFiles = useMemo(
-    () => flattenAllFiles(processedFiles, departmentId),
-    [processedFiles, departmentId],
-  )
+  const allFiles = useMemo(() => assetInstances, [assetInstances])
 
   const managedFileIds = useMemo(
     () => getManagedFileIds(processedFiles),
@@ -209,7 +169,7 @@ export function WorkspaceUnifiedTab({ departmentId }: WorkspaceUnifiedTabProps) 
               <AssetCard
                 key={file.id}
                 asset={promotedInstanceToAsset(file)}
-                fromWorkspace={managedFileIds.has(file.id)}
+                fromWorkspace={managedFileIds.has(file.sourceFileId)}
                 onClick={() => {
                   const wsNode = findNodeById(processedFiles, file.sourceFileId)
                   if (wsNode) setSelectedNode(wsNode)

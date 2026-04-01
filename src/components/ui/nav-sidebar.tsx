@@ -26,7 +26,7 @@ import {
   Send,
   type LucideIcon,
 } from 'lucide-react'
-import { useUserCollections, useSmartCollections, useFileTree, useAccess, usePersona } from '@/hooks'
+import { useSmartCollections, useFileTree, useAccess, usePersona } from '@/hooks'
 import { matchesFilter } from '@/lib/smart-collection-filters'
 import type { DepartmentId } from '@/components/department/types'
 import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
@@ -529,10 +529,9 @@ function SharedCollectionNavItems() {
 }
 
 function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
-  const { collections: userCollections } = useUserCollections()
   const { visibleCollections: smartCollections, getChildren, scopedAssets } = useSmartCollections()
   const { tree: fileTree } = useFileTree()
-  const { sharesReceivedByMe, allProjectShares, canAccess } = useAccess()
+  const { sharesReceivedByMe, allProjectShares, canAccess, visibleCollections: userCollections } = useAccess()
   const { activePersona, isAdmin } = usePersona()
   // Workspace-level folders: top-level folders created by user (exclude department folders already rendered above)
   const DEPT_FOLDER_IDS = new Set(Object.values(DEPARTMENT_FOLDER_MAP).map(d => d.id))

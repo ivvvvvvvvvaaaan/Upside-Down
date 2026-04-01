@@ -60,6 +60,7 @@ describe('grant-based access model', () => {
     const resourceIds = received.map((view) => view.resourceId)
 
     expect(resourceIds).toContain('ws-vfx-coll-for-editorial')
+    expect(resourceIds).not.toContain('ws-editorial')
   })
 })
 
@@ -172,5 +173,18 @@ describe('project-level roles', () => {
 
     const allShares = buildAllProjectShares(DEFAULT_GRANTS)
     expect(allShares.map((view) => view.resourceType)).not.toContain('project')
+  })
+
+  it('department-root policy grants are excluded from share views', () => {
+    const created = buildSharesCreatedByMe('studio-alex', DEFAULT_GRANTS)
+    const received = buildSharesReceivedByMe('editorial-coordinator', DEFAULT_GRANTS)
+    const allShares = buildAllProjectShares(DEFAULT_GRANTS)
+
+    expect(created.map((view) => view.resourceId)).not.toContain('ws-vfx')
+    expect(created.map((view) => view.resourceId)).not.toContain('ws-editorial')
+    expect(received.map((view) => view.resourceId)).not.toContain('ws-editorial')
+    expect(allShares.map((view) => view.resourceId)).not.toContain('ws-vfx')
+    expect(allShares.map((view) => view.resourceId)).not.toContain('ws-editorial')
+    expect(allShares.map((view) => view.resourceId)).not.toContain('ws-art-design')
   })
 })

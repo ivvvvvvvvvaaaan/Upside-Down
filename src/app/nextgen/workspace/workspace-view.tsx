@@ -31,21 +31,13 @@ import type { DepartmentId } from '@/components/department/types'
 import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { promotedInstanceToAsset } from '@/lib/asset-instances'
-import type { AssetInstance } from '@/lib/asset-instances'
+import type { Asset } from '@/lib/data'
 import { WorkspaceSidePanel } from '@/components/department/WorkspaceSidePanel'
 import { AssetDetailPanel } from '@/components/ui/asset-detail-panel'
 import { ArrowLeft, List, Columns, LayoutGrid, PanelRight, X, Lock, Users, FolderPlus } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { departmentConfigs } from '@/lib/department-configs'
-
-const EXTENSION_MAP: Record<string, 'image' | 'video' | 'audio' | 'text'> = {
-  psd: 'image', png: 'image', jpg: 'image', jpeg: 'image', gif: 'image',
-  webp: 'image', svg: 'image', ai: 'image', tiff: 'image', exr: 'image', tx: 'image',
-  mov: 'video', mp4: 'video', avi: 'video', mkv: 'video', webm: 'video', prproj: 'video',
-  wav: 'audio', mp3: 'audio', aac: 'audio', flac: 'audio', ptx: 'audio',
-  pdf: 'text', doc: 'text', docx: 'text', txt: 'text', md: 'text', xlsx: 'text',
-}
 
 interface ContextMenuState {
   x: number
@@ -67,19 +59,13 @@ function toFileNodes(nodes: WorkspaceFileNode[]): FileNode[] {
   }))
 }
 
-/** Convert a single file node to an AssetInstance for card rendering */
-function fileToInstance(node: WorkspaceFileNode, departmentId: DepartmentId): AssetInstance {
+function folderNodeToAsset(node: WorkspaceFileNode, departmentId: DepartmentId): Asset {
   return {
     id: node.id,
-    name: node.name.replace(/\.[^.]+$/, ''),
-    sourceFileId: node.id,
-    sourceFileName: node.name,
-    sourcePath: node.name,
+    name: node.name,
+    type: 'text',
     department: departmentId,
-    category: '',
-    type: EXTENSION_MAP[node.extension?.toLowerCase() ?? ''] ?? 'text',
-    size: node.size,
-    modifiedAt: node.modifiedAt,
+    created_at: node.modifiedAt,
   }
 }
 
@@ -104,6 +90,10 @@ function findNodeById(nodes: WorkspaceFileNode[], id: string): WorkspaceFileNode
     }
   }
   return null
+}
+
+function isDepartmentLandingNode(nodeId: string): nodeId is DepartmentId {
+  return Object.prototype.hasOwnProperty.call(DEPARTMENT_FOLDER_MAP, nodeId)
 }
 
 /** Resolve URL path segments to an array of WorkspaceFileNode folders */
@@ -161,6 +151,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
     selectedNode,
     setSelectedNode,
     processedFiles,
+    assetInstances,
     loading,
     createFolder,
   // Always call hook (React rules); results ignored when isLanding
@@ -201,6 +192,18 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
 
   // O(1) lookup for shared folder IDs
   const sharedFolderIds = useMemo(() => new Set(sharedFolderNodes.map(n => n.id)), [sharedFolderNodes])
+  const assetBySourceFileId = useMemo(() => {
+    return new Map(assetInstances.map((instance) => [
+      instance.sourceFileId,
+      promotedInstanceToAsset(instance),
+    ]))
+  }, [assetInstances])
+  const getAclResourceId = useCallback((node: WorkspaceFileNode): string => {
+    if (isLanding && isDepartmentLandingNode(node.id)) {
+      return DEPARTMENT_FOLDER_MAP[node.id].id
+    }
+    return node.id
+  }, [isLanding])
 
   // Auto-drill into a workspace-level transient folder when navigated to via URL
   useEffect(() => {
@@ -310,12 +313,13 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
     }
     // Apply access filtering to both folders and files
     return items.filter((node) => {
-      if (canAccess(node.id)) return true
+      if (isLanding && isDepartmentLandingNode(node.id)) return true
+      if (canAccess(getAclResourceId(node))) return true
       // Not accessible — show only if persona can see restricted (folders only, files stay hidden)
       if (node.type === 'folder') return activePersona?.role === 'manager'
       return false
     })
-  }, [isLanding, landingDrillFolder, departmentNodes, sharedFolderNodes, landingFolders, processedFiles, resolvedFolderPath, canAccess, activePersona])
+  }, [isLanding, landingDrillFolder, departmentNodes, sharedFolderNodes, landingFolders, processedFiles, resolvedFolderPath, canAccess, activePersona, getAclResourceId])
 
   // Access-filtered total file count for compact bar
   const filteredFileCount = useMemo(
@@ -325,10 +329,13 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
 
   // Flat asset list for selection — on landing each folder's "department" is itself
   const currentGridAssets = useMemo(() => {
-    return currentGridItems.map((n) =>
-      promotedInstanceToAsset(fileToInstance(n, (departmentId ?? n.id) as DepartmentId))
-    )
-  }, [currentGridItems, departmentId])
+    return currentGridItems.map((node) => {
+      if (node.type === 'file') {
+        return assetBySourceFileId.get(node.id) ?? folderNodeToAsset(node, departmentId!)
+      }
+      return folderNodeToAsset(node, (departmentId ?? node.id) as DepartmentId)
+    })
+  }, [currentGridItems, departmentId, assetBySourceFileId])
 
   const selectedAssets = useMemo(() => {
     return currentGridAssets.filter((a) => selectedIds.has(a.id))
@@ -340,17 +347,17 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   }, [createCollection, selectedAssets, clearSelection])
 
   const handleNodeClick = useCallback((fileNode: FileNode) => {
-    const wsNode = findNodeById(processedFiles, fileNode.id)
+    const wsNode = findNodeById(currentGridItems, fileNode.id)
     if (wsNode) setSelectedNode(wsNode)
-  }, [processedFiles, setSelectedNode])
+  }, [currentGridItems, setSelectedNode])
 
   const handleContextMenu = useCallback((event: React.MouseEvent, fileNode: FileNode) => {
     event.preventDefault()
-    const wsNode = findNodeById(processedFiles, fileNode.id)
+    const wsNode = findNodeById(currentGridItems, fileNode.id)
     if (wsNode) {
       setContextMenu({ x: event.clientX, y: event.clientY, node: wsNode })
     }
-  }, [processedFiles])
+  }, [currentGridItems])
 
   const closeContextMenu = useCallback(() => setContextMenu(null), [])
 
@@ -633,8 +640,10 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                             const fileCount = countAccessibleFiles(node.children ?? [], canAccess)
                             const isSharedFolder = sharedFolderIds.has(node.id)
                             const dept = (departmentId ?? node.id) as DepartmentId
-                            const folderAsset = promotedInstanceToAsset(fileToInstance(node, dept))
-                            const folderAccessible = canAccess(node.id)
+                            const folderAsset = folderNodeToAsset(node, dept)
+                            const folderAccessible = isLanding && isDepartmentLandingNode(node.id)
+                              ? canAccess(DEPARTMENT_FOLDER_MAP[node.id].id)
+                              : canAccess(node.id)
                             const isRestricted = !folderAccessible && !isSharedFolder
                             const accessIcon = isSharedFolder
                               ? <Users className="w-3.5 h-3.5" />
@@ -666,13 +675,13 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                               />
                             )
                           }
-                          const asset = promotedInstanceToAsset(fileToInstance(node, departmentId!))
+                          const workspaceAsset = assetBySourceFileId.get(node.id) ?? folderNodeToAsset(node, departmentId!)
                           return (
                             <AssetCard
                               key={node.id}
-                              asset={asset}
-                              selected={selectedIds.has(node.id)}
-                              primary={primaryId === node.id}
+                              asset={workspaceAsset}
+                              selected={selectedIds.has(workspaceAsset.id)}
+                              primary={primaryId === workspaceAsset.id}
                               onClick={(a, e) => {
                                 handleAssetClick(a, e, currentGridAssets)
                                 setSelectedNode(node)
@@ -719,7 +728,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
         {/* Side Panel — AssetDetailPanel for files, WorkspaceSidePanel for folders */}
         {selectedNode?.type === 'file' && departmentId ? (
           <AssetDetailPanel
-            asset={promotedInstanceToAsset(fileToInstance(selectedNode, departmentId))}
+            asset={assetBySourceFileId.get(selectedNode.id) ?? folderNodeToAsset(selectedNode, departmentId)}
             open={showPanel}
             onClose={() => { setSelectedNode(null); setShowPanel(false) }}
           />
