@@ -125,7 +125,7 @@ function RelationshipGraph({
             ))}
             <circle cx={cx} cy={cy} r={24} fill="var(--surface-3, #333)" stroke="var(--border-dim, #555)" strokeWidth={1} />
             <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle"
-              fill="var(--foreground, #fff)" fontSize="9" fontWeight="600">
+              fill="var(--foreground, #fff)" fontSize="11" fontWeight="600">
               {center.name}
             </text>
             {nodes.map(n => (
@@ -134,7 +134,7 @@ function RelationshipGraph({
                   fill="var(--surface-2, #222)" stroke={dimensionColor[n.dimension] ?? 'var(--border-dim, #555)'} strokeWidth={1.5}
                   className="hover:brightness-125 cursor-pointer transition-all" />
                 <text x={n.x} y={n.y + 1} textAnchor="middle" dominantBaseline="middle"
-                  fill="var(--foreground-dim, #aaa)" fontSize="7" className="pointer-events-none">
+                  fill="var(--foreground-dim, #aaa)" fontSize="9" className="pointer-events-none">
                   {n.name}
                 </text>
               </a>
