@@ -40,7 +40,7 @@ function CharacterChips({ items }: { items: SmartCollection[] }) {
             <div className="w-12 h-12 rounded-full overflow-hidden relative bg-surface-2">
               {mainImage && <Image src={mainImage} alt={item.name} fill sizes="48px" className="object-cover" />}
             </div>
-            <span className="text-body-0-regular text-foreground-dim group-hover:text-foreground-system-link truncate max-w-[64px] text-center transition-colors">
+            <span className="text-body-0-regular text-foreground-dim group-hover:text-foreground-system-link text-center transition-colors whitespace-nowrap">
               {item.name}
             </span>
           </Link>
