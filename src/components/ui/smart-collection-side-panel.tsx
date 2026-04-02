@@ -138,10 +138,7 @@ function RelationshipGraph({
             {nodes.map(n => {
               const { mainImage } = getCollectionImages(n.id)
               const isCharacter = n.dimension === 'characters'
-              // Lucide Film path for scenes, MapPin path for locations
-              const iconPath = n.dimension === 'scenes'
-                ? 'M7 2v4M17 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6c0-1.1.9-2 2-2z'
-                : 'M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0zM12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'
+              const DimensionIcon = n.dimension === 'scenes' ? Film : MapPin
               return (
                 <a key={n.id} href={`/nextgen/smart-collections/${n.id}`} className="graph-node" style={{ cursor: 'pointer' }}>
                   <g className="node-scale">
@@ -159,11 +156,9 @@ function RelationshipGraph({
                       <>
                         <circle cx={n.x} cy={n.y} r={14}
                           fill="var(--surface-2, #222)" stroke={dimensionColor[n.dimension] ?? 'var(--border-dim, #555)'} strokeWidth={1.5} />
-                        <g className="node-icon pointer-events-none">
-                          <g transform={`translate(${n.x - 6}, ${n.y - 6}) scale(0.5)`}>
-                            <path d={iconPath} fill="none" stroke={dimensionColor[n.dimension] ?? 'var(--foreground-dim, #aaa)'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                          </g>
-                        </g>
+                        <foreignObject x={n.x - 8} y={n.y - 8} width={16} height={16} className="node-icon pointer-events-none">
+                          <DimensionIcon style={{ width: 16, height: 16, color: dimensionColor[n.dimension] ?? '#aaa' }} />
+                        </foreignObject>
                       </>
                     )}
                   </g>
