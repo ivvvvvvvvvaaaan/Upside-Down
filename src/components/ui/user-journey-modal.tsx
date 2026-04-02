@@ -119,11 +119,11 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
                   {/* Events for this date */}
                   <div className="space-y-2 mb-4">
                     {dayEvents.map((event, ei) => (
-                      <div key={`${gi}-${ei}`} className="flex items-center gap-3">
-                        <div className="w-[72px] shrink-0 text-right">
+                      <div key={`${gi}-${ei}`} className="flex items-start gap-3">
+                        <div className="w-[72px] shrink-0 text-right pt-2">
                           {ei === 0 && <span className="text-body-0-bold text-foreground">{formatDate(date)}</span>}
                         </div>
-                        <div className="w-2 h-2 rounded-full bg-foreground-dim z-10 shrink-0" />
+                        <div className="w-2 h-2 rounded-full bg-foreground-dim z-10 shrink-0 mt-3" />
                         <div className={cn(
                           'flex-1 rounded p-3 space-y-2',
                           event.revoked ? 'bg-surface-2 opacity-60' : 'bg-surface-2',
