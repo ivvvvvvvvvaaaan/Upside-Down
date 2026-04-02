@@ -111,7 +111,7 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
 
           {/* Timeline */}
           <div className="relative">
-            <div className="absolute left-[88px] top-0 bottom-0 w-px bg-border-dim" />
+            <div className="absolute left-[88px] top-0 bottom-0 w-px bg-gray-500" />
 
             <div className="space-y-0">
               {grouped.map(([date, dayEvents], gi) => (
@@ -123,7 +123,7 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
                         <div className="w-[72px] shrink-0 text-right pt-2">
                           {ei === 0 && <span className="text-body-0-bold text-foreground">{formatDate(date)}</span>}
                         </div>
-                        <div className="w-2 h-2 rounded-full bg-foreground-dim z-10 shrink-0 mt-3" />
+                        <div className="w-2 h-2 rounded-full bg-gray-500 z-10 shrink-0 mt-3" />
                         <div className={cn(
                           'flex-1 rounded p-3 space-y-2',
                           event.revoked ? 'bg-surface-2 opacity-60' : 'bg-surface-2',
