@@ -45,6 +45,7 @@ type ScenarioShare = {
   label: string
   by: string
   date: string
+  context?: string
   grants: ScenarioShareGrant[]
   revoked?: boolean
 }
@@ -158,6 +159,7 @@ export const SCENARIO: Scenario = {
       label: 'VFX shots for edit review',
       by: 'vfx-coordinator',
       date: '2026-01-28',
+      context: 'VFX plates ready for editorial to start cutting against. Includes latest comps from SEQ010 and SEQ020.',
       grants: [
         { to: 'editorial-coordinator', as: 'viewer' },
         { to: 'editorial-artist',      as: 'viewer' },
@@ -168,6 +170,7 @@ export const SCENARIO: Scenario = {
       label: 'EP301 comp package',
       by: 'vfx-coordinator',
       date: '2026-01-20',
+      context: 'Reference package for Framestore — shows approved comp direction and shot breakdown for EP301.',
       grants: [
         { to: 'vendor-framestore', as: 'viewer' },
       ],
@@ -177,6 +180,7 @@ export const SCENARIO: Scenario = {
       label: 'Cut ref for VFX timing',
       by: 'editorial-artist',
       date: '2026-02-03',
+      context: 'Latest edit with timing marks so VFX can match their comp durations to the cut.',
       grants: [
         { toTeam: 'vfx-core', as: 'viewer' },
       ],
@@ -186,6 +190,7 @@ export const SCENARIO: Scenario = {
       label: 'EP301 Director Cut v4',
       by: 'editorial-coordinator',
       date: '2026-02-13',
+      context: 'Director-approved cut ready for studio review. Fourth revision incorporating David\'s notes on pacing.',
       grants: [
         { to: 'studio-alex', as: 'viewer' },
         { to: 'creative-david', as: 'viewer' },
@@ -196,6 +201,7 @@ export const SCENARIO: Scenario = {
       label: 'Hero Pose v3',
       by: 'art-artist',
       date: '2026-02-08',
+      context: 'Updated key art with revised livery design. For creative and studio sign-off before print.',
       grants: [
         { to: 'studio-alex',    as: 'viewer' },
         { to: 'creative-david', as: 'viewer' },
@@ -206,6 +212,7 @@ export const SCENARIO: Scenario = {
       label: 'Scene 12 Take B Selected',
       by: 'editorial-artist',
       date: '2026-02-10',
+      context: 'Selected take from the grid start sequence. Shared for director and studio to confirm camera choice.',
       grants: [
         { to: 'studio-alex',    as: 'viewer' },
         { to: 'creative-david', as: 'viewer' },
@@ -217,6 +224,7 @@ export const SCENARIO: Scenario = {
       label: 'Finals',
       by: 'vfx-coordinator',
       date: '2026-02-12',
+      context: 'Auto-updating collection of all approved final VFX shots. Editorial can track what\'s locked.',
       grants: [
         { to: 'editorial-artist', as: 'viewer' },
       ],
@@ -227,6 +235,7 @@ export const SCENARIO: Scenario = {
       label: 'SEQ010 SH030 Comp v5 (superseded)',
       by: 'vfx-coordinator',
       date: '2026-02-06',
+      context: 'Earlier comp version shared to vendor. Revoked after direction changed — replaced by v8.',
       revoked: true,
       grants: [
         { to: 'vendor-framestore', as: 'viewer' },
@@ -237,6 +246,7 @@ export const SCENARIO: Scenario = {
       label: 'Dailies Review Cuts',
       by: 'editorial-coordinator',
       date: '2026-01-20',
+      context: 'Daily review cuts for the director and VFX coordinator. Updated as new edits land.',
       grants: [
         { toTeam: 'dailies-review', as: 'commenter' },
       ],
@@ -248,6 +258,7 @@ export const SCENARIO: Scenario = {
       label: 'Framestore',
       by: 'vfx-coordinator',
       date: '2026-01-15',
+      context: 'Scoped upload folder for Framestore deliveries. Vendor drops comps here, VFX team reviews.',
       grants: [
         { to: 'vendor-framestore', as: 'contributor' },
       ],
@@ -258,6 +269,7 @@ export const SCENARIO: Scenario = {
       label: 'EP301 Assembly v2 (replaced by Director Cut)',
       by: 'editorial-artist',
       date: '2026-02-01',
+      context: 'Early rough assembly shared for VFX reference. Revoked once the Director Cut superseded it.',
       revoked: true,
       grants: [
         { toTeam: 'vfx-core', as: 'viewer' },

@@ -63,6 +63,7 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
           sharerRole: sharer?.role ?? 'unknown',
           sharerId: share.by,
           recipients,
+          context: share.context,
           revoked: share.revoked ?? false,
         }
       })
@@ -163,6 +164,9 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
                             </div>
                           </div>
 
+                          {event.context && (
+                            <p className="text-body-0-regular text-foreground-dim">{event.context}</p>
+                          )}
                           {event.revoked && (
                             <span className="text-body-0-regular text-red-400">Revoked</span>
                           )}

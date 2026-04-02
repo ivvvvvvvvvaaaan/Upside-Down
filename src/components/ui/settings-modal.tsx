@@ -12,7 +12,7 @@ import { useAccess } from '@/hooks'
 import { cn } from '@/lib/utils'
 import { PERSONAS } from '@/lib/personas'
 import { TEAMS, getTeamsForUser } from '@/lib/teams'
-import { getRoleGroup } from '@/lib/grants'
+import { PROJECT_RESOURCE } from '@/lib/grants'
 import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef, ResourceRef } from '@/lib/grants'
 import type { DepartmentId } from '@/components/department/types'
 import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
@@ -32,18 +32,24 @@ const ALL_PERMISSIONS: { id: Permission; name: string }[] = [
 function PermissionCheckbox({
   checked,
   onChange,
+  disabled = false,
 }: {
   checked: boolean
   onChange: (v: boolean) => void
+  disabled?: boolean
 }) {
   return (
     <button
-      onClick={() => onChange(!checked)}
+      type="button"
+      onClick={() => !disabled && onChange(!checked)}
+      disabled={disabled}
       className={cn(
         'w-5 h-5 rounded-sm border flex items-center justify-center transition-colors',
+        disabled && 'opacity-40 cursor-not-allowed',
         checked
           ? 'bg-indigo-500 border-indigo-500'
-          : 'bg-surface-flat border-border-subtle hover:border-foreground-dim',
+          : 'bg-surface-flat border-border-subtle',
+        !checked && !disabled && 'hover:border-foreground-dim',
       )}
     >
       {checked && (
@@ -69,16 +75,21 @@ function PeopleTab({
   onRoleChange,
   onRemove,
   onAdd,
+  canAdd,
+  canManage,
 }: {
   grants: Grant[]
   roleGroups: RoleGroup[]
   onRoleChange: (grantId: string, profileId: AccessProfileId) => void
   onRemove: (grantId: string) => void
   onAdd: (principal: PrincipalRef, profileId: AccessProfileId) => void
+  canAdd: boolean
+  canManage: boolean
 }) {
   const [newEmail, setNewEmail] = useState('')
 
   const handleAdd = () => {
+    if (!canAdd) return
     const email = newEmail.trim().toLowerCase()
     if (!email) return
     const persona = PERSONAS.find((p) => p.email === email)
@@ -103,8 +114,9 @@ function PeopleTab({
             onChange={(e) => setNewEmail(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
             placeholder="Search..."
+            disabled={!canAdd}
           />
-          <Button variant="secondary" onClick={handleAdd} disabled={!newEmail.trim()}>
+          <Button variant="secondary" onClick={handleAdd} disabled={!canAdd || !newEmail.trim()}>
             <Plus className="w-3 h-3 mr-1" />
             Add
           </Button>
@@ -151,10 +163,13 @@ function PeopleTab({
                     size="compact"
                     borderless
                     className="w-auto flex-shrink-0"
+                    disabled={!canManage}
                   />
-                  <Button variant="icon" size="compact-icon" onClick={() => onRemove(grant.id)}>
-                    <X className="w-3 h-3" />
-                  </Button>
+                  {canManage && (
+                    <Button variant="icon" size="compact-icon" onClick={() => onRemove(grant.id)}>
+                      <X className="w-3 h-3" />
+                    </Button>
+                  )}
                 </div>
               </div>
             )
@@ -175,6 +190,7 @@ function DepartmentsTab({
   onRemoveOverride,
   canShareResource,
   canEditResource,
+  readOnly = false,
 }: {
   roleGroups: RoleGroup[]
   getResourceGrants: (resourceId: string) => Grant[]
@@ -183,6 +199,7 @@ function DepartmentsTab({
   onRemoveOverride: (grantId: string) => void
   canShareResource: (resource: ResourceRef) => boolean
   canEditResource: (resource: ResourceRef) => boolean
+  readOnly?: boolean
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
@@ -250,7 +267,7 @@ function DepartmentsTab({
                     size="compact"
                     borderless
                     className="w-auto flex-shrink-0"
-                    disabled={!canEditDepartment}
+                    disabled={readOnly || !canEditDepartment}
                   />
                 ) : (
                   <span className="text-label-0-regular text-foreground-dim flex-shrink-0">
@@ -307,14 +324,14 @@ function DepartmentsTab({
                               size="compact"
                               borderless
                               className="w-auto min-w-[160px]"
-                              disabled={overrideGrant ? !canEditDepartment : !canShareDepartment}
+                              disabled={readOnly || (overrideGrant ? !canEditDepartment : !canShareDepartment)}
                             />
                             {overrideGrant && (
                               <span className="text-label-0-regular text-foreground-dim">
                                 Override
                               </span>
                             )}
-                            {overrideGrant && canEditDepartment && (
+                            {overrideGrant && !readOnly && canEditDepartment && (
                               <Button variant="icon" size="compact-icon" onClick={() => onRemoveOverride(overrideGrant.id)}>
                                 <X className="w-3 h-3" />
                               </Button>
@@ -345,12 +362,14 @@ function RoleGroupsTab({
   onRename,
   onAdd,
   onRemove,
+  readOnly = false,
 }: {
   roleGroups: RoleGroup[]
   onUpdate: (id: string, permissions: Permission[]) => void
   onRename: (id: string, name: string) => void
   onAdd: (name: string, permissions: Permission[]) => void
   onRemove: (id: string) => void
+  readOnly?: boolean
 }) {
   const visible = roleGroups.filter(rg => rg.id !== 'owner' && rg.id !== 'link-viewer')
 
@@ -382,6 +401,7 @@ function RoleGroupsTab({
                   <input
                     value={rg.name}
                     onChange={(e) => onRename(rg.id, e.target.value)}
+                    disabled={readOnly}
                     className="text-body-0-regular text-foreground bg-transparent border-none outline-none w-full hover:bg-surface-2 focus:bg-surface-2 rounded px-1 -mx-1 py-0.5 transition-colors"
                   />
                 </td>
@@ -390,6 +410,7 @@ function RoleGroupsTab({
                     <div className="flex justify-center">
                       <PermissionCheckbox
                         checked={rg.permissions.includes(perm.id)}
+                        disabled={readOnly}
                         onChange={(checked) => {
                           const next = checked
                             ? [...rg.permissions, perm.id]
@@ -401,7 +422,7 @@ function RoleGroupsTab({
                   </td>
                 ))}
                 <td className="py-2.5 px-1">
-                  {!rg.builtIn && (
+                  {!rg.builtIn && !readOnly && (
                     <Button variant="icon" size="compact-icon" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => onRemove(rg.id)}>
                       <X className="w-3 h-3" />
                     </Button>
@@ -413,7 +434,7 @@ function RoleGroupsTab({
         </table>
       </div>
 
-      <Button variant="secondary" onClick={() => {
+      <Button variant="secondary" disabled={readOnly} onClick={() => {
         const name = prompt('Role group name')
         if (name?.trim()) onAdd(name.trim(), ['open'])
       }}>
@@ -451,6 +472,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     discoveryDisabledDepartments,
     toggleDepartmentDiscovery,
   } = useAccess()
+  const canShareProject = canShare(PROJECT_RESOURCE)
+  const canManageProject = canEditAcl(PROJECT_RESOURCE)
+  const isReadOnly = !canShareProject && !canManageProject
 
   return (
     <Modal open={open} onOpenChange={onOpenChange} size="md">
@@ -458,8 +482,20 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
         <div className="pb-0">
           <Modal.Header
             title="Access Control"
-            subtitle="Manage who can access content and what actions they can take."
+            subtitle={
+              isReadOnly
+                ? 'View who can access content and what actions they can take.'
+                : 'Manage who can access content and what actions they can take.'
+            }
           />
+
+          {isReadOnly && (
+            <div className="mx-6 mt-4 rounded border border-border-dim bg-surface-1 px-3 py-2">
+              <p className="text-body-0-regular text-foreground-dim">
+                View only. Only project admins can change project-wide access.
+              </p>
+            </div>
+          )}
 
           <Tabs defaultValue="people" className="px-6 pt-4">
             <TabsList>
@@ -477,6 +513,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   onRoleChange={updateGrantProfile}
                   onRemove={revokeGrant}
                   onAdd={createProjectGrant}
+                  canAdd={canShareProject}
+                  canManage={canManageProject}
                 />
               </TabsContent>
               <TabsContent value="departments">
@@ -488,6 +526,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   onRemoveOverride={revokeGrant}
                   canShareResource={canShare}
                   canEditResource={canEditAcl}
+                  readOnly={isReadOnly}
                 />
               </TabsContent>
               <TabsContent value="role-groups">
@@ -497,6 +536,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   onRename={renameRoleGroup}
                   onAdd={addRoleGroup}
                   onRemove={removeRoleGroup}
+                  readOnly={!canManageProject}
                 />
               </TabsContent>
               <TabsContent value="settings">
@@ -510,9 +550,11 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     </div>
                     <button
                       onClick={() => setDiscoveryEnabled(!discoveryEnabled)}
+                      disabled={!canManageProject}
                       className={cn(
                         'relative w-10 h-6 rounded-full transition-colors flex-shrink-0',
-                        discoveryEnabled ? 'bg-indigo-500' : 'bg-surface-3'
+                        discoveryEnabled ? 'bg-indigo-500' : 'bg-surface-3',
+                        !canManageProject && 'opacity-40 cursor-not-allowed'
                       )}
                     >
                       <div className={cn(
@@ -531,9 +573,11 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                             <span className="text-body-0-regular text-foreground">{DEPARTMENT_FOLDER_MAP[deptId].name}</span>
                             <button
                               onClick={() => toggleDepartmentDiscovery(deptId)}
+                              disabled={!canManageProject}
                               className={cn(
                                 'relative w-10 h-6 rounded-full transition-colors flex-shrink-0',
-                                !disabled ? 'bg-indigo-500' : 'bg-surface-3'
+                                !disabled ? 'bg-indigo-500' : 'bg-surface-3',
+                                !canManageProject && 'opacity-40 cursor-not-allowed'
                               )}
                             >
                               <div className={cn(
