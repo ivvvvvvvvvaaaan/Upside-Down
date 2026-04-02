@@ -373,26 +373,6 @@ export function SmartCollectionSidePanel({
           </div>
         ) : (
           <div className="space-y-4">
-            <section>
-              <h3 className="text-body-0-bold text-foreground-dim mb-3">
-                Includes assets matching
-              </h3>
-              {filterSummary.length === 0 ? (
-                <p className="text-body-0-regular text-foreground-dim">
-                  No filters. Matches all assets.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {filterSummary.map((item) => (
-                    <div key={item.label} className="flex items-center gap-2 p-2 rounded bg-surface-2">
-                      <span className="text-body-0-regular text-foreground-dim">{item.label}</span>
-                      <Tag size="compact">{item.value}</Tag>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
             {!isRelationshipMode && (
               <Button
                 variant="secondary"
