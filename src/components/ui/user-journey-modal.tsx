@@ -51,8 +51,11 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
       .map(share => {
         const sharer = getPersona(share.by)
         const recipients = share.grants.map(g => {
-          if ('to' in g) return { type: 'user' as const, label: getPersona(g.to)?.name ?? g.to }
-          return { type: 'team' as const, label: SCENARIO.teams.find(t => t.id === g.toTeam)?.name ?? g.toTeam }
+          if ('to' in g) {
+            const p = getPersona(g.to)
+            return { type: 'user' as const, label: p?.name ?? g.to, title: p?.title, role: p?.role }
+          }
+          return { type: 'team' as const, label: SCENARIO.teams.find(t => t.id === g.toTeam)?.name ?? g.toTeam, title: undefined, role: undefined }
         })
         return {
           date: share.date,
@@ -60,6 +63,7 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
           resourceType: share.resource.type,
           dept: share.resource.dept,
           sharerName: sharer?.name ?? share.by,
+          sharerTitle: sharer?.title,
           sharerRole: sharer?.role ?? 'unknown',
           sharerId: share.by,
           recipients,
@@ -131,6 +135,7 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
                               <div className={cn('w-2 h-2 rounded-full shrink-0', ROLE_COLORS[event.sharerRole] ?? 'bg-foreground-dim')} />
                               <Avatar name={event.sharerName} size="compact" />
                               <span className="text-body-0-regular text-foreground">{event.sharerName}</span>
+                              {event.sharerTitle && <span className="text-body-0-regular text-foreground-dim">({event.sharerTitle})</span>}
                             </div>
 
                             <ArrowRight className="w-3.5 h-3.5 text-foreground-dim shrink-0" />
@@ -153,8 +158,10 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
                                   <Tag key={ri} size="compact" variant="border" type="informative">{r.label}</Tag>
                                 ) : (
                                   <div key={ri} className="flex items-center gap-1.5">
+                                    {r.role && <div className={cn('w-2 h-2 rounded-full shrink-0', ROLE_COLORS[r.role] ?? 'bg-foreground-dim')} />}
                                     <Avatar name={r.label} size="compact" />
                                     <span className="text-body-0-regular text-foreground">{r.label}</span>
+                                    {r.title && <span className="text-body-0-regular text-foreground-dim">({r.title})</span>}
                                   </div>
                                 )
                               ))}
