@@ -68,6 +68,10 @@ type ScenarioDepartmentAccess = {
 
 type Scenario = {
   projectName: string
+  /** Project-level: allow users to see restricted assets as blurred tiles */
+  discoveryEnabled: boolean
+  /** Departments that opt out of discovery even when project has it enabled */
+  discoveryDisabledDepartments: DepartmentId[]
   roleGroups: ScenarioRoleGroup[]
   people: ScenarioPerson[]
   teams: ScenarioTeam[]
@@ -84,15 +88,17 @@ type Scenario = {
 
 export const SCENARIO: Scenario = {
   projectName: 'Apex S1',
+  discoveryEnabled: true,
+  discoveryDisabledDepartments: ['audio-sound'],
 
   roleGroups: [
-    { id: 'owner',       name: 'Owner',       permissions: ['open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl'] },
-    { id: 'manager',     name: 'Full access',  permissions: ['open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl'] },
-    { id: 'editor',      name: 'Can edit & share', permissions: ['open', 'download', 'write', 'comment', 'share'] },
-    { id: 'contributor', name: 'Can edit',         permissions: ['open', 'write'] },
-    { id: 'commenter',   name: 'Can comment', permissions: ['open', 'comment'] },
-    { id: 'viewer',      name: 'View only',   permissions: ['open', 'download'] },
-    { id: 'link-viewer', name: 'View only',   permissions: ['open', 'download'] },
+    { id: 'owner',       name: 'Owner',       permissions: ['discover', 'open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl'] },
+    { id: 'manager',     name: 'Full access',  permissions: ['discover', 'open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl'] },
+    { id: 'editor',      name: 'Can edit & share', permissions: ['discover', 'open', 'download', 'write', 'comment', 'share'] },
+    { id: 'contributor', name: 'Can edit',         permissions: ['discover', 'open', 'write'] },
+    { id: 'commenter',   name: 'Can comment', permissions: ['discover', 'open', 'comment'] },
+    { id: 'viewer',      name: 'View only',   permissions: ['discover', 'open', 'download'] },
+    { id: 'link-viewer', name: 'View only',   permissions: ['discover', 'open', 'download'] },
   ],
 
   people: [

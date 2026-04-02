@@ -38,8 +38,6 @@ export async function getAssets(): Promise<Asset[]> {
   const isLive = supabaseUrl && supabaseUrl.startsWith('http')
 
   if (!isLive) {
-    // Simulate network delay for realism
-    await new Promise(resolve => setTimeout(resolve, 500))
     return MOCK_ASSETS
   }
 
@@ -118,8 +116,6 @@ export async function getCollections(): Promise<Collection[]> {
   const isLive = supabaseUrl && supabaseUrl.startsWith('http')
 
   if (!isLive) {
-    // Simulate network delay for realism
-    await new Promise(resolve => setTimeout(resolve, 500))
     return MOCK_COLLECTIONS
   }
 
@@ -137,8 +133,6 @@ export async function getAssetsByCollection(collectionId: string): Promise<Asset
   const isLive = supabaseUrl && supabaseUrl.startsWith('http')
 
   if (!isLive) {
-    // Simulate network delay for realism
-    await new Promise(resolve => setTimeout(resolve, 300))
     return MOCK_ASSETS.filter(asset =>
       asset.collectionIds?.includes(collectionId)
     )
@@ -155,8 +149,6 @@ export async function getArtCollections(): Promise<Collection[]> {
   const isLive = supabaseUrl && supabaseUrl.startsWith('http')
 
   if (!isLive) {
-    // Simulate network delay for realism
-    await new Promise(resolve => setTimeout(resolve, 500))
     return MOCK_ART_COLLECTIONS
   }
 
@@ -169,8 +161,6 @@ export async function getVfxCollections(): Promise<Collection[]> {
   const isLive = supabaseUrl && supabaseUrl.startsWith('http')
 
   if (!isLive) {
-    // Simulate network delay for realism
-    await new Promise(resolve => setTimeout(resolve, 500))
     return MOCK_VFX_COLLECTIONS
   }
 
@@ -183,8 +173,6 @@ export async function getCameraCollections(): Promise<Collection[]> {
   const isLive = supabaseUrl && supabaseUrl.startsWith('http')
 
   if (!isLive) {
-    // Simulate network delay for realism
-    await new Promise(resolve => setTimeout(resolve, 500))
     return MOCK_CAMERA_COLLECTIONS
   }
 
@@ -197,8 +185,6 @@ export async function getEditorialCollections(): Promise<Collection[]> {
   const isLive = supabaseUrl && supabaseUrl.startsWith('http')
 
   if (!isLive) {
-    // Simulate network delay for realism
-    await new Promise(resolve => setTimeout(resolve, 500))
     return MOCK_EDITORIAL_COLLECTIONS
   }
 
@@ -211,8 +197,6 @@ export async function getAudioCollections(): Promise<Collection[]> {
   const isLive = supabaseUrl && supabaseUrl.startsWith('http')
 
   if (!isLive) {
-    // Simulate network delay for realism
-    await new Promise(resolve => setTimeout(resolve, 500))
     return MOCK_AUDIO_COLLECTIONS
   }
 

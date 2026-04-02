@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { Tag } from './tag'
 import { Text } from './text'
-import { MoreVertical, Music, FileText, ImageIcon, Film, File } from 'lucide-react'
+import { MoreVertical, Music, FileText, ImageIcon, Film, File, Lock } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -66,6 +66,10 @@ export interface AssetCardProps {
   showDepartment?: boolean
   /** Asset originates from a workspace managed zone */
   fromWorkspace?: boolean
+  /** Asset is discoverable but not accessible — show blurred with lock */
+  restricted?: boolean
+  /** Called when user clicks "Request Access" on a restricted asset */
+  onRequestAccess?: (asset: Asset) => void
 }
 
 // Placeholder image for assets without thumbnails

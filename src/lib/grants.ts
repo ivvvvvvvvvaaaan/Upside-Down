@@ -79,6 +79,7 @@ const TEMPLATE_RANK: Record<AccessProfileId, number> = {
 }
 
 const ALL_PERMISSIONS: Permission[] = [
+  'discover',
   'open',
   'download',
   'write',
@@ -135,6 +136,17 @@ export function getGrantPermissions(
 ): Permission[] {
   if (grant.templateId) return getPermissionsForProfile(grant.templateId, roleGroups)
   return [...grant.permissions]
+}
+
+export function canAssignProfile(
+  granterPermissions: Permission[],
+  profileId: AccessProfileId,
+  roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
+): boolean {
+  const targetPermissions = getPermissionsForProfile(profileId, roleGroups)
+  if (targetPermissions.length === 0) return false
+
+  return targetPermissions.every((permission) => granterPermissions.includes(permission))
 }
 
 function uniquePermissions(permissions: Permission[]): Permission[] {

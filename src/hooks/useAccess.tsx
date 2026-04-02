@@ -19,6 +19,7 @@ import {
   userHasAccess,
   resolveAccess,
   getPermissionsForProfile,
+  canAssignProfile,
   canCreateGrantForResource,
   canEditAclForResource,
 } from '@/lib/grants'
@@ -35,6 +36,15 @@ import type {
 import { useFileTree } from './useFileTree'
 import { getDepartmentWorkspaceFiles, findNodeInTree, DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
+import { SCENARIO } from '@/lib/scenario'
+
+export type AccessRequest = {
+  id: string
+  resourceId: string
+  resourceRef: ResourceRef
+  requestedByUserId: string
+  requestedAt: string
+}
 
 // Re-export types consumers may need
 export type { Grant, GrantView, ResourceRef, ResourceType, PrincipalRef, AccessProfileId, RoleGroup, Permission }
@@ -58,6 +68,7 @@ interface AccessContextValue {
   visibleCollections: UserCollection[]
   getVisibleCollection: (id: string) => UserCollection | undefined
   createGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId) => void
+  getGrantableProfiles: (resource: ResourceRef) => AccessProfileId[]
   revokeGrant: (grantId: string) => void
   grants: Grant[]
 
@@ -82,6 +93,15 @@ interface AccessContextValue {
   // Resource-scoped ACL authority
   canShare: (resource: ResourceRef) => boolean
   canEditAcl: (resource: ResourceRef) => boolean
+
+  // Discovery
+  discoveryEnabled: boolean
+  setDiscoveryEnabled: (enabled: boolean) => void
+  discoveryDisabledDepartments: Set<DepartmentId>
+  toggleDepartmentDiscovery: (deptId: DepartmentId) => void
+  canDiscover: (id: string, departmentId?: DepartmentId) => boolean
+  requestAccess: (resourceId: string, resourceRef: ResourceRef) => void
+  accessRequests: AccessRequest[]
 
   // Read state tracking
   readShareIds: Set<string>
@@ -144,7 +164,7 @@ function getMorePermissiveTemplate(
 }
 
 // Bump this when grant schema or seed data changes — forces localStorage re-seed
-const GRANTS_VERSION = 11
+const GRANTS_VERSION = 12
 
 export function AccessProvider({ children }: { children: ReactNode }) {
   const { activePersona } = usePersona()
@@ -192,6 +212,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     })
   }, [])
   const [readShareIds, setReadShareIds] = useState<Set<string>>(() => new Set())
+  const [discoveryEnabled, setDiscoveryEnabled] = useState(SCENARIO.discoveryEnabled)
+  const [discoveryDisabledDepts, setDiscoveryDisabledDepts] = useState<Set<DepartmentId>>(
+    () => new Set(SCENARIO.discoveryDisabledDepartments)
+  )
+  const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([])
 
   // Reactive maps derived from the live file tree (handles user-created folders)
   const { nodeToDepartment, nodeToParent } = useMemo(() => {
@@ -223,11 +248,43 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const toggleDepartmentDiscovery = useCallback((deptId: DepartmentId) => {
+    setDiscoveryDisabledDepts((prev) => {
+      const next = new Set(prev)
+      if (next.has(deptId)) next.delete(deptId)
+      else next.add(deptId)
+      return next
+    })
+  }, [])
+
   // Resolve user for grant operations
   const userId = activePersona?.id ?? null
   const getResourceDepartmentId = useCallback((resourceId: string): DepartmentId | undefined => {
     return nodeToDepartment.get(resourceId) ?? ROOT_ID_TO_DEPARTMENT[resourceId]
   }, [nodeToDepartment])
+
+  // Discovery: can user see a restricted asset as a blurred tile?
+  const canDiscover = useCallback((id: string, departmentId?: DepartmentId): boolean => {
+    if (!activePersona) return true // admin sees everything
+    if (!discoveryEnabled) return false
+    const dept = departmentId ?? nodeToDepartment.get(id)
+    if (dept && discoveryDisabledDepts.has(dept)) return false
+    return true
+  }, [activePersona, discoveryEnabled, discoveryDisabledDepts, nodeToDepartment])
+
+  const requestAccess = useCallback((resourceId: string, resourceRef: ResourceRef) => {
+    if (!userId) return
+    setAccessRequests((prev) => {
+      if (prev.some((r) => r.resourceId === resourceId && r.requestedByUserId === userId)) return prev
+      return [...prev, {
+        id: `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        resourceId,
+        resourceRef,
+        requestedByUserId: userId,
+        requestedAt: new Date().toISOString(),
+      }]
+    })
+  }, [userId])
 
   const collectionAccessById = useMemo(() => {
     const accessById = new Map<string, {
@@ -346,6 +403,24 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
 
     return canCreateGrantForResource(userId, resource, currentGrants, roleGroups)
+  }, [activePersona, userId, grants, roleGroups, currentUserPermissionsForResource])
+
+  const canGrantProfileForResourceFn = useCallback((
+    resource: ResourceRef,
+    profileId: AccessProfileId,
+    currentGrants: Grant[] = grants,
+  ): boolean => {
+    if (!activePersona || !userId) return false
+
+    const currentPermissions = currentUserPermissionsForResource(resource, currentGrants)
+    if (!canAssignProfile(currentPermissions, profileId, roleGroups)) return false
+
+    if (resource.type === 'folder') {
+      const targetPermissions = getPermissionsForProfile(profileId, roleGroups)
+      return targetPermissions.includes('write')
+    }
+
+    return true
   }, [activePersona, userId, grants, roleGroups, currentUserPermissionsForResource])
 
   const canEditAclFn = useCallback((resource: ResourceRef, currentGrants: Grant[] = grants): boolean => {
@@ -669,6 +744,13 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     getCollectionRippleGrants,
     canShare: canShareFn,
     canEditAcl: canEditAclFn,
+    discoveryEnabled,
+    setDiscoveryEnabled,
+    discoveryDisabledDepartments: discoveryDisabledDepts,
+    toggleDepartmentDiscovery,
+    canDiscover,
+    requestAccess,
+    accessRequests,
     readShareIds,
     markShareRead,
     unreadInboxCount,
@@ -702,6 +784,12 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     getCollectionRippleGrants,
     canShareFn,
     canEditAclFn,
+    discoveryEnabled,
+    discoveryDisabledDepts,
+    toggleDepartmentDiscovery,
+    canDiscover,
+    requestAccess,
+    accessRequests,
     readShareIds,
     markShareRead,
     unreadInboxCount,
