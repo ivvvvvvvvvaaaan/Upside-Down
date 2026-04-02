@@ -22,14 +22,6 @@ const ROLE_COLORS: Record<string, string> = {
   'vendor': 'border-orange-500',
 }
 
-const ROLE_BG: Record<string, string> = {
-  'studio-exec': 'bg-amber-500/10',
-  'creative': 'bg-purple-500/10',
-  'manager': 'bg-blue-500/10',
-  'artist': 'bg-green-500/10',
-  'vendor': 'bg-orange-500/10',
-}
-
 function getPersona(id: string) {
   return PERSONAS.find(p => p.id === id)
 }
@@ -107,8 +99,7 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
 
           {/* Timeline */}
           <div className="relative">
-            {/* Vertical line — aligned with dot centers at 72px + 12px gap + 6px radius */}
-            <div className="absolute left-[90px] top-0 bottom-0 w-px bg-border-dim" />
+            <div className="absolute left-[88px] top-0 bottom-0 w-px bg-border-dim" />
 
             <div className="space-y-0">
               {grouped.map(([date, dayEvents], gi) => (
@@ -116,11 +107,11 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
                   {/* Events for this date */}
                   <div className="space-y-2 mb-4">
                     {dayEvents.map((event, ei) => (
-                      <div key={`${gi}-${ei}`} className="flex items-start gap-3">
+                      <div key={`${gi}-${ei}`} className="flex items-center gap-3">
                         <div className="w-[72px] shrink-0 text-right">
                           {ei === 0 && <span className="text-body-0-bold text-foreground">{formatDate(date)}</span>}
                         </div>
-                        <div className="w-3 h-3 rounded-full bg-surface-3 border-2 border-border-dim z-10 shrink-0 mt-1.5" />
+                        <div className="w-2 h-2 rounded-full bg-foreground-dim z-10 shrink-0" />
                         <div className={cn(
                           'flex-1 rounded p-3 space-y-2',
                           event.revoked ? 'bg-surface-2 opacity-60' : 'bg-surface-2',
@@ -128,11 +119,7 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
                           {/* Sharer → Resource → Recipients */}
                           <div className="flex items-center gap-2 flex-wrap">
                             {/* Sharer */}
-                            <div className={cn(
-                              'flex items-center gap-1.5 px-2 py-0.5 rounded-full border',
-                              ROLE_COLORS[event.sharerRole] ?? 'border-border-dim',
-                              ROLE_BG[event.sharerRole] ?? '',
-                            )}>
+                            <div className="flex items-center gap-1.5">
                               <Avatar name={event.sharerName} size="compact" />
                               <span className="text-body-0-regular text-foreground">{event.sharerName}</span>
                             </div>
@@ -151,11 +138,16 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
                             <ArrowRight className="w-3.5 h-3.5 text-foreground-dim shrink-0" />
 
                             {/* Recipients */}
-                            <div className="flex items-center gap-1 flex-wrap">
+                            <div className="flex items-center gap-2 flex-wrap">
                               {event.recipients.map((r, ri) => (
-                                <Tag key={ri} size="compact" variant="border" type={r.type === 'team' ? 'informative' : 'neutral'}>
-                                  {r.label}
-                                </Tag>
+                                r.type === 'team' ? (
+                                  <Tag key={ri} size="compact" variant="border" type="informative">{r.label}</Tag>
+                                ) : (
+                                  <div key={ri} className="flex items-center gap-1.5">
+                                    <Avatar name={r.label} size="compact" />
+                                    <span className="text-body-0-regular text-foreground">{r.label}</span>
+                                  </div>
+                                )
                               ))}
                             </div>
                           </div>
