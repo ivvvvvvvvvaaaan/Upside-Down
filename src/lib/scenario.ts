@@ -148,7 +148,7 @@ export const SCENARIO: Scenario = {
       label: 'VFX shots for edit review',
       by: 'vfx-coordinator',
       date: '2026-01-28',
-      context: 'VFX plates ready for editorial to start cutting against. Includes latest comps from SEQ010 and SEQ020.',
+      context: 'Sarah packages the latest VFX comps for editorial. These are the approved plates from SEQ010 (pit lane crash) and SEQ020 (podium celebration) that Maria and Lisa need to cut into the EP301 timeline. View-only so editorial sees the work but can\'t modify source files.',
       grants: [
         { to: 'editorial-coordinator', as: 'viewer' },
         { to: 'editorial-artist',      as: 'viewer' },
@@ -159,7 +159,7 @@ export const SCENARIO: Scenario = {
       label: 'EP301 comp package',
       by: 'vfx-coordinator',
       date: '2026-01-20',
-      context: 'Reference package for Framestore — shows approved comp direction and shot breakdown for EP301.',
+      context: 'Sarah sends Framestore the approved comp direction for EP301. James needs to see the internal shot breakdown and reference comps before starting his team\'s delivery pass. Viewer access only — vendor cannot reshare or download without watermark.',
       grants: [
         { to: 'vendor-framestore', as: 'viewer' },
       ],
@@ -169,7 +169,7 @@ export const SCENARIO: Scenario = {
       label: 'Cut ref for VFX timing',
       by: 'editorial-artist',
       date: '2026-02-03',
-      context: 'Latest edit with timing marks so VFX can match their comp durations to the cut.',
+      context: 'Maria shares the latest cut with timing marks for VFX. The VFX team needs to see exact in/out points so their comps match the edit duration. Without this, shots arrive at wrong lengths and have to be re-rendered. Shared to the whole VFX Core team so both Mike and Sarah can reference it.',
       grants: [
         { toTeam: 'vfx-core', as: 'viewer' },
       ],
@@ -179,7 +179,7 @@ export const SCENARIO: Scenario = {
       label: 'EP301 Director Cut v4',
       by: 'editorial-coordinator',
       date: '2026-02-13',
-      context: 'Director-approved cut ready for studio review. Fourth revision incorporating David\'s notes on pacing.',
+      context: 'Lisa shares the Director Cut with studio and creative for final sign-off. This is the fourth revision — David\'s pacing notes from the last review session are incorporated. Alex needs to see it before the marketing team can start pulling frames for the campaign.',
       grants: [
         { to: 'studio-alex', as: 'viewer' },
         { to: 'creative-david', as: 'viewer' },
@@ -190,7 +190,7 @@ export const SCENARIO: Scenario = {
       label: 'Hero Pose v3',
       by: 'art-artist',
       date: '2026-02-08',
-      context: 'Updated key art with revised livery design. For creative and studio sign-off before print.',
+      context: 'Priya shares her latest hero concept with the revised AR-24 livery design. David wants to see how the new color scheme reads at small sizes for social media. Alex needs sign-off authority before the art department sends to print production.',
       grants: [
         { to: 'studio-alex',    as: 'viewer' },
         { to: 'creative-david', as: 'viewer' },
@@ -201,7 +201,7 @@ export const SCENARIO: Scenario = {
       label: 'Scene 12 Take B Selected',
       by: 'editorial-artist',
       date: '2026-02-10',
-      context: 'Selected take from the grid start sequence. Shared for director and studio to confirm camera choice.',
+      context: 'Maria pulls the selected camera take from the grid start sequence and shares it with David and Alex. This is the hero angle for the opening — David chose Take B for the tighter framing on Vitale\'s helmet. Needs studio confirmation before the edit locks.',
       grants: [
         { to: 'studio-alex',    as: 'viewer' },
         { to: 'creative-david', as: 'viewer' },
@@ -213,7 +213,7 @@ export const SCENARIO: Scenario = {
       label: 'Finals',
       by: 'vfx-coordinator',
       date: '2026-02-12',
-      context: 'Auto-updating collection of all approved final VFX shots. Editorial can track what\'s locked.',
+      context: 'Sarah shares a smart collection that auto-updates as VFX shots get marked final. Maria can check this anytime to see which shots are locked and ready to conform into the master timeline. No manual curation needed — the filter catches everything tagged "Final" across VFX.',
       grants: [
         { to: 'editorial-artist', as: 'viewer' },
       ],
@@ -224,7 +224,7 @@ export const SCENARIO: Scenario = {
       label: 'SEQ010 SH030 Comp v5 (superseded)',
       by: 'vfx-coordinator',
       date: '2026-02-06',
-      context: 'Earlier comp version shared to vendor. Revoked after direction changed — replaced by v8.',
+      context: 'Sarah had shared an earlier comp version with Framestore for reference. After David\'s review session changed the creative direction on this shot, the v5 comp became invalid. Sarah revokes the share to prevent James from working against outdated direction. The replacement v8 will be shared once approved.',
       revoked: true,
       grants: [
         { to: 'vendor-framestore', as: 'viewer' },
@@ -235,7 +235,7 @@ export const SCENARIO: Scenario = {
       label: 'Dailies Review Cuts',
       by: 'editorial-coordinator',
       date: '2026-01-20',
-      context: 'Daily review cuts for the director and VFX coordinator. Updated as new edits land.',
+      context: 'Lisa sets up the daily review collection for the core creative team. David, Sarah, and Lisa herself use this to stay aligned on the cut — new edits appear here as Maria publishes them. The team has comment access so they can leave timestamped notes directly on the cuts.',
       grants: [
         { toTeam: 'dailies-review', as: 'commenter' },
       ],
@@ -247,7 +247,7 @@ export const SCENARIO: Scenario = {
       label: 'Framestore',
       by: 'vfx-coordinator',
       date: '2026-01-15',
-      context: 'Scoped upload folder for Framestore deliveries. Vendor drops comps here, VFX team reviews.',
+      context: 'Sarah creates a designated upload point for Framestore. James can drop comp deliveries into this specific folder — he can see its contents and upload new files, but cannot browse the rest of the VFX workspace. Sarah\'s team reviews each delivery before pulling it into their pipeline.',
       grants: [
         { to: 'vendor-framestore', as: 'contributor' },
       ],
@@ -258,7 +258,7 @@ export const SCENARIO: Scenario = {
       label: 'EP301 Assembly v2 (replaced by Director Cut)',
       by: 'editorial-artist',
       date: '2026-02-01',
-      context: 'Early rough assembly shared for VFX reference. Revoked once the Director Cut superseded it.',
+      context: 'Maria had shared an early assembly for VFX to use as timing reference. Once Lisa published the Director Cut v4, this rough version became misleading — the pacing and shot order changed significantly. Maria revokes to avoid VFX working against stale edit timing.',
       revoked: true,
       grants: [
         { toTeam: 'vfx-core', as: 'viewer' },
