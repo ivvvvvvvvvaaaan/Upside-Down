@@ -118,7 +118,7 @@ export const SCENARIO: Scenario = {
     { id: 'art-design',     name: 'Art & Design',   members: ['art-artist'],                                               dept: 'art-design' },
     { id: 'studio-leadership', name: 'Studio Leadership', members: ['studio-alex', 'creative-david'] },
     { id: 'framestore-la',  name: 'Framestore LA',  members: ['vendor-framestore'] },
-    { id: 'dailies-review', name: 'Dailies Review', members: ['creative-david', 'vfx-coordinator'] },
+    { id: 'dailies-review', name: 'Dailies Review', members: ['creative-david', 'vfx-coordinator', 'editorial-coordinator'] },
   ],
 
   departmentAccess: [
@@ -136,8 +136,8 @@ export const SCENARIO: Scenario = {
 
   projectRoles: {
     people: {
-      'studio-alex':           'manager',
-      'creative-david':        'manager',
+      'studio-alex':           'viewer',
+      'creative-david':        'commenter',
       'vfx-supervisor':        'editor',
       'vfx-coordinator':       'editor',
       'editorial-coordinator': 'contributor',

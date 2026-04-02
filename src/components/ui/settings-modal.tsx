@@ -12,7 +12,6 @@ import { useAccess } from '@/hooks'
 import { cn } from '@/lib/utils'
 import { PERSONAS } from '@/lib/personas'
 import { TEAMS, getTeamsForUser } from '@/lib/teams'
-import type { Team } from '@/lib/teams'
 import { getRoleGroup } from '@/lib/grants'
 import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef, ResourceRef } from '@/lib/grants'
 import type { DepartmentId } from '@/components/department/types'
@@ -197,8 +196,12 @@ function DepartmentsTab({
   }
 
   const options = useMemo(() => roleGroupOptions(roleGroups), [roleGroups])
-  const departmentTeams = useMemo(
-    () => TEAMS.filter((team): team is Team & { departmentId: DepartmentId } => Boolean(team.departmentId)),
+  const departments = useMemo(
+    () => (Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[]).map((departmentId) => ({
+      departmentId,
+      folder: DEPARTMENT_FOLDER_MAP[departmentId],
+      team: TEAMS.find((candidate) => candidate.departmentId === departmentId),
+    })),
     [],
   )
 
@@ -209,15 +212,16 @@ function DepartmentsTab({
       </p>
 
       <div className="space-y-1">
-        {departmentTeams.map((team) => {
-          const isOpen = expanded.has(team.id)
-          const members = team.memberUserIds
+        {departments.map(({ departmentId, folder, team }) => {
+          const isOpen = expanded.has(departmentId)
+          const members = (team?.memberUserIds ?? [])
             .map(uid => PERSONAS.find(p => p.id === uid))
             .filter(Boolean)
-          const deptFolder = DEPARTMENT_FOLDER_MAP[team.departmentId]
-          const resourceRef: ResourceRef = { id: deptFolder.id, type: 'folder', departmentId: team.departmentId }
+          const resourceRef: ResourceRef = { id: folder.id, type: 'folder', departmentId }
           const rootGrants = getResourceGrants(resourceRef.id)
-          const grant = rootGrants.find(g => g.principal.type === 'team' && g.principal.teamId === team.id)
+          const grant = team
+            ? rootGrants.find(g => g.principal.type === 'team' && g.principal.teamId === team.id)
+            : undefined
           const canShareDepartment = canShareResource(resourceRef)
           const canEditDepartment = canEditResource(resourceRef)
           const inheritedRoleLabel = grant
@@ -225,15 +229,15 @@ function DepartmentsTab({
             : 'No default access'
 
           return (
-            <div key={team.id} className="rounded">
+            <div key={departmentId} className="rounded">
               <div className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-surface-1 transition-colors">
                 <button
-                  onClick={() => toggle(team.id)}
+                  onClick={() => toggle(departmentId)}
                   className="flex items-center gap-2 min-w-0 flex-1"
                 >
                   <ChevronDown className={cn('w-3.5 h-3.5 text-foreground-dim transition-transform flex-shrink-0', !isOpen && '-rotate-90')} />
                   <div className="min-w-0 flex-1 text-left">
-                    <span className="text-body-0-bold text-foreground truncate block">{team.name}</span>
+                    <span className="text-body-0-bold text-foreground truncate block">{folder.name}</span>
                     <span className="text-label-0-regular text-foreground-dim block">
                       {members.length} {members.length === 1 ? 'member' : 'members'}
                     </span>
