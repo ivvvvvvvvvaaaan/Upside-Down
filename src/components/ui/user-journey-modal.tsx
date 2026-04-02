@@ -15,6 +15,14 @@ interface UserJourneyModalProps {
 }
 
 const ROLE_COLORS: Record<string, string> = {
+  'studio-exec': 'bg-amber-500',
+  'creative': 'bg-purple-500',
+  'manager': 'bg-blue-500',
+  'artist': 'bg-green-500',
+  'vendor': 'bg-orange-500',
+}
+
+const ROLE_BORDER_COLORS: Record<string, string> = {
   'studio-exec': 'border-amber-500',
   'creative': 'border-purple-500',
   'manager': 'border-blue-500',
@@ -91,7 +99,7 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
           <div className="flex flex-wrap gap-3 mb-6">
             {Object.entries(ROLE_COLORS).map(([role, color]) => (
               <div key={role} className="flex items-center gap-1.5">
-                <div className={cn('w-3 h-3 rounded-full border-2', color)} />
+                <div className={cn('w-2 h-2 rounded-full', color)} />
                 <span className="text-body-0-regular text-foreground-dim capitalize">{role.replace('-', ' ')}</span>
               </div>
             ))}
@@ -120,6 +128,7 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
                           <div className="flex items-center gap-2 flex-wrap">
                             {/* Sharer */}
                             <div className="flex items-center gap-1.5">
+                              <div className={cn('w-2 h-2 rounded-full shrink-0', ROLE_COLORS[event.sharerRole] ?? 'bg-foreground-dim')} />
                               <Avatar name={event.sharerName} size="compact" />
                               <span className="text-body-0-regular text-foreground">{event.sharerName}</span>
                             </div>
