@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { X, Trash2, Users, Film, MapPin, Pencil, LayoutGrid, ChevronDown } from 'lucide-react'
+import { X, Trash2, Users, Pencil, LayoutGrid, ChevronDown } from 'lucide-react'
+import { SceneIcon, LocationIcon } from './collection-card'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from './button'
@@ -138,7 +139,7 @@ function RelationshipGraph({
             {nodes.map(n => {
               const { mainImage } = getCollectionImages(n.id)
               const isCharacter = n.dimension === 'characters'
-              const DimensionIcon = n.dimension === 'scenes' ? Film : MapPin
+              const DimensionIcon = n.dimension === 'scenes' ? SceneIcon : LocationIcon
               return (
                 <a key={n.id} href={`/nextgen/smart-collections/${n.id}`} className="graph-node" style={{ cursor: 'pointer' }}>
                   <g className="node-scale">
@@ -157,7 +158,9 @@ function RelationshipGraph({
                         <circle cx={n.x} cy={n.y} r={14}
                           fill="var(--surface-2, #222)" stroke={dimensionColor[n.dimension] ?? 'var(--border-dim, #555)'} strokeWidth={1.5} />
                         <foreignObject x={n.x - 8} y={n.y - 8} width={16} height={16} className="node-icon pointer-events-none">
-                          <DimensionIcon style={{ width: 16, height: 16, color: dimensionColor[n.dimension] ?? '#aaa' }} />
+                          <div style={{ width: 16, height: 16, color: dimensionColor[n.dimension] ?? '#aaa', transform: 'scale(0.67)', transformOrigin: 'top left' }}>
+                            <DimensionIcon />
+                          </div>
                         </foreignObject>
                       </>
                     )}
@@ -183,8 +186,8 @@ function RelationshipGraph({
 
 const DIMENSION_CONFIG = {
   characters: { label: 'Characters', Icon: Users },
-  scenes: { label: 'Scenes', Icon: Film },
-  locations: { label: 'Locations', Icon: MapPin },
+  scenes: { label: 'Scenes', Icon: SceneIcon },
+  locations: { label: 'Locations', Icon: LocationIcon },
 } as const
 
 const FILTER_DISPLAY: Record<string, string> = {
