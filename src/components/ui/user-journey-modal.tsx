@@ -106,8 +106,8 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
 
           {/* Timeline */}
           <div className="relative">
-            {/* Vertical line */}
-            <div className="absolute left-[72px] top-0 bottom-0 w-px bg-border-dim" />
+            {/* Vertical line — aligned with dot centers at 72px + 12px gap + 6px radius */}
+            <div className="absolute left-[90px] top-0 bottom-0 w-px bg-border-dim" />
 
             <div className="space-y-0">
               {grouped.map(([date, dayEvents], gi) => (
