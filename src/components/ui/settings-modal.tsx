@@ -10,8 +10,9 @@ import { Avatar } from './avatar'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import { useAccess } from '@/hooks'
 import { cn } from '@/lib/utils'
-import { PERSONAS, initials } from '@/lib/personas'
+import { PERSONAS } from '@/lib/personas'
 import { TEAMS, getTeamsForUser } from '@/lib/teams'
+import type { Team } from '@/lib/teams'
 import { getRoleGroup } from '@/lib/grants'
 import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef, ResourceRef } from '@/lib/grants'
 import type { DepartmentId } from '@/components/department/types'
@@ -168,7 +169,6 @@ function PeopleTab({
 // --- Departments tab ---
 
 function DepartmentsTab({
-  projectTeamGrants,
   roleGroups,
   getResourceGrants,
   onRoleChange,
@@ -177,7 +177,6 @@ function DepartmentsTab({
   canShareResource,
   canEditResource,
 }: {
-  projectTeamGrants: Grant[]
   roleGroups: RoleGroup[]
   getResourceGrants: (resourceId: string) => Grant[]
   onRoleChange: (grantId: string, profileId: AccessProfileId) => void
@@ -187,7 +186,6 @@ function DepartmentsTab({
   canEditResource: (resource: ResourceRef) => boolean
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [customDepts, setCustomDepts] = useState<{ id: string; name: string }[]>([])
 
   const toggle = (id: string) => {
     setExpanded(prev => {
@@ -198,16 +196,11 @@ function DepartmentsTab({
     })
   }
 
-  const unassignedUsers = useMemo(
-    () => {
-      const assignedIds = new Set(TEAMS.flatMap(t => t.memberUserIds))
-      return PERSONAS.filter(p => !assignedIds.has(p.id))
-    },
+  const options = useMemo(() => roleGroupOptions(roleGroups), [roleGroups])
+  const departmentTeams = useMemo(
+    () => TEAMS.filter((team): team is Team & { departmentId: DepartmentId } => Boolean(team.departmentId)),
     [],
   )
-
-  const options = useMemo(() => roleGroupOptions(roleGroups), [roleGroups])
-  const allTeams = useMemo(() => TEAMS, [])
 
   return (
     <div className="space-y-3">
@@ -216,21 +209,17 @@ function DepartmentsTab({
       </p>
 
       <div className="space-y-1">
-        {allTeams.map((team) => {
+        {departmentTeams.map((team) => {
           const isOpen = expanded.has(team.id)
           const members = team.memberUserIds
             .map(uid => PERSONAS.find(p => p.id === uid))
             .filter(Boolean)
-          const deptFolder = team.departmentId ? DEPARTMENT_FOLDER_MAP[team.departmentId] : undefined
-          const resourceRef: ResourceRef | undefined = deptFolder
-            ? { id: deptFolder.id, type: 'folder', departmentId: team.departmentId }
-            : undefined
-          const rootGrants = resourceRef ? getResourceGrants(resourceRef.id) : []
-          const grant = resourceRef
-            ? rootGrants.find(g => g.principal.type === 'team' && g.principal.teamId === team.id)
-            : projectTeamGrants.find(g => g.principal.type === 'team' && g.principal.teamId === team.id)
-          const canShareDepartment = resourceRef ? canShareResource(resourceRef) : true
-          const canEditDepartment = resourceRef ? canEditResource(resourceRef) : true
+          const deptFolder = DEPARTMENT_FOLDER_MAP[team.departmentId]
+          const resourceRef: ResourceRef = { id: deptFolder.id, type: 'folder', departmentId: team.departmentId }
+          const rootGrants = getResourceGrants(resourceRef.id)
+          const grant = rootGrants.find(g => g.principal.type === 'team' && g.principal.teamId === team.id)
+          const canShareDepartment = canShareResource(resourceRef)
+          const canEditDepartment = canEditResource(resourceRef)
           const inheritedRoleLabel = grant
             ? getRoleGroup(roleGroups, grant.templateId ?? 'viewer')?.name ?? grant.templateId ?? 'Viewer'
             : 'No default access'
@@ -250,7 +239,7 @@ function DepartmentsTab({
                     </span>
                   </div>
                 </button>
-                {grant && (
+                {grant ? (
                   <Select
                     options={options}
                     value={grant.templateId ?? 'viewer'}
@@ -260,6 +249,10 @@ function DepartmentsTab({
                     className="w-auto flex-shrink-0"
                     disabled={!canEditDepartment}
                   />
+                ) : (
+                  <span className="text-label-0-regular text-foreground-dim flex-shrink-0">
+                    No default access
+                  </span>
                 )}
               </div>
               {isOpen && (
@@ -278,12 +271,12 @@ function DepartmentsTab({
                         <span className="text-body-0-regular text-foreground truncate block">{persona.name}</span>
                         <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
                       </div>
-                      {resourceRef && (() => {
+                      {(() => {
                         const overrideGrant = rootGrants.find(
                           (candidate) => candidate.principal.type === 'user' && candidate.principal.userId === persona.id,
                         )
                         const memberOptions = [
-                          { value: '__inherit__', label: `Inherits ${inheritedRoleLabel}` },
+                          { value: '__inherit__', label: grant ? `Inherits ${inheritedRoleLabel}` : inheritedRoleLabel },
                           ...options,
                         ]
 
@@ -332,86 +325,7 @@ function DepartmentsTab({
             </div>
           )
         })}
-
-        {customDepts.map((dept) => {
-          const isOpen = expanded.has(dept.id)
-          return (
-            <div key={dept.id} className="rounded">
-              <div className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-surface-1 transition-colors">
-                <button
-                  onClick={() => toggle(dept.id)}
-                  className="flex items-center gap-2 min-w-0 flex-1"
-                >
-                  <ChevronDown className={cn('w-3.5 h-3.5 text-foreground-dim transition-transform flex-shrink-0', !isOpen && '-rotate-90')} />
-                  <div className="min-w-0 flex-1 text-left">
-                    <span className="text-body-0-bold text-foreground truncate block">{dept.name}</span>
-                    <span className="text-label-0-regular text-foreground-dim block">0 members</span>
-                  </div>
-                </button>
-                <Button variant="icon" size="compact-icon" onClick={() => setCustomDepts(prev => prev.filter(d => d.id !== dept.id))}>
-                  <X className="w-3 h-3" />
-                </Button>
-              </div>
-              {isOpen && (
-                <div className="py-2">
-                  <p className="text-label-0-regular text-foreground-dim text-center pl-4">No members yet</p>
-                </div>
-              )}
-            </div>
-          )
-        })}
-
-        {unassignedUsers.length > 0 && (
-          <div className="rounded">
-            <div className="flex items-center gap-2 py-2 px-2 rounded hover:bg-surface-1 transition-colors">
-              <button
-                onClick={() => toggle('unassigned')}
-                className="flex items-center gap-2 min-w-0 flex-1"
-              >
-                <ChevronDown className={cn('w-3.5 h-3.5 text-foreground-dim transition-transform flex-shrink-0', !expanded.has('unassigned') && '-rotate-90')} />
-                <div className="min-w-0 flex-1 text-left">
-                  <span className="text-body-0-bold text-foreground-dim truncate block">Not in a department</span>
-                  <span className="text-label-0-regular text-foreground-dim block">
-                    {unassignedUsers.length} {unassignedUsers.length === 1 ? 'person' : 'people'}
-                  </span>
-                </div>
-              </button>
-            </div>
-            {expanded.has('unassigned') && (
-              <div className="relative py-1">
-                {unassignedUsers.map((persona, i) => (
-                  <div key={persona.id} className="relative flex items-center gap-2 py-1.5 pl-4 pr-2 rounded hover:bg-surface-1 transition-colors">
-                    {/* Vertical trunk: top half always, bottom half except last */}
-                    <div className="absolute left-1.5 top-0 h-1/2 border-l border-border-dim" />
-                    {i < unassignedUsers.length - 1 && (
-                      <div className="absolute left-1.5 top-1/2 bottom-0 border-l border-border-dim" />
-                    )}
-                    {/* Horizontal branch */}
-                    <div className="absolute left-1.5 top-1/2 w-2.5 border-t border-border-dim" />
-                    <Avatar name={persona.name} size="sm" className="relative" />
-                    <span className="text-body-0-regular text-foreground truncate flex-1">{persona.name}</span>
-                    <span className="text-label-0-regular text-foreground-dim truncate">{persona.title}</span>
-                    <span className="text-label-0-regular text-foreground-dim truncate">{persona.email}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </div>
-
-      <Button variant="secondary" onClick={() => {
-        const name = prompt('Department name')
-        if (name?.trim()) {
-          const id = `custom-${name.trim().toLowerCase().replace(/\s+/g, '-')}`
-          if (!customDepts.some(d => d.id === id)) {
-            setCustomDepts(prev => [...prev, { id, name: name.trim() }])
-          }
-        }
-      }}>
-        <Plus className="w-3 h-3 mr-1" />
-        New Department
-      </Button>
     </div>
   )
 }
@@ -519,7 +433,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     removeRoleGroup,
     getResourceGrants,
     projectUserGrants,
-    projectTeamGrants,
     createProjectGrant,
     createGrant,
     updateGrantProfile,
@@ -561,7 +474,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               </TabsContent>
               <TabsContent value="departments">
                 <DepartmentsTab
-                  projectTeamGrants={projectTeamGrants}
                   roleGroups={roleGroups}
                   getResourceGrants={getResourceGrants}
                   onRoleChange={updateGrantProfile}

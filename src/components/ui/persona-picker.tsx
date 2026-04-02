@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, Shield } from 'lucide-react'
+import { ChevronDown, Shield, Map } from 'lucide-react'
+import { UserJourneyModal } from './user-journey-modal'
 import { usePersona } from '@/hooks'
 import type { User } from '@/lib/personas'
 import { Avatar } from './avatar'
@@ -22,6 +23,7 @@ export function PersonaPicker({
 } = {}) {
   const { activePersona, setActivePersona, allPersonas } = usePersona()
   const [open, setOpen] = useState(false)
+  const [journeyOpen, setJourneyOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const visiblePersonas = personas ?? allPersonas
 
@@ -141,8 +143,28 @@ export function PersonaPicker({
               </div>
             </button>
           ))}
+
+          {activePersona && (
+            <>
+              <div className="border-t border-border-dim" />
+              <button
+                onClick={() => { setJourneyOpen(true); setOpen(false) }}
+                className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-surface-2 transition-colors"
+              >
+                <span className="w-8 h-8 rounded-full bg-surface-3 flex items-center justify-center flex-shrink-0">
+                  <Map className="w-4 h-4 text-foreground-dim" />
+                </span>
+                <div className="min-w-0">
+                  <div className="text-body-0-bold text-foreground">User Journey</div>
+                  <div className="text-label-0-regular text-foreground-dim">View access & sharing map</div>
+                </div>
+              </button>
+            </>
+          )}
         </div>
       )}
+
+      <UserJourneyModal open={journeyOpen} onClose={() => setJourneyOpen(false)} />
     </div>
   )
 }
