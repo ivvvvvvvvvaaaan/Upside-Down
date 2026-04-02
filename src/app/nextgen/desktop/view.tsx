@@ -1,10 +1,13 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { Settings, Lock, Unlock, Cloud, CloudOff, AlertTriangle, Loader2, WifiOff, RotateCcw, Eye, EyeOff } from 'lucide-react'
+import { useState, useCallback, useEffect } from 'react'
+import { Settings, Cloud, CloudOff, RotateCcw } from 'lucide-react'
 import { MenuBar } from './components/menu-bar'
 import { BrowserWindow } from './components/browser-window'
 import { FinderWindow } from './components/finder-window'
+import { PersonaPicker } from '@/components/ui'
+import { usePersona } from '@/hooks'
+import { getDesktopEligiblePersonas, isDesktopEligiblePersona } from '@/lib/personas'
 
 // Constants
 const MIN_WIDTH = 400
@@ -51,15 +54,6 @@ const initialWindows: WindowState[] = [
   },
 ]
 
-// Folder IDs that can be locked (main department folders)
-export const LOCKABLE_FOLDERS = [
-  { id: 'ws-art', name: 'Art Department' },
-  { id: 'ws-vfx', name: 'VFX' },
-  { id: 'ws-camera', name: 'Camera' },
-  { id: 'ws-editorial', name: 'Editorial' },
-  { id: 'ws-audio', name: 'Audio & Sound' },
-] as const
-
 // Sync status options
 export type SyncStatus = 'synced' | 'syncing' | 'error' | 'offline'
 
@@ -72,39 +66,16 @@ export const SYNC_STATUS_OPTIONS: { value: SyncStatus; label: string }[] = [
 
 // LocalStorage keys
 const STORAGE_KEYS = {
-  LOCKED_FOLDERS: 'desktop-locked-folders',
-  HIDDEN_FOLDERS: 'desktop-hidden-folders',
   CLOUD_SYNC: 'desktop-cloud-sync',
   SYNC_STATUS: 'desktop-sync-status',
 } as const
 
+const DESKTOP_PERSONAS = getDesktopEligiblePersonas()
+
 export function DesktopView() {
+  const { activePersona, setActivePersona, hydrated } = usePersona()
   const [windows, setWindows] = useState<WindowState[]>(initialWindows)
   const [activeWindowId, setActiveWindowId] = useState<string | null>('finder')
-  const [lockedFolderIds, setLockedFolderIds] = useState<Set<string>>(() => {
-    if (typeof window === 'undefined') return new Set(['ws-vfx'])
-    const saved = localStorage.getItem(STORAGE_KEYS.LOCKED_FOLDERS)
-    if (saved) {
-      try {
-        return new Set(JSON.parse(saved))
-      } catch {
-        return new Set(['ws-vfx'])
-      }
-    }
-    return new Set(['ws-vfx'])
-  })
-  const [hiddenFolderIds, setHiddenFolderIds] = useState<Set<string>>(() => {
-    if (typeof window === 'undefined') return new Set()
-    const saved = localStorage.getItem(STORAGE_KEYS.HIDDEN_FOLDERS)
-    if (saved) {
-      try {
-        return new Set(JSON.parse(saved))
-      } catch {
-        return new Set()
-      }
-    }
-    return new Set()
-  })
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(() => {
     if (typeof window === 'undefined') return true
     const saved = localStorage.getItem(STORAGE_KEYS.CLOUD_SYNC)
@@ -117,33 +88,11 @@ export function DesktopView() {
   })
   const [showSettings, setShowSettings] = useState(false)
 
-  // Toggle folder lock
-  const toggleFolderLock = useCallback((folderId: string) => {
-    setLockedFolderIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(folderId)) {
-        next.delete(folderId)
-      } else {
-        next.add(folderId)
-      }
-      localStorage.setItem(STORAGE_KEYS.LOCKED_FOLDERS, JSON.stringify(Array.from(next)))
-      return next
-    })
-  }, [])
-
-  // Toggle folder hidden
-  const toggleFolderHidden = useCallback((folderId: string) => {
-    setHiddenFolderIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(folderId)) {
-        next.delete(folderId)
-      } else {
-        next.add(folderId)
-      }
-      localStorage.setItem(STORAGE_KEYS.HIDDEN_FOLDERS, JSON.stringify(Array.from(next)))
-      return next
-    })
-  }, [])
+  useEffect(() => {
+    if (!hydrated) return
+    if (isDesktopEligiblePersona(activePersona)) return
+    setActivePersona(DESKTOP_PERSONAS[0] ?? null)
+  }, [activePersona, hydrated, setActivePersona])
 
   // Toggle cloud sync for all
   const toggleCloudSync = useCallback(() => {
@@ -263,7 +212,17 @@ export function DesktopView() {
       {/* Subtle gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-pink-500/5 pointer-events-none" />
       {/* Menu Bar */}
-      <MenuBar activeApp={getActiveAppName()} />
+      <MenuBar
+        activeApp={getActiveAppName()}
+        trailingContent={(
+          <div className="flex items-center gap-2 mr-2">
+            <span className="text-label-0-regular text-foreground-dim whitespace-nowrap">
+              Workspace As
+            </span>
+            <PersonaPicker compact showLabel compactSingleLine personas={DESKTOP_PERSONAS} allowAdmin={false} />
+          </div>
+        )}
+      />
 
       {/* Desktop Area */}
       <div
@@ -273,6 +232,7 @@ export function DesktopView() {
         {/* Browser Window */}
         {browserWindow && !browserWindow.isMinimized && (
           <BrowserWindow
+            key={activePersona?.id ?? 'desktop-default'}
             window={{ ...browserWindow, y: browserWindow.y - MENU_BAR_HEIGHT }}
             isActive={activeWindowId === 'browser'}
             onFocus={() => focusWindow('browser')}
@@ -298,8 +258,6 @@ export function DesktopView() {
             onMinimize={() => minimizeWindow('finder')}
             onMaximize={() => toggleMaximize('finder')}
             onClose={() => closeWindow('finder')}
-            lockedFolderIds={lockedFolderIds}
-            hiddenFolderIds={hiddenFolderIds}
             cloudSyncEnabled={cloudSyncEnabled}
             syncStatus={syncStatus}
           />
@@ -311,7 +269,7 @@ export function DesktopView() {
             <button
               onClick={() => setShowSettings(!showSettings)}
               className="bg-surface-low border border-border-subtle rounded-full p-2 shadow-high hover:bg-surface-highlight transition-colors"
-              aria-label="Folder settings"
+              aria-label="Desktop settings"
             >
               <Settings className="w-4 h-4 text-foreground-dim" />
             </button>
@@ -353,52 +311,11 @@ export function DesktopView() {
                   </div>
                 )}
 
-                {/* Folder options */}
-                <div className="px-3 py-1.5 text-label-0-bold text-foreground-dim border-b border-border-dim mt-2 mb-1">
-                  Folder Options
-                </div>
-                {LOCKABLE_FOLDERS.map((folder) => {
-                  const isLocked = lockedFolderIds.has(folder.id)
-                  const isHidden = hiddenFolderIds.has(folder.id)
-                  return (
-                    <div
-                      key={folder.id}
-                      className="flex items-center justify-between px-3 py-1.5"
-                    >
-                      <span className="text-body-0-regular text-foreground">{folder.name}</span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => toggleFolderHidden(folder.id)}
-                          className="p-1 rounded hover:bg-surface-selected-subtle transition-colors"
-                          title={isHidden ? 'Show folder' : 'Hide folder'}
-                        >
-                          {isHidden ? (
-                            <EyeOff className="w-4 h-4 text-red-500" />
-                          ) : (
-                            <Eye className="w-4 h-4 text-foreground-dim" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => toggleFolderLock(folder.id)}
-                          className="p-1 rounded hover:bg-surface-selected-subtle transition-colors"
-                          title={isLocked ? 'Unlock folder' : 'Lock folder'}
-                        >
-                          {isLocked ? (
-                            <Lock className="w-4 h-4 text-orange-500" />
-                          ) : (
-                            <Unlock className="w-4 h-4 text-foreground-dim" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-
                 {/* Reset folders */}
                 <div className="mt-2 pt-2 border-t border-border-dim">
                   <button
                     onClick={() => {
-                      localStorage.removeItem('desktop-workspace-files')
+                      localStorage.removeItem('unified-workspace-files-v5')
                       window.location.reload()
                     }}
                     className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-surface-selected-subtle transition-colors"

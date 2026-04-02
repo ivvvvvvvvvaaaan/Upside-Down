@@ -37,6 +37,19 @@ export function PersonaProvider({ children }: { children: ReactNode }) {
     setHydrated(true)
   }, [])
 
+  useEffect(() => {
+    function handleStorage(event: StorageEvent) {
+      if (event.key !== STORAGE_KEY) return
+      const nextPersona = event.newValue
+        ? PERSONAS.find((persona) => persona.id === event.newValue) ?? null
+        : null
+      setActivePersonaState(nextPersona)
+    }
+
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
+
   const setActivePersona = useCallback((persona: Persona | null) => {
     setActivePersonaState(persona)
     try {

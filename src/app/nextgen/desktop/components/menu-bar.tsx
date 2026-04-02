@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { Wifi, Battery, Search } from 'lucide-react'
 
 interface MenuBarProps {
   activeApp: string
+  trailingContent?: ReactNode
 }
 
-export function MenuBar({ activeApp }: MenuBarProps) {
+export function MenuBar({ activeApp, trailingContent }: MenuBarProps) {
   const [time, setTime] = useState<string>('')
 
   // Update time every second
@@ -48,7 +49,7 @@ export function MenuBar({ activeApp }: MenuBarProps) {
   }
 
   return (
-    <div className="h-6 bg-surface-high/90 backdrop-blur-md flex items-center justify-between px-4 text-label-0-regular text-foreground select-none z-50 border-b border-border-dim">
+    <div className="relative z-[1000] h-6 bg-surface-high/90 backdrop-blur-md flex items-center justify-between px-4 text-label-0-regular text-foreground select-none border-b border-border-dim">
       {/* Left side - App name and menus */}
       <div className="flex items-center gap-4">
         {/* App name (bold) */}
@@ -69,6 +70,8 @@ export function MenuBar({ activeApp }: MenuBarProps) {
 
       {/* Right side - Status icons and time */}
       <div className="flex items-center gap-3 text-foreground-dim">
+        {trailingContent}
+
         {/* Battery */}
         <div className="flex items-center gap-1">
           <span className="text-[10px]">100%</span>

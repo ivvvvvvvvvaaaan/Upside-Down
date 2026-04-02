@@ -25,6 +25,17 @@ export type Persona = User
 
 export const PERSONAS: User[] = buildPersonas()
 
+export const DESKTOP_ELIGIBLE_PERSONA_IDS = [
+  'vfx-coordinator',
+  'editorial-artist',
+  'editorial-coordinator',
+  'art-artist',
+  'vfx-supervisor',
+  'vendor-framestore',
+] as const
+
+const DESKTOP_ELIGIBLE_PERSONA_ID_SET = new Set<string>(DESKTOP_ELIGIBLE_PERSONA_IDS)
+
 /** Find a persona by email */
 export function getPersonaForEmail(email: string): User | undefined {
   return PERSONAS.find((p) => p.email === email)
@@ -46,6 +57,14 @@ export function isDepartmentRole(role: UserRole): boolean {
 
 export function isDepartmentPersona(persona: User | null | undefined): persona is User & { departmentId: DepartmentId } {
   return !!persona && isDepartmentRole(persona.role) && !!persona.departmentId
+}
+
+export function isDesktopEligiblePersona(persona: User | null | undefined): persona is User {
+  return !!persona && DESKTOP_ELIGIBLE_PERSONA_ID_SET.has(persona.id)
+}
+
+export function getDesktopEligiblePersonas(): User[] {
+  return PERSONAS.filter((persona) => DESKTOP_ELIGIBLE_PERSONA_ID_SET.has(persona.id))
 }
 
 export function getDepartmentMemberEmails(departmentId: DepartmentId): string[] {

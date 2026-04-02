@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { DesktopWindow } from './desktop-window'
 import { cn, formatDate } from '@/lib/utils'
 import type { WindowState, SyncStatus } from '../view'
 import type { UnifiedFileNode } from '@/lib/workspace-data'
-import { useFileTree } from '@/hooks'
+import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
+import { useAccess, useFileTree, usePersona } from '@/hooks'
 import {
   ChevronLeft,
   ChevronRight,
@@ -26,7 +27,6 @@ import {
   FileIcon,
   FolderOpen,
   Briefcase,
-  Lock,
   AlertTriangle,
   Loader2,
 } from 'lucide-react'
@@ -52,6 +52,10 @@ const sidebarItems: SidebarItem[] = [
 
 // Use UnifiedFileNode as the file node type throughout Finder
 type FileNode = UnifiedFileNode
+
+const DEPARTMENT_ROOT_IDS = new Set(
+  Object.values(DEPARTMENT_FOLDER_MAP).map((departmentFolder) => departmentFolder.id),
+)
 
 // LocalStorage key for expanded folders (workspace files now live in useFileTree)
 const EXPANDED_FOLDERS_STORAGE_KEY = 'desktop-expanded-folders'
@@ -243,19 +247,22 @@ function findNodeById(nodes: FileNode[], id: string): FileNode | null {
   return null
 }
 
-// Helper function to filter out hidden folders from tree
-function filterHiddenFolders(nodes: FileNode[], hiddenIds: Set<string>): FileNode[] {
-  return nodes
-    .filter((node) => !hiddenIds.has(node.id))
-    .map((node) => {
-      if (node.children) {
-        return {
-          ...node,
-          children: filterHiddenFolders(node.children, hiddenIds),
-        }
-      }
-      return node
-    })
+function filterWorkspaceNodeByAccess(
+  node: FileNode,
+  canAccess: (id: string) => boolean,
+  canSeeRestrictedFolders: boolean,
+): FileNode | null {
+  const isVisible = canAccess(node.id) || (node.type === 'folder' && canSeeRestrictedFolders)
+  if (!isVisible) return null
+
+  if (!node.children) return node
+
+  return {
+    ...node,
+    children: node.children
+      .map((child) => filterWorkspaceNodeByAccess(child, canAccess, canSeeRestrictedFolders))
+      .filter((child): child is FileNode => child !== null),
+  }
 }
 
 function getFileIcon(node: FileNode, sizeClass: string = 'w-4 h-4') {
@@ -276,24 +283,21 @@ function getFileIcon(node: FileNode, sizeClass: string = 'w-4 h-4') {
   return <File className={cn(sizeClass, 'text-foreground/70')} />
 }
 
-// Render folder status indicators (cloud, locked)
+// Render folder sync indicators.
 function FolderIndicators({
   node,
   className,
-  lockedFolderIds,
   cloudSyncEnabled,
   syncStatus,
 }: {
   node: FileNode
   className?: string
-  lockedFolderIds?: Set<string>
   cloudSyncEnabled?: boolean
   syncStatus?: SyncStatus
 }) {
-  const isLocked = lockedFolderIds?.has(node.id) ?? false
   const showSyncStatus = cloudSyncEnabled && node.type === 'folder'
 
-  if (node.type !== 'folder' || (!showSyncStatus && !isLocked)) {
+  if (node.type !== 'folder' || !showSyncStatus) {
     return null
   }
 
@@ -315,10 +319,7 @@ function FolderIndicators({
 
   return (
     <div className={cn('flex items-center gap-1', className)}>
-      {showSyncStatus && getSyncIcon()}
-      {isLocked && (
-        <Lock className="w-3.5 h-3.5 text-orange-500" />
-      )}
+      {getSyncIcon()}
     </div>
   )
 }
@@ -341,8 +342,6 @@ interface FinderWindowProps {
   onMinimize: () => void
   onMaximize: () => void
   onClose: () => void
-  lockedFolderIds: Set<string>
-  hiddenFolderIds: Set<string>
   cloudSyncEnabled: boolean
   syncStatus: SyncStatus
 }
@@ -356,8 +355,6 @@ export function FinderWindow({
   onMinimize,
   onMaximize,
   onClose,
-  lockedFolderIds,
-  hiddenFolderIds,
   cloudSyncEnabled,
   syncStatus,
 }: FinderWindowProps) {
@@ -382,11 +379,14 @@ export function FinderWindow({
 
   // Shared file tree from context
   const { tree: workspaceFiles, createFolder: contextCreateFolder, renameNode: contextRenameNode, deleteNode: contextDeleteNode } = useFileTree()
+  const { canAccess, sharesReceivedByMe } = useAccess()
+  const { activePersona } = usePersona()
 
   // Rename state
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const renameInputRef = useRef<HTMLInputElement>(null)
+  const canSeeRestrictedFolders = activePersona?.role === 'manager'
 
   // Focus rename input when it appears
   useEffect(() => {
@@ -451,20 +451,27 @@ export function FinderWindow({
   }, [folderPathIds])
 
   // Create a new folder inside the specified parent folder
-  const handleCreateFolder = useCallback((parentId: string) => {
+  const handleCreateFolder = useCallback((parentId: string | null) => {
+    if (selectedSidebar !== 'workspace') {
+      setContextMenu(null)
+      return
+    }
+
     const newId = contextCreateFolder(parentId, 'untitled folder')
-    setExpandedFolders((prev) => {
-      const next = new Set([...Array.from(prev), parentId])
-      localStorage.setItem(EXPANDED_FOLDERS_STORAGE_KEY, JSON.stringify(Array.from(next)))
-      return next
-    })
+    if (parentId) {
+      setExpandedFolders((prev) => {
+        const next = new Set([...Array.from(prev), parentId])
+        localStorage.setItem(EXPANDED_FOLDERS_STORAGE_KEY, JSON.stringify(Array.from(next)))
+        return next
+      })
+    }
     setContextMenu(null)
     // Start renaming the new folder immediately
     setTimeout(() => {
       setRenamingId(newId)
       setRenameValue('untitled folder')
     }, 50)
-  }, [contextCreateFolder])
+  }, [contextCreateFolder, selectedSidebar])
 
   // Start renaming an item
   const handleStartRename = useCallback((item: FileNode) => {
@@ -497,9 +504,52 @@ export function FinderWindow({
     }
   }, [selectedFile, contextDeleteNode])
 
-  // Get root files based on selected sidebar location, filtering out hidden folders
-  const rootFilesUnfiltered = selectedSidebar === 'workspace' ? workspaceFiles : mockFiles
-  const rootFiles = filterHiddenFolders(rootFilesUnfiltered, hiddenFolderIds)
+  const visibleSharedWorkspaceFiles = useMemo(() => {
+    return sharesReceivedByMe
+      .filter((entry) => {
+        if (entry.resourceType !== 'folder') return false
+        if (DEPARTMENT_ROOT_IDS.has(entry.resourceId)) return false
+        if (activePersona?.departmentId && entry.departmentId === activePersona.departmentId) return false
+        return true
+      })
+      .map((entry) => {
+        const sourceNode = findNodeById(workspaceFiles, entry.resourceId)
+        const sharedNode = sourceNode?.type === 'folder'
+          ? sourceNode
+          : {
+              id: entry.resourceId,
+              name: entry.label,
+              type: 'folder' as const,
+              modifiedAt: entry.grantedAt,
+              children: [],
+            }
+
+        return filterWorkspaceNodeByAccess(sharedNode, canAccess, canSeeRestrictedFolders)
+      })
+      .filter((node): node is FileNode => node !== null)
+  }, [sharesReceivedByMe, activePersona, workspaceFiles, canAccess, canSeeRestrictedFolders])
+
+  const visibleWorkspaceFiles = useMemo(() => {
+    const roots = workspaceFiles
+      .map((node) => {
+        if (DEPARTMENT_ROOT_IDS.has(node.id) && !canAccess(node.id)) {
+          return null
+        }
+        return filterWorkspaceNodeByAccess(node, canAccess, canSeeRestrictedFolders)
+      })
+      .filter((node): node is FileNode => node !== null)
+
+    for (const sharedNode of visibleSharedWorkspaceFiles) {
+      if (!roots.some((rootNode) => rootNode.id === sharedNode.id)) {
+        roots.push(sharedNode)
+      }
+    }
+
+    return roots
+  }, [workspaceFiles, canAccess, canSeeRestrictedFolders, visibleSharedWorkspaceFiles])
+
+  // Get root files based on selected sidebar location.
+  const rootFiles = selectedSidebar === 'workspace' ? visibleWorkspaceFiles : mockFiles
 
   // Build folder path from IDs (to get fresh references from current state)
   const folderPath = folderPathIds.map(id => findNodeById(rootFiles, id)).filter((n): n is FileNode => n !== null)
@@ -509,13 +559,13 @@ export function FinderWindow({
     ? folderPath[folderPath.length - 1].children || []
     : rootFiles
 
-  // Navigate into a folder (for icons view) - blocked if folder is locked
+  // Navigate into a folder (for icons view).
   const navigateIntoFolder = useCallback((folder: FileNode) => {
-    if (folder.type === 'folder' && folder.children && !lockedFolderIds.has(folder.id)) {
+    if (folder.type === 'folder' && folder.children) {
       setFolderPathIds((prev) => [...prev, folder.id])
       setSelectedFile(null)
     }
-  }, [lockedFolderIds])
+  }, [])
 
   // Navigate back one folder
   const navigateBack = useCallback(() => {
@@ -546,18 +596,6 @@ export function FinderWindow({
       localStorage.setItem(EXPANDED_FOLDERS_STORAGE_KEY, JSON.stringify(Array.from(next)))
       return next
     })
-  }
-
-  // Flatten all files for icons view
-  const getAllFiles = (nodes: FileNode[]): FileNode[] => {
-    const result: FileNode[] = []
-    for (const node of nodes) {
-      result.push(node)
-      if (node.type === 'folder' && node.children) {
-        result.push(...getAllFiles(node.children))
-      }
-    }
-    return result
   }
 
   // List view row
@@ -624,7 +662,7 @@ export function FinderWindow({
 
           {/* Folder indicators */}
           <div className="w-12 flex justify-end">
-            <FolderIndicators node={node} lockedFolderIds={lockedFolderIds} cloudSyncEnabled={cloudSyncEnabled} syncStatus={syncStatus} />
+            <FolderIndicators node={node} cloudSyncEnabled={cloudSyncEnabled} syncStatus={syncStatus} />
           </div>
 
           {/* Date modified */}
@@ -638,8 +676,7 @@ export function FinderWindow({
           </span>
         </div>
 
-        {/* Children - hidden if folder is locked */}
-        {node.type === 'folder' && isExpanded && node.children && !lockedFolderIds.has(node.id) && (
+        {node.type === 'folder' && isExpanded && node.children && (
           <>
             {node.children.map((child) => renderFileRow(child, depth + 1))}
           </>
@@ -699,12 +736,18 @@ export function FinderWindow({
   // Columns view
   const [columnPath, setColumnPath] = useState<FileNode[]>([])
 
+  useEffect(() => {
+    setFolderPathIds([])
+    setColumnPath([])
+    setSelectedFile(null)
+  }, [activePersona?.id, selectedSidebar])
+
   const renderColumnsView = () => {
     const columns: FileNode[][] = [currentFiles]
 
-    // Build columns from selected path - skip locked folders
+    // Build columns from selected path.
     for (const node of columnPath) {
-      if (node.type === 'folder' && node.children && !lockedFolderIds.has(node.id)) {
+      if (node.type === 'folder' && node.children) {
         columns.push(node.children)
       }
     }
@@ -724,9 +767,9 @@ export function FinderWindow({
                   data-file-node
                   onClick={() => {
                     setSelectedFile(node.id)
-                    // Update column path - don't navigate into locked folders
+                    // Update column path.
                     const newPath = columnPath.slice(0, colIndex)
-                    if (node.type === 'folder' && !lockedFolderIds.has(node.id)) {
+                    if (node.type === 'folder') {
                       newPath.push(node)
                     }
                     setColumnPath(newPath)
@@ -761,7 +804,7 @@ export function FinderWindow({
                       {node.name}
                     </span>
                   )}
-                  <FolderIndicators node={node} lockedFolderIds={lockedFolderIds} cloudSyncEnabled={cloudSyncEnabled} syncStatus={syncStatus} />
+                  <FolderIndicators node={node} cloudSyncEnabled={cloudSyncEnabled} syncStatus={syncStatus} />
                   {node.type === 'folder' && node.children && node.children.length > 0 && (
                     <ChevronRightSmall className="w-3 h-3 text-foreground-dim" />
                   )}
@@ -974,7 +1017,8 @@ export function FinderWindow({
               <ContextMenuItem
                 label="New Folder"
                 shortcut="⇧⌘N"
-                onClick={() => handleCreateFolder(contextMenu.item.id === '__root__' ? 'ws-art' : contextMenu.item.id)}
+                disabled={selectedSidebar !== 'workspace'}
+                onClick={() => handleCreateFolder(contextMenu.item.id === '__root__' ? null : contextMenu.item.id)}
               />
               <ContextMenuDivider />
               <ContextMenuItem label="Get Info" shortcut="⌘I" onClick={() => setContextMenu(null)} />
@@ -1005,6 +1049,7 @@ export function FinderWindow({
                   <ContextMenuItem
                     label="New Folder"
                     shortcut="⇧⌘N"
+                    disabled={selectedSidebar !== 'workspace'}
                     onClick={() => handleCreateFolder(contextMenu.item.id)}
                   />
                   <ContextMenuDivider />

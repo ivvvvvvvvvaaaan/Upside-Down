@@ -241,6 +241,17 @@ export const SCENARIO: Scenario = {
         { toTeam: 'dailies-review', as: 'commenter' },
       ],
     },
+    // Folder share: VFX coordinator shares the Shots folder with Dailies Review team
+    // so director + editorial coordinator can browse VFX plates directly in workspace
+    {
+      resource: { id: 'ws-vfx-shots', type: 'folder', dept: 'vfx' },
+      label: 'VFX Shots',
+      by: 'vfx-coordinator',
+      date: '2026-02-05',
+      grants: [
+        { toTeam: 'dailies-review', as: 'viewer' },
+      ],
+    },
     // Revoked: editorial shared an early rough cut that was replaced
     {
       resource: { id: 'ws-edit-cut-2', type: 'asset', dept: 'editorial' },
