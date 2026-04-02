@@ -114,17 +114,19 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
               {grouped.map(([date, dayEvents], gi) => (
                 <div key={date}>
                   {/* Date marker */}
-                  <div className="flex items-center gap-3 mb-3 relative">
+                  <div className="flex items-center gap-3 mb-3">
                     <div className="w-[72px] text-right text-body-0-bold text-foreground shrink-0">
                       {formatDate(date)}
                     </div>
-                    <div className="w-3 h-3 rounded-full bg-surface-3 border-2 border-border-dim z-10" />
+                    <div className="w-3 h-3 rounded-full bg-surface-3 border-2 border-border-dim z-10 shrink-0" />
                   </div>
 
                   {/* Events for this date */}
                   <div className="space-y-2 mb-6">
                     {dayEvents.map((event, ei) => (
-                      <div key={`${gi}-${ei}`} className="flex items-start gap-3 ml-[72px] pl-[18px]">
+                      <div key={`${gi}-${ei}`} className="flex items-start gap-3">
+                        <div className="w-[72px] shrink-0" />
+                        <div className="w-3 shrink-0" />
                         <div className={cn(
                           'flex-1 rounded p-3 space-y-2',
                           event.revoked ? 'bg-surface-2 opacity-60' : 'bg-surface-2',

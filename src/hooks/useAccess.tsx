@@ -265,6 +265,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
   // Resolve user for grant operations
   const userId = activePersona?.id ?? null
+  const grantorUserId = activePersona?.id ?? 'system-admin'
   const getResourceDepartmentId = useCallback((resourceId: string): DepartmentId | undefined => {
     return nodeToDepartment.get(resourceId) ?? ROOT_ID_TO_DEPARTMENT[resourceId]
   }, [nodeToDepartment])
@@ -384,7 +385,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     resource: ResourceRef,
     currentGrants: Grant[] = grants,
   ): Permission[] => {
-    if (!activePersona || !userId) return []
+    if (!activePersona) return getPermissionsForProfile('owner', roleGroups)
+    if (!userId) return []
 
     if (resource.type === 'collection') {
       const collection = collections.find((candidate) => candidate.id === resource.id)
@@ -403,7 +405,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [activePersona, userId, collections, grants, roleGroups])
 
   const canShareFn = useCallback((resource: ResourceRef, currentGrants: Grant[] = grants): boolean => {
-    if (!activePersona || !userId) return false
+    if (!activePersona) return true
+    if (!userId) return false
 
     if (resource.type === 'collection') {
       const permissions = currentUserPermissionsForResource(resource, currentGrants)
@@ -418,7 +421,17 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     profileId: AccessProfileId,
     currentGrants: Grant[] = grants,
   ): boolean => {
-    if (!activePersona || !userId) return false
+    if (profileId === 'owner' || profileId === 'link-viewer') return false
+
+    if (!activePersona) {
+      if (resource.type === 'folder') {
+        const targetPermissions = getPermissionsForProfile(profileId, roleGroups)
+        return targetPermissions.includes('write')
+      }
+
+      return true
+    }
+    if (!userId) return false
 
     const currentPermissions = currentUserPermissionsForResource(resource, currentGrants)
     if (!canAssignProfile(currentPermissions, profileId, roleGroups)) return false
@@ -432,7 +445,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [activePersona, userId, grants, roleGroups, currentUserPermissionsForResource])
 
   const canEditAclFn = useCallback((resource: ResourceRef, currentGrants: Grant[] = grants): boolean => {
-    if (!activePersona || !userId) return false
+    if (!activePersona) return true
+    if (!userId) return false
 
     if (resource.type === 'collection') {
       return currentUserPermissionsForResource(resource, currentGrants).includes('edit-acl')
@@ -605,7 +619,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [roleGroups, canGrantProfileForResourceFn])
 
   const createGrant = useCallback((resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId) => {
-    if (!userId) return
+    if (activePersona && !userId) return
 
     setGrants((prev) => {
       if (!canShareFn(resource, prev)) return prev
@@ -617,13 +631,13 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         principal,
         templateId: profileId,
         permissions: getPermissionsForProfile(profileId, roleGroups),
-        grantedByUserId: userId,
+        grantedByUserId: grantorUserId,
         grantedAt: new Date().toISOString().slice(0, 10),
       }
 
       return [...prev, newGrant]
     })
-  }, [userId, roleGroups, canShareFn, canGrantProfileForResourceFn])
+  }, [activePersona, userId, roleGroups, canShareFn, canGrantProfileForResourceFn, grantorUserId])
 
   const revokeGrant = useCallback((grantId: string) => {
     setGrants((prev) => {
@@ -643,7 +657,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const projectTeamGrants = useMemo(() => getProjectTeamGrantsFromList(grants), [grants])
 
   const createProjectGrant = useCallback((principal: PrincipalRef, profileId: AccessProfileId) => {
-    if (!userId) return
+    if (activePersona && !userId) return
     setGrants((prev) => {
       if (!canShareFn(PROJECT_RESOURCE, prev)) return prev
       if (!canGrantProfileForResourceFn(PROJECT_RESOURCE, profileId, prev)) return prev
@@ -654,12 +668,12 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         principal,
         templateId: profileId,
         permissions: getPermissionsForProfile(profileId, roleGroups),
-        grantedByUserId: userId,
+        grantedByUserId: grantorUserId,
         grantedAt: new Date().toISOString().slice(0, 10),
       }
       return [...prev, newGrant]
     })
-  }, [userId, roleGroups, canShareFn, canGrantProfileForResourceFn])
+  }, [activePersona, userId, roleGroups, canShareFn, canGrantProfileForResourceFn, grantorUserId])
 
   const updateGrantProfile = useCallback((grantId: string, profileId: AccessProfileId) => {
     setGrants((prev) => {

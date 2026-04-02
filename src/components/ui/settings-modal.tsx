@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, ChevronDown, Plus, X } from 'lucide-react'
+import { Search, ChevronDown, Plus, X, Info } from 'lucide-react'
 import { Modal } from './modal'
 import { Button } from './button'
 import { Input } from './input'
@@ -103,25 +103,26 @@ function PeopleTab({
 
   return (
     <div className="space-y-3">
-      <div className="space-y-2">
-        <h4 className="text-label-1-bold text-foreground">Search Users</h4>
-        <div className="flex gap-2">
-          <Input
-            icon={<Search />}
-            iconPosition="left"
-            type="email"
-            value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            placeholder="Search..."
-            disabled={!canAdd}
-          />
-          <Button variant="secondary" onClick={handleAdd} disabled={!canAdd || !newEmail.trim()}>
-            <Plus className="w-3 h-3 mr-1" />
-            Add
-          </Button>
+      {canAdd && (
+        <div className="space-y-2">
+          <h4 className="text-label-1-bold text-foreground">Search Users</h4>
+          <div className="flex gap-2">
+            <Input
+              icon={<Search />}
+              iconPosition="left"
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+              placeholder="Search..."
+            />
+            <Button variant="secondary" onClick={handleAdd} disabled={!newEmail.trim()}>
+              <Plus className="w-3 h-3 mr-1" />
+              Add
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {grants.length === 0 ? (
         <p className="text-body-0-regular text-foreground-dim py-4 text-center">No people added yet.</p>
@@ -490,7 +491,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           />
 
           {isReadOnly && (
-            <div className="mx-6 mt-4 rounded border border-border-dim bg-surface-1 px-3 py-2">
+            <div className="mx-6 mt-4 flex items-start gap-2 rounded border border-border-dim bg-surface-low px-3 py-2">
+              <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-foreground-dim" />
               <p className="text-body-0-regular text-foreground-dim">
                 View only. Only project admins can change project-wide access.
               </p>
