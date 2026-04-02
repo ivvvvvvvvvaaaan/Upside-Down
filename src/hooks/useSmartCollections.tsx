@@ -39,22 +39,6 @@ const SYSTEM_DEFAULTS: SmartCollection[] = [
     createdAt: new Date('2026-01-15'),
     groupBy: 'locations',
   },
-  {
-    id: 'smart-shot',
-    name: 'Shot',
-    icon: 'shot',
-    filter: { types: ['shot'] },
-    isDefault: true,
-    createdAt: new Date('2026-01-15'),
-  },
-  {
-    id: 'smart-sequence',
-    name: 'Sequence',
-    icon: 'sequence',
-    filter: { typeTags: ['Sequence', 'CG Sequence', 'Edit Sequence'] },
-    isDefault: true,
-    createdAt: new Date('2026-01-15'),
-  },
 ]
 
 // Seed user-created smart collections — each owned by a specific persona

@@ -154,6 +154,12 @@ function mergePermissions(...permissionSets: Permission[][]): Permission[] {
   return Array.from(new Set(permissionSets.flat()))
 }
 
+function getCollectionAssetIdVariants(assetId: string): string[] {
+  return assetId.startsWith('inst-')
+    ? [assetId, assetId.slice(5)]
+    : [assetId, `inst-${assetId}`]
+}
+
 function getMorePermissiveTemplate(
   current: AccessProfileId | null,
   next: AccessProfileId | null,
@@ -352,12 +358,14 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         : (grant?.ripplePermissions ?? VIEW_ONLY_CAP)
 
       for (const assetId of collection.assetIds) {
-        const current = accessById.get(assetId)
-        accessById.set(assetId, {
-          templateId: getMorePermissiveTemplate(current?.templateId ?? null, collectionAccess.templateId),
-          permissions: mergePermissions(current?.permissions ?? [], cappedPermissions),
-          canEdit: Boolean(current?.canEdit || cappedPermissions.includes('write')),
-        })
+        for (const variantId of getCollectionAssetIdVariants(assetId)) {
+          const current = accessById.get(variantId)
+          accessById.set(variantId, {
+            templateId: getMorePermissiveTemplate(current?.templateId ?? null, collectionAccess.templateId),
+            permissions: mergePermissions(current?.permissions ?? [], cappedPermissions),
+            canEdit: Boolean(current?.canEdit || cappedPermissions.includes('write')),
+          })
+        }
       }
     }
 
@@ -692,7 +700,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const getCollectionRippleGrants = useCallback((assetId: string) => {
     const rippled: { grant: Grant; fromResourceId: string; fromResourceName: string }[] = []
     for (const collection of collections) {
-      if (!collection.assetIds.includes(assetId)) continue
+      const collectionAssetIds = new Set(collection.assetIds.flatMap(getCollectionAssetIdVariants))
+      if (!collectionAssetIds.has(assetId)) continue
       const collGrants = grants.filter(g => g.resource.id === collection.id && !g.revokedAt)
       for (const g of collGrants) {
         rippled.push({ grant: g, fromResourceId: collection.id, fromResourceName: collection.name })

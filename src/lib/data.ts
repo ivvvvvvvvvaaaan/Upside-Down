@@ -31,6 +31,43 @@ export type {
 
 const MOCK_ASSETS: Asset[] = []
 
+function getAssetIdVariants(id: string): string[] {
+  if (id.startsWith('inst-')) {
+    return [id, id.slice(5)]
+  }
+  return [id, `inst-${id}`]
+}
+
+function getAssetResolutionScore(asset: Asset): number {
+  let score = 0
+
+  if (asset.thumbnail) score += 10
+  if (asset.workspacePath) score += 4
+  if ((asset.sourceFolderIds?.length ?? 0) > 0) score += 3
+  if (asset.department) score += 2
+  if (asset.created_at) score += 1
+
+  return score
+}
+
+function resolveAssetById(id: string, assetsById: Map<string, Asset>): Asset | undefined {
+  const resolved = getAssetIdVariants(id)
+    .map((candidateId) => assetsById.get(candidateId))
+    .filter((candidate): candidate is Asset => Boolean(candidate))
+    .sort((left, right) => {
+      const scoreDelta = getAssetResolutionScore(right) - getAssetResolutionScore(left)
+      if (scoreDelta !== 0) return scoreDelta
+
+      return left.id === id ? -1 : right.id === id ? 1 : 0
+    })[0]
+
+  if (!resolved) return undefined
+  if (resolved.id === id) return resolved
+
+  // Preserve the requested ID so collection membership and shared routes stay stable.
+  return { ...resolved, id }
+}
+
 export function getAssets(): Asset[] {
   return MOCK_ASSETS
 }
@@ -58,12 +95,15 @@ export function getRecentAssets(limit: number = 12): Asset[] {
 }
 
 export function getAsset(id: string): Asset | undefined {
-  return getAllAssets().find(a => a.id === id)
+  const assetsById = new Map(getAllAssets().map((asset) => [asset.id, asset]))
+  return resolveAssetById(id, assetsById)
 }
 
 export function getAssetsByIds(ids: string[]): Asset[] {
-  const idSet = new Set(ids)
-  return getAllAssets().filter(a => idSet.has(a.id))
+  const assetsById = new Map(getAllAssets().map((asset) => [asset.id, asset]))
+  return ids
+    .map((id) => resolveAssetById(id, assetsById))
+    .filter(Boolean) as Asset[]
 }
 
 export function getCollections(): Collection[] {

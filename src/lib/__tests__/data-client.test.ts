@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_GRANTS, buildSharesReceivedByMe } from '@/lib/grants'
 import { buildSeedCollections } from '@/lib/scenario'
 import { getSharePreviewImages } from '@/lib/data-client'
+import { getAssetsByIds } from '@/lib/data'
 
 describe('getSharePreviewImages', () => {
   it('builds previews for seeded shared collections', () => {
@@ -39,5 +40,14 @@ describe('getSharePreviewImages', () => {
     expect(previews).toBeDefined()
     expect(previews).toHaveLength(3)
     expect(new Set(previews).size).toBe(previews!.length)
+  })
+
+  it('resolves raw collection asset ids to rich promoted assets', () => {
+    const assets = getAssetsByIds(['ws-vfx-010-030', 'ws-vfx-020-020', 'ws-vfx-ref-brief'])
+
+    expect(assets).toHaveLength(3)
+    expect(assets[0]?.id).toBe('ws-vfx-010-030')
+    expect(assets[1]?.id).toBe('ws-vfx-020-020')
+    expect(assets.filter((asset) => !!asset.thumbnail)).toHaveLength(2)
   })
 })
