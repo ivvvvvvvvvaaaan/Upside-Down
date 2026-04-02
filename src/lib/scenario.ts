@@ -61,10 +61,6 @@ type ScenarioDepartmentAccess = {
   dept: DepartmentId
   defaultTeamId: string
   defaultProfile: AccessProfileId
-  overrides?: {
-    userId: string
-    profile: AccessProfileId
-  }[]
 }
 
 type Scenario = {
@@ -124,14 +120,7 @@ export const SCENARIO: Scenario = {
 
   departmentAccess: [
     { dept: 'vfx', defaultTeamId: 'vfx-core', defaultProfile: 'manager' },
-    {
-      dept: 'editorial',
-      defaultTeamId: 'editorial',
-      defaultProfile: 'editor',
-      overrides: [
-        { userId: 'editorial-coordinator', profile: 'manager' },
-      ],
-    },
+    { dept: 'editorial', defaultTeamId: 'editorial', defaultProfile: 'editor' },
     { dept: 'art-design', defaultTeamId: 'art-design', defaultProfile: 'editor' },
   ],
 
@@ -437,7 +426,7 @@ export function buildGrants(): Grant[] {
     })
   }
 
-  // Department root folder grants — each department has a team default plus explicit person overrides.
+  // Department root folder grants — each department has a single team default.
   for (const policy of SCENARIO.departmentAccess) {
     const folderId = DEPARTMENT_FOLDER_MAP[policy.dept]?.id
     if (!folderId) continue
@@ -451,18 +440,6 @@ export function buildGrants(): Grant[] {
       grantedByUserId: 'studio-alex',
       grantedAt: '2026-01-01',
     })
-
-    for (const override of policy.overrides ?? []) {
-      grants.push({
-        id: grantId(),
-        resource: { id: folderId, type: 'folder' as const, departmentId: policy.dept },
-        principal: { type: 'user', userId: override.userId },
-        templateId: override.profile,
-        permissions: permissionsForTemplate(override.profile),
-        grantedByUserId: 'studio-alex',
-        grantedAt: '2026-01-01',
-      })
-    }
   }
 
   return grants

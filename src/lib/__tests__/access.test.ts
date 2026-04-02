@@ -25,13 +25,13 @@ describe('grant-based access model', () => {
     expect(result.effectiveProfile).toBe('manager')
   })
 
-  it('keeps per-person department overrides explicit', () => {
+  it('uses department team defaults consistently for all department members', () => {
     const lisa = resolveAccess('editorial-coordinator', 'ws-editorial', DEFAULT_GRANTS)
     const maria = resolveAccess('editorial-artist', 'ws-editorial', DEFAULT_GRANTS)
 
     expect(lisa.hasAccess).toBe(true)
-    expect(lisa.source).toBe('direct')
-    expect(lisa.effectiveProfile).toBe('manager')
+    expect(lisa.source).toBe('team')
+    expect(lisa.effectiveProfile).toBe('editor')
 
     expect(maria.hasAccess).toBe(true)
     expect(maria.source).toBe('team')
@@ -166,7 +166,7 @@ describe('project-level roles', () => {
   it('project roles apply to the project settings resource only', () => {
     const projectAccess = resolveAccess('studio-alex', PROJECT_RESOURCE.id, DEFAULT_GRANTS)
     expect(projectAccess.hasAccess).toBe(true)
-    expect(projectAccess.effectiveProfile).toBe('manager')
+    expect(projectAccess.effectiveProfile).toBe('viewer')
     expect(projectAccess.source).toBe('project-direct')
 
     const unrelatedAccess = resolveAccess('studio-alex', 'some-random-resource', DEFAULT_GRANTS)

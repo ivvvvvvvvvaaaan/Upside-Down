@@ -12,7 +12,7 @@ import { useAccess } from '@/hooks'
 import { cn } from '@/lib/utils'
 import { PERSONAS } from '@/lib/personas'
 import { TEAMS, getTeamsForUser } from '@/lib/teams'
-import { PROJECT_RESOURCE } from '@/lib/grants'
+import { PROJECT_RESOURCE, profileLabel } from '@/lib/grants'
 import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef, ResourceRef } from '@/lib/grants'
 import type { DepartmentId } from '@/components/department/types'
 import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
@@ -187,18 +187,12 @@ function DepartmentsTab({
   roleGroups,
   getResourceGrants,
   onRoleChange,
-  onAddOverride,
-  onRemoveOverride,
-  canShareResource,
   canEditResource,
   readOnly = false,
 }: {
   roleGroups: RoleGroup[]
   getResourceGrants: (resourceId: string) => Grant[]
   onRoleChange: (grantId: string, profileId: AccessProfileId) => void
-  onAddOverride: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId) => void
-  onRemoveOverride: (grantId: string) => void
-  canShareResource: (resource: ResourceRef) => boolean
   canEditResource: (resource: ResourceRef) => boolean
   readOnly?: boolean
 }) {
@@ -226,7 +220,7 @@ function DepartmentsTab({
   return (
     <div className="space-y-3">
       <p className="text-body-0-regular text-foreground-dim">
-        Departments control who can access content. Members inherit the department's permissions and content scope.
+        Departments control who can access content. Members are shown for context and follow the department access set above.
       </p>
 
       <div className="space-y-1">
@@ -240,10 +234,10 @@ function DepartmentsTab({
           const grant = team
             ? rootGrants.find(g => g.principal.type === 'team' && g.principal.teamId === team.id)
             : undefined
-          const canShareDepartment = canShareResource(resourceRef)
           const canEditDepartment = canEditResource(resourceRef)
-          const noDefaultAccessValue = '__no_default_access__'
-          const defaultMemberValue = grant?.templateId ?? noDefaultAccessValue
+          const defaultMemberLabel = grant?.templateId
+            ? profileLabel(grant.templateId, roleGroups)
+            : 'No default access'
 
           return (
             <div key={departmentId} className="rounded">
@@ -292,54 +286,9 @@ function DepartmentsTab({
                         <span className="text-body-0-regular text-foreground truncate block">{persona.name}</span>
                         <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
                       </div>
-                      {(() => {
-                        const overrideGrant = rootGrants.find(
-                          (candidate) => candidate.principal.type === 'user' && candidate.principal.userId === persona.id,
-                        )
-                        const memberOptions = grant
-                          ? options
-                          : [{ value: noDefaultAccessValue, label: 'No default access' }, ...options]
-
-                        return (
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <Select
-                              options={memberOptions}
-                              value={overrideGrant?.templateId ?? defaultMemberValue}
-                              onChange={(value) => {
-                                if (value === defaultMemberValue) {
-                                  if (overrideGrant) onRemoveOverride(overrideGrant.id)
-                                  return
-                                }
-
-                                if (overrideGrant) {
-                                  onRoleChange(overrideGrant.id, value as AccessProfileId)
-                                  return
-                                }
-
-                                onAddOverride(
-                                  resourceRef,
-                                  { type: 'user', userId: persona.id },
-                                  value as AccessProfileId,
-                                )
-                              }}
-                              size="compact"
-                              borderless
-                              className="w-auto min-w-[160px]"
-                              disabled={readOnly || (overrideGrant ? !canEditDepartment : !canShareDepartment)}
-                            />
-                            {overrideGrant && (
-                              <span className="text-label-0-regular text-foreground-dim">
-                                Override
-                              </span>
-                            )}
-                            {overrideGrant && !readOnly && canEditDepartment && (
-                              <Button variant="icon" size="compact-icon" onClick={() => onRemoveOverride(overrideGrant.id)}>
-                                <X className="w-3 h-3" />
-                              </Button>
-                            )}
-                          </div>
-                        )
-                      })()}
+                      <span className="text-label-0-regular text-foreground-dim flex-shrink-0">
+                        {defaultMemberLabel}
+                      </span>
                     </div>
                   ))}
                   {members.length === 0 && (
@@ -524,9 +473,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   roleGroups={roleGroups}
                   getResourceGrants={getResourceGrants}
                   onRoleChange={updateGrantProfile}
-                  onAddOverride={createGrant}
-                  onRemoveOverride={revokeGrant}
-                  canShareResource={canShare}
                   canEditResource={canEditAcl}
                   readOnly={isReadOnly}
                 />

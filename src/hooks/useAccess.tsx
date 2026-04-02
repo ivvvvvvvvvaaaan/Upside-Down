@@ -170,7 +170,7 @@ function getMorePermissiveTemplate(
 }
 
 // Bump this when grant schema or seed data changes — forces localStorage re-seed
-const GRANTS_VERSION = 13
+const GRANTS_VERSION = 14
 
 export function AccessProvider({ children }: { children: ReactNode }) {
   const { activePersona } = usePersona()

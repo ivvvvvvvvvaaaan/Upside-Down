@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { X, ArrowRight, LayoutGrid, FileText, Folder, XCircle } from 'lucide-react'
+import { X, ArrowRight, LayoutGrid, FileText, Folder } from 'lucide-react'
 import { Modal } from './modal'
 import { Tag } from './tag'
 import { Avatar } from './avatar'
@@ -113,20 +113,14 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
             <div className="space-y-0">
               {grouped.map(([date, dayEvents], gi) => (
                 <div key={date}>
-                  {/* Date marker */}
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-[72px] text-right text-body-0-bold text-foreground shrink-0">
-                      {formatDate(date)}
-                    </div>
-                    <div className="w-3 h-3 rounded-full bg-surface-3 border-2 border-border-dim z-10 shrink-0" />
-                  </div>
-
                   {/* Events for this date */}
-                  <div className="space-y-2 mb-6">
+                  <div className="space-y-2 mb-4">
                     {dayEvents.map((event, ei) => (
                       <div key={`${gi}-${ei}`} className="flex items-start gap-3">
-                        <div className="w-[72px] shrink-0" />
-                        <div className="w-3 shrink-0" />
+                        <div className="w-[72px] shrink-0 text-right">
+                          {ei === 0 && <span className="text-body-0-bold text-foreground">{formatDate(date)}</span>}
+                        </div>
+                        <div className="w-3 h-3 rounded-full bg-surface-3 border-2 border-border-dim z-10 shrink-0 mt-1.5" />
                         <div className={cn(
                           'flex-1 rounded p-3 space-y-2',
                           event.revoked ? 'bg-surface-2 opacity-60' : 'bg-surface-2',
@@ -150,7 +144,7 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
                               <ResourceIcon type={event.resourceType} />
                               <span>{event.label}</span>
                               {event.revoked && (
-                                <XCircle className="w-3.5 h-3.5 text-red-500 ml-1" />
+                                <Tag size="compact" type="negative" variant="border">Revoked</Tag>
                               )}
                             </div>
 
@@ -168,9 +162,6 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
 
                           {event.context && (
                             <p className="text-body-0-regular text-foreground-dim">{event.context}</p>
-                          )}
-                          {event.revoked && (
-                            <span className="text-body-0-regular text-red-400">Revoked</span>
                           )}
                         </div>
                       </div>
