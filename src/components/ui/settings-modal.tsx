@@ -14,6 +14,7 @@ import { PERSONAS, initials } from '@/lib/personas'
 import { TEAMS, getTeamsForUser } from '@/lib/teams'
 import { getRoleGroup } from '@/lib/grants'
 import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef, ResourceRef } from '@/lib/grants'
+import type { DepartmentId } from '@/components/department/types'
 import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 
 const ALL_PERMISSIONS: { id: Permission; name: string }[] = [
@@ -525,6 +526,10 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     revokeGrant,
     canShare,
     canEditAcl,
+    discoveryEnabled,
+    setDiscoveryEnabled,
+    discoveryDisabledDepartments,
+    toggleDepartmentDiscovery,
   } = useAccess()
 
   return (
@@ -576,6 +581,55 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               </TabsContent>
             </div>
           </Tabs>
+        </div>
+
+        {/* Discovery settings */}
+        <div className="px-6 py-4 border-t border-border-dim space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-body-0-bold text-foreground">Asset Discovery</p>
+              <p className="text-body-0-regular text-foreground-dim">
+                Allow users to see restricted assets as blurred tiles and request access
+              </p>
+            </div>
+            <button
+              onClick={() => setDiscoveryEnabled(!discoveryEnabled)}
+              className={cn(
+                'relative w-10 h-6 rounded-full transition-colors flex-shrink-0',
+                discoveryEnabled ? 'bg-indigo-500' : 'bg-surface-3'
+              )}
+            >
+              <div className={cn(
+                'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
+                discoveryEnabled ? 'left-5' : 'left-1'
+              )} />
+            </button>
+          </div>
+          {discoveryEnabled && (
+            <div className="space-y-1 pl-4">
+              <p className="text-label-1-bold text-foreground-dim">Department overrides</p>
+              {(Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[]).map((deptId) => {
+                const disabled = discoveryDisabledDepartments.has(deptId)
+                return (
+                  <div key={deptId} className="flex items-center justify-between py-1">
+                    <span className="text-body-0-regular text-foreground">{DEPARTMENT_FOLDER_MAP[deptId].name}</span>
+                    <button
+                      onClick={() => toggleDepartmentDiscovery(deptId)}
+                      className={cn(
+                        'relative w-10 h-6 rounded-full transition-colors flex-shrink-0',
+                        !disabled ? 'bg-indigo-500' : 'bg-surface-3'
+                      )}
+                    >
+                      <div className={cn(
+                        'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
+                        !disabled ? 'left-5' : 'left-1'
+                      )} />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end px-6 py-4 border-t border-border-dim">

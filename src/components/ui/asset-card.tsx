@@ -87,6 +87,8 @@ export function AssetCard({
   processing = false,
   showDepartment = false,
   fromWorkspace = false,
+  restricted = false,
+  onRequestAccess,
 }: AssetCardProps) {
   const router = useRouter()
   // Primary implies selected
@@ -250,8 +252,11 @@ export function AssetCard({
 
   return (
     <div
-      onClick={(e) => onClick?.(asset, e)}
-      onDoubleClick={() => router.push(`/nextgen/assets/${asset.id}`)}
+      onClick={(e) => {
+        if (restricted) { onRequestAccess?.(asset); return }
+        onClick?.(asset, e)
+      }}
+      onDoubleClick={() => { if (!restricted) router.push(`/nextgen/assets/${asset.id}`) }}
       className={cn(
         'group relative flex flex-col',
         'w-full cursor-pointer',
@@ -268,10 +273,19 @@ export function AssetCard({
     >
       {/* Thumbnail container - 16:9 aspect ratio */}
       <div className="relative w-full aspect-video rounded overflow-hidden mb-2">
-        {renderThumbnail()}
+        <div className={cn(restricted && 'blur-lg scale-110')}>
+          {renderThumbnail()}
+        </div>
+
+        {/* Restricted overlay */}
+        {restricted && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/20">
+            <Lock className="w-5 h-5 text-white/80" />
+          </div>
+        )}
 
         {/* Duration badge - bottom-right overlay - Hawkins text-label-0-bold (10px/15px/600) */}
-        {hasDuration && duration && (
+        {!restricted && hasDuration && duration && (
           <div className="absolute bottom-2 right-2 px-1 bg-black/60 rounded flex items-center">
             <span className="text-label-0-bold text-white leading-none">
               {duration}
@@ -285,13 +299,19 @@ export function AssetCard({
         {/* Left: Title, Tag + Metadata row */}
         <div className="flex-1 min-w-0 flex flex-col gap-1">
           {/* Title - 1st line with hover state - body-0-bold (13px/20px/600) */}
-          <Link
-            href={`/nextgen/assets/${asset.id}`}
-            onClick={(e) => e.stopPropagation()}
-            className="text-body-0-bold text-foreground truncate block hover:text-foreground-system-link hover:underline"
-          >
-            {asset.name}
-          </Link>
+          {restricted ? (
+            <span className="text-body-0-bold text-foreground-dim truncate block">
+              {asset.name}
+            </span>
+          ) : (
+            <Link
+              href={`/nextgen/assets/${asset.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-body-0-bold text-foreground truncate block hover:text-foreground-system-link hover:underline"
+            >
+              {asset.name}
+            </Link>
+          )}
 
           {/* Tag + Metadata - 2nd line: type tag + status from unified tags */}
           <div className="flex items-center gap-2 overflow-hidden">

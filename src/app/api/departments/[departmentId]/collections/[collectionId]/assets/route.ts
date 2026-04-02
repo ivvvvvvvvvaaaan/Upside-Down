@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: { departmentId: string; collectionId: string } }
 ) {
   try {
-    const assets = await getAssetsByDepartmentAndCollection(
+    const assets = getAssetsByDepartmentAndCollection(
       params.departmentId as DepartmentId,
       params.collectionId
     )

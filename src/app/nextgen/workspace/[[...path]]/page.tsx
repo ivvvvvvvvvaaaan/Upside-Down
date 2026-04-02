@@ -11,11 +11,11 @@ const VALID_DEPARTMENTS: DepartmentId[] = [
 ]
 
 interface Props {
-  params: Promise<{ path?: string[] }>
+  params: { path?: string[] }
 }
 
-export default async function WorkspacePage({ params }: Props) {
-  const { path } = await params
+export default function WorkspacePage({ params }: Props) {
+  const { path } = params
 
   // No path segments → workspace landing with department folders
   if (!path || path.length === 0) {

@@ -28,6 +28,6 @@ describe('getSharedResourceHref', () => {
       resourceId: 'ws-vfx-shots',
       resourceType: 'folder',
       departmentId: 'vfx',
-    })).toBe('/nextgen/workspace/vfx')
+    })).toBe('/nextgen/workspace/vfx/ws-vfx-shots')
   })
 })

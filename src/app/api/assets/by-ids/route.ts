@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ids must be an array' }, { status: 400 })
     }
 
-    const assets = await getAssetsByIds(ids)
+    const assets = getAssetsByIds(ids)
     return NextResponse.json(assets)
   } catch (error) {
     console.error('Failed to fetch assets by IDs:', error)

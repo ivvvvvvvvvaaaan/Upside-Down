@@ -1,10 +1,10 @@
 import { SmartCollectionDetailView } from './view'
 
 interface Props {
-  params: Promise<{ id: string }>
+  params: { id: string }
 }
 
-export default async function SmartCollectionPage({ params }: Props) {
-  const { id } = await params
+export default function SmartCollectionPage({ params }: Props) {
+  const { id } = params
   return <SmartCollectionDetailView collectionId={id} />
 }

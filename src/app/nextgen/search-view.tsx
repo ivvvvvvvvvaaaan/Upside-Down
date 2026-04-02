@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { ArrowLeft, Search } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -28,7 +28,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const { cardSize } = useViewPreferences()
   const { createCollection } = useUserCollections()
-  const { filterByAccess } = useAccess()
+  const { filterByAccess, canAccess, canDiscover, requestAccess } = useAccess()
 
   // Lazy-load all department assets only when user has a search query
   const [apiAssets, setApiAssets] = useState<Asset[]>([])
@@ -65,16 +65,33 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     return filterByAccess(allSearchableAssets)
   }, [allSearchableAssets, filterByAccess])
 
+  // IDs of assets the user can fully access (for determining restricted state)
+  const accessibleIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const a of accessibleSearchAssets) ids.add(a.id)
+    return ids
+  }, [accessibleSearchAssets])
+
   const accessibleRecentAssets = useMemo(() => {
     return filterByAccess(recentAssets)
   }, [recentAssets, filterByAccess])
 
-  // Filter results based on search query
+  const isRestricted = useCallback((asset: Asset) => {
+    return !canAccess(asset.id) && canDiscover(asset.id, asset.department)
+  }, [canAccess, canDiscover])
+
+  const handleRequestAccess = useCallback((asset: Asset) => {
+    requestAccess(asset.id, { id: asset.id, type: 'asset', departmentId: asset.department })
+  }, [requestAccess])
+
+  // Filter results based on search query — include discoverable restricted assets
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return null
     if (!hasLoadedAll) return null
-    return accessibleSearchAssets.filter((asset) => matchesFilter(asset, { query: searchQuery }))
-  }, [searchQuery, accessibleSearchAssets, hasLoadedAll])
+    return allSearchableAssets
+      .filter((asset) => matchesFilter(asset, { query: searchQuery }))
+      .filter((asset) => accessibleIds.has(asset.id) || canDiscover(asset.id, asset.department))
+  }, [searchQuery, allSearchableAssets, accessibleIds, canDiscover, hasLoadedAll])
 
   const curatedResults = useMemo(() => searchResults?.filter(a => !a.isAutoPromoted) ?? [], [searchResults])
   const workspaceResults = useMemo(() => searchResults?.filter(a => a.isAutoPromoted) ?? [], [searchResults])
@@ -173,6 +190,8 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                               onClick={(a, e) => handleAssetClick(a, e, searchResults!)}
                               onMenuClick={handleMenuClick}
                               showDepartment
+                              restricted={isRestricted(asset)}
+                              onRequestAccess={handleRequestAccess}
                             />
                           ))}
                         </CardGrid>
@@ -191,6 +210,8 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                               onClick={(a, e) => handleAssetClick(a, e, searchResults!)}
                               onMenuClick={handleMenuClick}
                               showDepartment
+                              restricted={isRestricted(asset)}
+                              onRequestAccess={handleRequestAccess}
                             />
                           ))}
                         </CardGrid>
@@ -221,6 +242,8 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                             onClick={(a, e) => handleAssetClick(a, e, accessibleRecentAssets)}
                             onMenuClick={handleMenuClick}
                             showDepartment
+                            restricted={isRestricted(asset)}
+                            onRequestAccess={handleRequestAccess}
                           />
                         ))}
                       </CardGrid>

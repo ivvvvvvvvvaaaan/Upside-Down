@@ -1,10 +1,10 @@
 import { UserCollectionDetailView } from './view'
 
 interface Props {
-  params: Promise<{ id: string }>
+  params: { id: string }
 }
 
-export default async function UserCollectionPage({ params }: Props) {
-  const { id } = await params
+export default function UserCollectionPage({ params }: Props) {
+  const { id } = params
   return <UserCollectionDetailView collectionId={id} />
 }

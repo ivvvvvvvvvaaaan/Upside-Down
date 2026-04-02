@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: { departmentId: string } }
 ) {
   try {
-    const assets = await getAssetsByDepartment(params.departmentId as DepartmentId)
+    const assets = getAssetsByDepartment(params.departmentId as DepartmentId)
     return NextResponse.json(assets)
   } catch (error) {
     console.error('Error fetching department assets:', error)

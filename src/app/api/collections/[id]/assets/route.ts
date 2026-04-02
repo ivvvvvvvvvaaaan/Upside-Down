@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const assets = await getAssetsByCollection(params.id)
+    const assets = getAssetsByCollection(params.id)
     return NextResponse.json(assets)
   } catch (error) {
     console.error('Error fetching assets:', error)

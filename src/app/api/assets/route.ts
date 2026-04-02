@@ -3,7 +3,7 @@ import { getAssets } from '@/lib/data'
 
 export async function GET() {
   try {
-    const assets = await getAssets()
+    const assets = getAssets()
     return NextResponse.json(assets)
   } catch (error) {
     console.error('Failed to fetch assets:', error)

@@ -6,6 +6,7 @@ import {
   resolveAccess,
   canCreateGrantForResource,
   canEditAclForResource,
+  canAssignProfile,
   buildSharesReceivedByMe,
   buildSharesCreatedByMe,
   buildAllProjectShares,
@@ -105,7 +106,7 @@ describe('capability decomposition', () => {
     const result = resolveAccess('vendor-framestore', 'ws-vfx-coll-for-vendor', DEFAULT_GRANTS)
     expect(result.hasAccess).toBe(true)
     expect(result.effectiveProfile).toBe('viewer')
-    expect(result.permissions).toEqual(['open', 'download'])
+    expect(result.permissions).toEqual(['discover', 'open', 'download'])
     expect(result.canEdit).toBe(false)
   })
 
@@ -150,6 +151,14 @@ describe('capability decomposition', () => {
 
     expect(canCreateGrantForResource('vendor-framestore', PROJECT_RESOURCE, DEFAULT_GRANTS)).toBe(false)
     expect(canEditAclForResource('vendor-framestore', PROJECT_RESOURCE, DEFAULT_GRANTS)).toBe(false)
+  })
+
+  it('prevents editors from delegating profiles with permissions they do not have', () => {
+    const editorPermissions = DEFAULT_ROLE_GROUPS.find((group) => group.id === 'editor')!.permissions
+
+    expect(canAssignProfile(editorPermissions, 'viewer', DEFAULT_ROLE_GROUPS)).toBe(true)
+    expect(canAssignProfile(editorPermissions, 'contributor', DEFAULT_ROLE_GROUPS)).toBe(true)
+    expect(canAssignProfile(editorPermissions, 'manager', DEFAULT_ROLE_GROUPS)).toBe(false)
   })
 })
 

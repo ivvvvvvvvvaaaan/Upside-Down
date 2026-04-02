@@ -145,7 +145,7 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sour
 }
 
 export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLabel = 'Not shared', inheritedGrants }: AccessPanelProps) {
-  const { getResourceGrants, createGrant, revokeGrant, updateGrantProfile, roleGroups, canShare, canEditAcl } = useAccess()
+  const { getResourceGrants, createGrant, revokeGrant, updateGrantProfile, roleGroups, canShare, canEditAcl, getGrantableProfiles } = useAccess()
   const { activePersona } = usePersona()
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
@@ -156,6 +156,11 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
   const canAddGrants = Boolean(resourceRef) && canShare(resourceRef)
   const canManageExistingGrants = Boolean(resourceRef) && canEditAcl(resourceRef)
   const grantsReadOnly = readOnly || !canManageExistingGrants
+  const addRoleOptions = useMemo(() => {
+    if (!resourceRef) return roleGroupOptions(roleGroups)
+    const allowedProfiles = new Set(getGrantableProfiles(resourceRef))
+    return roleGroupOptions(roleGroups).filter((option) => allowedProfiles.has(option.value as AccessProfileId))
+  }, [resourceRef, roleGroups, getGrantableProfiles])
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -169,23 +174,33 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
     return () => document.removeEventListener('mousedown', handler)
   }, [showDropdown])
 
+  useEffect(() => {
+    if (addRoleOptions.some((option) => option.value === addAsRole)) return
+    if (addRoleOptions[0]) {
+      setAddAsRole(addRoleOptions[0].value as AccessProfileId)
+    }
+  }, [addRoleOptions, addAsRole])
+
   // Search results: people + teams
   const results = useMemo(() => {
     if (!query.trim()) return { people: [], teams: [] }
     const q = query.toLowerCase()
-    const people = PERSONAS.filter(p =>
-      p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q)
+    const people = PERSONAS.filter((p) =>
+      p.id !== activePersona?.id && (
+        p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q)
+      )
     ).slice(0, 5)
     const teams = TEAMS.filter(t =>
       t.name.toLowerCase().includes(q)
     ).slice(0, 3)
     return { people, teams }
-  }, [query])
+  }, [query, activePersona])
 
   const hasResults = results.people.length > 0 || results.teams.length > 0
 
   const handleAddUser = (userId: string) => {
     if (!resourceRef || !canAddGrants) return
+    if (userId === activePersona?.id) return
     if (grants.some(g => g.principal.type === 'user' && g.principal.userId === userId)) return
     const principal: PrincipalRef = { type: 'user', userId }
     createGrant(resourceRef, principal, addAsRole)
@@ -250,7 +265,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
       )}
 
       {/* Search row: input + role dropdown */}
-      {!readOnly && resourceRef && canAddGrants && (
+      {!readOnly && resourceRef && canAddGrants && addRoleOptions.length > 0 && (
         <div className="flex items-start gap-2">
           <div ref={dropdownRef} className="relative flex-1">
             <Input
@@ -299,7 +314,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
             )}
           </div>
           <Select
-            options={roleGroupOptions(roleGroups)}
+            options={addRoleOptions}
             value={addAsRole}
             onChange={(value) => setAddAsRole(value as AccessProfileId)}
             className="w-auto flex-shrink-0"

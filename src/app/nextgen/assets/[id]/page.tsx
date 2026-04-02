@@ -1,10 +1,10 @@
 import { AssetDetailView } from './view'
 
 interface Props {
-  params: Promise<{ id: string }>
+  params: { id: string }
 }
 
-export default async function AssetDetailPage({ params }: Props) {
-  const { id } = await params
+export default function AssetDetailPage({ params }: Props) {
+  const { id } = params
   return <AssetDetailView assetId={id} />
 }

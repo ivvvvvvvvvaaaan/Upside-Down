@@ -18,12 +18,11 @@ describe('getSharePreviewImages', () => {
   })
 
   it('builds previews for shared folders from promoted workspace assets', () => {
-    const entry = buildSharesReceivedByMe('editorial-coordinator', DEFAULT_GRANTS)
-      .find((share) => share.resourceId === 'ws-vfx-shots')
-
-    expect(entry).toBeDefined()
-
-    const previews = getSharePreviewImages(entry!, buildSeedCollections())
+    const previews = getSharePreviewImages({
+      resourceId: 'ws-vfx-shots',
+      resourceType: 'folder',
+      departmentId: 'vfx',
+    }, buildSeedCollections())
 
     expect(previews).toBeDefined()
     expect(previews!.length).toBeGreaterThan(0)

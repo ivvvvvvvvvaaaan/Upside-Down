@@ -9,8 +9,8 @@ import { getCollections } from '@/lib/data'
  * Based on Figma design: Next-Gen Media Library
  */
 
-export default async function CollectionCardsPage() {
-  const collections = await getCollections()
+export default function CollectionCardsPage() {
+  const collections = getCollections()
 
   return <CollectionCardsView title="Collections" initialCollections={collections} collectionType="all" />
 }
