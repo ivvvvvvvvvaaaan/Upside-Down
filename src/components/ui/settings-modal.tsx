@@ -224,9 +224,8 @@ function DepartmentsTab({
             : undefined
           const canShareDepartment = canShareResource(resourceRef)
           const canEditDepartment = canEditResource(resourceRef)
-          const inheritedRoleLabel = grant
-            ? getRoleGroup(roleGroups, grant.templateId ?? 'viewer')?.name ?? grant.templateId ?? 'Viewer'
-            : 'No default access'
+          const noDefaultAccessValue = '__no_default_access__'
+          const defaultMemberValue = grant?.templateId ?? noDefaultAccessValue
 
           return (
             <div key={departmentId} className="rounded">
@@ -279,18 +278,17 @@ function DepartmentsTab({
                         const overrideGrant = rootGrants.find(
                           (candidate) => candidate.principal.type === 'user' && candidate.principal.userId === persona.id,
                         )
-                        const memberOptions = [
-                          { value: '__inherit__', label: grant ? `Inherits ${inheritedRoleLabel}` : inheritedRoleLabel },
-                          ...options,
-                        ]
+                        const memberOptions = grant
+                          ? options
+                          : [{ value: noDefaultAccessValue, label: 'No default access' }, ...options]
 
                         return (
                           <div className="flex items-center gap-1 flex-shrink-0">
                             <Select
                               options={memberOptions}
-                              value={overrideGrant?.templateId ?? '__inherit__'}
+                              value={overrideGrant?.templateId ?? defaultMemberValue}
                               onChange={(value) => {
-                                if (value === '__inherit__') {
+                                if (value === defaultMemberValue) {
                                   if (overrideGrant) onRemoveOverride(overrideGrant.id)
                                   return
                                 }
@@ -311,6 +309,11 @@ function DepartmentsTab({
                               className="w-auto min-w-[160px]"
                               disabled={overrideGrant ? !canEditDepartment : !canShareDepartment}
                             />
+                            {overrideGrant && (
+                              <span className="text-label-0-regular text-foreground-dim">
+                                Override
+                              </span>
+                            )}
                             {overrideGrant && canEditDepartment && (
                               <Button variant="icon" size="compact-icon" onClick={() => onRemoveOverride(overrideGrant.id)}>
                                 <X className="w-3 h-3" />
