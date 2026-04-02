@@ -241,6 +241,17 @@ export const SCENARIO: Scenario = {
         { toTeam: 'dailies-review', as: 'commenter' },
       ],
     },
+    // Vendor drop folder: VFX coordinator gives Framestore a scoped upload point
+    // Vendor can see and upload to this specific folder only — not the rest of VFX
+    {
+      resource: { id: 'ws-vfx-vendor-framestore', type: 'folder', dept: 'vfx' },
+      label: 'Framestore',
+      by: 'vfx-coordinator',
+      date: '2026-01-15',
+      grants: [
+        { to: 'vendor-framestore', as: 'contributor' },
+      ],
+    },
     // Revoked: editorial shared an early rough cut that was replaced
     {
       resource: { id: 'ws-edit-cut-2', type: 'asset', dept: 'editorial' },
