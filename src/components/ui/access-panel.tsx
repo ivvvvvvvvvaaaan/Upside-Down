@@ -41,7 +41,7 @@ function InlineDropdown({ label, options, onSelect }: { label: string; options: 
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-0.5 text-label-0-regular text-foreground-dim hover:text-foreground transition-colors"
+        className="flex items-center gap-0.5 text-label-0-regular text-foreground hover:text-foreground-system-link transition-colors"
       >
         {label}
         <ChevronDown className="w-3 h-3" />
@@ -470,7 +470,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-3 w-full justify-end">
+              <div className="flex items-center gap-3 pl-6">
                 <InlineDropdown
                   label={link.allowDownload ? 'View + Download' : 'View only'}
                   options={['View only', 'View + Download']}

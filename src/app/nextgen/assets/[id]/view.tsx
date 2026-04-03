@@ -316,7 +316,7 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
                       {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
                       {asset.isFinal && <Tag type="positive">Final</Tag>}
                       {asset.department && (
-                        <Tag type="neutral" variant="border">
+                        <Tag type="neutral">
                           {DEPARTMENT_NAMES[asset.department]}
                         </Tag>
                       )}
