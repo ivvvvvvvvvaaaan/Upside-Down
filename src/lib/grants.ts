@@ -4,11 +4,13 @@ import { isUserInTeam, getTeamById } from '@/lib/teams'
 import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 import {
   buildGrants,
+  buildGuestLinks,
   buildLabels,
   buildRoleGroups,
 } from '@/lib/scenario'
+import type { GuestLinkSeed } from '@/lib/scenario'
 
-export type ResourceType = 'asset' | 'folder' | 'collection' | 'smart-collection' | 'review-set' | 'project'
+export type ResourceType = 'asset' | 'cut' | 'folder' | 'collection' | 'smart-collection' | 'review-set' | 'project'
 
 export type ResourceRef = {
   id: string
@@ -59,12 +61,15 @@ export type Grant = {
   grantedByUserId: string
   grantedAt: string
   revokedAt?: string
+  expiresAt?: string
   ripplePolicy?: RipplePolicy
   ripplePermissions?: Permission[]
 }
 
+
 export const DEFAULT_ROLE_GROUPS: RoleGroup[] = buildRoleGroups()
 export const DEFAULT_GRANTS: Grant[] = buildGrants()
+export const DEFAULT_GUEST_LINKS: GuestLinkSeed[] = buildGuestLinks()
 
 const SEED_LABELS = buildLabels()
 
@@ -374,7 +379,8 @@ function principalLabel(principal: PrincipalRef): string {
   }
 
   const team = getTeamById(principal.teamId)
-  return team ? `${team.name} (team)` : principal.teamId
+  if (!team) return principal.teamId
+  return team.departmentId ? `${team.name} (department)` : `${team.name} (team)`
 }
 
 function grantToView(grant: Grant): GrantView {

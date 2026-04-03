@@ -38,12 +38,30 @@ describe('grant-based access model', () => {
     expect(maria.effectiveProfile).toBe('editor')
   })
 
+  it('lets a direct person override outrank the department default', () => {
+    const customOverride: Grant = {
+      id: 'editorial-override',
+      resource: { id: 'ws-editorial', type: 'folder', departmentId: 'editorial' },
+      principal: { type: 'user', userId: 'editorial-coordinator' },
+      templateId: 'manager',
+      permissions: DEFAULT_ROLE_GROUPS.find((group) => group.id === 'manager')!.permissions,
+      grantedByUserId: 'studio-alex',
+      grantedAt: '2026-04-02',
+    }
+
+    const lisa = resolveAccess('editorial-coordinator', 'ws-editorial', [...DEFAULT_GRANTS, customOverride])
+
+    expect(lisa.hasAccess).toBe(true)
+    expect(lisa.source).toBe('direct')
+    expect(lisa.effectiveProfile).toBe('manager')
+  })
+
   it('keeps studio and creative users explicit-share only for resource access', () => {
     expect(userHasAccess('studio-alex', 'vfx', DEFAULT_GRANTS)).toBe(false)
     expect(userHasAccess('creative-david', 'vfx', DEFAULT_GRANTS)).toBe(false)
 
-    expect(userHasAccess('studio-alex', 'ws-edit-cut-1', DEFAULT_GRANTS)).toBe(true)
-    expect(userHasAccess('creative-david', 'ws-art-concept-1', DEFAULT_GRANTS)).toBe(true)
+    expect(userHasAccess('studio-alex', 'cut-ep301-lc-2', DEFAULT_GRANTS)).toBe(true)
+    expect(userHasAccess('creative-david', 'cut-ep301-lc-1', DEFAULT_GRANTS)).toBe(true)
   })
 
   it('keeps vendor access explicit-share only', () => {
@@ -51,9 +69,36 @@ describe('grant-based access model', () => {
     expect(userHasAccess('vendor-framestore', 'ws-vfx-coll-for-vendor', DEFAULT_GRANTS)).toBe(true)
   })
 
-  it('resolves team grants correctly', () => {
-    expect(userHasAccess('vfx-supervisor', 'ws-edit-coll-for-vfx', DEFAULT_GRANTS)).toBe(true)
-    expect(userHasAccess('vendor-framestore', 'ws-edit-coll-for-vfx', DEFAULT_GRANTS)).toBe(false)
+  it('resolves direct resource shares correctly', () => {
+    expect(userHasAccess('vfx-supervisor', 'ws-cam-lensmaps', DEFAULT_GRANTS)).toBe(true)
+    expect(userHasAccess('vendor-framestore', 'ws-cam-lensmaps', DEFAULT_GRANTS)).toBe(false)
+  })
+
+  it('lets resource shares target access groups as real ACL principals', () => {
+    const reviewFolder: ResourceRef = { id: 'studio-review-drop', type: 'folder' }
+    const accessGroupGrant: Grant = {
+      id: 'access-group-grant',
+      resource: reviewFolder,
+      principal: { type: 'team', teamId: 'studio-leadership' },
+      templateId: 'viewer',
+      permissions: DEFAULT_ROLE_GROUPS.find((group) => group.id === 'viewer')!.permissions,
+      grantedByUserId: 'editorial-coordinator',
+      grantedAt: '2026-04-02',
+    }
+
+    const alex = resolveAccess('studio-alex', reviewFolder.id, [...DEFAULT_GRANTS, accessGroupGrant])
+    const david = resolveAccess('creative-david', reviewFolder.id, [...DEFAULT_GRANTS, accessGroupGrant])
+    const james = resolveAccess('vendor-framestore', reviewFolder.id, [...DEFAULT_GRANTS, accessGroupGrant])
+
+    expect(alex.hasAccess).toBe(true)
+    expect(alex.source).toBe('team')
+    expect(alex.effectiveProfile).toBe('viewer')
+
+    expect(david.hasAccess).toBe(true)
+    expect(david.source).toBe('team')
+    expect(david.effectiveProfile).toBe('viewer')
+
+    expect(james.hasAccess).toBe(false)
   })
 
   it('tracks received shares for inbox', () => {

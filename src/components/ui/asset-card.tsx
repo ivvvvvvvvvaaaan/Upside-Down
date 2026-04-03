@@ -313,17 +313,30 @@ export function AssetCard({
             </Link>
           )}
 
-          {/* Tag + Metadata - 2nd line: type tag + status from unified tags */}
-          <div className="flex items-center gap-2 overflow-hidden">
+          {/* Tag + Metadata - 2nd line: type tag, status, release */}
+          <div className="flex items-center gap-1 flex-wrap">
             {(() => {
-              // Prefer unified tags, fall back to legacy
               if (asset.tags?.length) {
-                const typeTag = asset.tags.find(t => t.source === 'system' && t.label !== 'Key Art' && t.label !== 'Final')
-                const statusTag = asset.tags.find(t => t.label === 'Key Art' || t.label === 'Final')
+                const statusLabels = new Set(['Key Art', 'Final'])
+                // 1. Type tag — first system tag that isn't a known status
+                const typeTag = asset.tags.find(t => t.source === 'system' && !statusLabels.has(t.label))
+                // 2. Status tags — Final, Key Art
+                const statusTag = asset.tags.find(t => statusLabels.has(t.label))
+                // 3. Everything else after the type tag = release/overflow tags
+                const rest = asset.tags.filter(t => t.source === 'system' && t !== typeTag && !statusLabels.has(t.label))
                 return (
                   <>
                     {typeTag && <Tag>{typeTag.label}</Tag>}
                     {statusTag && <Tag type={statusTag.label === 'Final' ? 'positive' : 'announcement'}>{statusTag.label}</Tag>}
+                    {rest.map(t => (
+                      <Tag
+                        key={t.label}
+                        type={t.label === 'ALL' ? 'positive' : t.label.startsWith('+') ? 'neutral' : 'notice'}
+                        variant={t.label.startsWith('+') ? 'border' : 'fill'}
+                      >
+                        {t.label}
+                      </Tag>
+                    ))}
                   </>
                 )
               }

@@ -32,6 +32,8 @@ export const DESKTOP_ELIGIBLE_PERSONA_IDS = [
   'art-artist',
   'vfx-supervisor',
   'vendor-framestore',
+  'camera-dit',
+  'audio-supervisor',
 ] as const
 
 const DESKTOP_ELIGIBLE_PERSONA_ID_SET = new Set<string>(DESKTOP_ELIGIBLE_PERSONA_IDS)

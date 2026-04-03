@@ -266,7 +266,6 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
             open={sidePanelOpen && !primaryAsset}
             onClose={() => setSidePanelOpen(false)}
             onDelete={handleDeleteCollection}
-            reviewNoteSummary={reviewNoteSummary}
             canDelete={isOwner}
           />
         )}

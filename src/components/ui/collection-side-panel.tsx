@@ -5,8 +5,9 @@ import { Button } from './button'
 import { ResponsivePanel } from './responsive-panel'
 import { AccessSummary } from './access-summary'
 import { Tag } from './tag'
+import { CreativeReviewCard } from './creative-review-card'
 import type { UserCollection } from '@/hooks'
-import type { ReviewNoteSummary } from '@/lib/review-notes'
+import { getCollectionReviewSummary } from '@/lib/review-notes'
 import type { ResourceRef } from '@/lib/grants'
 import { useAccess, usePersona } from '@/hooks'
 import { PERSONAS } from '@/lib/personas'
@@ -16,7 +17,6 @@ interface CollectionSidePanelProps {
   open: boolean
   onClose: () => void
   onDelete: () => void
-  reviewNoteSummary?: ReviewNoteSummary | null
   canDelete?: boolean
 }
 
@@ -25,9 +25,9 @@ export function CollectionSidePanel({
   open,
   onClose,
   onDelete,
-  reviewNoteSummary = null,
   canDelete = true,
 }: CollectionSidePanelProps) {
+  const reviewNoteSummary = getCollectionReviewSummary(collection.id, collection.assetIds)
   const { sharesReceivedByMe, allProjectShares } = useAccess()
   const { isAdmin } = usePersona()
 
@@ -84,36 +84,9 @@ export function CollectionSidePanel({
           resourceName={collection.name}
         />
 
-        <section className="space-y-2">
-          <h3 className="text-body-0-bold text-foreground-dim">Creative Review</h3>
-          {reviewNoteSummary ? (
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <p className="text-body-0-regular text-foreground-dim">Latest</p>
-                <p className="text-body-0-regular text-foreground">{reviewNoteSummary.latestSummary}</p>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Tag size="compact" type="announcement">{reviewNoteSummary.totalNotes} notes</Tag>
-                <Tag size="compact" type={reviewNoteSummary.unresolvedCount > 0 ? 'notice' : 'positive'}>
-                  {reviewNoteSummary.unresolvedCount} unresolved
-                </Tag>
-              </div>
-              <a
-                href={reviewNoteSummary.externalUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 text-body-0-regular text-foreground hover:text-foreground-system-link transition-colors"
-              >
-                <ExternalLink className="w-4 h-4 flex-shrink-0" />
-                Open in Creative Review
-              </a>
-            </div>
-          ) : (
-            <p className="text-body-0-regular text-foreground-dim">
-              No linked Creative Review activity yet.
-            </p>
-          )}
-        </section>
+        {reviewNoteSummary && (
+          <CreativeReviewCard summary={reviewNoteSummary} />
+        )}
       </div>
 
       {canDelete && (

@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Card } from './card'
@@ -61,7 +62,7 @@ function Modal({
 
   if (!isOpen) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
       <div
         className="absolute inset-0 bg-surface-overlay"
@@ -74,7 +75,8 @@ function Modal({
       >
         {children}
       </Card>
-    </div>
+    </div>,
+    document.body
   )
 }
 

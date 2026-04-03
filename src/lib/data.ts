@@ -11,6 +11,8 @@ import type { Asset, Collection, DepartmentId } from '@/lib/data-client'
 
 export type {
   AssetType,
+  AssetKind,
+  CutStage,
   ShotMetadata,
   VideoMetadata,
   ImageMetadata,
@@ -31,7 +33,7 @@ export type {
 
 const MOCK_ASSETS: Asset[] = []
 
-function getAssetIdVariants(id: string): string[] {
+export function getAssetIdVariants(id: string): string[] {
   if (id.startsWith('inst-')) {
     return [id, id.slice(5)]
   }

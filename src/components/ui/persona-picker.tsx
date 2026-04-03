@@ -38,7 +38,7 @@ export function PersonaPicker({
   }, [])
 
   return (
-    <div ref={ref} className="relative z-[1100]">
+    <div ref={ref} className="relative z-50">
       {compact ? (
         <button
           onClick={() => setOpen(!open)}
@@ -100,7 +100,7 @@ export function PersonaPicker({
 
       {open && (
         <div className={cn(
-          'absolute w-72 bg-surface-1 border border-border-dim rounded shadow-lg z-[1200] overflow-hidden',
+          'absolute w-72 bg-surface-1 border border-border-dim rounded shadow-lg z-50 overflow-hidden',
           compact ? 'top-full right-0 mt-1' : 'bottom-full left-0 mb-1'
         )}>
           {/* Admin option */}

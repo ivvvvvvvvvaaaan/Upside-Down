@@ -6,6 +6,16 @@ import { getPromotedWorkspaceAssets } from '@/lib/prototype-assets'
 // Asset Types
 export type AssetType = 'shot' | 'video' | 'image' | 'text' | 'audio'
 
+/** Composite asset kinds — assembled from multiple source files */
+export type AssetKind = 'file' | 'cut' | 'sequence'
+
+/** Cut progression stages */
+export type CutStage =
+  | 'locked-cut'
+  | 'netflix-cut'
+  | 'final-cut'
+  | 'emf'
+
 export type ShotMetadata = {
   scene?: string
   take?: string
@@ -89,6 +99,16 @@ export type Asset = {
   id: string
   name: string
   type: AssetType
+  /** Composite kind — 'cut' and 'sequence' are assembled from constituent files */
+  kind?: AssetKind
+  /** Cut stage in the editorial progression */
+  stage?: CutStage
+  /** Version number within a stage (e.g. Director's Cut v4 → version: 4) */
+  version?: number
+  /** Episode identifier (e.g. 'EP301') */
+  episode?: string
+  /** IDs of source files that make up this composite asset */
+  constituents?: string[]
   thumbnail?: string
   shotMeta?: ShotMetadata
   videoMeta?: VideoMetadata
@@ -127,7 +147,7 @@ type PreviewableUserCollection = {
 
 export type SharePreviewResource = {
   resourceId: string
-  resourceType: 'asset' | 'folder' | 'collection' | 'smart-collection' | 'review-set' | 'project'
+  resourceType: 'asset' | 'cut' | 'folder' | 'collection' | 'smart-collection' | 'review-set' | 'project'
   departmentId?: DepartmentId
 }
 
@@ -326,6 +346,10 @@ export function getSharePreviewImages(
 ): string[] | undefined {
   if (resource.resourceType === 'asset') {
     return uniquePreviewImages([getPrototypeAsset(resource.resourceId)?.thumbnail], 1)
+  }
+
+  if (resource.resourceType === 'cut') {
+    return uniquePreviewImages([pick(allImages, resource.resourceId, 1)[0]], 1)
   }
 
   if (resource.resourceType === 'folder') {

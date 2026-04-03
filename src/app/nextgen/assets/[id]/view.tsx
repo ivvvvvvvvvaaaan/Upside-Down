@@ -367,8 +367,6 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
           asset={asset}
           open={sidePanelOpen}
           onClose={() => setSidePanelOpen(false)}
-          collections={visibleCollections}
-          relatedGroups={relatedGroups}
           reviewNoteSummary={reviewNoteSummary}
         />
       </div>

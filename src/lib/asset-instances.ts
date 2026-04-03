@@ -124,6 +124,12 @@ export function groupInstancesByCategory(
 
 import { pick, IMAGE_POOL } from '@/lib/images'
 
+/** Assets marked as final — approved and locked */
+const FINAL_ASSET_IDS = new Set([
+  'ws-vfx-010-010',  // SEQ010 SH010 comp — approved by Mike
+  'ws-vfx-010-020',  // SEQ010 SH020 comp — signed off after third pass
+])
+
 /** Only visual media types get preview thumbnails */
 function getThumbnail(instance: AssetInstance): string | undefined {
   if (instance.type === 'image' || instance.type === 'video') {
@@ -146,6 +152,7 @@ export function promotedInstanceToAsset(instance: AssetInstance): Asset {
     workspacePath: instance.sourcePath,
     sourceFolderIds: instance.sourceFolderId ? [instance.sourceFolderId] : undefined,
     thumbnail: getThumbnail(instance),
+    isFinal: FINAL_ASSET_IDS.has(instance.id),
   }
 
   // Set typeTag from AI tags or fall back to category name

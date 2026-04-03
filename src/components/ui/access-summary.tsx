@@ -69,7 +69,6 @@ export function AccessSummary({
         <Button
           variant="secondary"
           compact
-          className="w-full"
           onClick={() => setModalOpen(true)}
         >
           Manage Access

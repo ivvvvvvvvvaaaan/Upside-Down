@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { Search, ChevronDown, Plus, X, Info } from 'lucide-react'
+import { Facepile } from './facepile'
 import { Modal } from './modal'
 import { Button } from './button'
 import { Input } from './input'
@@ -11,7 +12,8 @@ import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import { useAccess } from '@/hooks'
 import { cn } from '@/lib/utils'
 import { PERSONAS } from '@/lib/personas'
-import { TEAMS, getTeamsForUser } from '@/lib/teams'
+import type { User } from '@/lib/personas'
+import { TEAMS } from '@/lib/teams'
 import { PROJECT_RESOURCE, profileLabel } from '@/lib/grants'
 import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef, ResourceRef } from '@/lib/grants'
 import type { DepartmentId } from '@/components/department/types'
@@ -77,6 +79,7 @@ function PeopleTab({
   onAdd,
   canAdd,
   canManage,
+  availablePeople,
 }: {
   grants: Grant[]
   roleGroups: RoleGroup[]
@@ -85,6 +88,7 @@ function PeopleTab({
   onAdd: (principal: PrincipalRef, profileId: AccessProfileId) => void
   canAdd: boolean
   canManage: boolean
+  availablePeople: User[]
 }) {
   const [newEmail, setNewEmail] = useState('')
 
@@ -92,7 +96,7 @@ function PeopleTab({
     if (!canAdd) return
     const email = newEmail.trim().toLowerCase()
     if (!email) return
-    const persona = PERSONAS.find((p) => p.email === email)
+    const persona = availablePeople.find((p) => p.email === email)
     if (!persona) return
     if (grants.some((g) => g.principal.type === 'user' && g.principal.userId === persona.id)) return
     onAdd({ type: 'user', userId: persona.id }, 'viewer')
@@ -103,24 +107,25 @@ function PeopleTab({
 
   return (
     <div className="space-y-3">
+      <p className="text-body-0-regular text-foreground-dim">
+        Add people who need project access outside the department structure.
+      </p>
+
       {canAdd && (
-        <div className="space-y-2">
-          <h4 className="text-label-1-bold text-foreground">Search Users</h4>
-          <div className="flex gap-2">
-            <Input
-              icon={<Search />}
-              iconPosition="left"
-              type="email"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-              placeholder="Search..."
-            />
-            <Button variant="secondary" onClick={handleAdd} disabled={!newEmail.trim()}>
-              <Plus className="w-3 h-3 mr-1" />
-              Add
-            </Button>
-          </div>
+        <div className="flex gap-2">
+          <Input
+            icon={<Search />}
+            iconPosition="left"
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            placeholder="Add by email..."
+          />
+          <Button variant="secondary" onClick={handleAdd} disabled={!newEmail.trim()}>
+            <Plus className="w-3 h-3 mr-1" />
+            Add
+          </Button>
         </div>
       )}
 
@@ -133,10 +138,9 @@ function PeopleTab({
             if (principal.type !== 'user') return null
             const persona = PERSONAS.find((p) => p.id === principal.userId)
             if (!persona) return null
-            const teams = getTeamsForUser(persona.id)
 
             return (
-              <div key={grant.id} className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-surface-1 transition-colors">
+              <div key={grant.id} className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-surface-3/40 transition-colors">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <Avatar name={persona.name} size="sm" />
                   <div className="min-w-0 flex-1">
@@ -146,14 +150,7 @@ function PeopleTab({
                         <span className="text-label-0-regular text-foreground-dim truncate hidden sm:inline">{persona.title}</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-label-0-regular text-foreground-dim truncate">{persona.email}</span>
-                      {teams.length > 0 && (
-                        <span className="text-label-0-regular text-foreground-dim">
-                          · {teams.map(t => t.name).join(', ')}
-                        </span>
-                      )}
-                    </div>
+                    <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
@@ -187,16 +184,23 @@ function DepartmentsTab({
   roleGroups,
   getResourceGrants,
   onRoleChange,
+  onAddGrant,
+  onRemoveGrant,
+  canShareResource,
   canEditResource,
   readOnly = false,
 }: {
   roleGroups: RoleGroup[]
   getResourceGrants: (resourceId: string) => Grant[]
   onRoleChange: (grantId: string, profileId: AccessProfileId) => void
+  onAddGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId) => void
+  onRemoveGrant: (grantId: string) => void
+  canShareResource: (resource: ResourceRef) => boolean
   canEditResource: (resource: ResourceRef) => boolean
   readOnly?: boolean
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [editingOverrides, setEditingOverrides] = useState<Set<string>>(new Set())
 
   const toggle = (id: string) => {
     setExpanded(prev => {
@@ -220,7 +224,7 @@ function DepartmentsTab({
   return (
     <div className="space-y-3">
       <p className="text-body-0-regular text-foreground-dim">
-        Departments control who can access content. Members are shown for context and follow the department access set above.
+        Departments own content. Members get workspace access automatically based on the role set here.
       </p>
 
       <div className="space-y-1">
@@ -234,14 +238,17 @@ function DepartmentsTab({
           const grant = team
             ? rootGrants.find(g => g.principal.type === 'team' && g.principal.teamId === team.id)
             : undefined
+          const canShareDepartment = canShareResource(resourceRef)
           const canEditDepartment = canEditResource(resourceRef)
+          const noDefaultAccessValue = '__no_default_access__'
+          const defaultRoleValue = grant?.templateId ?? noDefaultAccessValue
           const defaultMemberLabel = grant?.templateId
             ? profileLabel(grant.templateId, roleGroups)
             : 'No default access'
 
           return (
-            <div key={departmentId} className="rounded">
-              <div className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-surface-1 transition-colors">
+            <div key={departmentId} className={cn('rounded-lg transition-colors', isOpen && 'bg-surface-3/40')}>
+              <div className={cn('flex items-center justify-between gap-2 py-2 px-2 rounded-lg transition-colors', !isOpen && 'hover:bg-surface-3/40')}>
                 <button
                   onClick={() => toggle(departmentId)}
                   className="flex items-center gap-2 min-w-0 flex-1"
@@ -253,16 +260,39 @@ function DepartmentsTab({
                       {members.length} {members.length === 1 ? 'member' : 'members'}
                     </span>
                   </div>
+                  {!isOpen && members.length > 0 && (
+                    <Facepile
+                      users={members.filter(Boolean).map(p => ({ id: p!.id, name: p!.name }))}
+                      max={4}
+                      size="compact"
+                    />
+                  )}
                 </button>
-                {grant ? (
+                {team ? (
                   <Select
-                    options={options}
-                    value={grant.templateId ?? 'viewer'}
-                    onChange={(v) => onRoleChange(grant.id, v as AccessProfileId)}
+                    options={[{ value: noDefaultAccessValue, label: 'No default access' }, ...options]}
+                    value={defaultRoleValue}
+                    onChange={(value) => {
+                      if (value === noDefaultAccessValue) {
+                        if (grant) onRemoveGrant(grant.id)
+                        return
+                      }
+
+                      if (grant) {
+                        onRoleChange(grant.id, value as AccessProfileId)
+                        return
+                      }
+
+                      onAddGrant(
+                        resourceRef,
+                        { type: 'team', teamId: team.id },
+                        value as AccessProfileId,
+                      )
+                    }}
                     size="compact"
                     borderless
                     className="w-auto flex-shrink-0"
-                    disabled={readOnly || !canEditDepartment}
+                    disabled={readOnly || (grant ? !canEditDepartment : !canShareDepartment)}
                   />
                 ) : (
                   <span className="text-label-0-regular text-foreground-dim flex-shrink-0">
@@ -271,28 +301,102 @@ function DepartmentsTab({
                 )}
               </div>
               {isOpen && (
-                <div className="relative py-1">
-                  {members.filter(Boolean).map((persona, i, arr) => persona && (
-                    <div key={persona.id} className="relative flex items-center gap-2 py-1.5 pl-4 pr-2 rounded hover:bg-surface-1 transition-colors">
-                      {/* Vertical trunk: top half always, bottom half except last */}
-                      <div className="absolute left-1.5 top-0 h-1/2 border-l border-border-dim" />
-                      {i < arr.length - 1 && (
-                        <div className="absolute left-1.5 top-1/2 bottom-0 border-l border-border-dim" />
-                      )}
-                      {/* Horizontal branch */}
-                      <div className="absolute left-1.5 top-1/2 w-2.5 border-t border-border-dim" />
-                      <Avatar name={persona.name} size="sm" className="relative" />
-                      <div className="min-w-0 flex-1">
-                        <span className="text-body-0-regular text-foreground truncate block">{persona.name}</span>
-                        <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
-                      </div>
-                      <span className="text-label-0-regular text-foreground-dim flex-shrink-0">
-                        {defaultMemberLabel}
-                      </span>
-                    </div>
+                <div className="px-2 pb-2">
+                  {members.filter(Boolean).map((persona) => persona && (
+                    (() => {
+                      const overrideGrant = rootGrants.find(
+                        (candidate) => candidate.principal.type === 'user' && candidate.principal.userId === persona.id,
+                      )
+                      const overrideKey = `${departmentId}:${persona.id}`
+                      const isEditingOverride = editingOverrides.has(overrideKey) || Boolean(overrideGrant)
+                      const memberValue = overrideGrant?.templateId ?? noDefaultAccessValue
+
+                      return (
+                        <div key={persona.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-surface-3/40 transition-colors">
+                          <Avatar name={persona.name} size="sm" />
+                          <div className="min-w-0 flex-1">
+                            <span className="text-body-0-regular text-foreground truncate block">{persona.name}</span>
+                            <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
+                          </div>
+                          {isEditingOverride ? (
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <Select
+                                options={[{ value: noDefaultAccessValue, label: defaultMemberLabel }, ...options]}
+                                value={memberValue}
+                                onChange={(value) => {
+                                  if (value === noDefaultAccessValue) {
+                                    if (overrideGrant) onRemoveGrant(overrideGrant.id)
+                                    setEditingOverrides((prev) => {
+                                      const next = new Set(prev)
+                                      next.delete(overrideKey)
+                                      return next
+                                    })
+                                    return
+                                  }
+
+                                  if (overrideGrant) {
+                                    onRoleChange(overrideGrant.id, value as AccessProfileId)
+                                    return
+                                  }
+
+                                  onAddGrant(
+                                    resourceRef,
+                                    { type: 'user', userId: persona.id },
+                                    value as AccessProfileId,
+                                  )
+                                }}
+                                size="compact"
+                                borderless
+                                className="w-auto min-w-[170px]"
+                                disabled={readOnly || (overrideGrant ? !canEditDepartment : !canShareDepartment)}
+                              />
+                              <span className="text-label-0-regular text-foreground-dim">
+                                Override
+                              </span>
+                              {!readOnly && (
+                                <Button
+                                  variant="icon"
+                                  size="compact-icon"
+                                  onClick={() => {
+                                    if (overrideGrant && canEditDepartment) {
+                                      onRemoveGrant(overrideGrant.id)
+                                    }
+                                    setEditingOverrides((prev) => {
+                                      const next = new Set(prev)
+                                      next.delete(overrideKey)
+                                      return next
+                                    })
+                                  }}
+                                  disabled={overrideGrant ? !canEditDepartment : false}
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className="text-label-0-regular text-foreground-dim text-right px-1">
+                                {defaultMemberLabel}
+                              </span>
+                              {!readOnly && canShareDepartment && (
+                                <Button
+                                  variant="secondary"
+                                  compact
+                                  onClick={() => {
+                                    setEditingOverrides((prev) => new Set(prev).add(overrideKey))
+                                  }}
+                                >
+                                  Override
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()
                   ))}
                   {members.length === 0 && (
-                    <p className="text-label-0-regular text-foreground-dim py-2 pl-4 text-center">No members yet</p>
+                    <p className="text-label-0-regular text-foreground-dim py-2 px-2 text-center">No members yet</p>
                   )}
                 </div>
               )}
@@ -425,6 +529,20 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const canShareProject = canShare(PROJECT_RESOURCE)
   const canManageProject = canEditAcl(PROJECT_RESOURCE)
   const isReadOnly = !canShareProject && !canManageProject
+  const departmentMemberIds = useMemo(
+    () => new Set(PERSONAS.filter((persona) => persona.departmentId).map((persona) => persona.id)),
+    [],
+  )
+  const adHocPeople = useMemo(
+    () => PERSONAS.filter((persona) => !persona.departmentId),
+    [],
+  )
+  const adHocProjectUserGrants = useMemo(
+    () => projectUserGrants.filter(
+      (grant) => grant.principal.type === 'user' && !departmentMemberIds.has(grant.principal.userId),
+    ),
+    [projectUserGrants, departmentMemberIds],
+  )
 
   return (
     <Modal open={open} onOpenChange={onOpenChange} size="md">
@@ -448,10 +566,10 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             </div>
           )}
 
-          <Tabs defaultValue="people" className="px-6 pt-4">
+          <Tabs defaultValue="departments" className="px-6 pt-4">
             <TabsList>
-              <Tab value="people">People</Tab>
               <Tab value="departments">Departments</Tab>
+              <Tab value="people">People</Tab>
               <Tab value="role-groups">Role Groups</Tab>
               <Tab value="settings">Settings</Tab>
             </TabsList>
@@ -459,13 +577,14 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             <div className="flex-1 overflow-y-auto max-h-[50vh] px-1 pb-4">
               <TabsContent value="people">
                 <PeopleTab
-                  grants={projectUserGrants}
+                  grants={adHocProjectUserGrants}
                   roleGroups={roleGroups}
                   onRoleChange={updateGrantProfile}
                   onRemove={revokeGrant}
                   onAdd={createProjectGrant}
                   canAdd={canShareProject}
                   canManage={canManageProject}
+                  availablePeople={adHocPeople}
                 />
               </TabsContent>
               <TabsContent value="departments">
@@ -473,6 +592,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   roleGroups={roleGroups}
                   getResourceGrants={getResourceGrants}
                   onRoleChange={updateGrantProfile}
+                  onAddGrant={createGrant}
+                  onRemoveGrant={revokeGrant}
+                  canShareResource={canShare}
                   canEditResource={canEditAcl}
                   readOnly={isReadOnly}
                 />

@@ -8,7 +8,13 @@ export type Team = {
   departmentId?: DepartmentId
 }
 
-export const TEAMS: Team[] = buildTeams()
+export const DEFAULT_TEAMS: Team[] = buildTeams()
+
+export let TEAMS: Team[] = structuredClone(DEFAULT_TEAMS)
+
+export function setTeams(next: Team[]): void {
+  TEAMS = next
+}
 
 export function getTeamsForUser(userId: string): Team[] {
   return TEAMS.filter((t) => t.memberUserIds.includes(userId))

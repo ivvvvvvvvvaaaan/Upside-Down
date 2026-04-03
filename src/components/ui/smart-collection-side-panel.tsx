@@ -58,8 +58,8 @@ function EntityCards({ items }: { items: SmartCollection[] }) {
         const { mainImage, thumbnails } = getCollectionImages(item.id)
         return (
           <Link key={item.id} href={`/nextgen/smart-collections/${item.id}`}
-            className="shrink-0 w-[140px] rounded overflow-hidden border border-border-dim group hover:border-border-subtle transition-colors">
-            <div className="flex h-16 gap-px bg-surface-2">
+            className="shrink-0 w-[140px] rounded overflow-hidden border border-border-dim group hover:border-border-subtle transition-colors relative">
+            <div className="flex h-20 gap-px bg-surface-2">
               <div className="flex-[2] relative">
                 {mainImage && <Image src={mainImage} alt={item.name} fill sizes="90px" className="object-cover" />}
               </div>
@@ -69,10 +69,10 @@ function EntityCards({ items }: { items: SmartCollection[] }) {
                 </div>
               ))}
             </div>
-            <div className="px-2 py-1">
-              <p className="text-body-0-regular text-foreground truncate group-hover:text-foreground-system-link transition-colors">
+            <div className="absolute bottom-1 left-1">
+              <span className="text-label-0-bold text-white backdrop-blur-md bg-black/40 px-2 py-0.5 rounded-full truncate max-w-[120px] block">
                 {item.name}
-              </p>
+              </span>
             </div>
           </Link>
         )
@@ -81,108 +81,6 @@ function EntityCards({ items }: { items: SmartCollection[] }) {
   )
 }
 
-function RelationshipGraph({
-  center,
-  related,
-}: {
-  center: { name: string; id: string }
-  related: { name: string; id: string; dimension: string }[]
-}) {
-  const [expanded, setExpanded] = useState(true)
-
-  if (related.length === 0) return null
-
-  const dimensionColor: Record<string, string> = {
-    characters: 'var(--indigo-500, #6366f1)',
-    scenes: 'var(--amber-500, #f59e0b)',
-    locations: 'var(--emerald-500, #10b981)',
-  }
-
-  // Dynamic viewBox: wider when more nodes to avoid text overlap
-  const nodeCount = related.length
-  const width = Math.max(400, nodeCount * 50)
-  const height = 220
-  const cx = width / 2, cy = height / 2, r = Math.min(90, width / 2 - 60)
-  const nodes = related.map((item, i) => {
-    const angle = (2 * Math.PI * i) / related.length - Math.PI / 2
-    return { ...item, x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) }
-  })
-
-  return (
-    <section className="space-y-1">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1 text-body-0-bold text-foreground-dim hover:text-foreground transition-colors"
-      >
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expanded ? '' : '-rotate-90'}`} />
-        Relationship Graph
-      </button>
-      {expanded && (
-        <div className="overflow-x-auto">
-          <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ minWidth: 320, height: 220 }}>
-            {nodes.map(n => (
-              <line key={`line-${n.id}`} x1={cx} y1={cy} x2={n.x} y2={n.y}
-                stroke="var(--border-dim, #333)" strokeWidth={1} opacity={0.5} />
-            ))}
-            <circle cx={cx} cy={cy} r={24} fill="var(--surface-3, #333)" stroke="var(--border-dim, #555)" strokeWidth={1} />
-            <style>{`
-              .graph-node { transform-origin: center; }
-              .graph-node .node-icon { opacity: 1; transition: opacity 0.15s; }
-              .graph-node .node-label { opacity: 0; transition: opacity 0.15s; }
-              .graph-node .node-scale { transition: transform 0.15s ease; transform-box: fill-box; transform-origin: center; }
-              .graph-node:hover .node-icon { opacity: 0.3; }
-              .graph-node:hover .node-label { opacity: 1; font-size: 11px; font-weight: 600; fill: var(--foreground, #fff); }
-              .graph-node:hover .node-scale { transform: scale(1.35); }
-              .graph-node:hover ~ .center-label { opacity: 0.3; }
-              .center-label { transition: opacity 0.15s; }
-            `}</style>
-            {nodes.map(n => {
-              const { mainImage } = getCollectionImages(n.id)
-              const isCharacter = n.dimension === 'characters'
-              const DimensionIcon = n.dimension === 'scenes' ? SceneIcon : LocationIcon
-              return (
-                <a key={n.id} href={`/nextgen/smart-collections/${n.id}`} className="graph-node" style={{ cursor: 'pointer' }}>
-                  <g className="node-scale">
-                    {isCharacter ? (
-                      <>
-                        <defs>
-                          <clipPath id={`clip-${n.id}`}>
-                            <circle cx={n.x} cy={n.y} r={13} />
-                          </clipPath>
-                        </defs>
-                        <circle cx={n.x} cy={n.y} r={14} fill="none" stroke={dimensionColor[n.dimension] ?? '#555'} strokeWidth={1.5} />
-                        <image href={mainImage} x={n.x - 13} y={n.y - 13} width={26} height={26} preserveAspectRatio="xMidYMid slice" clipPath={`url(#clip-${n.id})`} className="node-icon" />
-                      </>
-                    ) : (
-                      <>
-                        <circle cx={n.x} cy={n.y} r={14}
-                          fill="var(--surface-2, #222)" stroke={dimensionColor[n.dimension] ?? 'var(--border-dim, #555)'} strokeWidth={1.5} />
-                        <foreignObject x={n.x - 8} y={n.y - 8} width={16} height={16} className="node-icon pointer-events-none">
-                          <div style={{ width: 16, height: 16, color: dimensionColor[n.dimension] ?? '#aaa', transform: 'scale(0.67)', transformOrigin: 'top left' }}>
-                            <DimensionIcon />
-                          </div>
-                        </foreignObject>
-                      </>
-                    )}
-                  </g>
-                  <text x={n.x} y={n.y + 1} textAnchor="middle" dominantBaseline="middle"
-                    fill="var(--foreground-dim, #aaa)" fontSize="9"
-                    className="node-label pointer-events-none">
-                    {n.name}
-                  </text>
-                </a>
-              )
-            })}
-            <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle"
-              fill="var(--foreground, #fff)" fontSize="11" fontWeight="600" className="center-label pointer-events-none">
-              {center.name.length > 14 ? center.name.slice(0, 13) + '…' : center.name}
-            </text>
-          </svg>
-        </div>
-      )}
-    </section>
-  )
-}
 
 const DIMENSION_CONFIG = {
   characters: { label: 'Characters', Icon: Users },
@@ -337,14 +235,7 @@ export function SmartCollectionSidePanel({
           />
         ) : isRelationshipMode ? (
           <div className="space-y-4">
-            <RelationshipGraph
-              center={{ name: collection.name, id: collection.id }}
-              related={[
-                ...relationships.characters.map(c => ({ name: c.name, id: c.id, dimension: 'characters' })),
-                ...relationships.scenes.map(s => ({ name: s.name, id: s.id, dimension: 'scenes' })),
-                ...relationships.locations.map(l => ({ name: l.name, id: l.id, dimension: 'locations' })),
-              ]}
-            />
+            <h3 className="text-body-0-bold text-foreground">Relationships</h3>
             {relationships.characters.length > 0 && (
               <section className="space-y-2">
                 <h3 className="text-body-0-bold text-foreground-dim">Characters</h3>
@@ -373,16 +264,14 @@ export function SmartCollectionSidePanel({
           </div>
         ) : (
           <div className="space-y-4">
-            {!isRelationshipMode && (
-              <Button
-                variant="secondary"
-                compact
-                icon={<Pencil className="w-3.5 h-3.5" />}
-                onClick={startEditing}
-              >
-                Edit filters
-              </Button>
-            )}
+            <Button
+              variant="secondary"
+              compact
+              icon={<Pencil className="w-3.5 h-3.5" />}
+              onClick={startEditing}
+            >
+              Edit filters
+            </Button>
           </div>
         )}
       </div>

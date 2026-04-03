@@ -73,6 +73,26 @@ Terms like "ready for editorial", "shared to studio", or "surfaced to studio" ma
 - Workflow signals decide how the UI frames content and what actions it suggests next
 - Different teams can use strict sign-off or lightweight handoff without changing the permission model
 
+### 8. Composite assets grant access to their constituents
+
+Some assets are assembled from multiple source files — a cut is built from video, audio, VFX plates, and music. A sequence is built from frames and audio. Access to the composite grants implicit view access to its constituent files.
+
+This is a directed traversal: having access to the composite lets you see its parts, but having access to one source file does not give you access to the composite.
+
+- Access to a cut → view access to its constituent files (the video, audio stems, VFX plates that make it up)
+- Constituent access → context relationship traversal (alternate takes, angles, scenes from those files)
+- Context relationships still never grant access by themselves — they surface navigation options from constituents the user can already see
+
+This means a director watching a cut can:
+1. See the cut (explicit grant)
+2. See the constituent files it was assembled from (constituent ripple)
+3. Explore alternate takes and angles connected to those constituents (context relationship traversal)
+4. Only open related assets if they're reachable through the constituent → context path
+
+This is how a showrunner can watch a cut and ask "what other angles did we shoot for this scene?" without needing a separate grant for every camera take. The access path is explainable: "You can see Take A because it's an alternate angle of Take B, which is a constituent of Locked Cut 3, which was shared to you."
+
+Revoking the cut grant removes the entire traversal chain.
+
 ---
 
 ## Roles & Identity
@@ -529,6 +549,7 @@ type ResourceEdgeType =
   | 'contains'        // folder -> folder or folder -> asset
   | 'references'      // collection -> asset
   | 'review-set-item' // review-set -> asset / collection
+  | 'assembled-from'  // composite asset (cut, sequence) -> constituent files
 ```
 
 ```ts
@@ -546,6 +567,7 @@ Rules:
 - Folder inheritance follows `contains`
 - Collection ripple follows `references`
 - Creative Review set ripple follows `review-set-item`
+- Composite asset constituent access follows `assembled-from`
 
 ### 1b. Context Relationships
 
@@ -570,9 +592,10 @@ type ContextRelationship = {
 Rules:
 
 - Context relationships never grant access by themselves
-- They help the UI surface connected options from a directly shared asset, collection item, or review-set item
-- The UI should only open related assets if the user already has access through a grant, inheritance path, or ripple path
+- They help the UI surface connected options from a directly shared asset, collection item, review-set item, or composite asset constituent
+- The UI should only open related assets if the user already has access through a grant, inheritance path, ripple path, or constituent traversal path
 - If a related asset is not accessible, the UI can still show lightweight metadata such as "3 alternate angles available"
+- When a user has access to a composite asset (cut, sequence), context relationships from its constituents become navigable — this is the primary mechanism for creative exploration (see Principle 8)
 
 ### 2. Named Grants
 
@@ -737,6 +760,25 @@ Example:
 - Editorial can open the shots in that collection
 - Editorial does not gain general access to the `ws-vfx-shots` folder
 
+### Composite Asset Constituent Ripple
+
+Composite assets (cuts, sequences) are assembled from multiple source files. Access to the composite ripples to its constituents.
+
+Recommended behavior:
+
+- Default composite share: constituents get `read-only` access
+- Constituent access does not grant parent folder browsing
+- Constituent access enables context relationship traversal (alternate takes, angles, scenes)
+- Context traversal is view-only and non-transitive — you can see one hop from a constituent, not chain indefinitely
+
+Example:
+
+- Director gets "Can comment" on `EP301 Locked Cut 3`
+- Director can view constituent files: the ProRes export, the 5.1 mix, the SFX stems
+- Director can explore alternate takes of Scene 12 (context relationship from the camera take constituent)
+- Director cannot browse the Camera or Audio workspace folders
+- Revoking the cut grant removes all downstream constituent and context access
+
 ### Creative Review Set Ripple
 
 Creative Review set access is specialized.
@@ -756,7 +798,9 @@ Effective access is computed from all active paths.
 3. Inherited folder grants through ancestor `contains` edges
 4. Collection ripple through `references` edges
 5. Creative Review set ripple through `review-set-item` edges
-6. Active guest link grants, only when a valid token is presented
+6. Composite asset constituent ripple through `assembled-from` edges
+7. Context relationship traversal from any accessible asset (view-only, non-transitive)
+8. Active guest link grants, only when a valid token is presented
 
 ### Merge Rules
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { X, ArrowRight, LayoutGrid, FileText, Folder } from 'lucide-react'
+import { X, ArrowRight, LayoutGrid, FileText, Folder, Film, Clock, Link2, Lock } from 'lucide-react'
 import { Modal } from './modal'
 import { Tag } from './tag'
 import { Avatar } from './avatar'
@@ -42,36 +42,61 @@ function formatDate(dateStr: string) {
 function ResourceIcon({ type }: { type: string }) {
   if (type === 'collection' || type === 'smart-collection') return <LayoutGrid className="w-3.5 h-3.5" />
   if (type === 'folder') return <Folder className="w-3.5 h-3.5" />
+  if (type === 'cut') return <Film className="w-3.5 h-3.5" />
   return <FileText className="w-3.5 h-3.5" />
 }
 
 export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
   const events = useMemo(() => {
-    return SCENARIO.shares
-      .map(share => {
-        const sharer = getPersona(share.by)
-        const recipients = share.grants.map(g => {
-          if ('to' in g) {
-            const p = getPersona(g.to)
-            return { type: 'user' as const, label: p?.name ?? g.to, title: p?.title, role: p?.role }
-          }
-          return { type: 'team' as const, label: SCENARIO.teams.find(t => t.id === g.toTeam)?.name ?? g.toTeam, title: undefined, role: undefined }
-        })
-        return {
-          date: share.date,
-          label: share.label,
-          resourceType: share.resource.type,
-          dept: share.resource.dept,
-          sharerName: sharer?.name ?? share.by,
-          sharerTitle: sharer?.title,
-          sharerRole: sharer?.role ?? 'unknown',
-          sharerId: share.by,
-          recipients,
-          context: share.context,
-          revoked: share.revoked ?? false,
+    const shareEvents = SCENARIO.shares.map(share => {
+      const sharer = getPersona(share.by)
+      const recipients = share.grants.map(g => {
+        if ('to' in g) {
+          const p = getPersona(g.to)
+          return { type: 'user' as const, label: p?.name ?? g.to, title: p?.title, role: p?.role }
         }
+        const teamId = (g as { toTeam: string }).toTeam
+        return { type: 'team' as const, label: SCENARIO.teams.find(t => t.id === teamId)?.name ?? teamId, title: undefined, role: undefined }
       })
-      .sort((a, b) => a.date.localeCompare(b.date))
+      return {
+        kind: 'share' as const,
+        date: share.date,
+        label: share.label,
+        resourceType: share.resource.type,
+        dept: share.resource.dept,
+        sharerName: sharer?.name ?? share.by,
+        sharerTitle: sharer?.title,
+        sharerRole: sharer?.role ?? 'unknown',
+        sharerId: share.by,
+        recipients,
+        context: share.context,
+        revoked: share.revoked ?? false,
+        expiresAt: share.expiresAt,
+      }
+    })
+
+    const linkEvents = SCENARIO.guestLinks.map(link => {
+      const creator = getPersona(link.createdBy)
+      return {
+        kind: 'guest-link' as const,
+        date: link.date,
+        label: link.label,
+        resourceType: link.resource.type,
+        dept: link.resource.dept,
+        sharerName: creator?.name ?? link.createdBy,
+        sharerTitle: creator?.title,
+        sharerRole: creator?.role ?? 'unknown',
+        sharerId: link.createdBy,
+        recipients: [] as { type: 'user' | 'team'; label: string; title?: string; role?: string }[],
+        context: link.context,
+        revoked: false,
+        expiresAt: link.expiresAt,
+        allowDownload: link.allowDownload,
+        passcode: link.passcode,
+      }
+    })
+
+    return [...shareEvents, ...linkEvents].sort((a, b) => a.date.localeCompare(b.date))
   }, [])
 
   // Group by date
@@ -147,23 +172,39 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
                               {event.revoked && (
                                 <Tag size="compact" type="negative" variant="border">Revoked</Tag>
                               )}
+                              {event.expiresAt && !event.revoked && (
+                                <Tag size="compact" type="notice" variant="border">
+                                  <Clock className="w-3 h-3 mr-0.5 inline" />
+                                  Expires {formatDate(event.expiresAt)}
+                                </Tag>
+                              )}
+                              {event.kind === 'guest-link' && (
+                                <Tag size="compact" type="neutral" variant="border">
+                                  <Link2 className="w-3 h-3 mr-0.5 inline" />
+                                  Guest Link
+                                </Tag>
+                              )}
+                              {'passcode' in event && event.passcode && (
+                                <Tag size="compact" type="neutral" variant="border">
+                                  <Lock className="w-3 h-3 mr-0.5 inline" />
+                                  Passcode
+                                </Tag>
+                              )}
                             </div>
 
-                            <ArrowRight className="w-3.5 h-3.5 text-foreground-dim shrink-0" />
+                            {event.recipients.length > 0 && (
+                              <ArrowRight className="w-3.5 h-3.5 text-foreground-dim shrink-0" />
+                            )}
 
                             {/* Recipients */}
                             <div className="flex items-center gap-2 flex-wrap">
                               {event.recipients.map((r, ri) => (
-                                r.type === 'team' ? (
-                                  <Tag key={ri} size="compact" variant="border" type="informative">{r.label}</Tag>
-                                ) : (
-                                  <div key={ri} className="flex items-center gap-1.5">
-                                    {r.role && <div className={cn('w-2 h-2 rounded-full shrink-0', ROLE_COLORS[r.role] ?? 'bg-foreground-dim')} />}
-                                    <Avatar name={r.label} size="compact" />
-                                    <span className="text-body-0-regular text-foreground">{r.label}</span>
-                                    {r.title && <span className="text-body-0-regular text-foreground-dim">({r.title})</span>}
-                                  </div>
-                                )
+                                <div key={ri} className="flex items-center gap-1.5">
+                                  {r.role && <div className={cn('w-2 h-2 rounded-full shrink-0', ROLE_COLORS[r.role] ?? 'bg-foreground-dim')} />}
+                                  <Avatar name={r.label} size="compact" />
+                                  <span className="text-body-0-regular text-foreground">{r.label}</span>
+                                  {r.title && <span className="text-body-0-regular text-foreground-dim">({r.title})</span>}
+                                </div>
                               ))}
                             </div>
                           </div>

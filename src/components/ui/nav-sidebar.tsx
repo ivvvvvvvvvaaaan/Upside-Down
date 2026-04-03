@@ -20,10 +20,11 @@ import {
   Video,
   Music,
   Database,
+  Film,
   Layout,
   Lock,
   Inbox,
-  Link2,
+  Import,
   Send,
   type LucideIcon,
 } from 'lucide-react'
@@ -438,7 +439,7 @@ function SharedNavSection() {
   return (
     <NavLink
       href="/nextgen/shared"
-      label="Shared by me"
+      label="Shared"
       icon={<Send className="w-4 h-4 flex-shrink-0" />}
       badge={badge > 0 ? badge : undefined}
       badgeStyle="unread"
@@ -501,7 +502,7 @@ function SmartCollectionNavItem({ collection, getChildren, indent, badge }: {
 
 /** Shared collections in the nav — all for admin, received-only for regular users */
 function SharedCollectionNavItems() {
-  const { sharesReceivedByMe, allProjectShares, readShareIds } = useAccess()
+  const { sharesReceivedByMe, allProjectShares, getCollectionAssetCount } = useAccess()
   const { isAdmin } = usePersona()
   const entries = isAdmin ? allProjectShares : sharesReceivedByMe
   const sharedCollections = entries.filter(e => e.resourceType === 'collection' || e.resourceType === 'smart-collection')
@@ -510,18 +511,17 @@ function SharedCollectionNavItems() {
   return (
     <>
       {sharedCollections.map((entry) => {
-        const isUnread = !readShareIds.has(entry.id)
         const href = entry.resourceType === 'smart-collection'
           ? `/nextgen/smart-collections/${entry.resourceId}`
           : `/nextgen/collections/${entry.resourceId}`
+        const count = getCollectionAssetCount(entry.resourceId)
         return (
           <TreeNavLink
             key={entry.id}
             href={href}
             label={entry.label}
-            badge={isUnread ? 1 : undefined}
-            badgeStyle="count"
-            trailingIcon={<Link2 className="w-3.5 h-3.5 text-foreground-dim" />}
+            badge={count || undefined}
+            trailingIcon={<Import className="w-3.5 h-3.5 text-foreground-dim" />}
             indent
           />
         )
@@ -533,7 +533,7 @@ function SharedCollectionNavItems() {
 function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
   const { visibleCollections: smartCollections, getChildren, scopedAssets } = useSmartCollections()
   const { tree: fileTree } = useFileTree()
-  const { sharesReceivedByMe, allProjectShares, canAccess, visibleCollections: userCollections } = useAccess()
+  const { sharesReceivedByMe, allProjectShares, canAccess, visibleCollections: userCollections, getCollectionAssetCount } = useAccess()
   const { activePersona, isAdmin } = usePersona()
   // Workspace-level folders: top-level folders created by user (exclude department folders already rendered above)
   const DEPT_FOLDER_IDS = new Set(Object.values(DEPARTMENT_FOLDER_MAP).map(d => d.id))
@@ -573,6 +573,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
         <div className="px-3 space-y-1">
           <NavLink href="/nextgen" label="Search" icon={<Search className="w-4 h-4 flex-shrink-0" />} />
           <InboxNavLink />
+          <NavLink href="/nextgen/library" label="Cuts" icon={<Film className="w-4 h-4 flex-shrink-0" />} matchSubpaths />
           <SharedNavSection />
           <div className="pt-3" />
           {showWorkspaceLink && (
@@ -616,7 +617,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
             key={collection.id}
             href={`/nextgen/collections/${collection.id}`}
             label={collection.name}
-            badge={collection.assetIds.length}
+            badge={getCollectionAssetCount(collection.id) || undefined}
             indent
           />
         ))}

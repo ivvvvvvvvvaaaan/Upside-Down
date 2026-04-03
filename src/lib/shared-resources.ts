@@ -9,6 +9,7 @@ export type SharedResourceRef = {
 
 export function getSharedResourceHref(resource: SharedResourceRef): string | undefined {
   if (resource.resourceType === 'asset') return `/nextgen/assets/${resource.resourceId}`
+  if (resource.resourceType === 'cut') return `/nextgen/library`
   if (resource.resourceType === 'collection') return `/nextgen/collections/${resource.resourceId}`
   if (resource.resourceType === 'smart-collection') return `/nextgen/smart-collections/${resource.resourceId}`
   if (resource.resourceType === 'folder') {

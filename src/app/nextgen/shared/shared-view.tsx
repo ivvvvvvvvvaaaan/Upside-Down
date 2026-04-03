@@ -2,12 +2,14 @@
 
 import { useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Folder, FileText, LayoutGrid } from 'lucide-react'
+import { Folder, FileText, Film, LayoutGrid, Link2, Lock, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { PageHeader, Tag, SharedSidePanel, EmptyState } from '@/components/ui'
 import { ToggleButtonGroup } from '@/components/ui/toggle-button-group'
 import { AppLayout } from '@/components/layouts'
 import { useAccess, usePersona } from '@/hooks'
 import type { GrantView } from '@/lib/grants'
+import type { GuestLinkSeed } from '@/lib/scenario'
 import { kindLabel, kindTagType } from '@/lib/access'
 import type { AccessEntryKind } from '@/lib/access'
 import { profileLabel } from '@/lib/grants'
@@ -19,6 +21,7 @@ type ShareTab = 'mine' | 'all'
 function kindIcon(kind: AccessEntryKind) {
   if (kind === 'folder') return <Folder className="w-4 h-4 text-foreground-dim flex-shrink-0" />
   if (kind === 'collection' || kind === 'smart-collection') return <LayoutGrid className="w-4 h-4 text-foreground-dim flex-shrink-0" />
+  if (kind === 'cut') return <Film className="w-4 h-4 text-foreground-dim flex-shrink-0" />
   return <FileText className="w-4 h-4 text-foreground-dim flex-shrink-0" />
 }
 
@@ -105,6 +108,117 @@ function ShareTable({
   )
 }
 
+function GuestLinksSection({ links, selectedId, onRowClick }: { links: GuestLinkSeed[]; selectedId: string | null; onRowClick: (link: GuestLinkSeed) => void }) {
+  if (links.length === 0) return null
+
+  return (
+    <div className="mt-6">
+      <h3 className="text-label-1-bold text-foreground-dim px-3 pb-2">Guest Links</h3>
+      <div className="divide-y divide-border-dim">
+        {links.map(link => {
+          const isSelected = selectedId === link.id
+          return (
+            <button
+              key={link.id}
+              onClick={() => onRowClick(link)}
+              className={cn(
+                'w-full grid grid-cols-[1fr_100px_100px_140px_120px] gap-4 px-3 py-3 text-left transition-colors',
+                isSelected ? 'bg-indigo-500/10' : 'hover:bg-surface-2',
+              )}
+            >
+              <span className="flex items-center gap-2 min-w-0">
+                <Link2 className="w-4 h-4 text-foreground-dim flex-shrink-0" />
+                <span className="text-body-0-bold text-foreground truncate">{link.label}</span>
+                {link.passcode && <Lock className="w-3 h-3 text-foreground-dim flex-shrink-0" />}
+              </span>
+              <span className="flex items-center">
+                <Tag size="compact" type="neutral">Guest Link</Tag>
+              </span>
+              <span className="flex items-center">
+                <Tag size="compact" type="neutral">{link.allowDownload ? 'View + DL' : 'View only'}</Tag>
+              </span>
+              <span className="text-body-0-regular text-foreground-subtle truncate flex items-center">
+                {(() => {
+                  const p = PERSONAS.find(persona => persona.id === link.createdByUserId)
+                  return p?.name ?? link.createdByUserId
+                })()}
+              </span>
+              <span className="text-body-0-regular text-foreground-subtle flex items-center">
+                {formatDate(link.expiresAt)}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function GuestLinkDetailPanel({ link, onClose, onRevoke }: { link: GuestLinkSeed; onClose: () => void; onRevoke: (id: string) => void }) {
+  const creator = PERSONAS.find(p => p.id === link.createdByUserId)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    const url = `${window.location.origin}/nextgen/link/${link.id}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <div className="w-[340px] border-l border-border-dim flex flex-col">
+      <div className="flex items-center justify-between p-4 border-b border-border-dim">
+        <span className="text-body-0-bold text-foreground">Guest Link</span>
+        <Button variant="icon" compact onClick={onClose}>
+          <X className="w-4 h-4" />
+        </Button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="space-y-2">
+          <div>
+            <p className="text-body-0-regular text-foreground-dim">Resource</p>
+            <p className="text-body-0-regular text-foreground">{link.label}</p>
+          </div>
+          <div>
+            <p className="text-body-0-regular text-foreground-dim">Permission</p>
+            <p className="text-body-0-regular text-foreground">{link.allowDownload ? 'View + Download' : 'View only'}</p>
+          </div>
+          <div>
+            <p className="text-body-0-regular text-foreground-dim">Created by</p>
+            <p className="text-body-0-regular text-foreground">{creator?.name ?? link.createdByUserId}</p>
+          </div>
+          <div>
+            <p className="text-body-0-regular text-foreground-dim">Created</p>
+            <p className="text-body-0-regular text-foreground">{formatDate(link.createdAt)}</p>
+          </div>
+          <div>
+            <p className="text-body-0-regular text-foreground-dim">Expires</p>
+            <p className="text-body-0-regular text-foreground">{formatDate(link.expiresAt)}</p>
+          </div>
+          {link.passcode && (
+            <div>
+              <p className="text-body-0-regular text-foreground-dim">Passcode</p>
+              <p className="text-body-0-regular text-foreground">Required</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <Button variant="secondary" compact onClick={handleCopy}>
+            <Link2 className="w-3 h-3 mr-1" />
+            {copied ? 'Copied!' : 'Copy Link'}
+          </Button>
+          <Button variant="secondary" compact onClick={() => onRevoke(link.id)}>
+            <X className="w-3 h-3 mr-1" />
+            Revoke
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const TAB_OPTIONS = [
   { value: 'mine' as const, label: 'My Shares' },
   { value: 'all' as const, label: 'All Shares' },
@@ -113,18 +227,30 @@ const TAB_OPTIONS = [
 export function SharedView() {
   const searchParams = useSearchParams()
   const initialSelected = searchParams.get('selected')
-  const { sharesCreatedByMe, allProjectShares, revokeShare } = useAccess()
+  const { sharesCreatedByMe, allProjectShares, revokeShare, guestLinks } = useAccess()
   const { activePersona, isAdmin, hydrated } = usePersona()
   const [selectedId, setSelectedId] = useState<string | null>(initialSelected)
   const [activeTab, setActiveTab] = useState<ShareTab>(!activePersona ? 'all' : 'mine')
 
   const displayEntries = activeTab === 'all' && isAdmin ? allProjectShares : sharesCreatedByMe
+  const displayLinks = activeTab === 'all' && isAdmin
+    ? guestLinks
+    : guestLinks.filter(l => l.createdByUserId === activePersona?.id)
 
-  const selectedEntry = displayEntries.find(e => e.id === selectedId) ?? null
+  const [selectedType, setSelectedType] = useState<'grant' | 'link'>('grant')
+
+  const selectedEntry = selectedType === 'grant' ? (displayEntries.find(e => e.id === selectedId) ?? null) : null
+  const selectedLink = selectedType === 'link' ? (displayLinks.find(l => l.id === selectedId) ?? null) : null
   const isCreatorOfSelected = selectedEntry?.grantedByUserId === activePersona?.id
 
   const handleRowClick = useCallback((entry: GrantView) => {
     setSelectedId(prev => prev === entry.id ? null : entry.id)
+    setSelectedType('grant')
+  }, [])
+
+  const handleLinkClick = useCallback((link: GuestLinkSeed) => {
+    setSelectedId(prev => prev === link.id ? null : link.id)
+    setSelectedType('link')
   }, [])
 
   const handleClosePanel = useCallback(() => {
@@ -136,7 +262,12 @@ export function SharedView() {
     setSelectedId(null)
   }, [revokeShare])
 
-  const totalCount = isAdmin ? allProjectShares.length : sharesCreatedByMe.length
+  const handleRevokeLink = useCallback((linkId: string) => {
+    // For prototype, just deselect — real impl would remove the link
+    setSelectedId(null)
+  }, [])
+
+  const totalCount = (isAdmin ? allProjectShares.length : sharesCreatedByMe.length) + displayLinks.length
 
   return (
     <AppLayout>
@@ -173,6 +304,7 @@ export function SharedView() {
                 selectedId={selectedId}
                 onRowClick={handleRowClick}
               />
+              <GuestLinksSection links={displayLinks} selectedId={selectedType === 'link' ? selectedId : null} onRowClick={handleLinkClick} />
             </div>
           )}
         </div>
@@ -184,6 +316,13 @@ export function SharedView() {
             onClose={handleClosePanel}
             isCreator={isCreatorOfSelected}
             onRevokeShare={handleRevokeShare}
+          />
+        )}
+        {selectedLink && (
+          <GuestLinkDetailPanel
+            link={selectedLink}
+            onClose={handleClosePanel}
+            onRevoke={handleRevokeLink}
           />
         )}
       </div>

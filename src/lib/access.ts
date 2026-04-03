@@ -3,10 +3,11 @@
  * The access model is now in grants.ts.
  */
 
-export type AccessEntryKind = 'folder' | 'asset' | 'collection' | 'smart-collection' | 'review-set' | 'project'
+export type AccessEntryKind = 'folder' | 'asset' | 'cut' | 'collection' | 'smart-collection' | 'review-set' | 'project'
 
 export function kindLabel(kind: AccessEntryKind): string {
   if (kind === 'folder') return 'Folder'
+  if (kind === 'cut') return 'Cut'
   if (kind === 'collection') return 'Collection'
   if (kind === 'smart-collection') return 'Smart Collection'
   if (kind === 'review-set') return 'Review Set'
@@ -16,6 +17,7 @@ export function kindLabel(kind: AccessEntryKind): string {
 
 export function kindTagType(kind: AccessEntryKind): 'positive' | 'neutral' | 'announcement' | 'informative' {
   if (kind === 'folder') return 'positive'
+  if (kind === 'cut') return 'informative'
   if (kind === 'collection') return 'announcement'
   if (kind === 'smart-collection') return 'announcement'
   if (kind === 'review-set') return 'informative'

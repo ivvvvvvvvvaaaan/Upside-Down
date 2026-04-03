@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Folder, FileText, LayoutGrid } from 'lucide-react'
+import { Folder, FileText, Film, LayoutGrid } from 'lucide-react'
 import { Button } from './button'
 import { ResponsivePanel } from './responsive-panel'
 import { Tag } from './tag'
@@ -36,6 +36,7 @@ export interface SharedDetailContentProps {
 function kindIcon(kind: AccessEntryKind) {
   if (kind === 'folder') return <Folder className="w-5 h-5 text-foreground-dim flex-shrink-0" />
   if (kind === 'collection' || kind === 'smart-collection') return <LayoutGrid className="w-5 h-5 text-foreground-dim flex-shrink-0" />
+  if (kind === 'cut') return <Film className="w-5 h-5 text-foreground-dim flex-shrink-0" />
   if (kind === 'review-set') return <FileText className="w-5 h-5 text-foreground-dim flex-shrink-0" />
   return <FileText className="w-5 h-5 text-foreground-dim flex-shrink-0" />
 }

@@ -1,18 +1,20 @@
 'use client'
 
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
-import { X, Plus, LayoutGrid, Folder, ExternalLink, Clapperboard } from 'lucide-react'
+import { X, Plus, LayoutGrid, Folder, Import, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from './button'
 import { ResponsivePanel } from './responsive-panel'
 import { AccessSummary } from './access-summary'
 import { Tag } from './tag'
+import { CreativeReviewCard } from './creative-review-card'
 import { cn } from '@/lib/utils'
 import type { Asset, DepartmentId } from '@/lib/data'
+import { getAssetIdVariants } from '@/lib/data'
 import type { ResourceRef } from '@/lib/grants'
-import { useAccess, useFileTree } from '@/hooks'
+import { useAccess, useFileTree, usePersona } from '@/hooks'
+import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 import type { UserCollection } from '@/hooks'
-import type { RelatedAssetGroup } from '@/lib/context-relationships'
 import type { ReviewNoteSummary } from '@/lib/review-notes'
 import { PERSONAS } from '@/lib/personas'
 import { slugify } from '@/lib/smart-collection-filters'
@@ -142,8 +144,6 @@ interface AssetDetailPanelProps {
   asset: Asset
   open: boolean
   onClose: () => void
-  collections?: UserCollection[]
-  relatedGroups?: RelatedAssetGroup[]
   reviewNoteSummary?: ReviewNoteSummary | null
   /** ID of the collection this asset is currently being viewed from */
   activeCollectionId?: string
@@ -160,14 +160,12 @@ export function AssetDetailPanel({
   asset,
   open,
   onClose,
-  collections,
-  relatedGroups = [],
   reviewNoteSummary = null,
   activeCollectionId,
 }: AssetDetailPanelProps) {
-  const { getInheritedGrants, getCollectionRippleGrants, visibleCollections, canEdit } = useAccess()
+  const { getInheritedGrants, getCollectionRippleGrants, visibleCollections, canEdit, getAccessPath } = useAccess()
+  const { activePersona } = usePersona()
   const { getDepartmentFiles } = useFileTree()
-  const allCollections = collections ?? visibleCollections
 
   const resourceRef: ResourceRef | undefined = asset ? {
     id: asset.id,
@@ -213,9 +211,15 @@ export function AssetDetailPanel({
 
   const [tagModalOpen, setTagModalOpen] = useState(false)
 
+  const accessPath = useMemo(() => {
+    if (!asset) return null
+    return getAccessPath(asset.id, asset.department)
+  }, [asset, getAccessPath])
+
   const workspaceFolderInfo = useMemo(() => {
     if (!asset) return null
     if (!asset.department || !asset.workspacePath) return null
+    if (!accessPath?.canBrowseWorkspace) return null
 
     const pathParts = asset.workspacePath.split(' / ').filter(Boolean)
     const folderNames = pathParts.slice(0, -1)
@@ -244,15 +248,17 @@ export function AssetDetailPanel({
       label: fullLabel,
       href: `/nextgen/workspace/${asset.department}/${folderIds.join('/')}`,
     }
-  }, [asset, getDepartmentFiles])
+  }, [asset, getDepartmentFiles, accessPath])
+
+  const assetIdVariants = useMemo(() => asset ? new Set(getAssetIdVariants(asset.id)) : new Set<string>(), [asset])
 
   if (!asset) return <ResponsivePanel open={false} onClose={onClose}><div /></ResponsivePanel>
 
   const duration = getDuration(asset)
   const typeTag = getTypeTag(asset)
 
-  const assetCollections = allCollections.filter(c =>
-    c.assetIds.includes(asset.id)
+  const assetCollections = visibleCollections.filter(c =>
+    c.assetIds.some(aid => assetIdVariants.has(aid))
   )
 
   const orderedCollectionItems = [...assetCollections]
@@ -310,14 +316,7 @@ export function AssetDetailPanel({
   ]
 
   const nonFolderAppearanceItems = [...orderedCollectionItems, ...smartAppearanceItems]
-  const activeAppearanceIndex = nonFolderAppearanceItems.findIndex((item) => item.isActive)
-  const orderedAppearanceItems = activeAppearanceIndex > 0
-    ? [
-        nonFolderAppearanceItems[activeAppearanceIndex],
-        ...nonFolderAppearanceItems.slice(0, activeAppearanceIndex),
-        ...nonFolderAppearanceItems.slice(activeAppearanceIndex + 1),
-      ]
-    : nonFolderAppearanceItems
+    .filter(item => !item.isActive)
 
   const appearanceItems = [
     ...(workspaceFolderInfo ? [{
@@ -328,7 +327,7 @@ export function AssetDetailPanel({
       icon: 'folder' as const,
       isActive: false,
     }] : []),
-    ...orderedAppearanceItems,
+    ...nonFolderAppearanceItems,
   ]
 
   return (
@@ -461,11 +460,16 @@ export function AssetDetailPanel({
             <div>
               {appearanceItems.map((item) => {
                 const Icon = item.icon === 'folder' ? Folder : LayoutGrid
+                const isSharedCollection = item.icon === 'collection' && (() => {
+                  const coll = visibleCollections.find(c => c.id === item.key)
+                  return coll && coll.createdBy !== activePersona?.email
+                })()
                 const row = (
                   <span className="flex items-center justify-between gap-2 py-1 text-body-0-regular w-full">
                     <span className="flex items-center gap-2 min-w-0">
                       <Icon className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
-                      <span className={cn('truncate', item.isActive && 'text-foreground-dim')}>{item.label}</span>
+                      <span className="truncate">{item.label}</span>
+                      {isSharedCollection && <Import className="w-3 h-3 text-foreground-dim flex-shrink-0" />}
                     </span>
                     <span className="text-body-0-regular text-foreground-dim flex-shrink-0">{item.kind}</span>
                   </span>
@@ -485,64 +489,9 @@ export function AssetDetailPanel({
         </div>
 
         {reviewNoteSummary && (
-          <section className="space-y-2">
-            <h3 className="text-body-0-bold text-foreground-dim">Creative Review</h3>
-            <div className="space-y-3">
-              <div>
-                <p className="text-body-0-regular text-foreground-dim">Latest</p>
-                <p className="text-body-0-regular text-foreground">{reviewNoteSummary.latestSummary}</p>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Tag type="announcement">{reviewNoteSummary.totalNotes} notes</Tag>
-                <Tag type={reviewNoteSummary.unresolvedCount > 0 ? 'notice' : 'positive'}>
-                  {reviewNoteSummary.unresolvedCount} unresolved
-                </Tag>
-              </div>
-              <div>
-                <p className="text-body-0-regular text-foreground-dim">Updated</p>
-                <p className="text-body-0-regular text-foreground">
-                  {new Date(reviewNoteSummary.updatedAt).toLocaleDateString()}
-                </p>
-              </div>
-              <a
-                href={reviewNoteSummary.externalUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 text-body-0-regular text-foreground hover:text-foreground-system-link transition-colors"
-              >
-                <ExternalLink className="w-4 h-4 flex-shrink-0" />
-                Open in Creative Review
-              </a>
-            </div>
-          </section>
+          <CreativeReviewCard summary={reviewNoteSummary} />
         )}
 
-        {relatedGroups.length > 0 && (
-          <section className="space-y-2">
-            <h3 className="text-body-0-bold text-foreground-dim">Explore Context</h3>
-            <div className="space-y-4">
-              {relatedGroups.map((group) => (
-                <div key={group.type} className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Clapperboard className="w-4 h-4 text-foreground-dim flex-shrink-0" />
-                    <p className="text-body-0-bold text-foreground">{group.label}</p>
-                  </div>
-                  <div className="space-y-1">
-                    {group.assets.map((relatedAsset) => (
-                      <Link
-                        key={`${group.type}-${relatedAsset.id}`}
-                        href={`/nextgen/assets/${relatedAsset.id}`}
-                        className="block text-body-0-regular text-foreground hover:text-foreground-system-link transition-colors"
-                      >
-                        {relatedAsset.name}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
 
 
         <AccessSummary
