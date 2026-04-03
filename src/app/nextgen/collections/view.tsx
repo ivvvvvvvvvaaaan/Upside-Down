@@ -27,10 +27,11 @@ import { AppLayout } from '@/components/layouts'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAssetSelection, useCollectionAssets, useViewPreferences, useCompactBar, useUserCollections } from '@/hooks'
+import { useAssetSelection, useCollectionAssets, useViewPreferences, useCompactBar, useResourceSelection, useUserCollections } from '@/hooks'
 import type { CollectionViewType } from '@/hooks'
 import type { Asset, Collection } from '@/lib/data'
 import type { CollectionCardAssetCount } from '@/components/ui/collection-card'
+import { assetToSelectionEntity, collectionToSelectionEntity } from '@/lib/selection-actions'
 
 interface CollectionCardsViewProps {
   title: string
@@ -52,7 +53,18 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
   const [collections] = useState<Collection[]>(initialCollections)
   const pathname = usePathname()
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
-  const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
+  const {
+    selectedIds: selectedAssetIds,
+    primaryId: primaryAssetId,
+    handleSelectionClick: handleAssetClick,
+    clearSelection: clearAssetSelection,
+  } = useAssetSelection()
+  const {
+    selectedIds: selectedCollectionIds,
+    primaryId: selectedCollectionId,
+    handleSelectionClick: handleCollectionSelectionClick,
+    clearSelection: clearCollectionSelection,
+  } = useResourceSelection<Collection>()
   const {
     selectedCollection,
     assets: collectionAssets,
@@ -61,7 +73,7 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
     loadCollection,
     retry: retryLoad,
     goBack,
-  } = useCollectionAssets({ onNavigate: clearSelection })
+  } = useCollectionAssets({ onNavigate: clearAssetSelection })
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
   const { createCollection } = useUserCollections()
   const isCompactBarVisible = !selectedCollection && showCompactBar
@@ -103,8 +115,6 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
         ]
     }
   }, [collectionType])
-
-  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null)
 
   // Separate display states for collection and asset cards
   const [collectionCardState, setCollectionCardState] = useState<CollectionCardState>('asis')
@@ -219,12 +229,23 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
   // Get selected assets for the modal (from either all assets or collection assets)
   const selectedAssets = useMemo(() => {
     const sourceAssets = selectedCollection ? collectionAssets : allAssets
-    return sourceAssets.filter((asset) => selectedIds.has(asset.id))
-  }, [allAssets, collectionAssets, selectedCollection, selectedIds])
+    return sourceAssets.filter((asset) => selectedAssetIds.has(asset.id))
+  }, [allAssets, collectionAssets, selectedCollection, selectedAssetIds])
+  const selectedAssetEntities = useMemo(() => selectedAssets.map((asset) => assetToSelectionEntity(asset)), [selectedAssets])
+  const selectedCollectionEntities = useMemo(() => {
+    return filteredCollections
+      .filter((collection) => selectedCollectionIds.has(collection.id))
+      .map((collection) => collectionToSelectionEntity(collection, 'collection'))
+  }, [filteredCollections, selectedCollectionIds])
+  const activeSelectionEntities = selectedCollection
+    ? selectedAssetEntities
+    : layout === 'grid'
+      ? selectedCollectionEntities
+      : selectedAssetEntities
 
   const handleCreateCollection = (name: string) => {
     createCollection(name, selectedAssets.map(a => a.id))
-    clearSelection()
+    clearAssetSelection()
   }
 
   // Collection detail view
@@ -288,8 +309,8 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                         <AssetCard
                           key={asset.id}
                           asset={asset}
-                          selected={selectedIds.has(asset.id)}
-                          primary={primaryId === asset.id}
+                          selected={selectedAssetIds.has(asset.id)}
+                          primary={primaryAssetId === asset.id}
                           onClick={(a, e) => handleAssetClick(a, e, collectionAssets)}
                           onMenuClick={handleMenuClick}
                           loading={showAssetLoading}
@@ -326,11 +347,8 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
           </SettingsPanel>
 
           <SelectionBar
-            selectedCount={selectedIds.size}
-            selectedAssets={selectedAssets}
-            onClear={clearSelection}
-            onCreateCollection={handleCreateCollection}
-            onShare={() => console.log('Share:', Array.from(selectedIds))}
+            selectedEntities={activeSelectionEntities}
+            onClear={selectedCollection ? clearAssetSelection : clearCollectionSelection}
           />
         </div>
       </AppLayout>
@@ -434,8 +452,8 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                 ) : layout === 'gallery' ? (
                   <CollectionsGalleryView
                     collections={filteredCollections}
-                    selectedIds={selectedIds}
-                    primaryId={primaryId}
+                    selectedIds={selectedAssetIds}
+                    primaryId={primaryAssetId}
                     onAssetClick={handleAssetClick}
                     onAssetMenuClick={handleMenuClick}
                     showAssetLoading={showAssetLoading}
@@ -497,7 +515,7 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
                           numberOfAssets={getNumberOfAssets()}
                           size={cardSize}
                           isSelected={selectedCollectionId === collection.id}
-                          onClick={() => setSelectedCollectionId(selectedCollectionId === collection.id ? null : collection.id)}
+                          onClick={(event) => handleCollectionSelectionClick(collection, event, filteredCollections)}
                           onDoubleClick={() => loadCollection(collection)}
                         />
                       )
@@ -544,11 +562,8 @@ export function CollectionCardsView({ title, initialCollections, collectionType 
         </SettingsPanel>
 
         <SelectionBar
-          selectedCount={selectedIds.size}
-          selectedAssets={selectedAssets}
-          onClear={clearSelection}
-          onCreateCollection={handleCreateCollection}
-          onShare={() => console.log('Share:', Array.from(selectedIds))}
+          selectedEntities={activeSelectionEntities}
+          onClear={layout === 'grid' ? clearCollectionSelection : clearAssetSelection}
         />
       </div>
     </AppLayout>

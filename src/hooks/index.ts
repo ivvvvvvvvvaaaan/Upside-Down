@@ -1,5 +1,7 @@
 export { useAssetSelection } from './useAssetSelection'
 export type { UseAssetSelectionReturn } from './useAssetSelection'
+export { useResourceSelection } from './useResourceSelection'
+export type { UseResourceSelectionReturn, SelectableEntity } from './useResourceSelection'
 
 export { useCollectionAssets } from './useCollectionAssets'
 export type { UseCollectionAssetsReturn } from './useCollectionAssets'

@@ -9,12 +9,11 @@ import { Avatar } from './avatar'
 import { cn } from '@/lib/utils'
 import { useAccess, usePersona } from '@/hooks'
 import type { Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
-import { PERSONAS } from '@/lib/personas'
 import { getRoleGroup } from '@/lib/grants'
 import type { RoleGroup } from '@/lib/grants'
-import { TEAMS } from '@/lib/teams'
 import { buildAccessDisplayEntries } from './access-display'
 import type { AccessDisplayEntry } from './access-display'
+import { buildShareSearchResults } from '@/lib/share-search'
 
 interface AccessPanelProps {
   resourceId: string
@@ -70,14 +69,6 @@ function roleGroupOptions(roleGroups: RoleGroup[]) {
   return roleGroups
     .filter((rg) => rg.id !== 'owner' && rg.id !== 'link-viewer')
     .map((rg) => ({ value: rg.id, label: rg.name }))
-}
-
-type SearchResult = {
-  key: string
-  principal: PrincipalRef
-  name: string
-  subtitle: string
-  kind: 'user' | 'team'
 }
 
 function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sourceName, name, subtitle, roleLabel, members }: {
@@ -234,9 +225,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
     }
   }, [addRoleOptions, addAsRole])
 
-  const results = useMemo<SearchResult[]>(() => {
-    if (!query.trim()) return []
-    const q = query.toLowerCase()
+  const results = useMemo(() => {
     const existingUserIds = new Set(
       grants
         .filter((grant): grant is Grant & { principal: { type: 'user'; userId: string } } => grant.principal.type === 'user')
@@ -248,38 +237,12 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
         .map((grant) => grant.principal.teamId),
     )
 
-    const userResults: SearchResult[] = PERSONAS
-      .filter((persona) =>
-        persona.id !== activePersona?.id &&
-        !existingUserIds.has(persona.id) &&
-        (
-          persona.name.toLowerCase().includes(q) ||
-          persona.email.toLowerCase().includes(q)
-        ),
-      )
-      .map((persona) => ({
-        key: `user-${persona.id}`,
-        principal: { type: 'user', userId: persona.id },
-        name: persona.name,
-        subtitle: persona.email,
-        kind: 'user',
-      }))
-
-    const teamResults: SearchResult[] = TEAMS
-      .filter((team) =>
-        !existingGroupIds.has(team.id) &&
-        !team.departmentId &&
-        team.name.toLowerCase().includes(q),
-      )
-      .map((team) => ({
-        key: `team-${team.id}`,
-        principal: { type: 'team', teamId: team.id },
-        name: team.name,
-        subtitle: `${team.memberUserIds.length} ${team.memberUserIds.length === 1 ? 'member' : 'members'}`,
-        kind: 'team',
-      }))
-
-    return [...userResults, ...teamResults].slice(0, 8)
+    return buildShareSearchResults({
+      query,
+      activeUserId: activePersona?.id,
+      existingUserIds,
+      existingTeamIds: existingGroupIds,
+    })
   }, [query, activePersona, grants])
 
   const hasResults = results.length > 0

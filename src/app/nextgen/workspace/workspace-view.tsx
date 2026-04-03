@@ -25,7 +25,7 @@ import type { FileNode, FileViewMode } from '@/components/ui/file-explorer'
 import { ContextMenu } from '@/components/ui/context-menu'
 import type { ContextMenuItem } from '@/components/ui/context-menu'
 import { AppLayout } from '@/components/layouts'
-import { useViewPreferences, useCompactBar, useWorkspaceState, useAssetSelection, useUserCollections, useFileTree, useAccess, usePersona } from '@/hooks'
+import { useViewPreferences, useCompactBar, useWorkspaceState, useResourceSelection, useFileTree, useAccess, usePersona } from '@/hooks'
 
 import type { DepartmentId } from '@/components/department/types'
 import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
@@ -38,6 +38,7 @@ import { ArrowLeft, List, Columns, LayoutGrid, PanelRight, X, Lock, Users, Folde
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { departmentConfigs } from '@/lib/department-configs'
+import { assetToSelectionEntity, folderToSelectionEntity } from '@/lib/selection-actions'
 
 interface ContextMenuState {
   x: number
@@ -157,8 +158,12 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
 
   const { layout, setLayout, cardSize, setCardSize, viewMode, setViewMode, sidePanelOpen: showPanel, setSidePanelOpen: setShowPanel } = useViewPreferences()
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
-  const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
-  const { createCollection } = useUserCollections()
+  const {
+    selectedIds,
+    primaryId,
+    handleSelectionClick,
+    clearSelection,
+  } = useResourceSelection<{ id: string }>()
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
 
   const {
@@ -361,28 +366,32 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
     [processedFiles, canAccess],
   )
 
-  // Flat asset list for selection — on landing each folder's "department" is itself
-  const currentGridAssets = useMemo(() => {
+  const currentGridSelectionEntities = useMemo(() => {
     return currentGridItems.map((node) => {
       const nodeDepartmentId = departmentId
         ?? findDepartmentIdForNode(node, getFileTreeDeptFiles)
         ?? activePersona?.departmentId
         ?? ALL_DEPARTMENT_IDS[0]
       if (node.type === 'file') {
-        return assetBySourceFileId.get(node.id) ?? folderNodeToAsset(node, nodeDepartmentId)
+        const asset = assetBySourceFileId.get(node.id) ?? folderNodeToAsset(node, nodeDepartmentId)
+        return assetToSelectionEntity(asset, { resourceId: node.id })
       }
-      return folderNodeToAsset(node, nodeDepartmentId)
+      return folderToSelectionEntity({
+        id: node.id,
+        resourceId: getAclResourceId(node),
+        label: node.name,
+        departmentId: nodeDepartmentId,
+      })
     })
-  }, [currentGridItems, departmentId, assetBySourceFileId, getFileTreeDeptFiles, activePersona])
+  }, [currentGridItems, departmentId, assetBySourceFileId, getFileTreeDeptFiles, activePersona, getAclResourceId])
 
-  const selectedAssets = useMemo(() => {
-    return currentGridAssets.filter((a) => selectedIds.has(a.id))
-  }, [currentGridAssets, selectedIds])
+  const selectionEntityById = useMemo(() => new Map(
+    currentGridSelectionEntities.map((entity) => [entity.id, entity]),
+  ), [currentGridSelectionEntities])
 
-  const handleCreateCollection = useCallback((name: string) => {
-    createCollection(name, selectedAssets.map((a) => a.id))
-    clearSelection()
-  }, [createCollection, selectedAssets, clearSelection])
+  const selectedEntities = useMemo(() => {
+    return currentGridSelectionEntities.filter((entity) => selectedIds.has(entity.id))
+  }, [currentGridSelectionEntities, selectedIds])
 
   const handleNodeClick = useCallback((fileNode: FileNode) => {
     const wsNode = findNodeById(currentGridItems, fileNode.id)
@@ -730,7 +739,10 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                                 onClick={isLocked
                                   ? () => alert('Access requested for "' + node.name + '". An administrator will review your request.')
                                   : (e) => {
-                                    handleAssetClick(folderAsset, e as React.MouseEvent, currentGridAssets)
+                                    const selectionEntity = selectionEntityById.get(node.id)
+                                    if (selectionEntity) {
+                                      handleSelectionClick(selectionEntity, e as React.MouseEvent, currentGridSelectionEntities)
+                                    }
                                     setSelectedNode(node)
                                   }
                                 }
@@ -754,8 +766,11 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                               asset={workspaceAsset}
                               selected={selectedIds.has(workspaceAsset.id)}
                               primary={primaryId === workspaceAsset.id}
-                              onClick={(a, e) => {
-                                handleAssetClick(a, e, currentGridAssets)
+                              onClick={(_, e) => {
+                                const selectionEntity = selectionEntityById.get(workspaceAsset.id)
+                                if (selectionEntity) {
+                                  handleSelectionClick(selectionEntity, e, currentGridSelectionEntities)
+                                }
                                 setSelectedNode(node)
                               }}
                             />
@@ -828,11 +843,8 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
         )}
 
         <SelectionBar
-          selectedCount={selectedIds.size}
-          selectedAssets={selectedAssets}
+          selectedEntities={selectedEntities}
           onClear={clearSelection}
-          onCreateCollection={handleCreateCollection}
-          onShare={() => console.log('Share:', Array.from(selectedIds))}
         />
         <NewFolderModal
           open={newFolderModalOpen}

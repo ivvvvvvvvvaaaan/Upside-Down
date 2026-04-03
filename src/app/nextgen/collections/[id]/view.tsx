@@ -22,6 +22,7 @@ import { useAccess, useAssetSelection, usePersona, useViewPreferences, useUserCo
 import type { Asset } from '@/lib/data'
 import { PERSONAS } from '@/lib/personas'
 import { getReviewNoteSummary } from '@/lib/review-notes'
+import { assetToSelectionEntity } from '@/lib/selection-actions'
 
 interface UserCollectionDetailViewProps {
   collectionId: string
@@ -118,6 +119,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const selectedAssets = useMemo(() => {
     return assets.filter((asset) => selectedIds.has(asset.id))
   }, [assets, selectedIds])
+  const selectedEntities = useMemo(() => selectedAssets.map((asset) => assetToSelectionEntity(asset)), [selectedAssets])
   const primaryAsset = useMemo(() => {
     if (!primaryId) return null
     return assets.find(a => a.id === primaryId) ?? null
@@ -246,11 +248,8 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
           </div>
 
           <SelectionBar
-            selectedCount={selectedIds.size}
-            selectedAssets={selectedAssets}
+            selectedEntities={selectedEntities}
             onClear={clearSelection}
-            onCreateCollection={handleCreateCollection}
-            onShare={() => console.log('Share:', Array.from(selectedIds))}
           />
         </div>
 

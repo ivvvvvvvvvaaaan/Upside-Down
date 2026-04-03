@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { usePersona } from './usePersona'
 import { buildSeedCollections } from '@/lib/scenario'
+import { mergeCollectionAssetIds } from '@/lib/collection-membership'
 
 /**
  * User-created collection (distinct from smart collections)
@@ -19,6 +20,7 @@ export type UserCollection = {
 interface UserCollectionsContextValue {
   collections: UserCollection[]
   createCollection: (name: string, assetIds: string[]) => UserCollection
+  addAssetsToCollection: (id: string, assetIds: string[]) => void
   deleteCollection: (id: string) => void
   getCollection: (id: string) => UserCollection | undefined
 }
@@ -41,6 +43,17 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
     return newCollection
   }, [activePersona])
 
+  const addAssetsToCollection = useCallback((id: string, assetIds: string[]) => {
+    if (assetIds.length === 0) return
+    setCollections((prev) => prev.map((collection) => {
+      if (collection.id !== id) return collection
+      return {
+        ...collection,
+        assetIds: mergeCollectionAssetIds(collection.assetIds, assetIds),
+      }
+    }))
+  }, [])
+
   const deleteCollection = useCallback((id: string) => {
     setCollections(prev => prev.filter(c => c.id !== id))
   }, [])
@@ -50,7 +63,13 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
   }, [collections])
 
   return (
-    <UserCollectionsContext.Provider value={useMemo(() => ({ collections, createCollection, deleteCollection, getCollection }), [collections, createCollection, deleteCollection, getCollection])}>
+    <UserCollectionsContext.Provider value={useMemo(() => ({
+      collections,
+      createCollection,
+      addAssetsToCollection,
+      deleteCollection,
+      getCollection,
+    }), [collections, createCollection, addAssetsToCollection, deleteCollection, getCollection])}>
       {children}
     </UserCollectionsContext.Provider>
   )

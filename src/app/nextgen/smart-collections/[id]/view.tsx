@@ -25,10 +25,11 @@ import {
 import type { CollectionCardType } from '@/components/ui/collection-card'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import { AppLayout } from '@/components/layouts'
-import { useAssetSelection, useViewPreferences, useCompactBar, useUserCollections, useSmartCollections, usePersona } from '@/hooks'
+import { useAssetSelection, useViewPreferences, useCompactBar, useResourceSelection, useUserCollections, useSmartCollections, usePersona } from '@/hooks'
 import { matchesFilter } from '@/hooks/useSmartCollections'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import type { AssetFilter } from '@/lib/data'
+import { assetToSelectionEntity, collectionToSelectionEntity } from '@/lib/selection-actions'
 
 interface SmartCollectionDetailViewProps {
   collectionId: string
@@ -42,12 +43,22 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const { getCollection, getChildren, getRelatedCollections, updateCollection, deleteCollection, allAssets, scopedAssets, assetsLoading } = useSmartCollections()
   const { activePersona } = usePersona()
   const { createCollection: createUserCollection } = useUserCollections()
-  const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
+  const {
+    selectedIds: selectedAssetIds,
+    primaryId: primaryAssetId,
+    handleSelectionClick: handleAssetClick,
+    clearSelection: clearAssetSelection,
+  } = useAssetSelection()
+  const {
+    selectedIds: selectedCollectionIds,
+    primaryId: selectedCollectionId,
+    handleSelectionClick: handleCollectionSelectionClick,
+    clearSelection: clearCollectionSelection,
+  } = useResourceSelection<{ id: string; name: string }>()
   const { layout, setLayout, cardSize, setCardSize, sidePanelOpen, setSidePanelOpen } = useViewPreferences()
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
 
-  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
     { field: 'name', direction: 'asc' },
@@ -142,12 +153,19 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   }
 
   const selectedAssets = useMemo(() => {
-    return filteredAssets.filter((asset) => selectedIds.has(asset.id))
-  }, [filteredAssets, selectedIds])
+    return filteredAssets.filter((asset) => selectedAssetIds.has(asset.id))
+  }, [filteredAssets, selectedAssetIds])
+  const selectedAssetEntities = useMemo(() => selectedAssets.map((asset) => assetToSelectionEntity(asset)), [selectedAssets])
+  const selectedCollectionEntities = useMemo(() => {
+    return childData
+      .filter((child) => selectedCollectionIds.has(child.collection.id))
+      .map((child) => collectionToSelectionEntity(child.collection, 'smart-collection'))
+  }, [childData, selectedCollectionIds])
+  const activeSelectionEntities = isParentWithChildren ? selectedCollectionEntities : selectedAssetEntities
   const primaryAsset = useMemo(() => {
-    if (!primaryId) return null
-    return filteredAssets.find(a => a.id === primaryId) ?? null
-  }, [primaryId, filteredAssets])
+    if (!primaryAssetId) return null
+    return filteredAssets.find(a => a.id === primaryAssetId) ?? null
+  }, [primaryAssetId, filteredAssets])
   const selectedChildCollection = useMemo(() => {
     if (!selectedCollectionId) return null
     return childData.find(c => c.collection.id === selectedCollectionId)?.collection ?? null
@@ -159,7 +177,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
 
   const handleCreateCollection = (name: string) => {
     createUserCollection(name, selectedAssets.map(a => a.id))
-    clearSelection()
+    clearAssetSelection()
   }
 
   const loading = assetsLoading
@@ -390,7 +408,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                               : 'Many'
                             }
                             isSelected={selectedCollectionId === child.collection.id}
-                            onClick={() => setSelectedCollectionId(selectedCollectionId === child.collection.id ? null : child.collection.id)}
+                            onClick={(event) => handleCollectionSelectionClick(child.collection, event, childData.map((entry) => entry.collection))}
                             onDoubleClick={() => router.push(`/nextgen/smart-collections/${child.collection.id}`)}
                           />
                         ))}
@@ -401,8 +419,8 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                           <AssetCard
                             key={asset.id}
                             asset={asset}
-                            selected={selectedIds.has(asset.id)}
-                            primary={primaryId === asset.id}
+                            selected={selectedAssetIds.has(asset.id)}
+                            primary={primaryAssetId === asset.id}
                             onClick={(a, e) => handleAssetClick(a, e, filteredAssets)}
                             onMenuClick={handleMenuClick}
                             showDepartment
@@ -422,11 +440,8 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
           </div>
 
           <SelectionBar
-            selectedCount={selectedIds.size}
-            selectedAssets={selectedAssets}
-            onClear={clearSelection}
-            onCreateCollection={handleCreateCollection}
-            onShare={() => console.log('Share:', Array.from(selectedIds))}
+            selectedEntities={activeSelectionEntities}
+            onClear={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
           />
         </div>
 
@@ -434,14 +449,14 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
         <AssetDetailPanel
           asset={primaryAsset!}
           open={sidePanelOpen && !!primaryAsset}
-          onClose={() => { clearSelection(); setSidePanelOpen(false) }}
+          onClose={() => { clearAssetSelection(); setSidePanelOpen(false) }}
           activeCollectionId={collectionId}
         />
         {selectedChildCollection && (
           <SmartCollectionSidePanel
             collection={selectedChildCollection}
             open={sidePanelOpen && !primaryAsset && !!selectedChildCollection}
-            onClose={() => { setSelectedCollectionId(null); setSidePanelOpen(false) }}
+            onClose={() => { clearCollectionSelection(); setSidePanelOpen(false) }}
             onUpdate={handleUpdateCollection}
             matchingCount={childData.find(c => c.collection.id === selectedCollectionId)?.assetCount}
             relationships={selectedChildRelationships}

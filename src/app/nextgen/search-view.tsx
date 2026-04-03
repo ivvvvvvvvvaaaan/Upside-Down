@@ -9,6 +9,7 @@ import { AppLayout } from '@/components/layouts'
 import { useAccess, useAssetSelection, useViewPreferences, useUserCollections, matchesFilter } from '@/hooks'
 import type { Asset } from '@/lib/data'
 import { mergePrototypeAssets } from '@/lib/prototype-assets'
+import { assetToSelectionEntity } from '@/lib/selection-actions'
 
 interface MediaLibrarySearchViewProps {
   recentAssets: Asset[]
@@ -117,6 +118,14 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
   const selectedAssets = useMemo(() => {
     return displayAssets.filter((asset) => selectedIds.has(asset.id))
   }, [displayAssets, selectedIds])
+  const selectedEntities = useMemo(() => {
+    return selectedAssets.map((asset) => assetToSelectionEntity(asset, {
+      canAddToCollection: canAccess(asset.id),
+      addToCollectionReason: canAccess(asset.id)
+        ? undefined
+        : 'You can only add items you can access to a collection.',
+    }))
+  }, [selectedAssets, canAccess])
 
   const handleCreateCollection = (name: string) => {
     createCollection(name, selectedAssets.map(a => a.id))
@@ -256,11 +265,8 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
         </div>
 
         <SelectionBar
-          selectedCount={selectedIds.size}
-          selectedAssets={selectedAssets}
+          selectedEntities={selectedEntities}
           onClear={clearSelection}
-          onCreateCollection={handleCreateCollection}
-          onShare={() => console.log('Share:', Array.from(selectedIds))}
         />
       </div>
     </AppLayout>

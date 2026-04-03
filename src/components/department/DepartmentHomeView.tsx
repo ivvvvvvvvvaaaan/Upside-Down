@@ -32,6 +32,7 @@ import type { Asset, Collection } from '@/lib/data'
 import { mergeWorkspaceAssets } from '@/lib/asset-instances'
 import type { DepartmentConfig } from './types'
 import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
+import { assetToSelectionEntity } from '@/lib/selection-actions'
 
 interface DepartmentHomeViewProps {
   config: DepartmentConfig
@@ -156,6 +157,7 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
     const sourceAssets = selectedCollection ? collectionAssets : departmentAssets
     return sourceAssets.filter((asset) => selectedIds.has(asset.id))
   }, [departmentAssets, collectionAssets, selectedCollection, selectedIds])
+  const selectedEntities = useMemo(() => selectedAssets.map((asset) => assetToSelectionEntity(asset)), [selectedAssets])
 
   const handleCreateCollection = (name: string) => {
     createCollection(name, selectedAssets.map(a => a.id))
@@ -280,11 +282,8 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
           </div>
 
           <SelectionBar
-            selectedCount={selectedIds.size}
-            selectedAssets={selectedAssets}
+            selectedEntities={selectedEntities}
             onClear={clearSelection}
-            onCreateCollection={handleCreateCollection}
-            onShare={() => console.log('Share:', Array.from(selectedIds))}
           />
         </div>
       </AppLayout>
@@ -423,11 +422,8 @@ export function DepartmentHomeView({ config, initialCollections }: DepartmentHom
         {settingsPanel}
 
         <SelectionBar
-          selectedCount={selectedIds.size}
-          selectedAssets={selectedAssets}
+          selectedEntities={selectedEntities}
           onClear={clearSelection}
-          onCreateCollection={handleCreateCollection}
-          onShare={() => console.log('Share:', Array.from(selectedIds))}
         />
       </div>
     </AppLayout>
