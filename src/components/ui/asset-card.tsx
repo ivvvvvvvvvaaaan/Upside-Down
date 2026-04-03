@@ -4,7 +4,8 @@ import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { Tag } from './tag'
 import { Text } from './text'
-import { MoreVertical, Music, FileText, ImageIcon, Film, File, Lock } from 'lucide-react'
+import { MoreVertical, Music, FileText, ImageIcon, Film, File, Lock, Import } from 'lucide-react'
+import { usePersona } from '@/hooks'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -70,6 +71,8 @@ export interface AssetCardProps {
   restricted?: boolean
   /** Called when user clicks "Request Access" on a restricted asset */
   onRequestAccess?: (asset: Asset) => void
+  /** Show "Shared" tag — asset originates from outside the user's department */
+  shared?: boolean
 }
 
 // Placeholder image for assets without thumbnails
@@ -88,11 +91,14 @@ export function AssetCard({
   showDepartment = false,
   fromWorkspace = false,
   restricted = false,
+  shared,
   onRequestAccess,
 }: AssetCardProps) {
   const router = useRouter()
+  const { activePersona } = usePersona()
   // Primary implies selected
   const isSelected = selected || primary
+  const isShared = shared ?? (asset?.department != null && activePersona?.departmentId != null && asset.department !== activePersona.departmentId)
 
   // Loading state with breathing animation (no asset data available)
   if (loading || !asset) {
@@ -347,6 +353,9 @@ export function AssetCard({
                 </>
               )
             })()}
+            {isShared && asset.department && (
+              <Tag type="neutral">{DEPARTMENT_NAMES[asset.department] ?? asset.department}</Tag>
+            )}
             {renderMetadata()}
           </div>
         </div>

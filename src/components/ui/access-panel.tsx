@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { X, Users, Search, Info, Link2, Lock } from 'lucide-react'
+import { X, Users, Search, Info, Link2, Lock, ChevronDown } from 'lucide-react'
 import { Input } from './input'
 import { Select } from './select'
 import { Button } from './button'
 import { Avatar } from './avatar'
+import { cn } from '@/lib/utils'
 import { useAccess, usePersona } from '@/hooks'
 import type { Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
 import { PERSONAS } from '@/lib/personas'
@@ -21,6 +22,48 @@ interface AccessPanelProps {
   readOnly?: boolean
   emptyLabel?: string
   inheritedGrants?: { grant: Grant; fromResourceName: string }[]
+}
+
+function InlineDropdown({ label, options, onSelect }: { label: string; options: string[]; onSelect: (value: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-0.5 text-label-0-regular text-foreground-dim hover:text-foreground transition-colors"
+      >
+        {label}
+        <ChevronDown className="w-3 h-3" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 min-w-[120px]">
+          {options.map(option => (
+            <button
+              key={option}
+              onClick={() => { onSelect(option); setOpen(false) }}
+              className={cn(
+                'w-full text-left px-3 py-1.5 text-label-0-regular transition-colors',
+                option === label ? 'text-foreground' : 'text-foreground-dim hover:text-foreground hover:bg-surface-2',
+              )}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function roleGroupOptions(roleGroups: RoleGroup[]) {
@@ -395,87 +438,68 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
         </div>
       )}
 
-      {/* Guest Links */}
+      {/* Links */}
       {(() => {
         const links = getResourceGuestLinks(resourceId)
-        const hasLink = links.length > 0
 
-        if (hasLink) {
-          return (
-            <div className="space-y-2">
-              {links.map(link => (
-                <div key={link.id} className="flex items-center justify-between gap-2 py-1.5">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Link2 className="w-4 h-4 text-foreground-dim flex-shrink-0" />
-                    <div className="min-w-0">
-                      <span className="text-body-0-regular text-foreground truncate block">
-                        Guest link · {link.allowDownload ? 'View + Download' : 'View only'}
-                      </span>
-                      <span className="text-label-0-regular text-foreground-dim truncate block">
-                        Expires {new Date(link.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        {link.passcode && ' · Passcode protected'}
-                      </span>
-                    </div>
-                  </div>
+        if (links.length > 0) {
+          return links.map(link => (
+            <div key={link.id} className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Link2 className="w-4 h-4 text-foreground-dim flex-shrink-0" />
+                  <span className="text-body-0-regular text-foreground truncate">Link</span>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Button
+                    variant="secondary"
+                    compact
+                    onClick={() => navigator.clipboard.writeText(`https://share.example.com/${link.id}`)}
+                  >
+                    Copy link
+                  </Button>
                   {!readOnly && canAddGrants && (
                     <Button
                       variant="secondary"
                       compact
                       onClick={() => revokeGuestLink(link.id)}
-                      className="text-foreground-negative flex-shrink-0"
+                      className="text-foreground-negative"
                     >
-                      Revoke link
+                      Revoke
                     </Button>
                   )}
                 </div>
-              ))}
-            </div>
-          )
-        }
-
-        if (showLinkForm && resourceRef) {
-          return (
-            <div className="rounded-lg bg-surface-3/40 p-3 space-y-3">
-              <p className="text-body-0-bold text-foreground">Create guest link</p>
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-body-0-regular text-foreground cursor-pointer">
-                  <input type="checkbox" checked={linkDownload} onChange={e => setLinkDownload(e.target.checked)} className="rounded" />
-                  Allow download
-                </label>
-                <label className="flex items-center gap-2 text-body-0-regular text-foreground cursor-pointer">
-                  <input type="checkbox" checked={linkPasscode} onChange={e => setLinkPasscode(e.target.checked)} className="rounded" />
-                  Require passcode
-                </label>
               </div>
-              <div className="flex gap-2">
-                <Button variant="secondary" compact onClick={() => setShowLinkForm(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  compact
-                  onClick={() => {
-                    createGuestLink(resourceRef, { allowDownload: linkDownload, passcode: linkPasscode, expiresInDays: 7 })
-                    setShowLinkForm(false)
-                    setLinkDownload(false)
-                    setLinkPasscode(false)
-                  }}
-                >
-                  Create link
-                </Button>
+              <div className="flex items-center gap-3 w-full justify-end">
+                <InlineDropdown
+                  label={link.allowDownload ? 'View + Download' : 'View only'}
+                  options={['View only', 'View + Download']}
+                  onSelect={() => {}}
+                />
+                <InlineDropdown
+                  label="7 days"
+                  options={['7 days', '14 days', '30 days']}
+                  onSelect={() => {}}
+                />
+                <InlineDropdown
+                  label={link.passcode ? 'Passcode' : 'No passcode'}
+                  options={['No passcode', 'Passcode']}
+                  onSelect={() => {}}
+                />
               </div>
             </div>
-          )
+          ))
         }
 
-        if (!readOnly && canAddGrants) {
+        if (!readOnly && canAddGrants && resourceRef) {
           return (
             <Button
               variant="secondary"
               compact
-              onClick={() => setShowLinkForm(true)}
+              onClick={() => createGuestLink(resourceRef, { allowDownload: false, passcode: false, expiresInDays: 7 })}
               icon={<Link2 className="w-3.5 h-3.5" />}
             >
-              Create guest link
+              Create link
             </Button>
           )
         }

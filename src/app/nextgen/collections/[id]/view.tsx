@@ -33,7 +33,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
 
   const { activePersona, isAdmin, hydrated } = usePersona()
-  const { filterByAccess, sharesReceivedByMe, allProjectShares, getVisibleCollection } = useAccess()
+  const { filterByAccess, sharesReceivedByMe, allProjectShares, getVisibleCollection, getAccessPath } = useAccess()
   const { getCollection, createCollection, deleteCollection } = useUserCollections()
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const { cardSize, sidePanelOpen, setSidePanelOpen } = useViewPreferences()
@@ -230,6 +230,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                           onClick={(a, e) => handleAssetClick(a, e, assets)}
                           onMenuClick={handleMenuClick}
                           showDepartment
+                          shared={sharedBy ? false : undefined}
                         />
                       ))}
                     </CardGrid>

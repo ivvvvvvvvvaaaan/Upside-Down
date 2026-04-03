@@ -181,7 +181,7 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
                               {event.kind === 'guest-link' && (
                                 <Tag size="compact" type="neutral" variant="border">
                                   <Link2 className="w-3 h-3 mr-0.5 inline" />
-                                  Guest Link
+                                  Link
                                 </Tag>
                               )}
                               {'passcode' in event && event.passcode && (

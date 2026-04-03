@@ -113,7 +113,7 @@ function GuestLinksSection({ links, selectedId, onRowClick }: { links: GuestLink
 
   return (
     <div className="mt-6">
-      <h3 className="text-label-1-bold text-foreground-dim px-3 pb-2">Guest Links</h3>
+      <h3 className="text-label-1-bold text-foreground-dim px-3 pb-2">Links</h3>
       <div className="divide-y divide-border-dim">
         {links.map(link => {
           const isSelected = selectedId === link.id
@@ -132,7 +132,7 @@ function GuestLinksSection({ links, selectedId, onRowClick }: { links: GuestLink
                 {link.passcode && <Lock className="w-3 h-3 text-foreground-dim flex-shrink-0" />}
               </span>
               <span className="flex items-center">
-                <Tag size="compact" type="neutral">Guest Link</Tag>
+                <Tag size="compact" type="neutral">Link</Tag>
               </span>
               <span className="flex items-center">
                 <Tag size="compact" type="neutral">{link.allowDownload ? 'View + DL' : 'View only'}</Tag>
@@ -169,7 +169,7 @@ function GuestLinkDetailPanel({ link, onClose, onRevoke }: { link: GuestLinkSeed
   return (
     <div className="w-[340px] border-l border-border-dim flex flex-col">
       <div className="flex items-center justify-between p-4 border-b border-border-dim">
-        <span className="text-body-0-bold text-foreground">Guest Link</span>
+        <span className="text-body-0-bold text-foreground">Link</span>
         <Button variant="icon" compact onClick={onClose}>
           <X className="w-4 h-4" />
         </Button>
