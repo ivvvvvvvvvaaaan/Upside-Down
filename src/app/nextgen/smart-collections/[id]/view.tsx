@@ -424,6 +424,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                             onClick={(a, e) => handleAssetClick(a, e, filteredAssets)}
                             onMenuClick={handleMenuClick}
                             showDepartment
+                            shared={asset.department != null && activePersona?.departmentId != null && asset.department !== activePersona.departmentId}
                           />
                         ))}
                       </CardGrid>

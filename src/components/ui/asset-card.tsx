@@ -5,7 +5,6 @@ import { Button } from './button'
 import { Tag } from './tag'
 import { Text } from './text'
 import { MoreVertical, Music, FileText, ImageIcon, Film, File, Lock, Import } from 'lucide-react'
-import { usePersona } from '@/hooks'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -95,10 +94,9 @@ export function AssetCard({
   onRequestAccess,
 }: AssetCardProps) {
   const router = useRouter()
-  const { activePersona } = usePersona()
   // Primary implies selected
   const isSelected = selected || primary
-  const isShared = shared ?? (asset?.department != null && activePersona?.departmentId != null && asset.department !== activePersona.departmentId)
+  const isShared = shared === true
 
   // Loading state with breathing animation (no asset data available)
   if (loading || !asset) {
