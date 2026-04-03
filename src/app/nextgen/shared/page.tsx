@@ -1,5 +1,10 @@
+import { Suspense } from 'react'
 import { SharedView } from './shared-view'
 
 export default function SharedPage() {
-  return <SharedView />
+  return (
+    <Suspense>
+      <SharedView />
+    </Suspense>
+  )
 }
