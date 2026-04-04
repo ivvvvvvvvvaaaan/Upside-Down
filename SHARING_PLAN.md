@@ -88,22 +88,17 @@ Changes made:
 
 ---
 
-## Phase 2: Share Button in Toolbars
-
-Add a `Share2` icon button to collection view toolbars, next to PanelRight toggle.
+## Phase 2: Share Button in Toolbars ✅ COMPLETE
 
 **Files**:
 - `src/app/nextgen/collections/[id]/view.tsx` — toolbar gets `[Share2] [PanelRight]`
-- `src/app/nextgen/smart-collections/[id]/view.tsx` — toolbar gets `[Share2]` before PanelRight (both mobile + desktop)
+- `src/app/nextgen/smart-collections/[id]/view.tsx` — toolbar gets `[Share2]` before PanelRight
 
-Pattern: `<Button variant="icon" onClick={openShareModal}><Share2 /></Button>`, gated by `canShare(resourceRef)`.
-
-Opens `AccessModal` with the collection's resourceRef.
-
-**Note**: Smart-collections view does NOT currently import `useAccess`. Must add it and construct a ResourceRef:
-```ts
-const resourceRef: ResourceRef = { id: collectionId, type: 'smart-collection' }
-```
+Changes made:
+- Added `Share2` icon button gated by `canShare(resourceRef)` to both views
+- Opens `AccessModal` with the collection's resourceRef and name
+- Added `useAccess` import + `ResourceRef` construction to smart-collections view
+- Button hidden when user lacks share permission
 
 ---
 

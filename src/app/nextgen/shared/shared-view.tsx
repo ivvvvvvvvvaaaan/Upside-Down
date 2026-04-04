@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useSearchParams } from 'next/navigation'
 import { Link2, Lock, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader, Tag, SharedSidePanel, EmptyState, MobileToolbar } from '@/components/ui'
@@ -219,12 +218,10 @@ const TAB_OPTIONS: { value: ShareTab; label: string }[] = [
   { value: 'all', label: 'All' },
 ]
 
-export function SharedView() {
-  const searchParams = useSearchParams()
-  const initialSelected = searchParams.get('selected')
+export function SharedView({ initialSelectedId = null }: { initialSelectedId?: string | null }) {
   const { visibleShares, allProjectShares, revokeShare, guestLinks, revokeGuestLink } = useAccess()
   const { activePersona, isAdmin, hydrated } = usePersona()
-  const [selectedId, setSelectedId] = useState<string | null>(initialSelected)
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId)
   const [activeTab, setActiveTab] = useState<ShareTab>(!activePersona ? 'all' : 'mine')
 
   const displayEntries = activeTab === 'all' && isAdmin ? allProjectShares : visibleShares
