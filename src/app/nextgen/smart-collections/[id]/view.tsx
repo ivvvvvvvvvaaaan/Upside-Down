@@ -7,7 +7,6 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Stack,
-  Text,
   PageHeader,
   Button,
   CardGrid,
@@ -25,11 +24,12 @@ import {
 import type { CollectionCardType } from '@/components/ui/collection-card'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import { AppLayout } from '@/components/layouts'
-import { useAssetSelection, useViewPreferences, useCompactBar, useResourceSelection, useUserCollections, useSmartCollections, usePersona } from '@/hooks'
+import { getGridColumns, useAssetSelection, useViewPreferences, useCompactBar, useResourceSelection, useSmartCollections, usePersona } from '@/hooks'
 import { matchesFilter } from '@/hooks/useSmartCollections'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import type { AssetFilter } from '@/lib/data'
 import { assetToSelectionEntity, collectionToSelectionEntity } from '@/lib/selection-actions'
+import { getContextAssetGroups } from '@/lib/context-relationships'
 
 interface SmartCollectionDetailViewProps {
   collectionId: string
@@ -40,13 +40,23 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const router = useRouter()
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
 
-  const { getCollection, getChildren, getRelatedCollections, updateCollection, deleteCollection, allAssets, scopedAssets, assetsLoading } = useSmartCollections()
+  const {
+    getCollection,
+    getChildren,
+    getRelatedCollections,
+    updateCollection,
+    deleteCollection,
+    scopedAssets,
+    assetsLoaded,
+    assetsLoading,
+    ensureAssetsLoaded,
+  } = useSmartCollections()
   const { activePersona } = usePersona()
-  const { createCollection: createUserCollection } = useUserCollections()
   const {
     selectedIds: selectedAssetIds,
     primaryId: primaryAssetId,
     handleSelectionClick: handleAssetClick,
+    selectOnly: selectOnlyAsset,
     clearSelection: clearAssetSelection,
   } = useAssetSelection()
   const {
@@ -65,6 +75,15 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   ])
 
   const collection = getCollection(collectionId)
+
+  useEffect(() => {
+    void ensureAssetsLoaded()
+  }, [ensureAssetsLoaded])
+
+  useEffect(() => {
+    clearAssetSelection()
+    clearCollectionSelection()
+  }, [collectionId, clearAssetSelection, clearCollectionSelection])
 
   // For child collections, find the parent
   const parentCollection = useMemo(() => {
@@ -143,13 +162,25 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   }
 
   const handleMenuClick = () => {}
-
-  const getColumns = () => {
-    switch (cardSize) {
-      case 'sm': return 6
-      case 'lg': return 3
-      default: return 4
+  const handleAssetCardClick = (asset: typeof filteredAssets[number], event: React.MouseEvent) => {
+    clearCollectionSelection()
+    handleAssetClick(asset, event, filteredAssets)
+  }
+  const handleCollectionCardClick = (
+    childCollection: typeof childData[number]['collection'],
+    event: React.MouseEvent,
+  ) => {
+    clearAssetSelection()
+    handleCollectionSelectionClick(childCollection, event, childData.map((entry) => entry.collection))
+  }
+  const handlePanelAssetSwitch = (nextAsset: typeof filteredAssets[number]) => {
+    clearCollectionSelection()
+    if (filteredAssets.some((asset) => asset.id === nextAsset.id)) {
+      selectOnlyAsset(nextAsset)
+      setSidePanelOpen(true)
+      return
     }
+    router.push(`/nextgen/assets/${nextAsset.id}`)
   }
 
   const selectedAssets = useMemo(() => {
@@ -166,6 +197,10 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     if (!primaryAssetId) return null
     return filteredAssets.find(a => a.id === primaryAssetId) ?? null
   }, [primaryAssetId, filteredAssets])
+  const primaryAssetContextGroups = useMemo(() => {
+    if (!primaryAsset) return undefined
+    return getContextAssetGroups(primaryAsset, scopedAssets)
+  }, [primaryAsset, scopedAssets])
   const selectedChildCollection = useMemo(() => {
     if (!selectedCollectionId) return null
     return childData.find(c => c.collection.id === selectedCollectionId)?.collection ?? null
@@ -175,12 +210,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     return getRelatedCollections(selectedCollectionId)
   }, [selectedCollectionId, getRelatedCollections])
 
-  const handleCreateCollection = (name: string) => {
-    createUserCollection(name, selectedAssets.map(a => a.id))
-    clearAssetSelection()
-  }
-
-  const loading = assetsLoading
+  const loading = !assetsLoaded || assetsLoading
 
   const sortFields = [
     { value: 'name', label: 'Name' },
@@ -321,9 +351,8 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                         onCardSizeChange={setCardSize}
                         showLayoutOptions={false}
                       />
-                                            <Button
+                      <Button
                           variant="icon"
-                          size="icon"
                           onClick={() => setSidePanelOpen(!sidePanelOpen)}
                           aria-label={sidePanelOpen ? 'Close panel' : 'Open panel'}
                           className={cn(sidePanelOpen && 'bg-surface-3')}
@@ -354,7 +383,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                         />
                         <Button
                           variant="icon"
-                          size="icon"
                           onClick={() => setSidePanelOpen(!sidePanelOpen)}
                           aria-label={sidePanelOpen ? 'Close panel' : 'Open panel'}
                           className={cn(sidePanelOpen && 'bg-surface-3')}
@@ -376,7 +404,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                   {/* Content */}
                   <div className="min-h-[400px]">
                     {loading ? (
-                      <CardGrid columns={getColumns()} gap="4">
+                      <CardGrid columns={getGridColumns(cardSize)} gap="4">
                         {[...Array(6)].map((_, i) => (
                           <CollectionCard
                             key={i}
@@ -389,7 +417,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                         ))}
                       </CardGrid>
                     ) : isParentWithChildren ? (
-                      <CardGrid columns={getColumns()} gap="4">
+                      <CardGrid columns={getGridColumns(cardSize)} gap="4">
                         {childData.map((child) => (
                           <CollectionCard
                             key={child.collection.id}
@@ -408,20 +436,20 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                               : 'Many'
                             }
                             isSelected={selectedCollectionId === child.collection.id}
-                            onClick={(event) => handleCollectionSelectionClick(child.collection, event, childData.map((entry) => entry.collection))}
+                            onClick={(event) => handleCollectionCardClick(child.collection, event)}
                             onDoubleClick={() => router.push(`/nextgen/smart-collections/${child.collection.id}`)}
                           />
                         ))}
                       </CardGrid>
                     ) : filteredAssets.length > 0 ? (
-                      <CardGrid columns={getColumns()} gap="4">
+                      <CardGrid columns={getGridColumns(cardSize)} gap="4">
                         {filteredAssets.map((asset) => (
                           <AssetCard
                             key={asset.id}
                             asset={asset}
                             selected={selectedAssetIds.has(asset.id)}
                             primary={primaryAssetId === asset.id}
-                            onClick={(a, e) => handleAssetClick(a, e, filteredAssets)}
+                            onClick={(a, e) => handleAssetCardClick(a, e)}
                             onMenuClick={handleMenuClick}
                             showDepartment
                             shared={asset.department != null && activePersona?.departmentId != null && asset.department !== activePersona.departmentId}
@@ -452,6 +480,9 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
           open={sidePanelOpen && !!primaryAsset}
           onClose={() => { clearAssetSelection(); setSidePanelOpen(false) }}
           activeCollectionId={collectionId}
+          activeContext={{ type: 'collection', id: collectionId }}
+          contextGroups={primaryAssetContextGroups}
+          onContextAssetClick={handlePanelAssetSwitch}
         />
         {selectedChildCollection && (
           <SmartCollectionSidePanel
@@ -461,6 +492,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
             onUpdate={handleUpdateCollection}
             matchingCount={childData.find(c => c.collection.id === selectedCollectionId)?.assetCount}
             relationships={selectedChildRelationships}
+            suppressDimension={collection?.groupBy}
           />
         )}
         {collection && (
@@ -472,6 +504,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
             onDelete={isAutoGeneratedChild ? undefined : handleDeleteCollection}
             matchingCount={filteredAssets.length}
             relationships={relationships}
+            suppressDimension={parentCollection?.groupBy}
           />
         )}
       </div>

@@ -33,13 +33,13 @@ function getStoredPreferences(): ViewPreferences {
     const parsed = JSON.parse(stored)
 
     // Validate stored values, fall back to defaults if invalid
-    return {
-      layout: VALID_LAYOUTS.includes(parsed.layout) ? parsed.layout : DEFAULT_PREFERENCES.layout,
-      cardSize: VALID_CARD_SIZES.includes(parsed.cardSize) ? parsed.cardSize : DEFAULT_PREFERENCES.cardSize,
-      hideEmptyCollections: typeof parsed.hideEmptyCollections === 'boolean' ? parsed.hideEmptyCollections : DEFAULT_PREFERENCES.hideEmptyCollections,
-      viewMode: typeof parsed.viewMode === 'string' ? parsed.viewMode : DEFAULT_PREFERENCES.viewMode,
-      sidePanelOpen: typeof parsed.sidePanelOpen === 'boolean' ? parsed.sidePanelOpen : DEFAULT_PREFERENCES.sidePanelOpen,
-    }
+      return {
+        layout: VALID_LAYOUTS.includes(parsed.layout) ? parsed.layout : DEFAULT_PREFERENCES.layout,
+        cardSize: VALID_CARD_SIZES.includes(parsed.cardSize) ? parsed.cardSize : DEFAULT_PREFERENCES.cardSize,
+        hideEmptyCollections: typeof parsed.hideEmptyCollections === 'boolean' ? parsed.hideEmptyCollections : DEFAULT_PREFERENCES.hideEmptyCollections,
+        viewMode: typeof parsed.viewMode === 'string' ? parsed.viewMode : DEFAULT_PREFERENCES.viewMode,
+        sidePanelOpen: typeof parsed.sidePanelOpen === 'boolean' ? parsed.sidePanelOpen : DEFAULT_PREFERENCES.sidePanelOpen,
+      }
   } catch (error) {
     console.warn('Failed to read view preferences from localStorage:', error)
     return DEFAULT_PREFERENCES
@@ -66,6 +66,17 @@ export interface UseViewPreferencesReturn {
   setHideEmptyCollections: (hide: boolean) => void
   setViewMode: (mode: string) => void
   setSidePanelOpen: (open: boolean) => void
+}
+
+export function getGridColumns(cardSize: CardSize): 3 | 4 | 6 {
+  switch (cardSize) {
+    case 'sm':
+      return 6
+    case 'lg':
+      return 3
+    default:
+      return 4
+  }
 }
 
 export function useViewPreferences(): UseViewPreferencesReturn {

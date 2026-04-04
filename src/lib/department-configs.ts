@@ -42,7 +42,3 @@ export const departmentConfigs: Record<DepartmentId, DepartmentConfig> = {
     userCollectionType: 'art-type',
   },
 }
-
-export function getDepartmentConfig(id: DepartmentId): DepartmentConfig {
-  return departmentConfigs[id]
-}

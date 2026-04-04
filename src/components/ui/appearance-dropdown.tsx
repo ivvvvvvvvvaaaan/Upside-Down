@@ -1,6 +1,6 @@
 'use client'
 
-import { LayoutGrid, LayoutList, GalleryHorizontalEnd, List, Columns } from 'lucide-react'
+import { LayoutGrid, LayoutList, GalleryHorizontalEnd } from 'lucide-react'
 import { Card } from './card'
 import { Dropdown } from './dropdown'
 import { ToggleButtonGroup } from './toggle-button-group'

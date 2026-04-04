@@ -102,10 +102,12 @@ function Tab({ value, children, className, disabled = false }: TabProps) {
         'relative px-4 py-3 text-label-1-bold transition-colors',
         // Bottom border indicator positioning
         '-mb-px',
+        // All tabs get a 2px bottom border to prevent layout shift
+        'border-b-2',
         // Active state: foreground text + blue underline
-        isActive && 'text-foreground border-b-2 border-border-selected',
-        // Inactive state: dim text, no underline
-        !isActive && 'text-foreground-dim hover:text-foreground',
+        isActive && 'text-foreground border-border-selected',
+        // Inactive state: dim text, transparent border
+        !isActive && 'text-foreground-dim hover:text-foreground border-transparent',
         // Disabled state
         disabled && 'opacity-50 cursor-not-allowed',
         !disabled && 'cursor-pointer',

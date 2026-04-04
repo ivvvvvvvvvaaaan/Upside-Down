@@ -48,7 +48,7 @@ function FilterOptionGhost({ width = 'w-24' }: { width?: string }) {
   )
 }
 
-export function FilterChip({
+function FilterChip({
   label,
   active = false,
   onClick,

@@ -1,11 +1,6 @@
 import { mergePrototypeAssets } from '@/lib/prototype-assets'
 import {
   MOCK_COLLECTIONS,
-  MOCK_ART_COLLECTIONS,
-  MOCK_VFX_COLLECTIONS,
-  MOCK_CAMERA_COLLECTIONS,
-  MOCK_EDITORIAL_COLLECTIONS,
-  MOCK_AUDIO_COLLECTIONS,
 } from '@/lib/data-client'
 import type { Asset, Collection, DepartmentId } from '@/lib/data-client'
 
@@ -74,7 +69,7 @@ export function getAssets(): Asset[] {
   return MOCK_ASSETS
 }
 
-export function getAllAssets(): Asset[] {
+function getAllAssets(): Asset[] {
   return mergePrototypeAssets(getAssets())
 }
 
@@ -87,18 +82,13 @@ export function getAssetsByDepartmentAndCollection(departmentId: DepartmentId, c
 }
 
 export function getRecentAssets(limit: number = 12): Asset[] {
-  return getAssets()
+  return getAllAssets()
     .sort((a, b) => {
       const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
       const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
       return dateB - dateA
     })
     .slice(0, limit)
-}
-
-export function getAsset(id: string): Asset | undefined {
-  const assetsById = new Map(getAllAssets().map((asset) => [asset.id, asset]))
-  return resolveAssetById(id, assetsById)
 }
 
 export function getAssetsByIds(ids: string[]): Asset[] {
@@ -119,9 +109,3 @@ export function getCollectionsByType(type: Collection['type']): Collection[] {
 export function getAssetsByCollection(collectionId: string): Asset[] {
   return MOCK_ASSETS.filter(asset => asset.collectionIds?.includes(collectionId))
 }
-
-export function getArtCollections(): Collection[] { return MOCK_ART_COLLECTIONS }
-export function getVfxCollections(): Collection[] { return MOCK_VFX_COLLECTIONS }
-export function getCameraCollections(): Collection[] { return MOCK_CAMERA_COLLECTIONS }
-export function getEditorialCollections(): Collection[] { return MOCK_EDITORIAL_COLLECTIONS }
-export function getAudioCollections(): Collection[] { return MOCK_AUDIO_COLLECTIONS }

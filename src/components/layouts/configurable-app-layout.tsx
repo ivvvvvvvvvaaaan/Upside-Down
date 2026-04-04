@@ -29,12 +29,13 @@ export interface ConfigurableAppLayoutProps {
   storageKey?: string
 }
 
+/** @public Used by generated project templates in scripts/project-templates.mjs */
 export function ConfigurableAppLayout({
   children,
   navigation,
   navConfig,
   navDepth = 'two-level',
-  theme,
+  theme: _theme,
   storageKey = 'sidebar-width',
 }: ConfigurableAppLayoutProps) {
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH)

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getAssetsByCollection } from '@/lib/data'
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: { id: string } }
 ) {
   try {

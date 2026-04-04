@@ -22,14 +22,6 @@ const ROLE_COLORS: Record<string, string> = {
   'vendor': 'bg-orange-500',
 }
 
-const ROLE_BORDER_COLORS: Record<string, string> = {
-  'studio-exec': 'border-amber-500',
-  'creative': 'border-purple-500',
-  'manager': 'border-blue-500',
-  'artist': 'border-green-500',
-  'vendor': 'border-orange-500',
-}
-
 function getPersona(id: string) {
   return PERSONAS.find(p => p.id === id)
 }

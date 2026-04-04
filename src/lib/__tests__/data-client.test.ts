@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_GRANTS, buildSharesReceivedByMe } from '@/lib/grants'
 import { buildSeedCollections } from '@/lib/scenario'
 import { getSharePreviewImages } from '@/lib/data-client'
-import { getAssetsByIds } from '@/lib/data'
+import { getAssetsByIds, getRecentAssets } from '@/lib/data'
 
 describe('getSharePreviewImages', () => {
   it('builds previews for seeded shared collections', () => {
@@ -49,5 +49,12 @@ describe('getSharePreviewImages', () => {
     expect(assets[0]?.id).toBe('ws-vfx-010-030')
     expect(assets[1]?.id).toBe('ws-vfx-020-020')
     expect(assets.filter((asset) => !!asset.thumbnail)).toHaveLength(2)
+  })
+
+  it('builds recents from the merged prototype asset pool', () => {
+    const assets = getRecentAssets(12)
+
+    expect(assets.length).toBeGreaterThan(0)
+    expect(assets.length).toBeLessThanOrEqual(12)
   })
 })

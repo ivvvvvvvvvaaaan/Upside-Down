@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { cn, formatDate } from '@/lib/utils'
-import { Folder, File, Image as ImageIcon, FileVideo, FileText, ChevronRight, LayoutGrid, List, Columns, GalleryHorizontal } from 'lucide-react'
+import { Folder, File, Image as ImageIcon, FileVideo, FileText, ChevronRight, List, Columns } from 'lucide-react'
 
 
 /**
@@ -47,12 +47,26 @@ export interface FileExplorerProps {
   title?: string
   viewMode?: FileViewMode
   onViewModeChange?: (mode: FileViewMode) => void
+  selectedIds?: Set<string>
+  primaryId?: string | null
   onFileClick?: (file: FileNode) => void
   onFolderClick?: (folder: FileNode) => void
   /** Show view mode toggle */
   showViewToggle?: boolean
   /** Right-click handler for file/folder rows */
   onContextMenu?: (event: React.MouseEvent, node: FileNode) => void
+}
+
+function findNodePath(nodes: FileNode[], targetId: string, ancestors: FileNode[] = []): FileNode[] | null {
+  for (const node of nodes) {
+    const path = [...ancestors, node]
+    if (node.id === targetId) return path
+    if (node.children) {
+      const childPath = findNodePath(node.children, targetId, path)
+      if (childPath) return childPath
+    }
+  }
+  return null
 }
 
 function getFileIcon(node: FileNode, sizeClass: string = 'w-4 h-4') {
@@ -85,13 +99,17 @@ function formatFileSize(bytes?: number): string {
 interface FileRowProps {
   node: FileNode
   depth: number
+  selectedIds?: Set<string>
+  primaryId?: string | null
   onFileClick?: (file: FileNode) => void
   onFolderClick?: (folder: FileNode) => void
   onContextMenu?: (event: React.MouseEvent, node: FileNode) => void
 }
 
-function FileRow({ node, depth, onFileClick, onFolderClick, onContextMenu }: FileRowProps) {
+function FileRow({ node, depth, selectedIds, primaryId, onFileClick, onFolderClick, onContextMenu }: FileRowProps) {
   const [expanded, setExpanded] = useState(false)
+  const isSelected = selectedIds?.has(node.id) ?? false
+  const isPrimary = primaryId === node.id
 
   const handleClick = () => {
     if (node.type === 'folder') {
@@ -115,8 +133,13 @@ function FileRow({ node, depth, onFileClick, onFolderClick, onContextMenu }: Fil
         onClick={handleClick}
         onContextMenu={handleContextMenu}
         className={cn(
-          'flex items-center gap-3 px-3 py-2 hover:bg-surface-2 cursor-pointer transition-colors',
-          'border-b border-border-dim last:border-b-0'
+          'flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors',
+          'border-b border-border-dim last:border-b-0',
+          isPrimary
+            ? 'bg-surface-selected-subtle ring-1 ring-inset ring-border-selected'
+            : isSelected
+              ? 'bg-surface-2'
+              : 'hover:bg-surface-2'
         )}
         style={{ paddingLeft: `${12 + depth * 20}px` }}
       >
@@ -159,6 +182,8 @@ function FileRow({ node, depth, onFileClick, onFolderClick, onContextMenu }: Fil
               key={child.id}
               node={child}
               depth={depth + 1}
+              selectedIds={selectedIds}
+              primaryId={primaryId}
               onFileClick={onFileClick}
               onFolderClick={onFolderClick}
               onContextMenu={onContextMenu}
@@ -203,11 +228,15 @@ function ViewModeButton({
 // Icons View - Grid of file/folder icons
 function IconsView({
   files,
+  selectedIds,
+  primaryId,
   onFileClick,
   onFolderClick,
   onContextMenu,
 }: {
   files: FileNode[]
+  selectedIds?: Set<string>
+  primaryId?: string | null
   onFileClick?: (file: FileNode) => void
   onFolderClick?: (folder: FileNode) => void
   onContextMenu?: (event: React.MouseEvent, node: FileNode) => void
@@ -222,25 +251,36 @@ function IconsView({
 
   return (
     <div className="grid grid-cols-6 gap-4 p-4">
-      {files.map((node) => (
-        <div
-          key={node.id}
-          onClick={() => handleClick(node)}
-          onContextMenu={onContextMenu ? (e) => { e.preventDefault(); onContextMenu(e, node) } : undefined}
-          className="flex flex-col items-center gap-2 p-3 rounded hover:bg-surface-2 cursor-pointer transition-colors"
-        >
-          <div className="w-12 h-12 flex items-center justify-center">
-            {node.type === 'folder' ? (
-              <Folder className="w-10 h-10 text-foreground-dim" />
-            ) : (
-              getFileIcon(node, 'w-10 h-10')
+      {files.map((node) => {
+        const isSelected = selectedIds?.has(node.id) ?? false
+        const isPrimary = primaryId === node.id
+        return (
+          <div
+            key={node.id}
+            onClick={() => handleClick(node)}
+            onContextMenu={onContextMenu ? (e) => { e.preventDefault(); onContextMenu(e, node) } : undefined}
+            className={cn(
+              'flex flex-col items-center gap-2 p-3 rounded cursor-pointer transition-colors',
+              isPrimary
+                ? 'bg-surface-selected-subtle ring-1 ring-inset ring-border-selected'
+                : isSelected
+                  ? 'bg-surface-2'
+                  : 'hover:bg-surface-2',
             )}
+          >
+            <div className="w-12 h-12 flex items-center justify-center">
+              {node.type === 'folder' ? (
+                <Folder className="w-10 h-10 text-foreground-dim" />
+              ) : (
+                getFileIcon(node, 'w-10 h-10')
+              )}
+            </div>
+            <span className="text-body-0-regular text-foreground text-center truncate w-full">
+              {node.name}
+            </span>
           </div>
-          <span className="text-body-0-regular text-foreground text-center truncate w-full">
-            {node.name}
-          </span>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -248,18 +288,32 @@ function IconsView({
 // Columns View - Miller columns like macOS Finder
 function ColumnsView({
   files,
+  primaryId,
   onFileClick,
   onFolderClick,
   onContextMenu,
   className,
 }: {
   files: FileNode[]
+  primaryId?: string | null
   onFileClick?: (file: FileNode) => void
   onFolderClick?: (folder: FileNode) => void
   onContextMenu?: (event: React.MouseEvent, node: FileNode) => void
   className?: string
 }) {
   const [selectedPath, setSelectedPath] = useState<FileNode[]>([])
+
+  useEffect(() => {
+    if (!primaryId) {
+      setSelectedPath([])
+      return
+    }
+
+    const nextPath = findNodePath(files, primaryId)
+    if (nextPath) {
+      setSelectedPath(nextPath)
+    }
+  }, [files, primaryId])
 
   const handleSelect = (node: FileNode, columnIndex: number) => {
     const newPath = selectedPath.slice(0, columnIndex)
@@ -320,11 +374,13 @@ function ColumnsView({
 // Gallery View - Large previews with details
 function GalleryView({
   files,
+  primaryId,
   onFileClick,
   onFolderClick,
   onContextMenu,
 }: {
   files: FileNode[]
+  primaryId?: string | null
   onFileClick?: (file: FileNode) => void
   onFolderClick?: (folder: FileNode) => void
   onContextMenu?: (event: React.MouseEvent, node: FileNode) => void
@@ -334,6 +390,15 @@ function GalleryView({
   const flatFiles = files.flatMap((node) =>
     node.type === 'folder' ? (node.children || []) : [node]
   )
+
+  useEffect(() => {
+    if (!primaryId) {
+      setSelectedNode(null)
+      return
+    }
+    const nextPath = findNodePath(files, primaryId)
+    setSelectedNode(nextPath?.at(-1) ?? null)
+  }, [files, primaryId])
 
   const handleSelect = (node: FileNode) => {
     setSelectedNode(node)
@@ -375,6 +440,7 @@ function GalleryView({
           <div
             key={node.id}
             onClick={() => handleSelect(node)}
+            onContextMenu={onContextMenu ? (e) => { e.preventDefault(); onContextMenu(e, node) } : undefined}
             className={cn(
               'flex-shrink-0 w-16 h-16 rounded flex items-center justify-center cursor-pointer transition-colors',
               selectedNode?.id === node.id
@@ -396,6 +462,8 @@ export function FileExplorer({
   title,
   viewMode: controlledViewMode,
   onViewModeChange,
+  selectedIds,
+  primaryId,
   onFileClick,
   onFolderClick,
   showViewToggle = true,
@@ -457,6 +525,8 @@ export function FileExplorer({
                 key={node.id}
                 node={node}
                 depth={0}
+                selectedIds={selectedIds}
+                primaryId={primaryId}
                 onFileClick={onFileClick}
                 onFolderClick={onFolderClick}
                 onContextMenu={onContextMenu}
@@ -467,15 +537,15 @@ export function FileExplorer({
       )}
 
       {viewMode === 'icons' && (
-        <IconsView files={files} onFileClick={onFileClick} onFolderClick={onFolderClick} onContextMenu={onContextMenu} />
+        <IconsView files={files} selectedIds={selectedIds} primaryId={primaryId} onFileClick={onFileClick} onFolderClick={onFolderClick} onContextMenu={onContextMenu} />
       )}
 
       {viewMode === 'columns' && (
-        <ColumnsView className="flex-1" files={files} onFileClick={onFileClick} onFolderClick={onFolderClick} onContextMenu={onContextMenu} />
+        <ColumnsView className="flex-1" files={files} primaryId={primaryId} onFileClick={onFileClick} onFolderClick={onFolderClick} onContextMenu={onContextMenu} />
       )}
 
       {viewMode === 'gallery' && (
-        <GalleryView files={files} onFileClick={onFileClick} onFolderClick={onFolderClick} onContextMenu={onContextMenu} />
+        <GalleryView files={files} primaryId={primaryId} onFileClick={onFileClick} onFolderClick={onFolderClick} onContextMenu={onContextMenu} />
       )}
     </div>
   )

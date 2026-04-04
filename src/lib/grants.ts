@@ -4,11 +4,9 @@ import { isUserInTeam, getTeamById } from '@/lib/teams'
 import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 import {
   buildGrants,
-  buildGuestLinks,
   buildLabels,
   buildRoleGroups,
 } from '@/lib/scenario'
-import type { GuestLinkSeed } from '@/lib/scenario'
 
 export type ResourceType = 'asset' | 'cut' | 'folder' | 'collection' | 'smart-collection' | 'review-set' | 'project'
 
@@ -34,7 +32,6 @@ export type AccessProfileId =
   | 'link-viewer'
 
 export type Permission =
-  | 'discover'
   | 'open'
   | 'download'
   | 'write'
@@ -69,7 +66,6 @@ export type Grant = {
 
 export const DEFAULT_ROLE_GROUPS: RoleGroup[] = buildRoleGroups()
 export const DEFAULT_GRANTS: Grant[] = buildGrants()
-export const DEFAULT_GUEST_LINKS: GuestLinkSeed[] = buildGuestLinks()
 
 const SEED_LABELS = buildLabels()
 
@@ -84,7 +80,6 @@ const TEMPLATE_RANK: Record<AccessProfileId, number> = {
 }
 
 const ALL_PERMISSIONS: Permission[] = [
-  'discover',
   'open',
   'download',
   'write',
@@ -135,7 +130,7 @@ export function profileLabel(
   return group?.name ?? templateId
 }
 
-export function getGrantPermissions(
+function getGrantPermissions(
   grant: Pick<Grant, 'permissions' | 'templateId'>,
   roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
 ): Permission[] {
@@ -164,7 +159,7 @@ function mergeGrantPermissions(grants: Grant[], roleGroups: RoleGroup[]): Permis
   )
 }
 
-function mostPermissiveTemplate(
+export function mostPermissiveProfile(
   a: AccessProfileId | null,
   b: AccessProfileId | null | undefined,
 ): AccessProfileId | null {
@@ -176,7 +171,7 @@ function mostPermissiveTemplate(
 function bestTemplateId(grants: Grant[]): AccessProfileId | null {
   let best: AccessProfileId | null = null
   for (const grant of grants) {
-    best = mostPermissiveTemplate(best, grant.templateId)
+    best = mostPermissiveProfile(best, grant.templateId)
   }
   return best
 }
@@ -227,11 +222,11 @@ export function getResourceLabel(resourceId: string): string {
   return SEED_LABELS[resourceId] ?? resourceId
 }
 
-export function getProjectLevelGrants(grants: Grant[]): Grant[] {
+function getProjectLevelGrants(grants: Grant[]): Grant[] {
   return grants.filter((grant) => grant.resource.type === 'project' && !grant.revokedAt)
 }
 
-export function isPolicyResource(resource: Pick<ResourceRef, 'id' | 'type'>): boolean {
+function isPolicyResource(resource: Pick<ResourceRef, 'id' | 'type'>): boolean {
   return resource.type === 'project' || POLICY_RESOURCE_IDS.has(resource.id)
 }
 
@@ -311,7 +306,7 @@ export function resolveAccess(
   return resourceAccess ?? departmentAccess ?? NO_ACCESS
 }
 
-export function resolveAccessForResource(
+function resolveAccessForResource(
   userId: string,
   resource: ResourceRef,
   grants: Grant[],
@@ -320,7 +315,7 @@ export function resolveAccessForResource(
   return resolveAccess(userId, resource.id, grants, roleGroups, resource.departmentId)
 }
 
-export function userHasPermissionOnResource(
+function userHasPermissionOnResource(
   userId: string,
   resource: ResourceRef,
   grants: Grant[],
@@ -402,11 +397,11 @@ export function getResourceGrants(resourceId: string, grants: Grant[]): Grant[] 
   return grants.filter((grant) => grant.resource.id === resourceId && !grant.revokedAt)
 }
 
-export function getGrantsByGrantor(userId: string, grants: Grant[]): Grant[] {
+function getGrantsByGrantor(userId: string, grants: Grant[]): Grant[] {
   return grants.filter((grant) => grant.grantedByUserId === userId && !grant.revokedAt)
 }
 
-export function getGrantsForUser(userId: string, grants: Grant[]): Grant[] {
+function getGrantsForUser(userId: string, grants: Grant[]): Grant[] {
   return grants.filter((grant) => {
     if (grant.revokedAt) return false
     if (grant.principal.type === 'user' && grant.principal.userId === userId) return true
@@ -415,7 +410,7 @@ export function getGrantsForUser(userId: string, grants: Grant[]): Grant[] {
   })
 }
 
-export function getAllActiveGrants(grants: Grant[]): Grant[] {
+function getAllActiveGrants(grants: Grant[]): Grant[] {
   return grants.filter((grant) => !grant.revokedAt)
 }
 

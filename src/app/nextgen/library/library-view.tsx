@@ -1,86 +1,31 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Film } from 'lucide-react'
-import { PageHeader, EmptyState } from '@/components/ui'
+import { Film, PanelRight, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useRouter } from 'next/navigation'
+import { PageHeader, EmptyState, SelectionBar, Button } from '@/components/ui'
 import { AssetCard } from '@/components/ui/asset-card'
 import { ReleaseModal } from '@/components/ui/release-modal'
 import { AppLayout } from '@/components/layouts'
-import { useAccess, usePersona } from '@/hooks'
-import type { Asset, CutStage } from '@/lib/data'
-import { buildCuts } from '@/lib/scenario'
+import { useCuts, usePersona, useAssetSelection, useSmartCollections, useViewPreferences, type AccessibleCutEntry } from '@/hooks'
 import type { SeedCut } from '@/lib/scenario'
-import { deriveReleaseTagInfo } from '@/lib/release'
-import { pick, IMAGE_POOL } from '@/lib/images'
+import { compareCutsByStageAndVersion } from '@/lib/cuts'
+import { assetToSelectionEntity } from '@/lib/selection-actions'
+import { getContextAssetGroups } from '@/lib/context-relationships'
+import type { Asset } from '@/lib/data'
+import { ResponsivePanel } from '@/components/ui/responsive-panel'
+import { AssetDetailPanelContent } from '@/components/ui/asset-detail-panel'
 
-const STAGE_LABELS: Record<string, string> = {
-  'locked-cut': 'Locked Cut',
-  'netflix-cut': 'Netflix Cut',
-  'final-cut': 'Final Cut',
-  'emf': 'EMF',
-}
-
-const STAGE_ORDER: CutStage[] = [
-  'locked-cut', 'netflix-cut', 'final-cut', 'emf',
-]
-
-function abbrev(name: string): string {
-  return name.split(/\s+/).map(w => w[0]).join('').toUpperCase()
-}
-
-/** Build compact release tags: [ALL] or [SC][+2] */
-function buildReleaseTags(info: { labels: string[]; isAll: boolean }): Asset['tags'] {
-  if (info.labels.length === 0) return []
-  if (info.isAll) return [{ label: 'ALL', source: 'system' }]
-  const tags: Asset['tags'] = [{ label: abbrev(info.labels[0]), source: 'system' }]
-  if (info.labels.length > 1) {
-    tags.push({ label: `+${info.labels.length - 1}`, source: 'system' })
-  }
-  return tags
-}
-
-/** Convert a seed cut into an Asset, with release tags derived from live grants */
-function cutToAsset(cut: SeedCut, releaseInfo: { labels: string[]; isAll: boolean }): Asset {
-  const thumbnail = pick(IMAGE_POOL, cut.id)[0]
-  const stageLabel = STAGE_LABELS[cut.stage] ?? cut.stage
-  const typeTag = cut.stage === 'locked-cut' && cut.version > 0
-    ? `${stageLabel} v${cut.version}`
-    : stageLabel
-
-  const tags: Asset['tags'] = [
-    { label: typeTag, source: 'system' },
-    ...buildReleaseTags(releaseInfo),
-  ]
-
-  return {
-    id: cut.id,
-    name: cut.name,
-    type: 'video',
-    kind: 'cut',
-    stage: cut.stage as CutStage,
-    version: cut.version,
-    episode: cut.episode,
-    constituents: cut.constituents,
-    thumbnail,
-    tags,
-    videoMeta: { duration: cut.duration },
-    department: 'editorial',
-    created_at: cut.date,
-    modifiedBy: cut.createdBy,
-  }
-}
-
-type CutWithMeta = {
-  asset: Asset
-  seed: SeedCut
-  isOwn: boolean
-}
-
-function EpisodeSection({ episode, cuts, onRelease }: {
+function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, onMenuClick }: {
   episode: string
-  cuts: CutWithMeta[]
-  onRelease?: (cut: SeedCut) => void
+  cuts: AccessibleCutEntry[]
+  selectedIds: Set<string>
+  primaryId: string | null
+  onAssetClick: (asset: Asset, event: React.MouseEvent, allAssets: Asset[]) => void
+  onMenuClick?: (asset: Asset) => void
 }) {
+  const allAssets = cuts.map(c => c.asset)
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
@@ -95,7 +40,10 @@ function EpisodeSection({ episode, cuts, onRelease }: {
           <AssetCard
             key={cut.asset.id}
             asset={cut.asset}
-            onMenuClick={onRelease ? () => onRelease(cut.seed) : undefined}
+            selected={selectedIds.has(cut.asset.id)}
+            primary={primaryId === cut.asset.id}
+            onClick={(a, e) => onAssetClick(a, e, allAssets)}
+            onMenuClick={onMenuClick ? () => onMenuClick(cut.asset) : undefined}
           />
         ))}
       </div>
@@ -104,108 +52,191 @@ function EpisodeSection({ episode, cuts, onRelease }: {
 }
 
 export function LibraryView() {
-  const { sharesReceivedByMe, allProjectShares, grants, canShare } = useAccess()
   const { hydrated, isAdmin, activePersona } = usePersona()
+  const { accessibleCuts } = useCuts()
+  const { scopedAssets } = useSmartCollections()
+  const { sidePanelOpen, setSidePanelOpen } = useViewPreferences()
+  const {
+    selectedIds,
+    primaryId,
+    handleSelectionClick,
+    selectOnly,
+    clearSelection,
+  } = useAssetSelection()
   const [releaseTarget, setReleaseTarget] = useState<SeedCut | null>(null)
+  const router = useRouter()
 
-  const allCuts = useMemo(() => buildCuts(), [])
-  const cutsByIdMap = useMemo(() => new Map(allCuts.map(c => [c.id, c])), [allCuts])
-
-  const allEntries = useMemo(() => {
-    return isAdmin ? allProjectShares : sharesReceivedByMe
-  }, [isAdmin, allProjectShares, sharesReceivedByMe])
-
-  // Cuts accessible via grants (shared to me or my teams)
-  const grantedCutIds = useMemo(() => {
-    return new Set(allEntries.filter(e => e.resourceType === 'cut').map(e => e.resourceId))
-  }, [allEntries])
-
-  // Cuts from own department (editorial users see their own cuts)
   const isEditorialMember = activePersona?.departmentId === 'editorial'
 
-  // Can this user release cuts?
   const canRelease = useMemo(() => {
-    // Editorial members can release, or anyone with share permission
     return isEditorialMember || isAdmin
   }, [isEditorialMember, isAdmin])
 
-  // All cuts the user can see, with release status derived from live grants
-  const accessibleCuts = useMemo((): CutWithMeta[] => {
-    const seen = new Set<string>()
-    const result: CutWithMeta[] = []
+  // Deduplicate: keep only the latest version per episode+stage, track older versions
+  const { latestCuts, olderVersionsMap } = useMemo(() => {
+    // Group by versionGroupId (episode+stage)
+    const groups = new Map<string, AccessibleCutEntry[]>()
+    for (const cut of accessibleCuts) {
+      const key = cut.asset.versionGroupId ?? cut.asset.id
+      const existing = groups.get(key) ?? []
+      existing.push(cut)
+      groups.set(key, existing)
+    }
 
-    for (const cut of allCuts) {
-      if (seen.has(cut.id)) continue
-      const isOwn = isEditorialMember || false
-      const hasGrant = grantedCutIds.has(cut.id)
-      const isAdminAccess = isAdmin
+    const latest: AccessibleCutEntry[] = []
+    const older = new Map<string, Asset[]>()
 
-      if (isOwn || hasGrant || isAdminAccess) {
-        seen.add(cut.id)
-        const releaseInfo = deriveReleaseTagInfo(cut.id, grants)
-        result.push({ asset: cutToAsset(cut, releaseInfo), seed: cut, isOwn })
+    for (const [, entries] of Array.from(groups)) {
+      entries.sort((a, b) => compareCutsByStageAndVersion(a.asset, b.asset))
+      latest.push(entries[0]) // highest stage + version first
+      if (entries.length > 1) {
+        older.set(entries[0].asset.id, entries.slice(1).map(e => e.asset))
       }
     }
 
-    return result
-  }, [allCuts, isEditorialMember, grantedCutIds, isAdmin, grants])
+    return { latestCuts: latest, olderVersionsMap: older }
+  }, [accessibleCuts])
 
   // Group by episode, sort by stage + version (latest first)
   const episodes = useMemo(() => {
-    const map = new Map<string, CutWithMeta[]>()
-    for (const cut of accessibleCuts) {
+    const map = new Map<string, AccessibleCutEntry[]>()
+    for (const cut of latestCuts) {
       const ep = cut.asset.episode ?? 'Unknown'
       const existing = map.get(ep) ?? []
       existing.push(cut)
       map.set(ep, existing)
     }
     for (const entry of Array.from(map)) {
-      entry[1].sort((a, b) => {
-        const stageDiff = STAGE_ORDER.indexOf(b.asset.stage ?? 'locked-cut') - STAGE_ORDER.indexOf(a.asset.stage ?? 'locked-cut')
-        if (stageDiff !== 0) return stageDiff
-        return (b.asset.version ?? 0) - (a.asset.version ?? 0)
-      })
+      entry[1].sort((a, b) => compareCutsByStageAndVersion(a.asset, b.asset))
     }
     return Array.from(map).sort((a, b) => a[0].localeCompare(b[0]))
-  }, [accessibleCuts])
+  }, [latestCuts])
 
+  const allCutAssets = useMemo(() => latestCuts.map(c => c.asset), [latestCuts])
+
+  const primaryAsset = useMemo(() => {
+    if (!primaryId) return null
+    return allCutAssets.find(a => a.id === primaryId) ?? null
+  }, [primaryId, allCutAssets])
+
+  const contextGroups = useMemo(() => {
+    if (!primaryAsset) return undefined
+    return getContextAssetGroups(primaryAsset, scopedAssets)
+  }, [primaryAsset, scopedAssets])
+
+  const primaryOlderVersions = useMemo(() => {
+    if (!primaryAsset) return undefined
+    return olderVersionsMap.get(primaryAsset.id)
+  }, [primaryAsset, olderVersionsMap])
+
+  const selectedEntities = useMemo(() => {
+    return allCutAssets
+      .filter(a => selectedIds.has(a.id))
+      .map(a => assetToSelectionEntity(a))
+  }, [allCutAssets, selectedIds])
+
+  const handleAssetClick = (asset: Asset, event: React.MouseEvent, allAssets: Asset[]) => {
+    handleSelectionClick(asset, event, allAssets)
+  }
+
+  const handleMenuClick = (asset: Asset) => {
+    const seed = accessibleCuts.find(c => c.asset.id === asset.id)?.seed
+    if (seed && canRelease) setReleaseTarget(seed)
+  }
+  const handlePanelAssetSwitch = (nextAsset: Asset) => {
+    if (allCutAssets.some((asset) => asset.id === nextAsset.id)) {
+      selectOnly(nextAsset)
+      setSidePanelOpen(true)
+      return
+    }
+    router.push(`/nextgen/assets/${nextAsset.id}`)
+  }
   if (!hydrated) {
     return <AppLayout><div className="flex-1" /></AppLayout>
   }
 
   return (
     <AppLayout>
-      <div className="h-full overflow-y-auto">
-        <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
-          <PageHeader
-            title="Cuts"
-            description={
-              accessibleCuts.length > 0
-                ? `${accessibleCuts.length} cuts across ${episodes.length} ${episodes.length === 1 ? 'episode' : 'episodes'}`
-                : 'Cuts will appear here as they become available'
-            }
-          />
-
-          {episodes.length > 0 ? (
-            <div className="space-y-8">
-              {episodes.map(([episode, cuts]) => (
-                <EpisodeSection
-                  key={episode}
-                  episode={episode}
-                  cuts={cuts}
-                  onRelease={canRelease ? setReleaseTarget : undefined}
-                />
-              ))}
+      <div className="h-full flex min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
+            <div className="flex items-start justify-between gap-4">
+              <PageHeader
+                title="Cuts"
+                description={
+                  accessibleCuts.length > 0
+                    ? `${accessibleCuts.length} cuts across ${episodes.length} ${episodes.length === 1 ? 'episode' : 'episodes'}`
+                    : 'Cuts will appear here as they become available'
+                }
+              />
+              <Button
+                variant="icon"
+                onClick={() => setSidePanelOpen(!sidePanelOpen)}
+                aria-label={sidePanelOpen ? 'Close panel' : 'Open panel'}
+                className={cn(sidePanelOpen && 'bg-surface-3')}
+              >
+                <PanelRight className="w-4 h-4" />
+              </Button>
             </div>
-          ) : (
-            <EmptyState
-              title="No cuts yet"
-              message={isEditorialMember
-                ? 'Upload or assemble cuts in your workspace — they will appear here automatically.'
-                : 'Cuts shared to you or your teams will appear here.'}
-            />
-          )}
+
+            {episodes.length > 0 ? (
+              <div className="space-y-8">
+                {episodes.map(([episode, cuts]) => (
+                  <EpisodeSection
+                    key={episode}
+                    episode={episode}
+                    cuts={cuts}
+                    selectedIds={selectedIds}
+                    primaryId={primaryId}
+                    onAssetClick={handleAssetClick}
+                    onMenuClick={canRelease ? handleMenuClick : undefined}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                title="No cuts yet"
+                message={isEditorialMember
+                  ? 'Upload or assemble cuts in your workspace — they will appear here automatically.'
+                  : 'Cuts shared to you or your teams will appear here.'}
+              />
+            )}
+          </div>
+
+          <SelectionBar
+            selectedEntities={selectedEntities}
+            onClear={clearSelection}
+          />
         </div>
+
+        <ResponsivePanel open={sidePanelOpen} onClose={() => setSidePanelOpen(false)}>
+          {primaryAsset ? (
+            <AssetDetailPanelContent
+              asset={primaryAsset}
+              onClose={() => { clearSelection(); setSidePanelOpen(false) }}
+              contextGroups={contextGroups}
+              olderVersions={primaryOlderVersions}
+              onContextAssetClick={handlePanelAssetSwitch}
+              onVersionSelect={handlePanelAssetSwitch}
+            />
+          ) : (
+            <>
+              <div className="flex items-center justify-between gap-3 p-4 border-b border-border-dim">
+                <span className="text-body-0-bold text-foreground">Info</span>
+                <Button variant="icon" compact onClick={() => setSidePanelOpen(false)} className="flex-shrink-0">
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="flex-1 min-h-0 flex items-center justify-center p-6">
+                <EmptyState
+                  title="Select a cut"
+                  message="Choose a cut to preview details, versions, and related context."
+                  className="max-w-[260px] py-0"
+                />
+              </div>
+            </>
+          )}
+        </ResponsivePanel>
       </div>
 
       <ReleaseModal

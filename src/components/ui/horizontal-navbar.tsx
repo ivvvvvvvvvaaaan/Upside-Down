@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
@@ -26,7 +25,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
-import type { NavConfig, NavItem } from '@/types/navigation'
+import type { NavConfig } from '@/types/navigation'
 
 /**
  * Horizontal Navbar

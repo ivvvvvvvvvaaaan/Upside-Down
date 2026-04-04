@@ -57,7 +57,7 @@ const initialWindows: WindowState[] = [
 // Sync status options
 export type SyncStatus = 'synced' | 'syncing' | 'error' | 'offline'
 
-export const SYNC_STATUS_OPTIONS: { value: SyncStatus; label: string }[] = [
+const SYNC_STATUS_OPTIONS: { value: SyncStatus; label: string }[] = [
   { value: 'synced', label: 'Synced' },
   { value: 'syncing', label: 'Syncing...' },
   { value: 'error', label: 'Sync Error' },

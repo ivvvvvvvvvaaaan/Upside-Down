@@ -15,11 +15,10 @@ import {
   AssetDetailPanel,
 } from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
-import { useAccess, usePersona, useViewPreferences } from '@/hooks'
+import { useAccess, usePersona, useViewPreferences, useSmartCollections } from '@/hooks'
 import type { Asset, DepartmentId } from '@/lib/data'
-import { mergePrototypeAssets } from '@/lib/prototype-assets'
-import { getContextAssetGroups } from '@/lib/context-relationships'
 import { getReviewNoteSummary } from '@/lib/review-notes'
+import { getContextAssetGroups } from '@/lib/context-relationships'
 
 const DEPARTMENT_NAMES: Record<DepartmentId, string> = {
   'art-design': 'Art & Design',
@@ -155,12 +154,16 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
 
   const { hydrated } = usePersona()
-  const { filterByAccess, visibleCollections } = useAccess()
+  const { filterByAccess } = useAccess()
   const { sidePanelOpen, setSidePanelOpen } = useViewPreferences()
+  const { scopedAssets, ensureAssetsLoaded } = useSmartCollections()
 
   const [asset, setAsset] = useState<Asset | null>(null)
-  const [assetPool, setAssetPool] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    void ensureAssetsLoaded()
+  }, [ensureAssetsLoaded])
 
   // Fetch asset data on mount
   useEffect(() => {
@@ -185,31 +188,18 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
 
     fetchAsset()
   }, [assetId, hydrated, filterByAccess])
-
-  useEffect(() => {
-    const fetchAssetPool = async () => {
-      try {
-        const response = await fetch('/api/assets')
-        const apiAssets: Asset[] = response.ok ? await response.json() : []
-        setAssetPool(mergePrototypeAssets(apiAssets))
-      } catch (error) {
-        console.error('Failed to fetch accessible asset pool:', error)
-        setAssetPool([])
-      }
-    }
-
-    fetchAssetPool()
-  }, [])
-
   const typeTag = asset ? getTypeTag(asset) : ''
-  const relatedGroups = useMemo(() => {
-    if (!asset) return []
-    return getContextAssetGroups(asset, filterByAccess(assetPool))
-  }, [asset, assetPool, filterByAccess])
   const reviewNoteSummary = useMemo(() => {
     if (!asset) return null
     return getReviewNoteSummary(asset.id)
   }, [asset])
+  const contextGroups = useMemo(() => {
+    if (!asset) return undefined
+    return getContextAssetGroups(asset, scopedAssets)
+  }, [asset, scopedAssets])
+  const handlePanelAssetSwitch = (nextAsset: Asset) => {
+    router.push(`/nextgen/assets/${nextAsset.id}`)
+  }
   // Loading state
   if (loading) {
     return (
@@ -283,7 +273,6 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
                 <div className="flex items-center justify-between">
                   <Button
                     variant="tertiary"
-                    compact
                     icon={<ArrowLeft />}
                     onClick={() => router.back()}
                   >
@@ -291,7 +280,6 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
                   </Button>
                   <Button
                     variant="icon"
-                    compact
                     onClick={() => setSidePanelOpen(!sidePanelOpen)}
                     aria-label={sidePanelOpen ? 'Close panel' : 'Open panel'}
                     className={cn(sidePanelOpen && 'bg-surface-3')}
@@ -327,7 +315,6 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
                       <Button
                         asChild
                         variant="secondary"
-                        compact
                         icon={<FileText />}
                       >
                         <a
@@ -341,7 +328,6 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
                     )}
                     <Button
                       variant="secondary"
-                      compact
                       icon={<Share2 />}
                       onClick={() => console.log('Share asset:', asset.id)}
                     >
@@ -349,7 +335,6 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
                     </Button>
                     <Button
                       variant="secondary"
-                      compact
                       icon={<Download />}
                       onClick={() => console.log('Download asset:', asset.id)}
                     >
@@ -368,6 +353,9 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
           open={sidePanelOpen}
           onClose={() => setSidePanelOpen(false)}
           reviewNoteSummary={reviewNoteSummary}
+          contextGroups={contextGroups}
+          onContextAssetClick={handlePanelAssetSwitch}
+          onVersionSelect={handlePanelAssetSwitch}
         />
       </div>
     </AppLayout>

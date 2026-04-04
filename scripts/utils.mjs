@@ -148,15 +148,3 @@ export function titleCase(slug) {
     .map(w => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ')
 }
-
-/**
- * Convert a slug to PascalCase (for React component names)
- * @param {string} slug - URL slug
- * @returns {string} - PascalCase string
- */
-export function pascalCase(slug) {
-  return slug
-    .split('-')
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-    .join('')
-}

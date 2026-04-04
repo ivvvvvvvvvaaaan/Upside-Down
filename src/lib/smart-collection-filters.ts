@@ -1,4 +1,4 @@
-import type { Asset, AssetFilter, SmartCollection, SmartCollectionGroupBy } from '@/lib/data'
+import type { Asset, AssetFilter, SmartCollection } from '@/lib/data'
 
 /**
  * Check if an asset matches the given filter rules
@@ -119,6 +119,25 @@ export function matchesFilter(asset: Asset, filter: AssetFilter): boolean {
     }
   }
 
+  // Shot metadata filters
+  if (filter.shotTake) {
+    if (!asset.shotMeta?.take) {
+      return false
+    }
+    if (asset.shotMeta.take.toLowerCase() !== filter.shotTake.toLowerCase()) {
+      return false
+    }
+  }
+
+  if (filter.shotCamera) {
+    if (!asset.shotMeta?.camera) {
+      return false
+    }
+    if (asset.shotMeta.camera.toLowerCase() !== filter.shotCamera.toLowerCase()) {
+      return false
+    }
+  }
+
   return true
 }
 
@@ -151,24 +170,33 @@ export function generateChildCollections(parent: SmartCollection, assets: Asset[
   // Filter assets matching parent's filter
   const matchingAssets = assets.filter(a => matchesFilter(a, parent.filter))
 
-  // Extract unique values from the relevant aiMeta field
+  // Extract unique values from the relevant metadata field
   const valuesSet = new Set<string>()
   for (const asset of matchingAssets) {
-    if (!asset.aiMeta) continue
     switch (parent.groupBy) {
       case 'characters':
-        if (asset.aiMeta.characters) {
+        if (asset.aiMeta?.characters) {
           asset.aiMeta.characters.forEach(c => valuesSet.add(c))
         }
         break
       case 'locations':
-        if (asset.aiMeta.location) {
+        if (asset.aiMeta?.location) {
           valuesSet.add(asset.aiMeta.location)
         }
         break
       case 'scenes':
-        if (asset.aiMeta.scene) {
+        if (asset.aiMeta?.scene) {
           valuesSet.add(asset.aiMeta.scene)
+        }
+        break
+      case 'takes':
+        if (asset.shotMeta?.take) {
+          valuesSet.add(asset.shotMeta.take)
+        }
+        break
+      case 'cameras':
+        if (asset.shotMeta?.camera) {
+          valuesSet.add(asset.shotMeta.camera)
         }
         break
     }
@@ -188,6 +216,12 @@ export function generateChildCollections(parent: SmartCollection, assets: Asset[
       case 'scenes':
         childFilter.aiScene = value
         break
+      case 'takes':
+        childFilter.shotTake = value
+        break
+      case 'cameras':
+        childFilter.shotCamera = value
+        break
     }
 
     return {
@@ -195,7 +229,7 @@ export function generateChildCollections(parent: SmartCollection, assets: Asset[
       name: value,
       icon: parent.icon,
       filter: childFilter,
-      isDefault: true,
+      visibleToAll: true,
       createdAt: parent.createdAt,
       parentId: parent.id,
     }

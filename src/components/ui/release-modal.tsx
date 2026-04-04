@@ -3,11 +3,9 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Modal } from './modal'
 import { Button } from './button'
-import { Tag } from './tag'
 import { useAccess } from '@/hooks'
 import { cn } from '@/lib/utils'
 import { getReleaseDomainsByGroup, deriveReleasedDomains } from '@/lib/release'
-import type { ReleaseDomain } from '@/lib/scenario'
 import type { SeedCut } from '@/lib/scenario'
 
 interface ReleaseModalProps {
@@ -79,12 +77,6 @@ export function ReleaseModal({ open, onClose, cut }: ReleaseModalProps) {
   }
 
   if (!cut) return null
-
-  const GROUP_TAG_TYPE: Record<string, 'informative' | 'notice' | 'neutral'> = {
-    'Studio': 'informative',
-    'Wide': 'notice',
-    'Other': 'neutral',
-  }
 
   return (
     <Modal open={open} onOpenChange={(v) => !v && onClose()} width={460}>

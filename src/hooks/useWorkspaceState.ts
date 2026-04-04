@@ -8,8 +8,6 @@ import type { AssetInstance, AssetInstanceGroup } from '@/lib/asset-instances'
 import type { Asset, AssetType } from '@/lib/data'
 import { useFileTree } from './useFileTree'
 
-export type WorkspaceViewFilter = 'files' | 'assets' | 'mixed'
-
 function getStorageKey(departmentId: DepartmentId) {
   return `workspace-${departmentId}`
 }
@@ -124,8 +122,6 @@ function countFiles(nodes: WorkspaceFileNode[]): number {
 export interface UseWorkspaceStateReturn {
   managedFolderIds: Set<string>
   toggleManagedZone: (folderId: string) => void
-  selectedNode: WorkspaceFileNode | null
-  setSelectedNode: (node: WorkspaceFileNode | null) => void
   processedFiles: WorkspaceFileNode[]
   totalFileCount: number
   assetInstances: AssetInstance[]
@@ -135,10 +131,9 @@ export interface UseWorkspaceStateReturn {
   createFolder: (name: string, parentPath: string[]) => void
 }
 
-export function useWorkspaceState(departmentId: DepartmentId, viewFilter: WorkspaceViewFilter): UseWorkspaceStateReturn {
+export function useWorkspaceState(departmentId: DepartmentId): UseWorkspaceStateReturn {
   const [mounted, setMounted] = useState(false)
   const [managedFolderIds, setManagedFolderIds] = useState<Set<string>>(new Set())
-  const [selectedNode, setSelectedNode] = useState<WorkspaceFileNode | null>(null)
   const [curatedAssetNodes, setCuratedAssetNodes] = useState<WorkspaceFileNode[]>([])
   const [loading, setLoading] = useState(true)
   const fileTree = useFileTree()
@@ -231,8 +226,6 @@ export function useWorkspaceState(departmentId: DepartmentId, viewFilter: Worksp
   return {
     managedFolderIds,
     toggleManagedZone,
-    selectedNode,
-    setSelectedNode,
     processedFiles,
     totalFileCount,
     assetInstances,

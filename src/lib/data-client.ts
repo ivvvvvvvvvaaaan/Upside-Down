@@ -1,6 +1,7 @@
 import type { DepartmentId } from '@/components/department/types'
 import { getFileIdsByCharacter, getFileIdsByLocation, getFileIdsByScene } from '@/lib/ai-tags'
-import { pick, IMAGE_POOL as allImages } from '@/lib/images'
+import { pick, IMAGE_POOL as allImages, pickForDimension } from '@/lib/images'
+import type { ImageDimension } from '@/lib/images'
 import { getPromotedWorkspaceAssets } from '@/lib/prototype-assets'
 
 // Asset Types
@@ -63,16 +64,18 @@ export type AssetFilter = {
   aiHasCharacters?: boolean
   aiHasLocation?: boolean
   aiHasScene?: boolean
+  shotTake?: string
+  shotCamera?: string
 }
 
-export type SmartCollectionGroupBy = 'characters' | 'locations' | 'scenes'
+export type SmartCollectionGroupBy = 'characters' | 'locations' | 'scenes' | 'takes' | 'cameras'
 
 export type SmartCollection = {
   id: string
   name: string
   icon: SmartCollectionIcon
   filter: AssetFilter
-  isDefault?: boolean
+  visibleToAll?: boolean
   createdBy?: string
   createdAt: Date
   groupBy?: SmartCollectionGroupBy
@@ -85,6 +88,8 @@ export type TagSource = 'ai' | 'system' | 'user'
 export type AssetTag = {
   label: string
   source: TagSource
+  /** Optional tooltip description (e.g. full name for abbreviated release tags) */
+  description?: string
 }
 
 export type AIMeta = {
@@ -105,10 +110,14 @@ export type Asset = {
   stage?: CutStage
   /** Version number within a stage (e.g. Director's Cut v4 → version: 4) */
   version?: number
+  /** Groups versions of the same logical asset (e.g. all versions of SEQ010_SH010_comp) */
+  versionGroupId?: string
   /** Episode identifier (e.g. 'EP301') */
   episode?: string
   /** IDs of source files that make up this composite asset */
   constituents?: string[]
+  /** Source file extension (e.g. 'exr', 'nk', 'mb') */
+  extension?: string
   thumbnail?: string
   shotMeta?: ShotMetadata
   videoMeta?: VideoMetadata
@@ -153,13 +162,13 @@ export type SharePreviewResource = {
 
 // Derive collection thumbnails from AI-tagged workspace files.
 // Each file ID hashes into the given image pool for a deterministic thumbnail.
-function imagesFromFileIds(fileIds: string[], max: number = 3): { mainImage?: string; thumbnailImages?: string[] } {
-  if (fileIds.length === 0 || allImages.length === 0) return {}
+function imagesFromFileIds(fileIds: string[], dimension?: ImageDimension, max: number = 3): { mainImage?: string; thumbnailImages?: string[] } {
+  if (fileIds.length === 0) return {}
   const seen = new Set<string>()
   const thumbs: string[] = []
   for (const id of fileIds) {
     if (thumbs.length >= max) break
-    const img = pick(allImages, id, 1)[0]
+    const img = pickForDimension(dimension, id, 1)[0]
     if (img && !seen.has(img)) {
       seen.add(img)
       thumbs.push(img)
@@ -169,14 +178,21 @@ function imagesFromFileIds(fileIds: string[], max: number = 3): { mainImage?: st
   return { mainImage: thumbs[0], thumbnailImages: thumbs.slice(1) }
 }
 
+const COLLECTION_TYPE_TO_DIMENSION: Record<string, ImageDimension> = {
+  character: 'characters',
+  scene: 'scenes',
+  location: 'locations',
+}
+
 function buildTaggedCollections(
   items: readonly CollectionItem[],
   type: Collection['type'],
   getFileIds: (name: string) => string[],
 ): Collection[] {
+  const dimension = COLLECTION_TYPE_TO_DIMENSION[type]
   return items.map(c => {
     const fileIds = getFileIds(c.name)
-    const images = imagesFromFileIds(fileIds)
+    const images = imagesFromFileIds(fileIds, dimension)
     return {
       id: c.id,
       name: c.name,
@@ -231,7 +247,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
   ], 'scene', getFileIdsByScene),
 ]
 
-export const MOCK_ART_COLLECTIONS: Collection[] = [
+const MOCK_ART_COLLECTIONS: Collection[] = [
   ...buildDeptCollections([
     { id: 'art-1', name: 'Concept Art', assetCount: 156 },
     { id: 'art-2', name: 'Storyboards', assetCount: 342 },
@@ -248,7 +264,7 @@ export const MOCK_ART_COLLECTIONS: Collection[] = [
   ], 'character', getFileIdsByCharacter),
 ]
 
-export const MOCK_VFX_COLLECTIONS: Collection[] = [
+const MOCK_VFX_COLLECTIONS: Collection[] = [
   ...buildDeptCollections([
     { id: 'vfx-1', name: 'Car FX', assetCount: 124 },
     { id: 'vfx-2', name: 'Environment FX', assetCount: 89 },
@@ -264,7 +280,7 @@ export const MOCK_VFX_COLLECTIONS: Collection[] = [
   ], 'character', getFileIdsByCharacter),
 ]
 
-export const MOCK_CAMERA_COLLECTIONS: Collection[] = buildDeptCollections([
+const MOCK_CAMERA_COLLECTIONS: Collection[] = buildDeptCollections([
   { id: 'cam-1', name: 'Dailies', assetCount: 234 },
   { id: 'cam-2', name: 'Camera Tests', assetCount: 45 },
   { id: 'cam-3', name: 'Lens Tests', assetCount: 28, visual: false },
@@ -273,7 +289,7 @@ export const MOCK_CAMERA_COLLECTIONS: Collection[] = buildDeptCollections([
   { id: 'cam-6', name: 'Steadicam', assetCount: 89 },
 ])
 
-export const MOCK_EDITORIAL_COLLECTIONS: Collection[] = buildDeptCollections([
+const MOCK_EDITORIAL_COLLECTIONS: Collection[] = buildDeptCollections([
   { id: 'edit-1', name: 'Rough Cuts', assetCount: 24 },
   { id: 'edit-2', name: 'Assembly Edits', assetCount: 18 },
   { id: 'edit-3', name: 'Fine Cuts', assetCount: 12 },
@@ -282,7 +298,7 @@ export const MOCK_EDITORIAL_COLLECTIONS: Collection[] = buildDeptCollections([
   { id: 'edit-6', name: 'Final Delivery', assetCount: 8 },
 ])
 
-export const MOCK_AUDIO_COLLECTIONS: Collection[] = buildDeptCollections([
+const MOCK_AUDIO_COLLECTIONS: Collection[] = buildDeptCollections([
   { id: 'audio-1', name: 'Production Sound', assetCount: 189, visual: false },
   { id: 'audio-2', name: 'Sound Effects', assetCount: 312, visual: false },
   { id: 'audio-3', name: 'Foley', assetCount: 156, visual: false },
@@ -333,7 +349,7 @@ function getAssetPreviewImages(assetIds: string[], max: number = 6): string[] | 
   return uniquePreviewImages(assetIds.map(assetId => getPrototypeAsset(assetId)?.thumbnail), max)
 }
 
-export function getCollectionImages(collectionId: string): { mainImage?: string; thumbnails: string[] } {
+function getCollectionImages(collectionId: string): { mainImage?: string; thumbnails: string[] } {
   return {
     mainImage: pick(allImages, collectionId, 1)[0],
     thumbnails: pick(allImages, `${collectionId}-thumb`, 2),

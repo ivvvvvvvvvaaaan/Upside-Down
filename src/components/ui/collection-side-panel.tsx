@@ -1,14 +1,17 @@
 'use client'
 
-import { X, Trash2, ExternalLink, LayoutGrid } from 'lucide-react'
+import { X, Trash2, LayoutGrid } from 'lucide-react'
 import { Button } from './button'
 import { ResponsivePanel } from './responsive-panel'
 import { AccessSummary } from './access-summary'
-import { Tag } from './tag'
 import { CreativeReviewCard } from './creative-review-card'
+import { OntologySection } from './ontology-section'
+import { Tag } from './tag'
+import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import type { UserCollection } from '@/hooks'
 import { getCollectionReviewSummary } from '@/lib/review-notes'
 import type { ResourceRef } from '@/lib/grants'
+import type { RelatedCollections } from '@/hooks/useSmartCollections'
 import { useAccess, usePersona } from '@/hooks'
 import { PERSONAS } from '@/lib/personas'
 
@@ -18,6 +21,7 @@ interface CollectionSidePanelProps {
   onClose: () => void
   onDelete: () => void
   canDelete?: boolean
+  relationships?: RelatedCollections
 }
 
 export function CollectionSidePanel({
@@ -26,6 +30,7 @@ export function CollectionSidePanel({
   onClose,
   onDelete,
   canDelete = true,
+  relationships,
 }: CollectionSidePanelProps) {
   const reviewNoteSummary = getCollectionReviewSummary(collection.id, collection.assetIds)
   const { sharesReceivedByMe, allProjectShares } = useAccess()
@@ -40,6 +45,10 @@ export function CollectionSidePanel({
   const shares = isAdmin ? allProjectShares : sharesReceivedByMe
   const share = shares.find(s => s.resourceId === collection.id)
   const sharedBy = share ? (PERSONAS.find(p => p.id === share.grantedByUserId)?.name ?? null) : null
+
+  const connectionsCount = relationships
+    ? relationships.characters.length + relationships.scenes.length + relationships.locations.length + relationships.takes.length + relationships.cameras.length
+    : 0
 
   return (
     <ResponsivePanel open={open} onClose={onClose}>
@@ -56,51 +65,61 @@ export function CollectionSidePanel({
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        <section className="space-y-2">
-          <div className="space-y-1">
-            <div className="space-y-1">
-              <div className="flex justify-between text-body-0-regular">
-                <span className="text-foreground-dim">Assets</span>
-                <span className="text-foreground">{collection.assetIds.length}</span>
-              </div>
-              <div className="flex justify-between text-body-0-regular">
-                <span className="text-foreground-dim">Created</span>
-                <span className="text-foreground">{collection.createdAt.toLocaleDateString()}</span>
-              </div>
-              {sharedBy && (
-                <div className="flex justify-between text-body-0-regular">
-                  <span className="text-foreground-dim">Shared by</span>
-                  <span className="text-foreground">{sharedBy}</span>
-                </div>
-              )}
+      <Tabs defaultValue="details" className="flex-1 min-h-0 flex flex-col">
+        <TabsList className="px-4 shrink-0">
+          <Tab value="details">Details</Tab>
+          <Tab value="connections"><span className="flex items-center gap-1.5">Connections{connectionsCount > 0 && <Tag size="compact" type="neutral" variant="border">{connectionsCount}</Tag>}</span></Tab>
+          <Tab value="access">Access</Tab>
+        </TabsList>
+
+        <div className="flex-1 overflow-y-auto">
+          <TabsContent value="details" className="px-4 pb-4 space-y-2">
+            <div className="flex justify-between text-body-0-regular">
+              <span className="text-foreground-dim">Assets</span>
+              <span className="text-foreground">{collection.assetIds.length}</span>
             </div>
-          </div>
-        </section>
+            <div className="flex justify-between text-body-0-regular">
+              <span className="text-foreground-dim">Created</span>
+              <span className="text-foreground">{collection.createdAt.toLocaleDateString()}</span>
+            </div>
+            {sharedBy && (
+              <div className="flex justify-between text-body-0-regular">
+                <span className="text-foreground-dim">Shared by</span>
+                <span className="text-foreground">{sharedBy}</span>
+              </div>
+            )}
+            {canDelete && (
+              <div className="pt-4">
+                <Button
+                  variant="tertiary"
+                  className="w-full justify-start text-foreground-system-error hover:bg-surface-system-error-subtle"
+                  icon={<Trash2 />}
+                  onClick={onDelete}
+                >
+                  Delete Collection
+                </Button>
+              </div>
+            )}
+          </TabsContent>
 
-        <AccessSummary
-          resourceId={collection.id}
-          resourceRef={resourceRef}
-          resourceName={collection.name}
-        />
+          <TabsContent value="connections" className="px-4 pb-4 space-y-4">
+            {relationships && (
+              <OntologySection dimensions={relationships} />
+            )}
+            {reviewNoteSummary && (
+              <CreativeReviewCard summary={reviewNoteSummary} />
+            )}
+          </TabsContent>
 
-        {reviewNoteSummary && (
-          <CreativeReviewCard summary={reviewNoteSummary} />
-        )}
-      </div>
-
-      {canDelete && (
-        <div className="p-4 border-t border-border">
-          <Button
-            variant="tertiary"
-            className="w-full justify-start text-foreground-system-error hover:bg-surface-system-error-subtle"
-            icon={<Trash2 />}
-            onClick={onDelete}
-          >
-            Delete Collection
-          </Button>
+          <TabsContent value="access" className="px-4 pb-4">
+            <AccessSummary
+              resourceId={collection.id}
+              resourceRef={resourceRef}
+              resourceName={collection.name}
+            />
+          </TabsContent>
         </div>
-      )}
+      </Tabs>
     </ResponsivePanel>
   )
 }

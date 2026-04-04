@@ -30,4 +30,5 @@ function Divider({
   )
 }
 
+/** @public Used by generated templates in scripts/templates.mjs */
 export { Divider }

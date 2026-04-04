@@ -58,7 +58,9 @@ const EXTENSION_TO_ASSET_TYPE: Record<string, AssetType> = {
   md: 'text',
   xlsx: 'text',
   csv: 'text',
-  zip: 'image',
+  zip: 'text',
+  cube: 'text',
+  py: 'text',
 }
 
 function mapExtensionToType(ext?: string): AssetType {
@@ -122,7 +124,44 @@ export function groupInstancesByCategory(
   }))
 }
 
-import { pick, IMAGE_POOL } from '@/lib/images'
+import { pickForDepartment } from '@/lib/images'
+
+/** Generate a deterministic fake duration from an asset ID, scaled to the asset kind.
+ *  Sequences/shots: 2–30s, video files: 30s–10min, audio: 10s–5min */
+function fakeDuration(id: string, kind: 'sequence' | 'video' | 'audio' = 'video'): string {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0
+  h = Math.abs(h)
+
+  let totalSeconds: number
+  switch (kind) {
+    case 'sequence': totalSeconds = 2 + (h % 29); break    // 0:02 – 0:30
+    case 'audio':    totalSeconds = 10 + (h % 290); break   // 0:10 – 5:00
+    default:         totalSeconds = 30 + (h % 570); break   // 0:30 – 10:00
+  }
+
+  const mins = Math.floor(totalSeconds / 60)
+  const secs = totalSeconds % 60
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+/** Parse version number from a filename (e.g. "comp_v12.exr" → 12) */
+function parseVersion(name: string): number | undefined {
+  const match = name.match(/_v(\d+)\b/i)
+  return match ? parseInt(match[1], 10) : undefined
+}
+
+/** Strip version from filename to create a version group key (e.g. "SEQ010_SH010_comp_v12.exr" → "SEQ010_SH010_comp") */
+function versionGroupKey(name: string): string | undefined {
+  const match = name.match(/^(.+?)_v\d+\.\w+$/i)
+  return match ? match[1] : undefined
+}
+
+/** TypeTags that indicate a playable rendered sequence (not a source/project file) */
+const SEQUENCE_TYPE_TAGS = new Set(['VFX Comp', 'VFX Preview'])
+
+/** File extensions that represent playable video containers (not project/source files) */
+const PLAYABLE_EXTENSIONS = new Set(['mov', 'mp4', 'avi', 'mkv', 'webm'])
 
 /** Assets marked as final — approved and locked */
 const FINAL_ASSET_IDS = new Set([
@@ -130,10 +169,15 @@ const FINAL_ASSET_IDS = new Set([
   'ws-vfx-010-020',  // SEQ010 SH020 comp — signed off after third pass
 ])
 
-/** Only visual media types get preview thumbnails */
+/** Extensions for project/source files that should not get image previews (show icon instead) */
+const NO_PREVIEW_EXTENSIONS = new Set(['nk', 'mb', 'hip', 'prproj'])
+
+/** Only visual media and playable video get preview thumbnails */
 function getThumbnail(instance: AssetInstance): string | undefined {
+  const ext = instance.sourceFileName.split('.').pop()?.toLowerCase() ?? ''
+  if (NO_PREVIEW_EXTENSIONS.has(ext)) return undefined
   if (instance.type === 'image' || instance.type === 'video') {
-    return pick(IMAGE_POOL, instance.id, 1)[0]
+    return pickForDepartment(instance.department, instance.id, 1)[0]
   }
   return undefined
 }
@@ -141,10 +185,21 @@ function getThumbnail(instance: AssetInstance): string | undefined {
 /** Convert an AssetInstance to an Asset with full metadata (AI tags, typeTag, workspacePath).
  *  Single conversion function — same asset data everywhere. */
 export function promotedInstanceToAsset(instance: AssetInstance): Asset {
+  const typeTag = instance.aiTags?.typeTag ?? instance.category
+  const isSequence = typeTag ? SEQUENCE_TYPE_TAGS.has(typeTag) : false
+  const version = parseVersion(instance.sourceFileName)
+  const groupKey = versionGroupKey(instance.sourceFileName)
+
+  const ext = instance.sourceFileName.includes('.')
+    ? instance.sourceFileName.split('.').pop()?.toLowerCase()
+    : undefined
+
   const base: Asset = {
     id: instance.id,
     name: instance.name,
-    type: instance.type,
+    type: isSequence ? 'video' : instance.type,
+    kind: isSequence ? 'sequence' : undefined,
+    extension: ext,
     department: instance.department,
     created_at: instance.modifiedAt,
     modifiedBy: instance.modifiedBy,
@@ -153,24 +208,35 @@ export function promotedInstanceToAsset(instance: AssetInstance): Asset {
     sourceFolderIds: instance.sourceFolderId ? [instance.sourceFolderId] : undefined,
     thumbnail: getThumbnail(instance),
     isFinal: FINAL_ASSET_IDS.has(instance.id),
+    version,
+    versionGroupId: groupKey ? `${instance.department ?? 'unknown'}:${groupKey}` : undefined,
   }
 
-  // Set typeTag from AI tags or fall back to category name
-  const typeTag = instance.aiTags?.typeTag ?? instance.category
+  // Set type-specific metadata
   if (typeTag) {
-    switch (instance.type) {
-      case 'image':
-        base.imageMeta = { typeTag }
-        break
-      case 'video':
-        base.videoMeta = { typeTag }
-        break
-      case 'audio':
-        base.audioMeta = { typeTag }
-        break
-      case 'text':
-        base.textMeta = { typeTag }
-        break
+    if (isSequence) {
+      // Sequences are playable — short shot durations
+      base.videoMeta = { typeTag, duration: fakeDuration(instance.id, 'sequence') }
+    } else {
+      // Only playable formats get durations — project files (nk, mb, hip, prproj) and
+      // static images do not
+      const isPlayable = PLAYABLE_EXTENSIONS.has(instance.sourceFileName.split('.').pop()?.toLowerCase() ?? '')
+      switch (instance.type) {
+        case 'image':
+          base.imageMeta = { typeTag }
+          break
+        case 'video':
+          base.videoMeta = isPlayable
+            ? { typeTag, duration: fakeDuration(instance.id) }
+            : { typeTag }
+          break
+        case 'audio':
+          base.audioMeta = { typeTag, duration: fakeDuration(instance.id, 'audio') }
+          break
+        case 'text':
+          base.textMeta = { typeTag }
+          break
+      }
     }
   }
 

@@ -12,13 +12,3 @@ export interface DepartmentConfig {
   smartCollectionTypes: SmartCollectionType[]
   userCollectionType: Collection['type']
 }
-
-export interface DepartmentHomeViewProps {
-  config: DepartmentConfig
-  initialCollections: Collection[]
-}
-
-export interface EnrichedCollection extends Collection {
-  mainImage?: string
-  thumbnailImages?: string[]
-}

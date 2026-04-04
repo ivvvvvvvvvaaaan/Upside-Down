@@ -171,6 +171,7 @@ describe('promotedInstanceToAsset', () => {
     const instance: AssetInstance = {
       ...base,
       type: 'video',
+      sourceFileName: 'animatic.mov',
       aiTags: {
         sourceFileId: 'f1',
         characters: [],
@@ -182,7 +183,28 @@ describe('promotedInstanceToAsset', () => {
       },
     }
     const asset = promotedInstanceToAsset(instance)
-    expect(asset.videoMeta).toEqual({ typeTag: 'Animatic' })
+    expect(asset.videoMeta?.typeTag).toBe('Animatic')
+    expect(asset.videoMeta?.duration).toBeDefined()
+  })
+
+  it('omits duration for project files (nk, mb, hip)', () => {
+    const instance: AssetInstance = {
+      ...base,
+      type: 'video',
+      sourceFileName: 'car_rig_v3.mb',
+      aiTags: {
+        sourceFileId: 'f1',
+        characters: [],
+        typeTag: '3D Model',
+        confidence: 0.8,
+        keywords: [],
+        analyzedAt: '2026-01-01T00:00:00Z',
+        status: 'complete',
+      },
+    }
+    const asset = promotedInstanceToAsset(instance)
+    expect(asset.videoMeta?.typeTag).toBe('3D Model')
+    expect(asset.videoMeta?.duration).toBeUndefined()
   })
 
   it('maps typeTag to audioMeta for audio type', () => {
@@ -200,7 +222,8 @@ describe('promotedInstanceToAsset', () => {
       },
     }
     const asset = promotedInstanceToAsset(instance)
-    expect(asset.audioMeta).toEqual({ typeTag: 'SFX' })
+    expect(asset.audioMeta?.typeTag).toBe('SFX')
+    expect(asset.audioMeta?.duration).toBeDefined()
   })
 
   it('maps typeTag to textMeta for text type', () => {

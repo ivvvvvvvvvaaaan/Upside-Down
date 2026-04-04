@@ -151,7 +151,7 @@ describe('capability decomposition', () => {
     const result = resolveAccess('vendor-framestore', 'ws-vfx-coll-for-vendor', DEFAULT_GRANTS)
     expect(result.hasAccess).toBe(true)
     expect(result.effectiveProfile).toBe('viewer')
-    expect(result.permissions).toEqual(['discover', 'open', 'download'])
+    expect(result.permissions).toEqual(['open', 'download'])
     expect(result.canEdit).toBe(false)
   })
 

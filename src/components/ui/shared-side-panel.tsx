@@ -2,10 +2,9 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Folder, FileText, Film, LayoutGrid } from 'lucide-react'
 import { Button } from './button'
 import { ResponsivePanel } from './responsive-panel'
-import { Tag } from './tag'
+import { AccessKindIcon } from './access-kind-icon'
 import { AccessSummary } from './access-summary'
 import { useAccess, useUserCollections } from '@/hooks'
 import { kindLabel } from '@/lib/access'
@@ -14,7 +13,7 @@ import { getSharePreviewImages } from '@/lib/data-client'
 import { getSharedResourceHref } from '@/lib/shared-resources'
 import { PERSONAS } from '@/lib/personas'
 import { formatDate } from '@/lib/utils'
-import type { GrantView, ResourceRef, Permission } from '@/lib/grants'
+import type { GrantView, ResourceRef } from '@/lib/grants'
 import { profileLabel } from '@/lib/grants'
 
 interface SharedSidePanelProps {
@@ -31,36 +30,6 @@ export interface SharedDetailContentProps {
   isCreator?: boolean
   onRevokeShare?: (resourceId: string) => void
   showAccess?: boolean
-}
-
-function kindIcon(kind: AccessEntryKind) {
-  if (kind === 'folder') return <Folder className="w-5 h-5 text-foreground-dim flex-shrink-0" />
-  if (kind === 'collection' || kind === 'smart-collection') return <LayoutGrid className="w-5 h-5 text-foreground-dim flex-shrink-0" />
-  if (kind === 'cut') return <Film className="w-5 h-5 text-foreground-dim flex-shrink-0" />
-  if (kind === 'review-set') return <FileText className="w-5 h-5 text-foreground-dim flex-shrink-0" />
-  return <FileText className="w-5 h-5 text-foreground-dim flex-shrink-0" />
-}
-
-const PERM_TAG_TYPE: Record<Permission, 'neutral'> = {
-  'discover': 'neutral',
-  'open': 'neutral',
-  'download': 'neutral',
-  'write': 'neutral',
-  'delete': 'neutral',
-  'comment': 'neutral',
-  'share': 'neutral',
-  'edit-acl': 'neutral',
-}
-
-const PERM_LABELS: Record<Permission, string> = {
-  'discover': 'View',
-  'open': 'View',
-  'download': 'Save',
-  'write': 'Edit',
-  'delete': 'Delete',
-  'comment': 'Note',
-  'share': 'Share',
-  'edit-acl': 'Admin',
 }
 
 export function SharedDetailContent({ entry, isCreator = false, onRevokeShare, showAccess = true }: SharedDetailContentProps) {
@@ -87,7 +56,7 @@ export function SharedDetailContent({ entry, isCreator = false, onRevokeShare, s
     <>
       {/* Header */}
       <div className="flex items-center gap-2 px-4 pt-4">
-        {kindIcon(kind)}
+        <AccessKindIcon kind={kind} size="md" />
         <span className="text-body-2-bold text-foreground truncate">{entry.label}</span>
       </div>
 

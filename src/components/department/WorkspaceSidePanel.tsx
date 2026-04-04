@@ -18,10 +18,6 @@ interface WorkspaceSidePanelProps {
   open?: boolean
   onClose: () => void
   departmentId?: DepartmentId
-  /** Whether this folder is a managed zone */
-  isManagedZone?: boolean
-  /** Toggle managed zone for this folder */
-  onToggleManagedZone?: (folderId: string) => void
   /** Folder variant: 'shared' | 'restricted' — changes the folder icon */
   folderVariant?: 'shared' | 'restricted'
 }
@@ -66,8 +62,6 @@ export function WorkspaceSidePanel({
   open = true,
   onClose,
   departmentId,
-  isManagedZone,
-  onToggleManagedZone,
   folderVariant,
 }: WorkspaceSidePanelProps) {
   const isFolder = node?.type === 'folder'

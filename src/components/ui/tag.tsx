@@ -69,7 +69,7 @@ export function Tag({
   return (
     <span
       className={cn(
-        'inline-flex items-center justify-center',
+        'inline-flex items-center justify-center whitespace-nowrap',
         'py-0 rounded',
         colorClasses,
         size === 'compact' && 'text-label-0-bold px-1',

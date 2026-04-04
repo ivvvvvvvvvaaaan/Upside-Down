@@ -35,7 +35,7 @@ import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { cn } from '@/lib/utils'
 import { Tag } from './tag'
-import type { NavConfig, NavSection, NavItem } from '@/types/navigation'
+import type { NavConfig } from '@/types/navigation'
 
 /**
  * Navigation Sidebar
@@ -167,11 +167,28 @@ interface TreeNavLinkProps {
   indent?: boolean
   /** When true, forces the node to expand (e.g. when a child route becomes active externally) */
   forceExpand?: boolean
+  /** Auto-expand the full child tree when a descendant becomes active */
+  autoExpandOnActiveChild?: boolean
+  /** Optional collapsed preview shown when a descendant is active but the tree is collapsed */
+  collapsedPreview?: React.ReactNode
   /** Optional icon rendered on the right side, after the badge area */
   trailingIcon?: React.ReactNode
 }
 
-function TreeNavLink({ href, label, icon, badge, badgeStyle = 'count', children, defaultExpanded = true, indent = false, forceExpand = false, trailingIcon }: TreeNavLinkProps) {
+function TreeNavLink({
+  href,
+  label,
+  icon,
+  badge,
+  badgeStyle = 'count',
+  children,
+  defaultExpanded = true,
+  indent = false,
+  forceExpand = false,
+  autoExpandOnActiveChild = true,
+  collapsedPreview,
+  trailingIcon,
+}: TreeNavLinkProps) {
   const pathname = usePathname()
   const isActive = href ? pathname === href : false
   // Check both /parent/ subroutes AND --child smart collection IDs
@@ -180,18 +197,20 @@ function TreeNavLink({ href, label, icon, badge, badgeStyle = 'count', children,
   const isChildActive = href
     ? pathname.startsWith(href + '/') || (smartCollectionBase && currentPath.startsWith(smartCollectionBase + '--'))
     : false
+  const shouldAutoExpandOnActiveChild = autoExpandOnActiveChild && isChildActive
   const storageKey = href || `tree:${label}`
-  const [isExpanded, setIsExpanded] = usePersistedExpand(storageKey, defaultExpanded || isChildActive)
+  const [isExpanded, setIsExpanded] = usePersistedExpand(storageKey, defaultExpanded || shouldAutoExpandOnActiveChild)
 
   // Auto-expand when a child becomes active (e.g. navigating from relationship panel)
   useEffect(() => {
-    if ((isChildActive || forceExpand) && !isExpanded) {
+    if ((shouldAutoExpandOnActiveChild || forceExpand) && !isExpanded) {
       setIsExpanded(true)
     }
-  }, [isChildActive, forceExpand]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [forceExpand, isExpanded, setIsExpanded, shouldAutoExpandOnActiveChild])
 
   const hasChevron = !!children
   const reserveChevronSpace = indent && !hasChevron
+  const showCollapsedPreview = Boolean(collapsedPreview) && isChildActive && !isExpanded
 
   const linkClassName = cn(
     'flex-1 flex items-center justify-between py-2 pr-3 min-w-0',
@@ -258,9 +277,9 @@ function TreeNavLink({ href, label, icon, badge, badgeStyle = 'count', children,
           </button>
         )}
       </div>
-      {children && isExpanded && (
+      {children && (isExpanded || showCollapsedPreview) && (
         <div className="pl-6 space-y-1 mt-1">
-          {children}
+          {isExpanded ? children : collapsedPreview}
         </div>
       )}
     </div>
@@ -469,7 +488,12 @@ function SmartCollectionNavItem({ collection, getChildren, indent, badge }: {
   indent?: boolean
   badge?: number
 }) {
+  const pathname = usePathname()
   const children = collection.groupBy ? getChildren(collection.id) : []
+  const activeChild = children.find((child) => {
+    const childHref = `/nextgen/smart-collections/${child.id}`
+    return pathname === childHref || pathname.startsWith(childHref + '/')
+  })
   if (collection.groupBy && children.length > 0) {
     return (
       <TreeNavLink
@@ -478,6 +502,13 @@ function SmartCollectionNavItem({ collection, getChildren, indent, badge }: {
         label={collection.name}
         badge={badge}
         defaultExpanded={false}
+        autoExpandOnActiveChild={false}
+        collapsedPreview={activeChild ? (
+          <NavLink
+            href={`/nextgen/smart-collections/${activeChild.id}`}
+            label={activeChild.name}
+          />
+        ) : undefined}
       >
         {children.map(child => (
           <NavLink

@@ -3,7 +3,7 @@ import { getAssetsByDepartmentAndCollection } from '@/lib/data'
 import type { DepartmentId } from '@/lib/data'
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: { departmentId: string; collectionId: string } }
 ) {
   try {

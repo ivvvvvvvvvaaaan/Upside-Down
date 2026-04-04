@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { X, Users, Search, Info, Link2, Lock, ChevronDown } from 'lucide-react'
+import { X, Users, Search, Info, Link2 } from 'lucide-react'
 import { Input } from './input'
 import { Select } from './select'
 import { Button } from './button'
 import { Avatar } from './avatar'
-import { cn } from '@/lib/utils'
 import { useAccess, usePersona } from '@/hooks'
 import type { Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
 import { getRoleGroup } from '@/lib/grants'
@@ -23,61 +22,18 @@ interface AccessPanelProps {
   inheritedGrants?: { grant: Grant; fromResourceName: string }[]
 }
 
-function InlineDropdown({ label, options, onSelect }: { label: string; options: string[]; onSelect: (value: string) => void }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-0.5 text-label-0-regular text-foreground hover:text-foreground-system-link transition-colors"
-      >
-        {label}
-        <ChevronDown className="w-3 h-3" />
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 min-w-[120px]">
-          {options.map(option => (
-            <button
-              key={option}
-              onClick={() => { onSelect(option); setOpen(false) }}
-              className={cn(
-                'w-full text-left px-3 py-1.5 text-label-0-regular transition-colors',
-                option === label ? 'text-foreground' : 'text-foreground-dim hover:text-foreground hover:bg-surface-2',
-              )}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 function roleGroupOptions(roleGroups: RoleGroup[]) {
   return roleGroups
     .filter((rg) => rg.id !== 'owner' && rg.id !== 'link-viewer')
     .map((rg) => ({ value: rg.id, label: rg.name }))
 }
 
-function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, sourceName, name, subtitle, roleLabel, members }: {
+function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name, subtitle, roleLabel, members }: {
   grant: Grant
   readOnly: boolean
   roleGroups: RoleGroup[]
   onRemove?: (grantId: string) => void
   onUpdateProfile?: (grantId: string, profileId: AccessProfileId) => void
-  sourceName?: string
   name: string
   subtitle?: string
   roleLabel: string
@@ -191,15 +147,19 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
   const [addAsRole, setAddAsRole] = useState<AccessProfileId>('viewer')
-  const [showLinkForm, setShowLinkForm] = useState(false)
-  const [linkDownload, setLinkDownload] = useState(false)
-  const [linkPasscode, setLinkPasscode] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const grants = getResourceGrants(resourceId)
   const canAddGrants = Boolean(resourceRef) && canShare(resourceRef)
-  const canManageExistingGrants = Boolean(resourceRef) && canEditAcl(resourceRef)
-  const grantsReadOnly = readOnly || !canManageExistingGrants
+  const canManageAllGrants = Boolean(resourceRef) && canEditAcl(resourceRef)
+
+  // Users with 'share' can modify grants they created; 'edit-acl' can modify any grant
+  const canManageGrant = (grant: Grant): boolean => {
+    if (readOnly) return false
+    if (canManageAllGrants) return true
+    if (canAddGrants && activePersona && grant.grantedByUserId === activePersona.id) return true
+    return false
+  }
   const addRoleOptions = useMemo(() => {
     if (!resourceRef) return roleGroupOptions(roleGroups)
     const allowedProfiles = new Set(getGrantableProfiles(resourceRef))
@@ -261,7 +221,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
     const directRaw = grants.map((grant) => ({
       key: `direct-${grant.id}`,
       grant,
-      readOnly: grantsReadOnly,
+      readOnly: !canManageGrant(grant),
       sourceName: undefined as string | undefined,
     }))
 
@@ -277,7 +237,8 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
       roleGroups,
       activePersona?.id,
     )
-  }, [grants, grantsReadOnly, inheritedGrants, roleGroups, activePersona])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grants, canManageAllGrants, canAddGrants, readOnly, activePersona?.id, inheritedGrants, roleGroups, activePersona])
 
   const directEntries = useMemo(() => allEntries.filter(e => !e.sourceName), [allEntries])
   const inheritedEntries = useMemo(() => allEntries.filter(e => !!e.sourceName), [allEntries])
@@ -294,14 +255,14 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
   return (
     <div className="space-y-4">
       {/* Permission hints */}
-      {!readOnly && !canAddGrants && !canManageExistingGrants && (
+      {!readOnly && !canAddGrants && !canManageAllGrants && (
         <div className="flex items-center gap-2 px-3 py-2 rounded bg-surface-mid text-body-0-regular text-foreground">
           <Info className="w-4 h-4 flex-shrink-0" />
           <span>You don&apos;t have permission to manage access</span>
         </div>
       )}
-      {!readOnly && canAddGrants && !canManageExistingGrants && (
-        <p className="text-body-0-regular text-foreground">You can add new shares, but only people with admin access can change or remove existing entries</p>
+      {!readOnly && canAddGrants && !canManageAllGrants && (
+        <p className="text-body-0-regular text-foreground-dim">You can manage shares you created. Only admins can modify shares created by others.</p>
       )}
 
       {/* Search row: input + role dropdown */}
@@ -364,7 +325,6 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
                 grant={entry.grant}
                 readOnly={entry.readOnly}
                 roleGroups={roleGroups}
-                sourceName={entry.sourceName}
                 name={entry.name}
                 subtitle={entry.subtitle}
                 roleLabel={entry.roleLabel}
@@ -388,7 +348,6 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
                 grant={entry.grant}
                 readOnly={entry.readOnly}
                 roleGroups={roleGroups}
-                sourceName={entry.sourceName}
                 name={entry.name}
                 subtitle={entry.subtitle}
                 roleLabel={entry.roleLabel}
@@ -434,21 +393,15 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
                 </div>
               </div>
               <div className="flex items-center gap-3 pl-6">
-                <InlineDropdown
-                  label={link.allowDownload ? 'View + Download' : 'View only'}
-                  options={['View only', 'View + Download']}
-                  onSelect={() => {}}
-                />
-                <InlineDropdown
-                  label="7 days"
-                  options={['7 days', '14 days', '30 days']}
-                  onSelect={() => {}}
-                />
-                <InlineDropdown
-                  label={link.passcode ? 'Passcode' : 'No passcode'}
-                  options={['No passcode', 'Passcode']}
-                  onSelect={() => {}}
-                />
+                <span className="text-body-0-regular text-foreground-dim">
+                  {link.allowDownload ? 'View + Download' : 'View only'}
+                </span>
+                <span className="text-body-0-regular text-foreground-dim">
+                  Expires {link.expiresAt}
+                </span>
+                <span className="text-body-0-regular text-foreground-dim">
+                  {link.passcode ? 'Passcode required' : 'No passcode'}
+                </span>
               </div>
             </div>
           ))
@@ -470,8 +423,8 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
         return null
       })()}
 
-      {userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && !showLinkForm && (
-        <p className="text-body-0-regular text-foreground-dim">Not shared</p>
+      {userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && (
+        <p className="text-body-0-regular text-foreground-dim">{emptyLabel}</p>
       )}
     </div>
   )

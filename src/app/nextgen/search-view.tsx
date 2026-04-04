@@ -6,9 +6,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button, AssetCard, CardGrid, Stack, SelectionBar, Text } from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
-import { useAccess, useAssetSelection, useViewPreferences, useUserCollections, matchesFilter } from '@/hooks'
+import { getGridColumns, matchesFilter, useAccess, useAssetSelection, useSmartCollections, useViewPreferences } from '@/hooks'
 import type { Asset } from '@/lib/data'
-import { mergePrototypeAssets } from '@/lib/prototype-assets'
 import { assetToSelectionEntity } from '@/lib/selection-actions'
 
 interface MediaLibrarySearchViewProps {
@@ -28,39 +27,17 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
 
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const { cardSize } = useViewPreferences()
-  const { createCollection } = useUserCollections()
   const { filterByAccess, canAccess, canDiscover, requestAccess } = useAccess()
+  const { allAssets, assetsLoaded, assetsLoading, ensureAssetsLoaded } = useSmartCollections()
 
-  // Lazy-load all department assets only when user has a search query
-  const [apiAssets, setApiAssets] = useState<Asset[]>([])
-  const [hasLoadedAll, setHasLoadedAll] = useState(false)
-  const [isSearching, setIsSearching] = useState(false)
-
-  // Fetch all department assets when user starts typing (deferred)
   useEffect(() => {
-    if (!searchQuery.trim() || hasLoadedAll) return
-
-    const fetchAll = async () => {
-      setIsSearching(true)
-      try {
-        const response = await fetch('/api/assets')
-        const assets: Asset[] = response.ok ? await response.json() : []
-        setApiAssets(assets)
-        setHasLoadedAll(true)
-      } catch (error) {
-        console.error('Failed to fetch assets for search:', error)
-      } finally {
-        setIsSearching(false)
-      }
-    }
-
-    fetchAll()
-  }, [searchQuery, hasLoadedAll])
+    if (!searchQuery.trim() || assetsLoaded || assetsLoading) return
+    void ensureAssetsLoaded()
+  }, [searchQuery, assetsLoaded, assetsLoading, ensureAssetsLoaded])
 
   const allSearchableAssets = useMemo(() => {
-    if (!hasLoadedAll) return []
-    return mergePrototypeAssets(apiAssets)
-  }, [apiAssets, hasLoadedAll])
+    return assetsLoaded ? allAssets : []
+  }, [allAssets, assetsLoaded])
 
   const accessibleSearchAssets = useMemo(() => {
     return filterByAccess(allSearchableAssets)
@@ -88,11 +65,11 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
   // Filter results based on search query — include discoverable restricted assets
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return null
-    if (!hasLoadedAll) return null
+    if (!assetsLoaded) return null
     return allSearchableAssets
       .filter((asset) => matchesFilter(asset, { query: searchQuery }))
       .filter((asset) => accessibleIds.has(asset.id) || canDiscover(asset.id, asset.department))
-  }, [searchQuery, allSearchableAssets, accessibleIds, canDiscover, hasLoadedAll])
+  }, [searchQuery, allSearchableAssets, accessibleIds, canDiscover, assetsLoaded])
 
   const curatedResults = useMemo(() => searchResults?.filter(a => !a.isAutoPromoted) ?? [], [searchResults])
   const workspaceResults = useMemo(() => searchResults?.filter(a => a.isAutoPromoted) ?? [], [searchResults])
@@ -103,14 +80,6 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
 
   const handleMenuClick = (asset: Asset) => {
     console.log('Menu clicked for:', asset.name)
-  }
-
-  const getColumns = () => {
-    switch (cardSize) {
-      case 'sm': return 6
-      case 'lg': return 3
-      default: return 4
-    }
   }
 
   const displayAssets = searchResults ?? accessibleRecentAssets
@@ -127,12 +96,8 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     }))
   }, [selectedAssets, canAccess])
 
-  const handleCreateCollection = (name: string) => {
-    createCollection(name, selectedAssets.map(a => a.id))
-    clearSelection()
-  }
-
   const isSearchActive = searchQuery.trim().length > 0
+  const isSearching = isSearchActive && (!assetsLoaded || assetsLoading)
 
   return (
     <AppLayout>
@@ -189,7 +154,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                     {curatedResults.length > 0 && (
                       <div className="space-y-3">
                         <span className="text-label-1-medium text-foreground-subtle">Assets</span>
-                        <CardGrid columns={getColumns()} gap="4">
+                        <CardGrid columns={getGridColumns(cardSize)} gap="4">
                           {curatedResults.map((asset) => (
                             <AssetCard
                               key={asset.id}
@@ -209,7 +174,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                     {workspaceResults.length > 0 && (
                       <div className="space-y-3">
                         <span className="text-label-1-medium text-foreground-subtle">Workspace files</span>
-                        <CardGrid columns={getColumns()} gap="4">
+                        <CardGrid columns={getGridColumns(cardSize)} gap="4">
                           {workspaceResults.map((asset) => (
                             <AssetCard
                               key={asset.id}
@@ -241,7 +206,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                       <div className="flex items-center justify-between">
                         <span className="text-label-1-medium text-foreground-subtle">Recent</span>
                       </div>
-                      <CardGrid columns={getColumns()} gap="4">
+                      <CardGrid columns={getGridColumns(cardSize)} gap="4">
                         {accessibleRecentAssets.map((asset) => (
                           <AssetCard
                             key={asset.id}

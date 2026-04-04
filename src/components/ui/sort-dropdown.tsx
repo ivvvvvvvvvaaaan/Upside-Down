@@ -10,7 +10,7 @@ import type { SortField, SortCriterion } from './sort-content'
  * SortDropdown - Sort button with dropdown panel
  */
 
-export type { SortField, SortCriterion }
+export type { SortCriterion }
 
 export interface SortDropdownProps {
   /** Available fields to sort by */

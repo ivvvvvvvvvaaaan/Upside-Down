@@ -2,9 +2,10 @@
 
 import { useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Folder, FileText, Film, LayoutGrid, Link2, Lock, X } from 'lucide-react'
+import { Link2, Lock, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader, Tag, SharedSidePanel, EmptyState } from '@/components/ui'
+import { AccessKindIcon } from '@/components/ui/access-kind-icon'
 import { ToggleButtonGroup } from '@/components/ui/toggle-button-group'
 import { AppLayout } from '@/components/layouts'
 import { useAccess, usePersona } from '@/hooks'
@@ -17,13 +18,6 @@ import { PERSONAS } from '@/lib/personas'
 import { cn, formatDate } from '@/lib/utils'
 
 type ShareTab = 'mine' | 'all'
-
-function kindIcon(kind: AccessEntryKind) {
-  if (kind === 'folder') return <Folder className="w-4 h-4 text-foreground-dim flex-shrink-0" />
-  if (kind === 'collection' || kind === 'smart-collection') return <LayoutGrid className="w-4 h-4 text-foreground-dim flex-shrink-0" />
-  if (kind === 'cut') return <Film className="w-4 h-4 text-foreground-dim flex-shrink-0" />
-  return <FileText className="w-4 h-4 text-foreground-dim flex-shrink-0" />
-}
 
 
 function ShareTable({
@@ -71,7 +65,7 @@ function ShareTable({
             >
               {/* Name */}
               <span className="flex items-center gap-2 min-w-0">
-                {kindIcon(kind)}
+                <AccessKindIcon kind={kind} size="sm" />
                 <span className="text-body-0-bold text-foreground truncate">
                   {entry.label}
                 </span>
@@ -262,7 +256,7 @@ export function SharedView() {
     setSelectedId(null)
   }, [revokeShare])
 
-  const handleRevokeLink = useCallback((linkId: string) => {
+  const handleRevokeLink = useCallback((_linkId: string) => {
     // For prototype, just deselect — real impl would remove the link
     setSelectedId(null)
   }, [])

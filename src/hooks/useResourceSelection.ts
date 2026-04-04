@@ -11,6 +11,7 @@ export interface UseResourceSelectionReturn<T extends SelectableEntity> {
   primaryId: string | null
   lastClickedId: string | null
   handleSelectionClick: (item: T, event: React.MouseEvent, itemList: T[]) => void
+  selectOnly: (item: T) => void
   clearSelection: () => void
   isSelected: (itemId: string) => boolean
   isPrimary: (itemId: string) => boolean
@@ -75,6 +76,12 @@ export function useResourceSelection<T extends SelectableEntity>(): UseResourceS
     setLastClickedId(null)
   }, [])
 
+  const selectOnly = useCallback((item: T) => {
+    setSelectedIds(new Set([item.id]))
+    setPrimaryId(item.id)
+    setLastClickedId(item.id)
+  }, [])
+
   const isSelected = useCallback((itemId: string) => selectedIds.has(itemId), [selectedIds])
   const isPrimary = useCallback((itemId: string) => primaryId === itemId, [primaryId])
 
@@ -83,6 +90,7 @@ export function useResourceSelection<T extends SelectableEntity>(): UseResourceS
     primaryId,
     lastClickedId,
     handleSelectionClick,
+    selectOnly,
     clearSelection,
     isSelected,
     isPrimary,

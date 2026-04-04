@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { createContext, useContext, useState, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight, Settings } from 'lucide-react'

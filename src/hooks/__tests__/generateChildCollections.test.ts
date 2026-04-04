@@ -8,7 +8,7 @@ function makeParent(overrides: Partial<SmartCollection> = {}): SmartCollection {
     name: 'Parent',
     icon: 'character',
     filter: {},
-    isDefault: true,
+    visibleToAll: true,
     createdAt: new Date('2024-01-01'),
     ...overrides,
   }

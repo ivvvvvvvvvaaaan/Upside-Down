@@ -107,7 +107,7 @@ function RoleCellRenderer(params: ICellRendererParams<User>) {
 }
 
 // Custom cell renderer for actions
-function ActionsCellRenderer(params: ICellRendererParams<User>) {
+function ActionsCellRenderer(_params: ICellRendererParams<User>) {
   return (
     <div className="flex items-center h-full">
       <Button variant="tertiary" compact>View</Button>

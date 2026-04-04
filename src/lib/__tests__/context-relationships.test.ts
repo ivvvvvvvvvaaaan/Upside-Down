@@ -46,11 +46,6 @@ describe('getContextAssetGroups', () => {
 
     expect(groups.find((group) => group.type === 'adjacent-takes')?.assets.map((asset) => asset.id)).toContain('asset-b')
     expect(groups.find((group) => group.type === 'alternate-angle')?.assets.map((asset) => asset.id)).toContain('asset-c')
-    expect(groups.find((group) => group.type === 'same-scene')?.assets.map((asset) => asset.id)).toEqual(
-      expect.arrayContaining(['asset-b', 'asset-c']),
-    )
-    expect(groups.find((group) => group.type === 'related-character')?.assets.map((asset) => asset.id)).toEqual(
-      expect.arrayContaining(['asset-b', 'asset-c', 'asset-d']),
-    )
+    expect(groups).toHaveLength(2)
   })
 })

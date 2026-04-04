@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Users } from 'lucide-react'
 import { Button } from './button'
+import { Avatar } from './avatar'
 import { AccessModal } from './access-modal'
 import { useAccess, usePersona } from '@/hooks'
 import type { ResourceRef, Grant } from '@/lib/grants'
@@ -22,8 +23,8 @@ export function AccessSummary({
   resourceName,
 }: AccessSummaryProps) {
   const [modalOpen, setModalOpen] = useState(false)
-  const { activePersona } = usePersona()
-  const { getResourceGrants, roleGroups } = useAccess()
+  const { activePersona, isAdmin } = usePersona()
+  const { getResourceGrants, roleGroups, canShare } = useAccess()
 
   const grants = getResourceGrants(resourceId)
 
@@ -46,15 +47,21 @@ export function AccessSummary({
   return (
     <>
       <section className="space-y-2">
-        <h3 className="text-body-0-bold text-foreground-dim">Access</h3>
         <div className="space-y-1">
           {effectiveRows.length === 0 && (
             <p className="text-body-0-regular text-foreground-dim">Not shared</p>
           )}
           {effectiveRows.map((row) => (
-            <div key={row.key} className="flex items-start justify-between gap-2 py-0.5">
-              <div className="flex items-start gap-2 min-w-0">
-                <Users className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0 mt-0.5" />
+            <div key={row.key} className="flex items-center justify-between gap-2 py-0.5">
+              <div className="flex items-center gap-2 min-w-0">
+                {row.principalType === 'team' ? (
+                  <div className="relative flex-shrink-0">
+                    <Avatar name={row.name} size="compact" />
+                    <Users className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 text-foreground-dim bg-surface-flat rounded-full" />
+                  </div>
+                ) : (
+                  <Avatar name={row.name} size="compact" />
+                )}
                 <div className="min-w-0">
                   <span className="text-body-0-regular text-foreground truncate block">{row.name}</span>
                   {row.subtitle && (
@@ -66,13 +73,14 @@ export function AccessSummary({
             </div>
           ))}
         </div>
-        <Button
-          variant="secondary"
-          compact
-          onClick={() => setModalOpen(true)}
-        >
-          Manage Access
-        </Button>
+        {(isAdmin || (resourceRef && canShare(resourceRef))) && (
+          <Button
+            variant="secondary"
+            onClick={() => setModalOpen(true)}
+          >
+            Manage Access
+          </Button>
+        )}
       </section>
 
       <AccessModal

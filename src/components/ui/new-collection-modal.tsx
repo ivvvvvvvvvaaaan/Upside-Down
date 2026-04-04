@@ -36,8 +36,6 @@ export function NewCollectionModal({
   const [collectionType, setCollectionType] = useState<CollectionType | null>(hasSelectedAssets ? 'manual' : null)
   const [name, setName] = useState('')
 
-  // Track animation direction: 1 = forward, -1 = backward
-  const [direction, setDirection] = useState<1 | -1>(1)
   // Track whether we've started animating (to avoid initial animation)
   const [ready, setReady] = useState(false)
 
@@ -82,13 +80,11 @@ export function NewCollectionModal({
 
   const handleTypeSelect = (type: CollectionType) => {
     setCollectionType(type)
-    setDirection(1)
     setReady(true)
     setStep(1)
   }
 
   const handleBack = () => {
-    setDirection(-1)
     setReady(true)
     setStep(0)
   }
@@ -114,7 +110,7 @@ export function NewCollectionModal({
     onOpenChange(isOpen)
   }
 
-  // Slide transform based on step and direction
+  // Slide transform based on step
   const slideOffset = step === 0 ? '0%' : '-100%'
 
   return (

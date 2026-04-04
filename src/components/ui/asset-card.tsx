@@ -3,8 +3,8 @@
 import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { Tag } from './tag'
-import { Text } from './text'
-import { MoreVertical, Music, FileText, ImageIcon, Film, File, Lock, Import } from 'lucide-react'
+import { Tooltip } from './tooltip'
+import { MoreVertical, Music, FileText, ImageIcon, Film, File, Lock, Box } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -87,8 +87,6 @@ export function AssetCard({
   primary = false,
   forceEmptyPreview = false,
   processing = false,
-  showDepartment = false,
-  fromWorkspace = false,
   restricted = false,
   shared,
   onRequestAccess,
@@ -182,6 +180,10 @@ export function AssetCard({
     ? asset.audioMeta?.duration
     : asset.videoMeta?.duration
 
+  // Show file extension badge when there's no duration — production formats, documents, archives
+  const BADGE_EXTENSIONS = new Set(['exr', 'nk', 'mb', 'hip', 'prproj', 'psd', 'ai', 'ptx', 'tiff', 'tx', 'pdf', 'zip', 'cube', 'xlsx'])
+  const extBadge = !duration && asset.extension && BADGE_EXTENSIONS.has(asset.extension) ? asset.extension.toUpperCase() : undefined
+
   // Get type tag label
   const getTypeTag = (): string => {
     switch (asset.type) {
@@ -237,6 +239,8 @@ export function AssetCard({
     // forceEmptyPreview overrides to always show placeholder
     const thumbnailSrc = forceEmptyPreview ? EMPTY_ASSET_PLACEHOLDER : asset.thumbnail
 
+    const is3DFile = asset.extension && ['nk', 'mb', 'hip', 'prproj'].includes(asset.extension)
+
     return thumbnailSrc ? (
       <Image
         src={thumbnailSrc}
@@ -246,7 +250,8 @@ export function AssetCard({
       />
     ) : (
       <div className="absolute inset-0 bg-surface-2 flex items-center justify-center">
-        {asset.type === 'video' || asset.type === 'shot' ? <Film className="w-8 h-8 text-foreground-dim" /> :
+        {is3DFile ? <Box className="w-8 h-8 text-foreground-dim" /> :
+         asset.type === 'video' || asset.type === 'shot' ? <Film className="w-8 h-8 text-foreground-dim" /> :
          asset.type === 'image' ? <ImageIcon className="w-8 h-8 text-foreground-dim" /> :
          asset.type === 'text' ? <FileText className="w-8 h-8 text-foreground-dim" /> :
          <File className="w-8 h-8 text-foreground-dim" />}
@@ -288,7 +293,7 @@ export function AssetCard({
           </div>
         )}
 
-        {/* Duration badge - bottom-right overlay - Hawkins text-label-0-bold (10px/15px/600) */}
+        {/* Duration / file-type badge - bottom-right overlay */}
         {!restricted && hasDuration && duration && (
           <div className="absolute bottom-2 right-2 px-1 bg-black/60 rounded flex items-center">
             <span className="text-label-0-bold text-white leading-none">
@@ -296,43 +301,62 @@ export function AssetCard({
             </span>
           </div>
         )}
+        {!restricted && !duration && extBadge && (
+          <div className="absolute bottom-2 right-2 px-1 bg-black/60 rounded flex items-center">
+            <span className="text-label-0-bold text-white leading-none">
+              {extBadge}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Content area */}
-      <div className="flex items-start justify-between gap-2">
-        {/* Left: Title, Tag + Metadata row */}
-        <div className="flex-1 min-w-0 flex flex-col gap-1">
-          {/* Title - 1st line with hover state - body-0-bold (13px/20px/600) */}
-          {restricted ? (
-            <span className="text-body-0-bold text-foreground-dim truncate block">
-              {asset.name}
-            </span>
-          ) : (
-            <Link
-              href={`/nextgen/assets/${asset.id}`}
-              onClick={(e) => e.stopPropagation()}
-              className="text-body-0-bold text-foreground truncate block hover:text-foreground-system-link hover:underline"
-            >
-              {asset.name}
-            </Link>
-          )}
+      <div className="flex flex-col gap-1">
+        {/* Title row — title + menu button aligned */}
+        <div className="flex items-center gap-1">
+          <div className="flex-1 min-w-0">
+            {restricted ? (
+              <span className="text-body-0-bold text-foreground-dim truncate block">
+                {asset.name}
+              </span>
+            ) : (
+              <Link
+                href={`/nextgen/assets/${asset.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-body-0-bold text-foreground truncate block hover:text-foreground-system-link hover:underline"
+              >
+                {asset.name}
+              </Link>
+            )}
+          </div>
+          <Button
+            variant="icon"
+            compact
+            onClick={(e) => {
+              e.stopPropagation()
+              onMenuClick?.(asset)
+            }}
+            className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <MoreVertical />
+          </Button>
+        </div>
 
-          {/* Tag + Metadata - 2nd line: type tag, status, release */}
-          <div className="flex items-center gap-1 flex-wrap">
-            {(() => {
-              if (asset.tags?.length) {
-                const statusLabels = new Set(['Key Art', 'Final'])
-                // 1. Type tag — first system tag that isn't a known status
-                const typeTag = asset.tags.find(t => t.source === 'system' && !statusLabels.has(t.label))
-                // 2. Status tags — Final, Key Art
-                const statusTag = asset.tags.find(t => statusLabels.has(t.label))
-                // 3. Everything else after the type tag = release/overflow tags
-                const rest = asset.tags.filter(t => t.source === 'system' && t !== typeTag && !statusLabels.has(t.label))
-                return (
-                  <>
-                    {typeTag && <Tag>{typeTag.label}</Tag>}
-                    {statusTag && <Tag type={statusTag.label === 'Final' ? 'positive' : 'announcement'}>{statusTag.label}</Tag>}
-                    {rest.map(t => (
+        {/* Tags + Metadata row */}
+        <div className="flex items-center gap-1 flex-wrap">
+          {(() => {
+            if (asset.tags?.length) {
+              const statusLabels = new Set(['Key Art', 'Final'])
+              const typeTag = asset.tags.find(t => t.source === 'system' && !statusLabels.has(t.label))
+              const statusTag = asset.tags.find(t => statusLabels.has(t.label))
+              const rest = asset.tags.filter(t => t.source === 'system' && t !== typeTag && !statusLabels.has(t.label))
+              return (
+                <>
+                  {typeTag && <Tag>{typeTag.label}</Tag>}
+                  {asset.version != null && <Tag type="neutral" variant="border">V{asset.version}</Tag>}
+                  {statusTag && <Tag type={statusTag.label === 'Final' ? 'positive' : 'announcement'}>{statusTag.label}</Tag>}
+                  {rest.map(t => {
+                    const tag = (
                       <Tag
                         key={t.label}
                         type={t.label === 'ALL' ? 'positive' : t.label.startsWith('+') ? 'neutral' : 'notice'}
@@ -340,36 +364,27 @@ export function AssetCard({
                       >
                         {t.label}
                       </Tag>
-                    ))}
-                  </>
-                )
-              }
-              return (
-                <>
-                  {renderTypeTag()}
-                  {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
+                    )
+                    return t.description ? (
+                      <Tooltip key={t.label} label={t.description}>{tag}</Tooltip>
+                    ) : tag
+                  })}
                 </>
               )
-            })()}
-            {isShared && asset.department && (
-              <Tag type="neutral">{DEPARTMENT_NAMES[asset.department] ?? asset.department}</Tag>
-            )}
-            {renderMetadata()}
-          </div>
+            }
+            return (
+              <>
+                {renderTypeTag()}
+                {asset.version != null && <Tag type="neutral" variant="border">V{asset.version}</Tag>}
+                {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
+              </>
+            )
+          })()}
+          {isShared && asset.department && (
+            <Tag type="neutral">{DEPARTMENT_NAMES[asset.department] ?? asset.department}</Tag>
+          )}
+          {renderMetadata()}
         </div>
-
-        {/* Right: Menu button (appears on hover) */}
-        <Button
-          variant="icon"
-          compact
-          onClick={(e) => {
-            e.stopPropagation()
-            onMenuClick?.(asset)
-          }}
-          className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          <MoreVertical />
-        </Button>
       </div>
     </div>
   )

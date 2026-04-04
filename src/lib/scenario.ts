@@ -1,7 +1,7 @@
 // src/lib/scenario.ts — Single source of truth for the prototype permissions scenario
 
 import type { DepartmentId } from '@/components/department/types'
-import { DEPARTMENT_FOLDER_MAP, getDepartmentWorkspaceFiles, findNodeInTree } from '@/lib/workspace-data'
+import { DEPARTMENT_FOLDER_MAP, getDepartmentWorkspaceFiles } from '@/lib/workspace-data'
 import type { User, UserRole } from '@/lib/personas'
 import type { Team } from '@/lib/teams'
 import type {
@@ -158,13 +158,13 @@ export const SCENARIO: Scenario = {
   ],
 
   roleGroups: [
-    { id: 'owner',       name: 'Owner',       permissions: ['discover', 'open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl'] },
-    { id: 'manager',     name: 'Full access',  permissions: ['discover', 'open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl'] },
-    { id: 'editor',      name: 'Can edit & share', permissions: ['discover', 'open', 'download', 'write', 'comment', 'share'] },
-    { id: 'contributor', name: 'Can edit',         permissions: ['discover', 'open', 'write'] },
-    { id: 'commenter',   name: 'Can comment', permissions: ['discover', 'open', 'comment'] },
-    { id: 'viewer',      name: 'View only',   permissions: ['discover', 'open', 'download'] },
-    { id: 'link-viewer', name: 'View only',   permissions: ['discover', 'open', 'download'] },
+    { id: 'owner',       name: 'Owner',       permissions: ['open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl'] },
+    { id: 'manager',     name: 'Full access', permissions: ['open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl'] },
+    { id: 'editor',      name: 'Can edit & share', permissions: ['open', 'download', 'write', 'comment', 'share'] },
+    { id: 'contributor', name: 'Can edit',    permissions: ['open', 'write'] },
+    { id: 'commenter',   name: 'Can comment', permissions: ['open', 'comment'] },
+    { id: 'viewer',      name: 'View only',   permissions: ['open', 'download'] },
+    { id: 'link-viewer', name: 'View only',   permissions: ['open', 'download'] },
   ],
 
   people: [

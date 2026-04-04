@@ -19,13 +19,8 @@ import type { ReleaseDomain } from '@/lib/scenario'
 
 const DOMAINS = buildReleaseDomains()
 
-/** All configured release domains */
-export function getReleaseDomains(): ReleaseDomain[] {
-  return DOMAINS
-}
-
 /** Release domains applicable to a specific asset type (e.g. 'cut') */
-export function getReleasDomainsForType(assetType: string): ReleaseDomain[] {
+function getReleasDomainsForType(assetType: string): ReleaseDomain[] {
   return DOMAINS.filter(d => d.assetTypes.includes(assetType))
 }
 
@@ -71,7 +66,7 @@ export function deriveReleasedDomains(
 }
 
 /** Count of domains that have configured grantees (releasable) */
-export function getReleasableDomainCount(): number {
+function getReleasableDomainCount(): number {
   return DOMAINS.filter(d => d.granteeTeamIds.length > 0).length
 }
 

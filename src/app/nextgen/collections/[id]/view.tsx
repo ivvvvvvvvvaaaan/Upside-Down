@@ -18,11 +18,11 @@ import {
 } from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
-import { useAccess, useAssetSelection, usePersona, useViewPreferences, useUserCollections } from '@/hooks'
+import { getGridColumns, useAccess, useAssetSelection, usePersona, useViewPreferences, useUserCollections, useSmartCollections } from '@/hooks'
 import type { Asset } from '@/lib/data'
 import { PERSONAS } from '@/lib/personas'
-import { getReviewNoteSummary } from '@/lib/review-notes'
 import { assetToSelectionEntity } from '@/lib/selection-actions'
+import { getContextAssetGroups } from '@/lib/context-relationships'
 
 interface UserCollectionDetailViewProps {
   collectionId: string
@@ -34,9 +34,10 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
 
   const { activePersona, isAdmin, hydrated } = usePersona()
-  const { filterByAccess, sharesReceivedByMe, allProjectShares, getVisibleCollection, getAccessPath } = useAccess()
-  const { getCollection, createCollection, deleteCollection } = useUserCollections()
-  const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
+  const { filterByAccess, sharesReceivedByMe, allProjectShares, getVisibleCollection } = useAccess()
+  const { getCollection, deleteCollection } = useUserCollections()
+  const { getRelatedCollectionsForAssets, scopedAssets, ensureAssetsLoaded } = useSmartCollections()
+  const { selectedIds, primaryId, handleAssetClick, selectOnly, clearSelection } = useAssetSelection()
   const { cardSize, sidePanelOpen, setSidePanelOpen } = useViewPreferences()
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
 
@@ -47,6 +48,14 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const collection = getVisibleCollection(collectionId)
   const isOwner = hydrated && (isAdmin || (!!rawCollection && rawCollection.createdBy === activePersona?.email))
   const hasCollectionAccess = hydrated && !!collection
+
+  useEffect(() => {
+    void ensureAssetsLoaded()
+  }, [ensureAssetsLoaded])
+
+  useEffect(() => {
+    clearSelection()
+  }, [collectionId, clearSelection])
 
   // Find who shared this collection with the current user
   const sharedBy = useMemo(() => {
@@ -107,13 +116,13 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const handleMenuClick = (asset: Asset) => {
     console.log('Menu clicked for:', asset.name)
   }
-
-  const getColumns = () => {
-    switch (cardSize) {
-      case 'sm': return 6
-      case 'lg': return 3
-      default: return 4
+  const handlePanelAssetSwitch = (nextAsset: Asset) => {
+    if (assets.some((asset) => asset.id === nextAsset.id)) {
+      selectOnly(nextAsset)
+      setSidePanelOpen(true)
+      return
     }
+    router.push(`/nextgen/assets/${nextAsset.id}`)
   }
 
   const selectedAssets = useMemo(() => {
@@ -124,12 +133,15 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     if (!primaryId) return null
     return assets.find(a => a.id === primaryId) ?? null
   }, [primaryId, assets])
-  const reviewNoteSummary = useMemo(() => getReviewNoteSummary(collectionId), [collectionId])
+  const primaryAssetContextGroups = useMemo(() => {
+    if (!primaryAsset) return undefined
+    return getContextAssetGroups(primaryAsset, scopedAssets)
+  }, [primaryAsset, scopedAssets])
 
-  const handleCreateCollection = (name: string) => {
-    createCollection(name, selectedAssets.map(a => a.id))
-    clearSelection()
-  }
+  const relationships = useMemo(() => {
+    if (assets.length === 0) return undefined
+    return getRelatedCollectionsForAssets(assets)
+  }, [assets, getRelatedCollectionsForAssets])
 
   // Collection not found
   if ((!collection || !hasCollectionAccess) && !loading) {
@@ -205,7 +217,6 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                       </div>
                       <Button
                         variant="icon"
-                        compact
                         onClick={() => setSidePanelOpen(!sidePanelOpen)}
                         aria-label={sidePanelOpen ? 'Close panel' : 'Open panel'}
                         className={cn(sidePanelOpen && 'bg-surface-3')}
@@ -216,13 +227,13 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                   </div>
 
                   {loading ? (
-                    <CardGrid columns={getColumns()} gap="4">
+                    <CardGrid columns={getGridColumns(cardSize)} gap="4">
                       {[...Array(6)].map((_, i) => (
                         <AssetCard key={i} loading />
                       ))}
                     </CardGrid>
                   ) : assets.length > 0 ? (
-                    <CardGrid columns={getColumns()} gap="4">
+                    <CardGrid columns={getGridColumns(cardSize)} gap="4">
                       {assets.map((asset) => (
                         <AssetCard
                           key={asset.id}
@@ -259,6 +270,9 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
           open={sidePanelOpen && !!primaryAsset}
           onClose={() => { clearSelection(); setSidePanelOpen(false) }}
           activeCollectionId={collectionId}
+          activeContext={{ type: 'collection', id: collectionId }}
+          contextGroups={primaryAssetContextGroups}
+          onContextAssetClick={handlePanelAssetSwitch}
         />
         {collection && hasCollectionAccess && (
           <CollectionSidePanel
@@ -267,6 +281,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
             onClose={() => setSidePanelOpen(false)}
             onDelete={handleDeleteCollection}
             canDelete={isOwner}
+            relationships={relationships}
           />
         )}
       </div>

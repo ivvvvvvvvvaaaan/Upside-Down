@@ -3,8 +3,6 @@ import type { Asset } from '@/lib/data'
 export type ContextRelationshipType =
   | 'adjacent-takes'
   | 'alternate-angle'
-  | 'same-scene'
-  | 'related-character'
 
 export type RelatedAssetGroup = {
   type: ContextRelationshipType
@@ -38,15 +36,6 @@ function getCameraKey(asset: Asset): string {
     || matchNameToken(asset.name, /\bC([0-9]{3})\b/)
 }
 
-function getCharacterKeys(asset: Asset): string[] {
-  return (asset.aiMeta?.characters ?? []).map((character) => normalize(character)).filter(Boolean)
-}
-
-function hasCharacterOverlap(asset: Asset, other: Asset): boolean {
-  const characters = new Set(getCharacterKeys(asset))
-  return getCharacterKeys(other).some((character) => characters.has(character))
-}
-
 export function getContextAssetGroups(asset: Asset, candidates: Asset[], limit: number = 4): RelatedAssetGroup[] {
   const sceneKey = getSceneKey(asset)
   const takeKey = getTakeKey(asset)
@@ -66,7 +55,7 @@ export function getContextAssetGroups(asset: Asset, candidates: Asset[], limit: 
     if (adjacentTakes.length > 0) {
       groups.push({
         type: 'adjacent-takes',
-        label: 'Adjacent Takes',
+        label: 'Other Takes',
         assets: adjacentTakes,
       })
     }
@@ -80,30 +69,11 @@ export function getContextAssetGroups(asset: Asset, candidates: Asset[], limit: 
     if (alternateAngles.length > 0) {
       groups.push({
         type: 'alternate-angle',
-        label: 'Alternate Angles',
+        label: 'Other Angles',
         assets: alternateAngles,
       })
     }
 
-    const sameScene = sameSceneAssets.slice(0, limit)
-    if (sameScene.length > 0) {
-      groups.push({
-        type: 'same-scene',
-        label: 'Same Scene',
-        assets: sameScene,
-      })
-    }
-  }
-
-  const relatedCharacters = others
-    .filter((candidate) => hasCharacterOverlap(asset, candidate))
-    .slice(0, limit)
-  if (relatedCharacters.length > 0) {
-    groups.push({
-      type: 'related-character',
-      label: 'Shared Characters',
-      assets: relatedCharacters,
-    })
   }
 
   return groups

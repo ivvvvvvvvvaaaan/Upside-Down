@@ -2,6 +2,7 @@
 
 import { profileLabel } from '@/lib/grants'
 import type { Grant, RoleGroup, AccessProfileId } from '@/lib/grants'
+import type { DepartmentId } from '@/lib/data'
 import { PERSONAS } from '@/lib/personas'
 import { TEAMS } from '@/lib/teams'
 
@@ -16,6 +17,8 @@ export type AccessDisplayEntry = AccessDisplaySourceEntry & {
   name: string
   subtitle?: string
   roleLabel: string
+  principalType: 'user' | 'team'
+  departmentId?: DepartmentId
   members?: {
     id: string
     name: string
@@ -81,6 +84,8 @@ export function buildAccessDisplayEntries(
           name: persona?.name ?? principal.userId,
           subtitle: persona?.email,
           roleLabel: profileLabel(grant.templateId, roleGroups),
+          principalType: 'user' as const,
+          departmentId: persona?.departmentId,
         }
       }
 
@@ -127,6 +132,8 @@ export function buildAccessDisplayEntries(
         name: team?.name ?? teamPrincipal.teamId,
         subtitle,
         roleLabel: teamRoleLabel,
+        principalType: 'team' as const,
+        departmentId: team?.departmentId,
         members,
       }
     })

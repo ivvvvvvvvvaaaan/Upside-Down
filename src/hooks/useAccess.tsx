@@ -19,6 +19,7 @@ import {
   buildAllProjectShares,
   userHasAccess,
   resolveAccess,
+  mostPermissiveProfile,
   getPermissionsForProfile,
   canAssignProfile,
   canCreateGrantForResource,
@@ -40,7 +41,6 @@ import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { SCENARIO, buildGuestLinks } from '@/lib/scenario'
 import type { GuestLinkSeed } from '@/lib/scenario'
 import { isUserInTeam } from '@/lib/teams'
-import type { Team } from '@/lib/teams'
 
 export type AccessRequest = {
   id: string
@@ -149,16 +149,6 @@ const ROOT_ID_TO_DEPARTMENT: Record<string, DepartmentId> = Object.fromEntries(
   ALL_DEPARTMENTS.map((departmentId) => [DEPARTMENT_WRAPPER_IDS[departmentId], departmentId]),
 ) as Record<string, DepartmentId>
 
-const TEMPLATE_RANK: Record<AccessProfileId, number> = {
-  owner: 7,
-  manager: 6,
-  editor: 5,
-  contributor: 4,
-  commenter: 3,
-  viewer: 2,
-  'link-viewer': 1,
-}
-
 function collectFolderIds(nodes: WorkspaceFileNode[]): string[] {
   const ids: string[] = []
   for (const node of nodes) {
@@ -170,30 +160,11 @@ function collectFolderIds(nodes: WorkspaceFileNode[]): string[] {
   return ids
 }
 
-function collectAllNodeIds(nodes: WorkspaceFileNode[]): string[] {
-  const ids: string[] = []
-  for (const node of nodes) {
-    ids.push(node.id)
-    if (node.children) ids.push(...collectAllNodeIds(node.children))
-  }
-  return ids
-}
-
-
 function mergePermissions(...permissionSets: Permission[][]): Permission[] {
   return Array.from(new Set(permissionSets.flat()))
 }
 
 const getCollectionAssetIdVariants = getAssetIdVariants
-
-function getMorePermissiveTemplate(
-  current: AccessProfileId | null,
-  next: AccessProfileId | null,
-): AccessProfileId | null {
-  if (!next) return current
-  if (!current) return next
-  return TEMPLATE_RANK[next] > TEMPLATE_RANK[current] ? next : current
-}
 
 // Bump this when grant schema or seed data changes — forces localStorage re-seed
 const GRANTS_VERSION = 18
@@ -417,7 +388,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         for (const variantId of getCollectionAssetIdVariants(assetId)) {
           const current = accessById.get(variantId)
           accessById.set(variantId, {
-            templateId: getMorePermissiveTemplate(current?.templateId ?? null, collectionAccess.templateId),
+            templateId: mostPermissiveProfile(current?.templateId ?? null, collectionAccess.templateId),
             permissions: mergePermissions(current?.permissions ?? [], cappedPermissions),
             canEdit: Boolean(current?.canEdit || cappedPermissions.includes('write')),
           })
@@ -515,30 +486,30 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     setRoleGroups((prev) =>
       prev.map((rg) => (rg.id === id ? { ...rg, permissions } : rg)),
     )
-  }, [canEditAclFn])
+  }, [canEditAclFn, setRoleGroups])
 
   const renameRoleGroup = useCallback((id: string, name: string) => {
     if (!canEditAclFn(PROJECT_RESOURCE)) return
     setRoleGroups((prev) =>
       prev.map((rg) => (rg.id === id ? { ...rg, name } : rg)),
     )
-  }, [canEditAclFn])
+  }, [canEditAclFn, setRoleGroups])
 
   const addRoleGroup = useCallback((name: string, permissions: Permission[]) => {
     if (!canEditAclFn(PROJECT_RESOURCE)) return
     const id = `custom-${name.toLowerCase().replace(/\s+/g, '-')}` as AccessProfileId
     setRoleGroups((prev) => [...prev, { id, name, permissions, builtIn: false }])
-  }, [canEditAclFn])
+  }, [canEditAclFn, setRoleGroups])
 
   const removeRoleGroup = useCallback((id: string) => {
     if (!canEditAclFn(PROJECT_RESOURCE)) return
     setRoleGroups((prev) => prev.filter((rg) => rg.id !== id))
-  }, [canEditAclFn])
+  }, [canEditAclFn, setRoleGroups])
 
   const resetRoleGroups = useCallback(() => {
     if (!canEditAclFn(PROJECT_RESOURCE)) return
     setRoleGroups(structuredClone(DEFAULT_ROLE_GROUPS))
-  }, [canEditAclFn])
+  }, [canEditAclFn, setRoleGroups])
 
   // canAccess: explicit grants plus collection/folder inheritance
   const canAccess = useCallback((id: string): boolean => {
@@ -727,7 +698,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
           : grant,
       )
     })
-  }, [canEditAclFn])
+  }, [canEditAclFn, setGrants])
 
   // New API
   const getPermission = useCallback((id: string): AccessProfileId | null => {
@@ -777,7 +748,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
       return [...prev, newGrant]
     })
-  }, [activePersona, userId, roleGroups, canShareFn, canGrantProfileForResourceFn, grantorUserId])
+  }, [activePersona, userId, roleGroups, canShareFn, canGrantProfileForResourceFn, grantorUserId, setGrants])
 
   const revokeGrant = useCallback((grantId: string) => {
     setGrants((prev) => {
@@ -790,7 +761,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
           : candidate,
       )
     })
-  }, [canEditAclFn])
+  }, [canEditAclFn, setGrants])
 
   // Project-level grants
   const projectUserGrants = useMemo(() => getProjectUserGrantsFromList(grants), [grants])
@@ -813,7 +784,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, newGrant]
     })
-  }, [activePersona, userId, roleGroups, canShareFn, canGrantProfileForResourceFn, grantorUserId])
+  }, [activePersona, userId, roleGroups, canShareFn, canGrantProfileForResourceFn, grantorUserId, setGrants])
 
   const updateGrantProfile = useCallback((grantId: string, profileId: AccessProfileId) => {
     setGrants((prev) => {
@@ -831,7 +802,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
           : candidate
       ))
     })
-  }, [roleGroups, canEditAclFn, canGrantProfileForResourceFn])
+  }, [roleGroups, canEditAclFn, canGrantProfileForResourceFn, setGrants])
 
   // Inherited grants display — walks parent chain for folder inheritance
   const getInheritedGrants = useCallback((resourceId: string) => {

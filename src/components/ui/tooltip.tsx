@@ -124,7 +124,7 @@ export function Tooltip({
         onMouseLeave={hideTooltip}
         onFocus={showTooltip}
         onBlur={hideTooltip}
-        className={cn('inline-block', className)}
+        className={cn('inline-flex items-center', className)}
       >
         {children}
       </div>
@@ -143,11 +143,11 @@ export function Tooltip({
           )}
           style={{ top: coords.top, left: coords.left }}
         >
-          <p className="text-body-0-bold text-foreground whitespace-nowrap">
+          <p className="text-body-0-bold text-foreground whitespace-pre-line">
             {label}
           </p>
           {description && (
-            <p className="text-body-0-regular text-foreground-dim whitespace-nowrap">
+            <p className="text-body-0-regular text-foreground-dim whitespace-pre-line">
               {description}
             </p>
           )}

@@ -85,4 +85,4 @@ function CardFooter({
 Card.Body = CardBody
 Card.Footer = CardFooter
 
-export { Card, CardBody, CardFooter }
+export { Card }
