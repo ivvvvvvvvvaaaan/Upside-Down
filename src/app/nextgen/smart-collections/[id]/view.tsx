@@ -1,10 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, PanelRight } from 'lucide-react'
+import { PanelRight, Info, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import {
   Stack,
   PageHeader,
@@ -20,25 +19,27 @@ import {
   SortDropdown,
   AppearanceDropdown,
   CompactBar,
+  MobileToolbar,
 } from '@/components/ui'
 import type { CollectionCardType } from '@/components/ui/collection-card'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
-import { AppLayout } from '@/components/layouts'
-import { getGridColumns, useAssetSelection, useViewPreferences, useCompactBar, useResourceSelection, useSmartCollections, usePersona } from '@/hooks'
+import { getGridColumns, useAssetSelection, useViewPreferences, useCompactBar, useResourceSelection, useSmartCollections, usePersona, useMobilePanel } from '@/hooks'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import { matchesFilter } from '@/hooks/useSmartCollections'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import type { AssetFilter } from '@/lib/data'
 import { assetToSelectionEntity, collectionToSelectionEntity } from '@/lib/selection-actions'
 import { getContextAssetGroups } from '@/lib/context-relationships'
+import { useAccess } from '@/hooks'
+import { AccessModal } from '@/components/ui/access-modal'
+import type { ResourceRef } from '@/lib/grants'
 
 interface SmartCollectionDetailViewProps {
   collectionId: string
 }
 
 export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetailViewProps) {
-  const pathname = usePathname()
   const router = useRouter()
-  const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
 
   const {
     getCollection,
@@ -66,8 +67,14 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     clearSelection: clearCollectionSelection,
   } = useResourceSelection<{ id: string; name: string }>()
   const { layout, setLayout, cardSize, setCardSize, sidePanelOpen, setSidePanelOpen } = useViewPreferences()
+  const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
+  const isMobile = useIsMobile()
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
+  const { canShare } = useAccess()
+  const [shareModalOpen, setShareModalOpen] = useState(false)
+  const collectionResourceRef: ResourceRef = { id: collectionId, type: 'smart-collection' }
+  const showShareButton = canShare(collectionResourceRef)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
@@ -254,54 +261,41 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     ? childCollections.length
     : filteredAssets.length
   const countLabel = isParentWithChildren ? 'collection' : 'asset'
-  const backHref = parentCollection
-    ? `/nextgen/smart-collections/${parentCollection.id}`
-    : undefined
 
   // Collection not found
   if (!collection && !loading) {
     return (
-      <AppLayout>
-        <div className="h-full flex flex-col">
-          <div className="flex-1 min-h-0 overflow-auto">
-            <div className="p-6">
-              <div className="max-w-7xl mx-auto">
-                <Stack spacing="lg">
-                  <div className="md:hidden">
-                    <Button asChild variant="icon" size="icon" aria-label="Menu">
-                      <Link href={menuHref}>
-                        <ArrowLeft className="w-4 h-4" />
-                        <span className="sr-only">Menu</span>
-                      </Link>
-                    </Button>
-                  </div>
-                  <EmptyState
-                    title="Smart Collection not found"
-                    message="This smart collection may have been deleted or doesn't exist."
+      <div className="h-full flex flex-col">
+        <div className="flex-1 min-h-0 overflow-auto">
+          <div className="p-6">
+            <div className="max-w-7xl mx-auto">
+              <Stack spacing="lg">
+                <MobileToolbar title="Collection" />
+                <EmptyState
+                  title="Smart Collection not found"
+                  message="This smart collection may have been deleted or doesn't exist."
+                >
+                  <Button
+                    variant="secondary"
+                    onClick={() => router.push('/nextgen')}
+                    className="mt-4"
                   >
-                    <Button
-                      variant="secondary"
-                      onClick={() => router.push('/nextgen')}
-                      className="mt-4"
-                    >
-                      Back to Home
-                    </Button>
-                  </EmptyState>
-                </Stack>
-              </div>
+                    Back to Home
+                  </Button>
+                </EmptyState>
+              </Stack>
             </div>
           </div>
         </div>
-      </AppLayout>
+      </div>
     )
   }
 
   return (
-    <AppLayout>
-      <div className="h-full flex">
-        {/* Main content area */}
-        <div className="flex-1 min-w-0 flex flex-col">
-          <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto">
+    <div className="h-full flex">
+      {/* Main content area */}
+      <div className="flex-1 min-w-0 flex flex-col">
+        <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto">
             <CompactBar
               visible={showCompactBar}
               title={pageTitle}
@@ -323,49 +317,44 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
             <div className="p-6">
               <div className="max-w-7xl mx-auto">
                 <Stack spacing="lg">
-                  {/* Mobile menu button */}
-                  <div className="flex items-center justify-between w-full md:hidden">
-                    <Button asChild variant="icon" size="icon" aria-label="Menu">
-                      <Link href={menuHref}>
-                        <ArrowLeft className="w-4 h-4" />
-                        <span className="sr-only">Menu</span>
-                      </Link>
+                  {/* Mobile nav */}
+                  <MobileToolbar title={pageTitle} actions={
+                    <Button
+                      variant="icon"
+                      size="icon"
+                      onClick={togglePanel}
+                      aria-label={panelOpen ? 'Close panel' : 'Open panel'}
+                      className={cn(panelOpen && 'bg-surface-3')}
+                    >
+                      <Info className="w-4 h-4" />
                     </Button>
-                    <div className="flex items-center gap-2">
-                      <HawkinsSearch
-                        value={searchQuery}
-                        onValueChange={setSearchQuery}
-                        filters={filterOptions}
-                      />
-                      <SortDropdown
-                        fields={sortFields}
-                        value={sortCriteria}
-                        onChange={setSortCriteria}
-                        iconOnly
-                      />
-                      <AppearanceDropdown
-                        iconOnly
-                        layout={layout}
-                        onLayoutChange={setLayout}
-                        cardSize={cardSize}
-                        onCardSizeChange={setCardSize}
-                        showLayoutOptions={false}
-                      />
-                      <Button
-                          variant="icon"
-                          onClick={() => setSidePanelOpen(!sidePanelOpen)}
-                          aria-label={sidePanelOpen ? 'Close panel' : 'Open panel'}
-                          className={cn(sidePanelOpen && 'bg-surface-3')}
-                        >
-                          <PanelRight className="w-4 h-4" />
-                        </Button>
-                    </div>
+                  } />
+                  <div className="flex items-center gap-2 md:hidden">
+                    <HawkinsSearch
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                      filters={filterOptions}
+                    />
+                    <SortDropdown
+                      fields={sortFields}
+                      value={sortCriteria}
+                      onChange={setSortCriteria}
+                      iconOnly
+                    />
+                    <AppearanceDropdown
+                      iconOnly
+                      layout={layout}
+                      onLayoutChange={setLayout}
+                      cardSize={cardSize}
+                      onCardSizeChange={setCardSize}
+                      showLayoutOptions={false}
+                    />
                   </div>
 
                   {/* Header */}
                   <div ref={headerRef} className="flex flex-col gap-3">
                     <div className="flex items-center justify-between gap-4">
-                      <PageHeader title={pageTitle} backHref={backHref} />
+                      <PageHeader title={pageTitle} hideTitleOnMobile />
                       <div className="hidden md:flex items-center gap-2">
                         <SortDropdown
                           fields={sortFields}
@@ -381,11 +370,20 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                           showLayoutOptions={false}
                           iconOnly={sidePanelOpen}
                         />
+                        {showShareButton && (
+                          <Button
+                            variant="icon"
+                            onClick={() => setShareModalOpen(true)}
+                            aria-label="Share collection"
+                          >
+                            <Share2 className="w-4 h-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="icon"
-                          onClick={() => setSidePanelOpen(!sidePanelOpen)}
-                          aria-label={sidePanelOpen ? 'Close panel' : 'Open panel'}
-                          className={cn(sidePanelOpen && 'bg-surface-3')}
+                          onClick={togglePanel}
+                          aria-label={panelOpen ? 'Close panel' : 'Open panel'}
+                          className={cn(panelOpen && 'bg-surface-3')}
                         >
                           <PanelRight className="w-4 h-4" />
                         </Button>
@@ -435,9 +433,12 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                               : child.assetCount === 2 ? 'Two'
                               : 'Many'
                             }
-                            isSelected={selectedCollectionId === child.collection.id}
-                            onClick={(event) => handleCollectionCardClick(child.collection, event)}
-                            onDoubleClick={() => router.push(`/nextgen/smart-collections/${child.collection.id}`)}
+                            isSelected={!isMobile && selectedCollectionId === child.collection.id}
+                            onClick={isMobile
+                              ? () => router.push(`/nextgen/smart-collections/${child.collection.id}`)
+                              : (event) => handleCollectionCardClick(child.collection, event)
+                            }
+                            onDoubleClick={isMobile ? undefined : () => router.push(`/nextgen/smart-collections/${child.collection.id}`)}
                           />
                         ))}
                       </CardGrid>
@@ -468,46 +469,53 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
             </div>
           </div>
 
-          <SelectionBar
-            selectedEntities={activeSelectionEntities}
-            onClear={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
-          />
-        </div>
-
-        {/* Side panel — priority: selected asset > selected child collection > current collection */}
-        <AssetDetailPanel
-          asset={primaryAsset!}
-          open={sidePanelOpen && !!primaryAsset}
-          onClose={() => { clearAssetSelection(); setSidePanelOpen(false) }}
-          activeCollectionId={collectionId}
-          activeContext={{ type: 'collection', id: collectionId }}
-          contextGroups={primaryAssetContextGroups}
-          onContextAssetClick={handlePanelAssetSwitch}
+        <SelectionBar
+          selectedEntities={activeSelectionEntities}
+          onClear={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
         />
-        {selectedChildCollection && (
-          <SmartCollectionSidePanel
-            collection={selectedChildCollection}
-            open={sidePanelOpen && !primaryAsset && !!selectedChildCollection}
-            onClose={() => { clearCollectionSelection(); setSidePanelOpen(false) }}
-            onUpdate={handleUpdateCollection}
-            matchingCount={childData.find(c => c.collection.id === selectedCollectionId)?.assetCount}
-            relationships={selectedChildRelationships}
-            suppressDimension={collection?.groupBy}
-          />
-        )}
-        {collection && (
-          <SmartCollectionSidePanel
-            collection={collection}
-            open={sidePanelOpen && !primaryAsset && !selectedChildCollection}
-            onClose={() => setSidePanelOpen(false)}
-            onUpdate={handleUpdateCollection}
-            onDelete={isAutoGeneratedChild ? undefined : handleDeleteCollection}
-            matchingCount={filteredAssets.length}
-            relationships={relationships}
-            suppressDimension={parentCollection?.groupBy}
-          />
-        )}
       </div>
-    </AppLayout>
+
+      {/* Side panel — priority: selected asset > selected child collection > current collection */}
+      <AssetDetailPanel
+        asset={primaryAsset!}
+        open={panelOpen && !!primaryAsset}
+        onClose={() => { clearAssetSelection(); closePanel() }}
+        activeCollectionId={collectionId}
+        activeContext={{ type: 'collection', id: collectionId }}
+        contextGroups={primaryAssetContextGroups}
+        onContextAssetClick={handlePanelAssetSwitch}
+      />
+      {selectedChildCollection && (
+        <SmartCollectionSidePanel
+          collection={selectedChildCollection}
+          open={panelOpen && !primaryAsset && !!selectedChildCollection}
+          onClose={() => { clearCollectionSelection(); closePanel() }}
+          onUpdate={handleUpdateCollection}
+          matchingCount={childData.find(c => c.collection.id === selectedCollectionId)?.assetCount}
+          relationships={selectedChildRelationships}
+          suppressDimension={collection?.groupBy}
+        />
+      )}
+      {collection && (
+        <SmartCollectionSidePanel
+          collection={collection}
+          open={panelOpen && !primaryAsset && !selectedChildCollection}
+          onClose={closePanel}
+          onUpdate={handleUpdateCollection}
+          onDelete={isAutoGeneratedChild ? undefined : handleDeleteCollection}
+          matchingCount={filteredAssets.length}
+          relationships={relationships}
+          suppressDimension={parentCollection?.groupBy}
+        />
+      )}
+
+      <AccessModal
+        open={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        resourceId={collectionId}
+        resourceRef={collectionResourceRef}
+        title={collection?.name}
+      />
+    </div>
   )
 }

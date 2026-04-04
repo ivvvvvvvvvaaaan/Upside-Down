@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react'
 import type { DepartmentId } from '@/components/department/types'
 import { getFinderWorkspaceTree, type UnifiedFileNode, type WorkspaceFileNode } from '@/lib/workspace-data'
 
@@ -107,7 +107,11 @@ interface FileTreeContextValue {
 const FileTreeContext = createContext<FileTreeContextValue | null>(null)
 
 export function FileTreeProvider({ children }: { children: ReactNode }) {
-  const [tree, setTree] = useState<UnifiedFileNode[]>(loadTree)
+  const [tree, setTree] = useState<UnifiedFileNode[]>(getFinderWorkspaceTree)
+
+  useEffect(() => {
+    setTree(loadTree())
+  }, [])
 
   const updateTree = useCallback((updater: (prev: UnifiedFileNode[]) => UnifiedFileNode[]) => {
     setTree((prev) => {

@@ -1,8 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import {
   AppearanceDropdown,
@@ -23,11 +21,11 @@ import {
   Stack,
   Text,
   CollectionCard,
+  MobileToolbar,
 } from '@/components/ui'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import type { GalleryThumbnailMode } from '@/components/ui/collections-gallery-view'
 import type { CollectionCardAssetCount } from '@/components/ui/collection-card'
-import { AppLayout } from '@/components/layouts'
 import {
   useAssetSelection,
   useCollectionAssets,
@@ -38,6 +36,7 @@ import {
 import type { Asset, Collection } from '@/lib/data'
 import { assetToSelectionEntity, collectionToSelectionEntity } from '@/lib/selection-actions'
 import { getGridColumns } from '@/hooks/useViewPreferences'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 
 type CollectionCardState = 'loading' | 'asis' | 'many' | 'two' | 'one' | 'none'
 type AssetCardState = 'loading' | 'asis' | 'no-preview' | 'processing'
@@ -83,8 +82,6 @@ export function CollectionBrowserView({
   filterOptions,
   allowHideEmptyCollections = false,
 }: CollectionBrowserViewProps) {
-  const pathname = usePathname()
-  const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
   const {
     selectedIds: selectedAssetIds,
     primaryId: primaryAssetId,
@@ -116,6 +113,7 @@ export function CollectionBrowserView({
     hideEmptyCollections,
     setHideEmptyCollections,
   } = useViewPreferences()
+  const isMobile = useIsMobile()
 
   const sortFields = [
     { value: 'name', label: 'Name' },
@@ -253,152 +251,153 @@ export function CollectionBrowserView({
 
   if (selectedCollection) {
     return (
-      <AppLayout>
-        <div className="h-full flex flex-col">
-          <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto">
-            <div className="p-6">
-              <div className="max-w-7xl mx-auto">
-                <Stack spacing="lg">
-                  <div className="md:hidden">
-                    <Button asChild variant="icon" size="icon" aria-label="Menu">
-                      <Link href={menuHref}>
-                        <ArrowLeft className="w-4 h-4" />
-                        <span className="sr-only">Menu</span>
-                      </Link>
-                    </Button>
-                  </div>
-                  <div>
-                    <Button
-                      variant="tertiary"
-                      icon={<ArrowLeft />}
-                      onClick={goBack}
-                      className="mb-4"
-                    >
-                      {detailBackLabel}
-                    </Button>
-                    <Text variant="headline-1" weight="bold" className="mb-2">
-                      {selectedCollection.name}
-                    </Text>
-                    <Text variant="body-2" color="secondary">
-                      {loadingAssets
-                        ? 'Loading assets...'
-                        : collectionAssets.length === 0
-                          ? 'No assets'
-                          : `${collectionAssets.length} asset${collectionAssets.length !== 1 ? 's' : ''}`
-                      }
-                    </Text>
-                  </div>
+      <div className="h-full flex flex-col">
+        <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto">
+          <div className="p-6">
+            <div className="max-w-7xl mx-auto">
+              <Stack spacing="lg">
+                <MobileToolbar title={selectedCollection.name} />
+                <div>
+                  <Button
+                    variant="tertiary"
+                    icon={<ArrowLeft />}
+                    onClick={goBack}
+                    className="mb-4 hidden md:inline-flex"
+                  >
+                    {detailBackLabel}
+                  </Button>
+                  <Text variant="headline-1" weight="bold" className="mb-2 hidden md:block">
+                    {selectedCollection.name}
+                  </Text>
+                  <Text variant="body-2" color="secondary">
+                    {loadingAssets
+                      ? 'Loading assets...'
+                      : collectionAssets.length === 0
+                        ? 'No assets'
+                        : `${collectionAssets.length} asset${collectionAssets.length !== 1 ? 's' : ''}`
+                    }
+                  </Text>
+                </div>
 
-                  {loadingAssets ? (
-                    <CardGrid columns={getGridColumns(cardSize)} gap="4">
-                      {Array.from({ length: SKELETON_ASSET_COUNT }, (_, index) => (
-                        <AssetCard key={index} loading />
-                      ))}
-                    </CardGrid>
-                  ) : loadError ? (
-                    <EmptyState title="Failed to load assets" message={loadError.message}>
-                      <Button variant="secondary" onClick={retryLoad} className="mt-4">
-                        Try Again
-                      </Button>
-                    </EmptyState>
-                  ) : collectionAssets.length > 0 ? (
-                    <CardGrid columns={getGridColumns(cardSize)} gap="4">
-                      {collectionAssets.map((asset) => (
-                        <AssetCard
-                          key={asset.id}
-                          asset={asset}
-                          selected={selectedAssetIds.has(asset.id)}
-                          primary={primaryAssetId === asset.id}
-                          onClick={(nextAsset, event) => handleAssetClick(nextAsset, event, collectionAssets)}
-                          onMenuClick={handleMenuClick}
-                          loading={showAssetLoading}
-                          forceEmptyPreview={forceEmptyPreview}
-                          processing={showProcessing}
-                          showDepartment
-                        />
-                      ))}
-                    </CardGrid>
-                  ) : (
-                    <EmptyState
-                      title="No assets found"
-                      message="This collection doesn't have any assets yet"
-                    />
-                  )}
-                </Stack>
-              </div>
+                {loadingAssets ? (
+                  <CardGrid columns={getGridColumns(cardSize)} gap="4">
+                    {Array.from({ length: SKELETON_ASSET_COUNT }, (_, index) => (
+                      <AssetCard key={index} loading />
+                    ))}
+                  </CardGrid>
+                ) : loadError ? (
+                  <EmptyState title="Failed to load assets" message={loadError.message}>
+                    <Button variant="secondary" onClick={retryLoad} className="mt-4">
+                      Try Again
+                    </Button>
+                  </EmptyState>
+                ) : collectionAssets.length > 0 ? (
+                  <CardGrid columns={getGridColumns(cardSize)} gap="4">
+                    {collectionAssets.map((asset) => (
+                      <AssetCard
+                        key={asset.id}
+                        asset={asset}
+                        selected={selectedAssetIds.has(asset.id)}
+                        primary={primaryAssetId === asset.id}
+                        onClick={(nextAsset, event) => handleAssetClick(nextAsset, event, collectionAssets)}
+                        onMenuClick={handleMenuClick}
+                        loading={showAssetLoading}
+                        forceEmptyPreview={forceEmptyPreview}
+                        processing={showProcessing}
+                        showDepartment
+                      />
+                    ))}
+                  </CardGrid>
+                ) : (
+                  <EmptyState
+                    title="No assets found"
+                    message="This collection doesn't have any assets yet"
+                  />
+                )}
+              </Stack>
             </div>
           </div>
-
-          <SettingsPanel>
-            <SettingGroup label="Asset Cards">
-              <SettingSegmented
-                options={[
-                  { value: 'loading' as const, label: 'Loading' },
-                  { value: 'asis' as const, label: 'As Is' },
-                  { value: 'no-preview' as const, label: 'No Preview' },
-                  { value: 'processing' as const, label: 'Processing' },
-                ]}
-                value={assetCardState}
-                onChange={(value) => setAssetCardState(value as AssetCardState)}
-              />
-            </SettingGroup>
-          </SettingsPanel>
-
-          <SelectionBar
-            selectedEntities={activeSelectionEntities}
-            onClear={selectedCollection ? clearAssetSelection : clearCollectionSelection}
-          />
         </div>
-      </AppLayout>
+
+        <SettingsPanel>
+          <SettingGroup label="Asset Cards">
+            <SettingSegmented
+              options={[
+                { value: 'loading' as const, label: 'Loading' },
+                { value: 'asis' as const, label: 'As Is' },
+                { value: 'no-preview' as const, label: 'No Preview' },
+                { value: 'processing' as const, label: 'Processing' },
+              ]}
+              value={assetCardState}
+              onChange={(value) => setAssetCardState(value as AssetCardState)}
+            />
+          </SettingGroup>
+        </SettingsPanel>
+
+        <SelectionBar
+          selectedEntities={activeSelectionEntities}
+          onClear={selectedCollection ? clearAssetSelection : clearCollectionSelection}
+        />
+      </div>
     )
   }
 
   return (
-    <AppLayout>
-      <div className="h-full flex flex-col">
-        <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto">
-          <CompactBar
-            visible={isCompactBarVisible}
-            title={title}
-            count={visibleCollections.length}
-            countLabel="collection"
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            filterOptions={filterOptions}
-            sortFields={sortFields}
-            sortCriteria={sortCriteria}
-            onSortChange={setSortCriteria}
-            layout={layout}
-            onLayoutChange={setLayout}
-            cardSize={cardSize}
-            onCardSizeChange={setCardSize}
-            {...hideEmptyProps}
-          />
+    <div className="h-full flex flex-col">
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto">
+        <CompactBar
+          visible={isCompactBarVisible}
+          title={title}
+          count={visibleCollections.length}
+          countLabel="collection"
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          filterOptions={filterOptions}
+          sortFields={sortFields}
+          sortCriteria={sortCriteria}
+          onSortChange={setSortCriteria}
+          layout={layout}
+          onLayoutChange={setLayout}
+          cardSize={cardSize}
+          onCardSizeChange={setCardSize}
+          {...hideEmptyProps}
+        />
 
-          <div className="p-6">
-            <div className="max-w-7xl mx-auto">
-              <Stack spacing="lg">
-                <div className="flex items-center justify-between w-full md:hidden">
-                  <Button asChild variant="icon" size="icon" aria-label="Menu">
-                    <Link href={menuHref}>
-                      <ArrowLeft className="w-4 h-4" />
-                      <span className="sr-only">Menu</span>
-                    </Link>
-                  </Button>
-                  <div className="flex items-center gap-2">
-                    <HawkinsSearch
-                      value={searchQuery}
-                      onValueChange={setSearchQuery}
-                      filters={filterOptions}
-                    />
+        <div className="p-6">
+          <div className="max-w-7xl mx-auto">
+            <Stack spacing="lg">
+              <MobileToolbar title={title} />
+              <div className="flex items-center gap-2 md:hidden">
+                <HawkinsSearch
+                  value={searchQuery}
+                  onValueChange={setSearchQuery}
+                  filters={filterOptions}
+                />
+                <SortDropdown
+                  fields={sortFields}
+                  value={sortCriteria}
+                  onChange={setSortCriteria}
+                  iconOnly
+                />
+                <AppearanceDropdown
+                  iconOnly
+                  layout={layout}
+                  onLayoutChange={setLayout}
+                  cardSize={cardSize}
+                  onCardSizeChange={setCardSize}
+                  {...hideEmptyProps}
+                />
+              </div>
+              <div ref={headerRef} className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-4">
+                  <PageHeader title={title} description={description} hideTitleOnMobile />
+                  <div className="hidden md:flex items-center gap-2">
                     <SortDropdown
                       fields={sortFields}
                       value={sortCriteria}
                       onChange={setSortCriteria}
-                      iconOnly
                     />
                     <AppearanceDropdown
-                      iconOnly
                       layout={layout}
                       onLayoutChange={setLayout}
                       cardSize={cardSize}
@@ -407,135 +406,119 @@ export function CollectionBrowserView({
                     />
                   </div>
                 </div>
-                <div ref={headerRef} className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between gap-4">
-                    <PageHeader title={title} description={description} />
-                    <div className="hidden md:flex items-center gap-2">
-                      <SortDropdown
-                        fields={sortFields}
-                        value={sortCriteria}
-                        onChange={setSortCriteria}
-                      />
-                      <AppearanceDropdown
-                        layout={layout}
-                        onLayoutChange={setLayout}
-                        cardSize={cardSize}
-                        onCardSizeChange={setCardSize}
-                        {...hideEmptyProps}
-                      />
-                    </div>
-                  </div>
-                  <div className="hidden md:block">
-                    <HawkinsSearch
-                      value={searchQuery}
-                      onValueChange={setSearchQuery}
-                      filters={filterOptions}
-                    />
-                  </div>
+                <div className="hidden md:block">
+                  <HawkinsSearch
+                    value={searchQuery}
+                    onValueChange={setSearchQuery}
+                    filters={filterOptions}
+                  />
                 </div>
+              </div>
 
-                {layout === 'list' ? (
-                  <CollectionsListView
-                    collections={visibleCollections}
-                    loading={isPreloading}
-                    preloadedAssets={loadedAssets}
-                    preloadFailures={preloadFailures}
-                  />
-                ) : layout === 'gallery' ? (
-                  <CollectionsGalleryView
-                    collections={visibleCollections}
-                    selectedIds={selectedAssetIds}
-                    primaryId={primaryAssetId}
-                    onAssetClick={handleAssetClick}
-                    onAssetMenuClick={handleMenuClick}
-                    showAssetLoading={showAssetLoading}
-                    showCollectionLoading={showCollectionLoading}
-                    thumbnailMode={thumbnailMode}
-                    loadedAssets={loadedAssets}
-                    isPreloading={isPreloading}
-                    forceEmptyPreview={forceEmptyPreview}
-                    showProcessing={showProcessing}
-                  />
-                ) : isPreloading ? (
-                  <CardGrid gap="4" columns={getGridColumns(cardSize)}>
-                    {Array.from({ length: SKELETON_ASSET_COUNT }, (_, index) => (
-                      <CollectionCard
-                        key={index}
-                        title=""
-                        assetCount={0}
-                        type="character"
-                        state="Loading"
-                        numberOfAssets="None"
-                        size={cardSize}
-                      />
-                    ))}
-                  </CardGrid>
-                ) : (
-                  <CardGrid gap="4" columns={getGridColumns(cardSize)}>
-                    {visibleCollections.map((collection) => (
-                      <CollectionCard
-                        key={collection.id}
-                        title={collection.name}
-                        assetCount={collection.assetCount}
-                        type={collection.type}
-                        mainImage={collection.mainImage}
-                        thumbnailImages={collection.thumbnailImages}
-                        avatarSrc={collection.avatarSrc}
-                        avatarName={collection.name}
-                        state={showCollectionLoading ? 'Loading' : 'Normal'}
-                        numberOfAssets={getCollectionCardCountLabel(collection, collectionCardState)}
-                        size={cardSize}
-                        isSelected={selectedCollectionId === collection.id}
-                        onClick={(event) => handleCollectionSelectionClick(collection, event, visibleCollections)}
-                        onDoubleClick={() => loadCollection(collection)}
-                      />
-                    ))}
-                  </CardGrid>
-                )}
-              </Stack>
-            </div>
+              {layout === 'list' ? (
+                <CollectionsListView
+                  collections={visibleCollections}
+                  loading={isPreloading}
+                  preloadedAssets={loadedAssets}
+                  preloadFailures={preloadFailures}
+                />
+              ) : layout === 'gallery' ? (
+                <CollectionsGalleryView
+                  collections={visibleCollections}
+                  selectedIds={selectedAssetIds}
+                  primaryId={primaryAssetId}
+                  onAssetClick={handleAssetClick}
+                  onAssetMenuClick={handleMenuClick}
+                  showAssetLoading={showAssetLoading}
+                  showCollectionLoading={showCollectionLoading}
+                  thumbnailMode={thumbnailMode}
+                  loadedAssets={loadedAssets}
+                  isPreloading={isPreloading}
+                  forceEmptyPreview={forceEmptyPreview}
+                  showProcessing={showProcessing}
+                />
+              ) : isPreloading ? (
+                <CardGrid gap="4" columns={getGridColumns(cardSize)}>
+                  {Array.from({ length: SKELETON_ASSET_COUNT }, (_, index) => (
+                    <CollectionCard
+                      key={index}
+                      title=""
+                      assetCount={0}
+                      type="character"
+                      state="Loading"
+                      numberOfAssets="None"
+                      size={cardSize}
+                    />
+                  ))}
+                </CardGrid>
+              ) : (
+                <CardGrid gap="4" columns={getGridColumns(cardSize)}>
+                  {visibleCollections.map((collection) => (
+                    <CollectionCard
+                      key={collection.id}
+                      title={collection.name}
+                      assetCount={collection.assetCount}
+                      type={collection.type}
+                      mainImage={collection.mainImage}
+                      thumbnailImages={collection.thumbnailImages}
+                      avatarSrc={collection.avatarSrc}
+                      avatarName={collection.name}
+                      state={showCollectionLoading ? 'Loading' : 'Normal'}
+                      numberOfAssets={getCollectionCardCountLabel(collection, collectionCardState)}
+                      size={cardSize}
+                      isSelected={!isMobile && selectedCollectionId === collection.id}
+                      onClick={isMobile
+                        ? () => loadCollection(collection)
+                        : (event) => handleCollectionSelectionClick(collection, event, visibleCollections)
+                      }
+                      onDoubleClick={isMobile ? undefined : () => loadCollection(collection)}
+                    />
+                  ))}
+                </CardGrid>
+              )}
+            </Stack>
           </div>
         </div>
-
-        <SettingsPanel>
-          {(layout === 'grid' || layout === 'gallery') && (
-            <SettingGroup label="Collection Cards">
-              <SettingSegmented
-                options={[
-                  { value: 'loading' as const, label: 'Loading' },
-                  { value: 'asis' as const, label: 'As Is' },
-                  { value: 'many' as const, label: '3+ imgs' },
-                  { value: 'two' as const, label: '2 imgs' },
-                  { value: 'one' as const, label: '1 img' },
-                  { value: 'none' as const, label: 'None' },
-                ]}
-                value={collectionCardState}
-                onChange={(value) => setCollectionCardState(value as CollectionCardState)}
-              />
-            </SettingGroup>
-          )}
-
-          {layout === 'gallery' && (
-            <SettingGroup label="Asset Cards">
-              <SettingSegmented
-                options={[
-                  { value: 'loading' as const, label: 'Loading' },
-                  { value: 'asis' as const, label: 'As Is' },
-                  { value: 'no-preview' as const, label: 'No Preview' },
-                  { value: 'processing' as const, label: 'Processing' },
-                ]}
-                value={assetCardState}
-                onChange={(value) => setAssetCardState(value as AssetCardState)}
-              />
-            </SettingGroup>
-          )}
-        </SettingsPanel>
-
-        <SelectionBar
-          selectedEntities={activeSelectionEntities}
-          onClear={layout === 'grid' ? clearCollectionSelection : clearAssetSelection}
-        />
       </div>
-    </AppLayout>
+
+      <SettingsPanel>
+        {(layout === 'grid' || layout === 'gallery') && (
+          <SettingGroup label="Collection Cards">
+            <SettingSegmented
+              options={[
+                { value: 'loading' as const, label: 'Loading' },
+                { value: 'asis' as const, label: 'As Is' },
+                { value: 'many' as const, label: '3+ imgs' },
+                { value: 'two' as const, label: '2 imgs' },
+                { value: 'one' as const, label: '1 img' },
+                { value: 'none' as const, label: 'None' },
+              ]}
+              value={collectionCardState}
+              onChange={(value) => setCollectionCardState(value as CollectionCardState)}
+            />
+          </SettingGroup>
+        )}
+
+        {layout === 'gallery' && (
+          <SettingGroup label="Asset Cards">
+            <SettingSegmented
+              options={[
+                { value: 'loading' as const, label: 'Loading' },
+                { value: 'asis' as const, label: 'As Is' },
+                { value: 'no-preview' as const, label: 'No Preview' },
+                { value: 'processing' as const, label: 'Processing' },
+              ]}
+              value={assetCardState}
+              onChange={(value) => setAssetCardState(value as AssetCardState)}
+            />
+          </SettingGroup>
+        )}
+      </SettingsPanel>
+
+      <SelectionBar
+        selectedEntities={activeSelectionEntities}
+        onClear={layout === 'grid' ? clearCollectionSelection : clearAssetSelection}
+      />
+    </div>
   )
 }

@@ -1,5 +1,7 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
+import { AppLayout } from '@/components/layouts'
 import { UserCollectionsProvider, SmartCollectionsProvider, FileTreeProvider, PersonaProvider, AccessProvider } from '@/hooks'
 
 /**
@@ -17,13 +19,24 @@ export default function NextgenLayout({
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname()
+  const isShelllessRoute = pathname === '/nextgen/menu'
+    || pathname.startsWith('/nextgen/menu/')
+    || pathname === '/nextgen/desktop'
+    || pathname.startsWith('/nextgen/desktop/')
+  const hideNav = pathname.startsWith('/nextgen/assets/')
+
   return (
     <PersonaProvider>
       <UserCollectionsProvider>
         <FileTreeProvider>
           <AccessProvider>
             <SmartCollectionsProvider>
-              {children}
+              {isShelllessRoute ? children : (
+                <AppLayout hideNav={hideNav}>
+                  {children}
+                </AppLayout>
+              )}
             </SmartCollectionsProvider>
           </AccessProvider>
         </FileTreeProvider>

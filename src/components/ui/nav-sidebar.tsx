@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -49,6 +49,29 @@ import type { NavConfig } from '@/types/navigation'
  */
 
 const NAV_STORAGE_KEY = 'nav-expanded'
+const NAV_SCROLL_STORAGE_KEY = 'nav-scroll-top'
+const NAV_SCROLL_RESTORE_ATTEMPTS = 8
+
+/** Mobile variant context — when true, renders with larger touch targets and text */
+const NavMobileContext = createContext(false)
+function useNavMobile() { return useContext(NavMobileContext) }
+
+function readStoredNavScrollTop(): number {
+  try {
+    const stored = sessionStorage.getItem(NAV_SCROLL_STORAGE_KEY)
+    if (!stored) return 0
+    const parsed = Number.parseInt(stored, 10)
+    return Number.isFinite(parsed) ? parsed : 0
+  } catch {
+    return 0
+  }
+}
+
+function writeStoredNavScrollTop(scrollTop: number) {
+  try {
+    sessionStorage.setItem(NAV_SCROLL_STORAGE_KEY, String(scrollTop))
+  } catch {}
+}
 
 function usePersistedExpand(key: string, fallback: boolean): [boolean, (v: boolean) => void] {
   // Start with fallback to match server render and avoid hydration mismatch
@@ -104,6 +127,8 @@ export interface NavSidebarProps {
   navConfig?: NavConfig
   /** Callback when "New Collection" is clicked */
   onNewCollection?: () => void
+  /** Render with larger touch targets and text for mobile */
+  mobile?: boolean
 }
 
 interface NavLinkProps {
@@ -125,13 +150,15 @@ interface CollapsibleSectionProps {
 
 function NavLink({ href, label, badge, badgeStyle = 'count', icon, matchSubpaths = false }: NavLinkProps) {
   const pathname = usePathname()
+  const mobile = useNavMobile()
   const isActive = pathname === href || (matchSubpaths && pathname.startsWith(href + '/'))
 
   return (
     <Link
       href={href}
       className={cn(
-        'flex items-center justify-between px-3 py-2 rounded transition-colors text-body-0-bold min-w-0',
+        'flex items-center justify-between px-3 rounded transition-colors min-w-0',
+        mobile ? 'py-3 text-body-1-bold' : 'py-2 text-body-0-bold',
         isActive
           ? 'bg-indigo-500/20 text-foreground'
           : 'text-foreground-subtle hover:bg-surface-2 hover:text-foreground'
@@ -190,6 +217,7 @@ function TreeNavLink({
   trailingIcon,
 }: TreeNavLinkProps) {
   const pathname = usePathname()
+  const mobile = useNavMobile()
   const isActive = href ? pathname === href : false
   // Check both /parent/ subroutes AND --child smart collection IDs
   const smartCollectionBase = href ? href.replace(/^\/nextgen\/smart-collections\//, '') : ''
@@ -213,7 +241,8 @@ function TreeNavLink({
   const showCollapsedPreview = Boolean(collapsedPreview) && isChildActive && !isExpanded
 
   const linkClassName = cn(
-    'flex-1 flex items-center justify-between py-2 pr-3 min-w-0',
+    'flex-1 flex items-center justify-between pr-3 min-w-0',
+    mobile ? 'py-3' : 'py-2',
     hasChevron ? 'pl-1' : reserveChevronSpace ? 'pl-1' : 'pl-3',
   )
 
@@ -240,7 +269,8 @@ function TreeNavLink({
     <div>
       <div
         className={cn(
-          'flex items-center justify-between rounded transition-colors text-body-0-bold min-w-0',
+          'flex items-center justify-between rounded transition-colors min-w-0',
+          mobile ? 'text-body-1-bold' : 'text-body-0-bold',
           isActive
             ? 'bg-indigo-500/20 text-foreground'
             : isChildActive
@@ -288,19 +318,20 @@ function TreeNavLink({
 
 function CollapsibleSection({ title, defaultOpen = true, children }: CollapsibleSectionProps) {
   const [isOpen, setIsOpen] = usePersistedExpand(`section:${title}`, defaultOpen)
+  const mobile = useNavMobile()
 
   return (
     <div className="py-2">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center gap-1 px-3 py-1 text-left group min-w-0"
+        className={cn('w-full flex items-center gap-1 px-3 text-left group min-w-0', mobile ? 'py-2' : 'py-1')}
       >
         {isOpen ? (
           <ChevronDown className="w-4 h-4 text-foreground-dim flex-shrink-0" />
         ) : (
           <ChevronRight className="w-4 h-4 text-foreground-dim flex-shrink-0" />
         )}
-        <span className="text-label-0-bold uppercase text-foreground-dim group-hover:text-foreground-subtle transition-colors truncate">
+        <span className={cn('uppercase text-foreground-dim group-hover:text-foreground-subtle transition-colors truncate', mobile ? 'text-label-1-bold' : 'text-label-0-bold')}>
           {title}
         </span>
       </button>
@@ -666,17 +697,60 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
   )
 }
 
-export function NavSidebar({ className, width, style, navConfig, onNewCollection }: NavSidebarProps) {
+export function NavSidebar({ className, width, style, navConfig, onNewCollection, mobile = false }: NavSidebarProps) {
+  const pathname = usePathname()
+  const navRef = useRef<HTMLElement | null>(null)
+  const scrollTopRef = useRef<number | null>(null)
+
+  const captureScrollPosition = useCallback(() => {
+    const scrollTop = navRef.current?.scrollTop ?? 0
+    scrollTopRef.current = scrollTop
+    writeStoredNavScrollTop(scrollTop)
+  }, [])
+
+  useEffect(() => {
+    const nav = navRef.current
+    if (!nav) return
+
+    const scrollTop = scrollTopRef.current ?? readStoredNavScrollTop()
+    let attempts = 0
+    let restore = 0
+
+    const restoreScrollPosition = () => {
+      nav.scrollTop = scrollTop
+      scrollTopRef.current = scrollTop
+      attempts += 1
+
+      const maxScrollTop = nav.scrollHeight - nav.clientHeight
+      const shouldRetry = scrollTop > 0 && attempts < NAV_SCROLL_RESTORE_ATTEMPTS && maxScrollTop < scrollTop
+
+      if (shouldRetry) {
+        restore = window.requestAnimationFrame(restoreScrollPosition)
+      }
+    }
+
+    restore = window.requestAnimationFrame(restoreScrollPosition)
+
+    return () => {
+      window.cancelAnimationFrame(restore)
+      captureScrollPosition()
+    }
+  }, [captureScrollPosition, pathname])
+
   return (
-    <nav
-      className={cn('bg-surface-1 flex-shrink-0 flex flex-col overflow-y-auto', className)}
-      style={{ width: width ? `${width}px` : '240px', ...style }}
-    >
-      {navConfig ? (
-        <DynamicNavigation navConfig={navConfig} />
-      ) : (
-        <HardcodedNavigation onNewCollection={onNewCollection} />
-      )}
-    </nav>
+    <NavMobileContext.Provider value={mobile}>
+      <nav
+        ref={navRef}
+        onScroll={captureScrollPosition}
+        className={cn('bg-surface-1 flex-shrink-0 flex flex-col overflow-y-auto', className)}
+        style={mobile ? style : { width: width ? `${width}px` : '240px', ...style }}
+      >
+        {navConfig ? (
+          <DynamicNavigation navConfig={navConfig} />
+        ) : (
+          <HardcodedNavigation onNewCollection={onNewCollection} />
+        )}
+      </nav>
+    </NavMobileContext.Provider>
   )
 }

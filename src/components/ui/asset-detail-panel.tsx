@@ -193,13 +193,16 @@ export function AssetDetailPanelContent({
   }, [asset, getInheritedGrants, getCollectionRippleGrants])
 
   // User tags from localStorage
-  const [userTagsMap, setUserTagsMap] = useState<Record<string, string[]>>(() => {
-    if (typeof window === 'undefined') return {}
+  const [userTagsMap, setUserTagsMap] = useState<Record<string, string[]>>({})
+
+  useEffect(() => {
     try {
       const stored = localStorage.getItem('user-tags')
-      return stored ? JSON.parse(stored) : {}
-    } catch { return {} }
-  })
+      setUserTagsMap(stored ? JSON.parse(stored) : {})
+    } catch {
+      setUserTagsMap({})
+    }
+  }, [])
 
   const addUserTag = useCallback((assetId: string, rawLabel: string) => {
     const label = rawLabel.replace(/\b\w/g, c => c.toUpperCase())

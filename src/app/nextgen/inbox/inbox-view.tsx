@@ -2,9 +2,8 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Folder, LayoutGrid, FileText, Film } from 'lucide-react'
-import { PageHeader, EmptyState, ToggleButtonGroup, Card } from '@/components/ui'
+import { PageHeader, EmptyState, ToggleButtonGroup, Card, MobileToolbar } from '@/components/ui'
 import { SharedDetailContent } from '@/components/ui/shared-side-panel'
-import { AppLayout } from '@/components/layouts'
 import { useAccess, usePersona } from '@/hooks'
 import type { GrantView } from '@/lib/grants'
 import type { AccessEntryKind } from '@/lib/access'
@@ -65,130 +64,128 @@ export function InboxView() {
 
   if (!hydrated) {
     return (
-      <AppLayout>
-        <div className="flex h-full">
-          <div className="flex-1" />
-        </div>
-      </AppLayout>
+      <div className="flex h-full">
+        <div className="flex-1" />
+      </div>
     )
   }
 
   return (
-    <AppLayout>
-      <div className="flex h-full">
-        {/* Entry list */}
-        <div className="w-1/3 min-w-[280px] flex flex-col overflow-hidden">
-          <div className="p-6 pb-0">
-            <div className="flex items-start justify-between gap-4">
-              <PageHeader
-                title="Inbox"
-                description={filter === 'unread'
-                  ? `${unreadCount} unread`
-                  : `${sortedEntries.length} total`}
-              />
-              <ToggleButtonGroup
-                compact
-                options={[
-                  { value: 'unread' as const, label: 'Unread' },
-                  { value: 'all' as const, label: 'All' },
-                ]}
-                value={filter}
-                onChange={(v) => { setSelectedId(null); setFilter(v as 'unread' | 'all') }}
-              />
-            </div>
+    <div className="flex h-full">
+      {/* Entry list */}
+      <div className="w-1/3 min-w-[280px] flex flex-col overflow-hidden">
+        <div className="p-6 pb-0 space-y-3">
+          <MobileToolbar title="Inbox" />
+          <div className="flex items-start justify-between gap-4">
+            <PageHeader
+              title="Inbox"
+              description={filter === 'unread'
+                ? `${unreadCount} unread`
+                : `${sortedEntries.length} total`}
+              hideTitleOnMobile
+            />
+            <ToggleButtonGroup
+              compact
+              options={[
+                { value: 'unread' as const, label: 'Unread' },
+                { value: 'all' as const, label: 'All' },
+              ]}
+              value={filter}
+              onChange={(v) => { setSelectedId(null); setFilter(v as 'unread' | 'all') }}
+            />
           </div>
+        </div>
 
-          {entries.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center">
-              <EmptyState title="No notifications yet" message="Shares sent to you will appear here." />
-            </div>
-          ) : (
-            <div className="flex-1 overflow-y-auto p-6 pt-4">
-              <div className="space-y-1">
-                {entries.map(entry => {
-                  const isSelected = selectedId === entry.id
-                  const isRead = readShareIds.has(entry.id)
-                  const kind = entry.resourceType as AccessEntryKind
-                  const senderPersona = PERSONAS.find((p) => p.id === entry.grantedByUserId)
-                  const senderName = senderPersona?.name ?? entry.grantedByUserId
+        {entries.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center">
+            <EmptyState title="No notifications yet" message="Shares sent to you will appear here." />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto p-6 pt-4">
+            <div className="space-y-1">
+              {entries.map(entry => {
+                const isSelected = selectedId === entry.id
+                const isRead = readShareIds.has(entry.id)
+                const kind = entry.resourceType as AccessEntryKind
+                const senderPersona = PERSONAS.find((p) => p.id === entry.grantedByUserId)
+                const senderName = senderPersona?.name ?? entry.grantedByUserId
 
-                  return (
-                    <div
-                      key={entry.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => handleRowClick(entry)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleRowClick(entry) } }}
-                      className={cn(
-                        'w-full flex items-center gap-3 px-3 py-3 rounded transition-colors text-left cursor-pointer',
-                        isSelected
-                          ? 'bg-indigo-500/10'
-                          : 'hover:bg-surface-2'
-                      )}
-                    >
-                      <Avatar name={senderName} size="md" />
+                return (
+                  <div
+                    key={entry.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleRowClick(entry)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleRowClick(entry) } }}
+                    className={cn(
+                      'w-full flex items-center gap-3 px-3 py-3 rounded transition-colors text-left cursor-pointer',
+                      isSelected
+                        ? 'bg-indigo-500/10'
+                        : 'hover:bg-surface-2'
+                    )}
+                  >
+                    <Avatar name={senderName} size="md" />
 
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className={cn(
-                            'truncate',
-                            isRead ? 'text-body-0-regular text-foreground-subtle' : 'text-body-0-bold text-foreground',
-                          )}>
-                            {senderName}
-                          </span>
-                          <span className="text-body-0-regular text-foreground-subtle flex-shrink-0">
-                            shared
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          {kind === 'folder' && <Folder className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />}
-                          {(kind === 'collection' || kind === 'smart-collection') && <LayoutGrid className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />}
-                          {kind === 'cut' && <Film className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />}
-                          {(kind !== 'folder' && kind !== 'collection' && kind !== 'smart-collection' && kind !== 'cut') && <FileText className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />}
-                          <span className={cn(
-                            'truncate',
-                            isRead ? 'text-body-0-regular text-foreground-subtle' : 'text-body-0-bold text-foreground',
-                          )}>
-                            {entry.label}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Date + unread dot */}
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-label-0-regular text-foreground-dim">
-                          {formatDate(entry.grantedAt)}
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className={cn(
+                          'truncate',
+                          isRead ? 'text-body-0-regular text-foreground-subtle' : 'text-body-0-bold text-foreground',
+                        )}>
+                          {senderName}
                         </span>
-                        {!isRead && (
-                          <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                        )}
+                        <span className="text-body-0-regular text-foreground-subtle flex-shrink-0">
+                          shared
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {kind === 'folder' && <Folder className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />}
+                        {(kind === 'collection' || kind === 'smart-collection') && <LayoutGrid className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />}
+                        {kind === 'cut' && <Film className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />}
+                        {(kind !== 'folder' && kind !== 'collection' && kind !== 'smart-collection' && kind !== 'cut') && <FileText className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />}
+                        <span className={cn(
+                          'truncate',
+                          isRead ? 'text-body-0-regular text-foreground-subtle' : 'text-body-0-bold text-foreground',
+                        )}>
+                          {entry.label}
+                        </span>
                       </div>
                     </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
 
-        {/* Detail card — always visible */}
-        <div className="flex-1 hidden md:flex">
-          {selectedEntry ? (
-            <Card className="flex-1 overflow-y-auto m-4">
-              <SharedDetailContent
-                entry={selectedEntry}
-                isCreator={false}
-                showAccess={false}
-              />
-            </Card>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <span className="text-body-0-regular text-foreground-dim">Select a notification</span>
+                    {/* Date + unread dot */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-label-0-regular text-foreground-dim">
+                        {formatDate(entry.grantedAt)}
+                      </span>
+                      {!isRead && (
+                        <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-    </AppLayout>
+
+      {/* Detail card — always visible */}
+      <div className="flex-1 hidden md:flex">
+        {selectedEntry ? (
+          <Card className="flex-1 overflow-y-auto m-4">
+            <SharedDetailContent
+              entry={selectedEntry}
+              isCreator={false}
+              showAccess={false}
+            />
+          </Card>
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <span className="text-body-0-regular text-foreground-dim">Select a notification</span>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

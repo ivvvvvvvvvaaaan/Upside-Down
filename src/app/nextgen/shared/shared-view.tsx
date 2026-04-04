@@ -4,10 +4,9 @@ import { useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Link2, Lock, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { PageHeader, Tag, SharedSidePanel, EmptyState } from '@/components/ui'
+import { PageHeader, Tag, SharedSidePanel, EmptyState, MobileToolbar } from '@/components/ui'
 import { AccessKindIcon } from '@/components/ui/access-kind-icon'
 import { ToggleButtonGroup } from '@/components/ui/toggle-button-group'
-import { AppLayout } from '@/components/layouts'
 import { useAccess, usePersona } from '@/hooks'
 import type { GrantView } from '@/lib/grants'
 import type { GuestLinkSeed } from '@/lib/scenario'
@@ -24,10 +23,12 @@ function ShareTable({
   entries,
   selectedId,
   onRowClick,
+  activeUserId,
 }: {
   entries: GrantView[]
   selectedId: string | null
   onRowClick: (entry: GrantView) => void
+  activeUserId?: string
 }) {
   if (entries.length === 0) return null
 
@@ -87,7 +88,7 @@ function ShareTable({
 
               {/* Shared by */}
               <span className="text-body-0-regular text-foreground-subtle truncate flex items-center">
-                {granterName}
+                {entry.grantedByUserId === activeUserId ? 'You' : granterName}
               </span>
 
               {/* Date */}
@@ -213,20 +214,20 @@ function GuestLinkDetailPanel({ link, onClose, onRevoke }: { link: GuestLinkSeed
   )
 }
 
-const TAB_OPTIONS = [
-  { value: 'mine' as const, label: 'My Shares' },
-  { value: 'all' as const, label: 'All Shares' },
+const TAB_OPTIONS: { value: ShareTab; label: string }[] = [
+  { value: 'mine', label: 'Mine' },
+  { value: 'all', label: 'All' },
 ]
 
 export function SharedView() {
   const searchParams = useSearchParams()
   const initialSelected = searchParams.get('selected')
-  const { sharesCreatedByMe, allProjectShares, revokeShare, guestLinks } = useAccess()
+  const { visibleShares, allProjectShares, revokeShare, guestLinks, revokeGuestLink } = useAccess()
   const { activePersona, isAdmin, hydrated } = usePersona()
   const [selectedId, setSelectedId] = useState<string | null>(initialSelected)
   const [activeTab, setActiveTab] = useState<ShareTab>(!activePersona ? 'all' : 'mine')
 
-  const displayEntries = activeTab === 'all' && isAdmin ? allProjectShares : sharesCreatedByMe
+  const displayEntries = activeTab === 'all' && isAdmin ? allProjectShares : visibleShares
   const displayLinks = activeTab === 'all' && isAdmin
     ? guestLinks
     : guestLinks.filter(l => l.createdByUserId === activePersona?.id)
@@ -256,70 +257,78 @@ export function SharedView() {
     setSelectedId(null)
   }, [revokeShare])
 
-  const handleRevokeLink = useCallback((_linkId: string) => {
-    // For prototype, just deselect — real impl would remove the link
+  const handleRevokeLink = useCallback((linkId: string) => {
+    revokeGuestLink(linkId)
     setSelectedId(null)
-  }, [])
+  }, [revokeGuestLink])
 
-  const totalCount = (isAdmin ? allProjectShares.length : sharesCreatedByMe.length) + displayLinks.length
+  const totalCount = displayEntries.length + displayLinks.length
 
   return (
-    <AppLayout>
-      <div className="flex h-full">
-        {/* Main content */}
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-          <div className="p-6 pb-0">
-            <div className="flex items-center justify-between">
-              <PageHeader
-                title="Shared"
-                description={`${totalCount} shared item${totalCount !== 1 ? 's' : ''}`}
+    <div className="flex h-full">
+      {/* Main content */}
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <div className="p-6 pb-0 space-y-3">
+          <MobileToolbar title="Shared" />
+          <div className="flex items-center justify-between">
+            <PageHeader
+              title="Shared"
+              description={`${totalCount} shared item${totalCount !== 1 ? 's' : ''}`}
+              hideTitleOnMobile
+            />
+            {isAdmin && (
+              <ToggleButtonGroup<ShareTab>
+                options={TAB_OPTIONS}
+                value={activeTab}
+                onChange={(v) => setActiveTab(v)}
+                compact
               />
-              {isAdmin && (
-                <ToggleButtonGroup<ShareTab>
-                  options={TAB_OPTIONS}
-                  value={activeTab}
-                  onChange={(v) => setActiveTab(v)}
-                  compact
-                />
-              )}
-            </div>
+            )}
           </div>
-
-          {!hydrated ? (
-            <div className="flex-1" />
-          ) : displayEntries.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center">
-              <EmptyState title="No shared items" message="Items you've shared will appear here." />
-            </div>
-          ) : (
-            <div className="flex-1 overflow-y-auto p-6 pt-4">
-              <ShareTable
-                entries={displayEntries}
-                selectedId={selectedId}
-                onRowClick={handleRowClick}
-              />
-              <GuestLinksSection links={displayLinks} selectedId={selectedType === 'link' ? selectedId : null} onRowClick={handleLinkClick} />
-            </div>
-          )}
         </div>
 
-        {/* Side panel */}
-        {selectedEntry && (
-          <SharedSidePanel
-            entry={selectedEntry}
-            onClose={handleClosePanel}
-            isCreator={isCreatorOfSelected}
-            onRevokeShare={handleRevokeShare}
-          />
-        )}
-        {selectedLink && (
-          <GuestLinkDetailPanel
-            link={selectedLink}
-            onClose={handleClosePanel}
-            onRevoke={handleRevokeLink}
-          />
+        {!hydrated ? (
+          <div className="flex-1" />
+        ) : displayEntries.length === 0 && displayLinks.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center">
+            <EmptyState
+              title="No shared items"
+              message={
+                activeTab === 'all'
+                  ? 'No shared items across the project.'
+                  : 'Items you share with others will appear here.'
+              }
+            />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto p-6 pt-4">
+            <ShareTable
+              entries={displayEntries}
+              selectedId={selectedId}
+              onRowClick={handleRowClick}
+              activeUserId={activePersona?.id}
+            />
+            <GuestLinksSection links={displayLinks} selectedId={selectedType === 'link' ? selectedId : null} onRowClick={handleLinkClick} />
+          </div>
         )}
       </div>
-    </AppLayout>
+
+      {/* Side panel */}
+      {selectedEntry && (
+        <SharedSidePanel
+          entry={selectedEntry}
+          onClose={handleClosePanel}
+          isCreator={isCreatorOfSelected}
+          onRevokeShare={handleRevokeShare}
+        />
+      )}
+      {selectedLink && (
+        <GuestLinkDetailPanel
+          link={selectedLink}
+          onClose={handleClosePanel}
+          onRevoke={handleRevokeLink}
+        />
+      )}
+    </div>
   )
 }

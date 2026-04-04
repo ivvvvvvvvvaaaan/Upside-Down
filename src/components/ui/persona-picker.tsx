@@ -38,7 +38,7 @@ export function PersonaPicker({
   }, [])
 
   return (
-    <div ref={ref} className="relative z-50">
+    <div ref={ref} className="relative">
       {compact ? (
         <button
           onClick={() => setOpen(!open)}

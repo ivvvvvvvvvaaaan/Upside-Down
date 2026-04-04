@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react'
 import { usePersona } from './usePersona'
 import { useUserCollections } from './useUserCollections'
 import type { UserCollection } from './useUserCollections'
@@ -24,6 +24,7 @@ import {
   canAssignProfile,
   canCreateGrantForResource,
   canEditAclForResource,
+  isGrantActive,
 } from '@/lib/grants'
 import type {
   Grant,
@@ -40,7 +41,6 @@ import { getDepartmentWorkspaceFiles, findNodeInTree, DEPARTMENT_FOLDER_MAP } fr
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { SCENARIO, buildGuestLinks } from '@/lib/scenario'
 import type { GuestLinkSeed } from '@/lib/scenario'
-import { isUserInTeam } from '@/lib/teams'
 
 export type AccessRequest = {
   id: string
@@ -75,14 +75,13 @@ export type AccessPath = {
 interface AccessContextValue {
   // Access resolution
   canAccess: (id: string) => boolean
-  getAccessPath: (id: string, departmentId?: DepartmentId) => AccessPath | null
   filterByAccess: (assets: Asset[]) => Asset[]
-  accessibleFolderIds: Set<string>
 
   // Share views (reimplemented from grants)
   sharesCreatedByMe: GrantView[]
   sharesReceivedByMe: GrantView[]
   allProjectShares: GrantView[]
+  visibleShares: GrantView[]
   revokeShare: (resourceId: string) => void
 
   // New grant-based API
@@ -149,47 +148,45 @@ const ROOT_ID_TO_DEPARTMENT: Record<string, DepartmentId> = Object.fromEntries(
   ALL_DEPARTMENTS.map((departmentId) => [DEPARTMENT_WRAPPER_IDS[departmentId], departmentId]),
 ) as Record<string, DepartmentId>
 
-function collectFolderIds(nodes: WorkspaceFileNode[]): string[] {
-  const ids: string[] = []
-  for (const node of nodes) {
-    if (node.type === 'folder') {
-      ids.push(node.id)
-      if (node.children) ids.push(...collectFolderIds(node.children))
-    }
-  }
-  return ids
-}
-
 function mergePermissions(...permissionSets: Permission[][]): Permission[] {
   return Array.from(new Set(permissionSets.flat()))
 }
 
-const getCollectionAssetIdVariants = getAssetIdVariants
 
 // Bump this when grant schema or seed data changes — forces localStorage re-seed
 const GRANTS_VERSION = 18
+
+function loadStoredGrants(): Grant[] {
+  if (typeof window === 'undefined') return structuredClone(DEFAULT_GRANTS)
+  try {
+    const storedVersion = localStorage.getItem('access-grants-version')
+    if (storedVersion === String(GRANTS_VERSION)) {
+      const stored = localStorage.getItem('access-grants')
+      if (stored) return JSON.parse(stored) as Grant[]
+    } else {
+      localStorage.removeItem('access-grants')
+      localStorage.removeItem('access-role-groups')
+      localStorage.removeItem('access-groups')
+      localStorage.setItem('access-grants-version', String(GRANTS_VERSION))
+    }
+  } catch { /* fall through */ }
+  return structuredClone(DEFAULT_GRANTS)
+}
+
+function loadStoredRoleGroups(): RoleGroup[] {
+  if (typeof window === 'undefined') return structuredClone(DEFAULT_ROLE_GROUPS)
+  try {
+    const stored = localStorage.getItem('access-role-groups')
+    if (stored) return JSON.parse(stored) as RoleGroup[]
+  } catch { /* fall through */ }
+  return structuredClone(DEFAULT_ROLE_GROUPS)
+}
 
 export function AccessProvider({ children }: { children: ReactNode }) {
   const { activePersona } = usePersona()
   const { collections } = useUserCollections()
   const { tree: fileTree } = useFileTree()
-  const [grants, setGrantsState] = useState<Grant[]>(() => {
-    if (typeof window === 'undefined') return structuredClone(DEFAULT_GRANTS)
-    try {
-      const storedVersion = localStorage.getItem('access-grants-version')
-      if (storedVersion === String(GRANTS_VERSION)) {
-        const stored = localStorage.getItem('access-grants')
-        if (stored) return JSON.parse(stored) as Grant[]
-      } else {
-        // Version mismatch — clear stale data
-        localStorage.removeItem('access-grants')
-        localStorage.removeItem('access-role-groups')
-        localStorage.removeItem('access-groups')
-        localStorage.setItem('access-grants-version', String(GRANTS_VERSION))
-      }
-    } catch { /* fall through */ }
-    return structuredClone(DEFAULT_GRANTS)
-  })
+  const [grants, setGrantsState] = useState<Grant[]>(() => structuredClone(DEFAULT_GRANTS))
   const setGrants: typeof setGrantsState = useCallback((action) => {
     setGrantsState((prev) => {
       const next = typeof action === 'function' ? action(prev) : action
@@ -206,6 +203,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   [guestLinks])
   const createGuestLink = useCallback((resource: ResourceRef, options: { allowDownload: boolean; passcode: boolean; expiresInDays: number }) => {
     if (!activePersona) return
+    if (!canCreateGrantForResource(activePersona.id, resource, grants)) return
     const now = new Date()
     const expires = new Date(now)
     expires.setDate(expires.getDate() + options.expiresInDays)
@@ -223,19 +221,20 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
     setGuestLinks(prev => [...prev, link])
     return link
-  }, [activePersona])
+  }, [activePersona, grants])
   const revokeGuestLink = useCallback((linkId: string) => {
-    setGuestLinks(prev => prev.filter(l => l.id !== linkId))
-  }, [])
+    setGuestLinks(prev => {
+      const link = prev.find(l => l.id === linkId)
+      if (!link) return prev
+      if (activePersona) {
+        const resource: ResourceRef = { id: link.resource.id, type: link.resource.type as ResourceType, departmentId: link.resource.departmentId }
+        if (!canCreateGrantForResource(activePersona.id, resource, grants)) return prev
+      }
+      return prev.filter(l => l.id !== linkId)
+    })
+  }, [activePersona, grants])
 
-  const [roleGroups, setRoleGroupsState] = useState<RoleGroup[]>(() => {
-    if (typeof window === 'undefined') return structuredClone(DEFAULT_ROLE_GROUPS)
-    try {
-      const stored = localStorage.getItem('access-role-groups')
-      if (stored) return JSON.parse(stored) as RoleGroup[]
-    } catch { /* fall through */ }
-    return structuredClone(DEFAULT_ROLE_GROUPS)
-  })
+  const [roleGroups, setRoleGroupsState] = useState<RoleGroup[]>(() => structuredClone(DEFAULT_ROLE_GROUPS))
   const setRoleGroups: typeof setRoleGroupsState = useCallback((action) => {
     setRoleGroupsState((prev) => {
       const next = typeof action === 'function' ? action(prev) : action
@@ -249,6 +248,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     () => new Set(SCENARIO.discoveryDisabledDepartments)
   )
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([])
+
+  useEffect(() => {
+    setGrantsState(loadStoredGrants())
+    setRoleGroupsState(loadStoredRoleGroups())
+  }, [])
 
   // Reactive maps derived from the live file tree (handles user-created folders)
   const { nodeToDepartment, nodeToParent } = useMemo(() => {
@@ -376,7 +380,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       if (!collectionAccess) continue
 
       // Apply ripple policy from the grant (default: view-only)
-      const grant = grants.find(g => g.resource.id === collection.id && !g.revokedAt)
+      const grant = grants.find(g => g.resource.id === collection.id && isGrantActive(g))
       const policy = grant?.ripplePolicy ?? 'view-only'
       const cappedPermissions = policy === 'view-only'
         ? collectionAccess.permissions.filter(p => VIEW_ONLY_CAP.includes(p))
@@ -385,7 +389,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         : (grant?.ripplePermissions ?? VIEW_ONLY_CAP)
 
       for (const assetId of collection.assetIds) {
-        for (const variantId of getCollectionAssetIdVariants(assetId)) {
+        for (const variantId of getAssetIdVariants(assetId)) {
           const current = accessById.get(variantId)
           accessById.set(variantId, {
             templateId: mostPermissiveProfile(current?.templateId ?? null, collectionAccess.templateId),
@@ -531,73 +535,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return false
   }, [activePersona, userId, grants, collectionAccessById, collectionAssetAccessById, nodeToDepartment, nodeToParent, roleGroups])
 
-  // getAccessPath: explain WHY a user can see a resource
-  const getAccessPath = useCallback((id: string, departmentId?: DepartmentId): AccessPath | null => {
-    if (!activePersona) return { source: 'admin', canBrowseWorkspace: true }
-    if (!userId) return null
-
-    // 1. Admin bypass
-    if (activePersona.isAdmin) return { source: 'admin', canBrowseWorkspace: true }
-
-    // 2. Direct or team grant on this resource
-    if (userHasAccess(userId, id, grants, nodeToDepartment.get(id), roleGroups)) {
-      // Check if it's department access (user is in this department)
-      const dept = departmentId ?? nodeToDepartment.get(id)
-      if (dept) {
-        const deptRootId = DEPARTMENT_FOLDER_MAP[dept]?.id
-        if (deptRootId && userHasAccess(userId, deptRootId, grants, dept, roleGroups)) {
-          return { source: 'department', canBrowseWorkspace: true }
-        }
-      }
-      // Direct grant on this specific resource
-      const resourceGrants = grants.filter(g => g.resource.id === id && !g.revokedAt)
-      const sharer = resourceGrants.find(g =>
-        (g.principal.type === 'user' && g.principal.userId === userId) ||
-        (g.principal.type === 'team' && isUserInTeam(userId, g.principal.teamId))
-      )
-      return {
-        source: 'direct-grant',
-        sharedByUserId: sharer?.grantedByUserId,
-        canBrowseWorkspace: Boolean(dept && userHasAccess(userId, DEPARTMENT_FOLDER_MAP[dept]?.id ?? '', grants, dept, roleGroups)),
-      }
-    }
-
-    // 3. Collection ripple
-    if (collectionAssetAccessById.has(id)) {
-      // Find which collection(s) provide this access
-      const viaCollection = collections.find(c =>
-        collectionAccessById.has(c.id) && c.assetIds.includes(id)
-      )
-      const collectionGrant = viaCollection
-        ? grants.find(g => g.resource.id === viaCollection.id && !g.revokedAt)
-        : undefined
-      const dept = departmentId ?? nodeToDepartment.get(id)
-      return {
-        source: 'collection-ripple',
-        viaResourceId: viaCollection?.id,
-        viaResourceName: viaCollection?.name,
-        sharedByUserId: collectionGrant?.grantedByUserId,
-        canBrowseWorkspace: Boolean(dept && userHasAccess(userId, DEPARTMENT_FOLDER_MAP[dept]?.id ?? '', grants, dept, roleGroups)),
-      }
-    }
-
-    // 4. Collection direct access (the resource IS a collection)
-    if (collectionAccessById.has(id)) {
-      return { source: 'direct-grant', canBrowseWorkspace: false }
-    }
-
-    // 5. Folder inheritance
-    let parentId = nodeToParent.get(id)
-    while (parentId) {
-      if (userHasAccess(userId, parentId, grants, nodeToDepartment.get(parentId), roleGroups)) {
-        return { source: 'folder-inheritance', viaResourceId: parentId, canBrowseWorkspace: true }
-      }
-      parentId = nodeToParent.get(parentId)
-    }
-
-    return null
-  }, [activePersona, userId, grants, collections, collectionAccessById, collectionAssetAccessById, nodeToDepartment, nodeToParent, roleGroups])
-
   // filterByAccess: filter assets by persona access
   const filterByAccess = useCallback((assets: Asset[]): Asset[] => {
     if (!activePersona) return assets
@@ -630,43 +567,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return collectionAssetCounts.get(id) ?? 0
   }, [collectionAssetCounts])
 
-  // accessibleFolderIds: set of folder IDs accessible to current persona
-  const accessibleFolderIds = useMemo(() => {
-    const ids = new Set<string>()
-    if (!activePersona) {
-      // Admin: all folders
-      for (const dept of ALL_DEPARTMENTS) {
-        ids.add(dept)
-        ids.add(DEPARTMENT_WRAPPER_IDS[dept])
-        collectFolderIds(getDepartmentWorkspaceFiles(dept)).forEach((id) => ids.add(id))
-      }
-      return ids
-    }
-
-    // All access flows through grants — add granted folders + their descendants
-    for (const grant of grants) {
-      if (grant.revokedAt) continue
-      if (grant.resource.type !== 'folder') continue
-      const isGrantee =
-        (grant.principal.type === 'user' && grant.principal.userId === activePersona.id) ||
-        (grant.principal.type === 'team' && isUserInTeam(activePersona.id, grant.principal.teamId))
-      if (isGrantee) {
-        ids.add(grant.resource.id)
-        // Add all descendant folders (inheritance)
-        collectFolderIds(getDepartmentWorkspaceFiles(grant.resource.departmentId as DepartmentId)).forEach((childId) => {
-          // Only add if this child is actually under the granted folder
-          let parent = nodeToParent.get(childId)
-          while (parent) {
-            if (parent === grant.resource.id) { ids.add(childId); break }
-            parent = nodeToParent.get(parent)
-          }
-        })
-      }
-    }
-
-    return ids
-  }, [activePersona, grants, nodeToParent])
-
   // Share views
   const sharesCreatedByMe = useMemo(() => {
     if (!userId) return []
@@ -686,14 +586,20 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return buildAllProjectShares(grants)
   }, [grants])
 
+  // Shares visible to the current user — grants on resources they can access
+  const visibleShares = useMemo(() => {
+    if (!activePersona) return allProjectShares // admin sees all
+    return allProjectShares.filter(s => canAccess(s.resourceId))
+  }, [activePersona, allProjectShares, canAccess])
+
   // Revoke all grants for a resource
   const revokeShare = useCallback((resourceId: string) => {
     setGrants((prev) => {
-      const activeGrant = prev.find((grant) => grant.resource.id === resourceId && !grant.revokedAt)
+      const activeGrant = prev.find((grant) => grant.resource.id === resourceId && isGrantActive(grant))
       if (!activeGrant || !canEditAclFn(activeGrant.resource, prev)) return prev
 
       return prev.map((grant) =>
-        grant.resource.id === resourceId && !grant.revokedAt
+        grant.resource.id === resourceId && isGrantActive(grant)
           ? { ...grant, revokedAt: new Date().toISOString() }
           : grant,
       )
@@ -750,18 +656,24 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     })
   }, [activePersona, userId, roleGroups, canShareFn, canGrantProfileForResourceFn, grantorUserId, setGrants])
 
+  const canManageGrant = useCallback((grant: Grant, currentGrants: Grant[]): boolean => {
+    if (canEditAclFn(grant.resource, currentGrants)) return true
+    if (userId && canShareFn(grant.resource, currentGrants) && grant.grantedByUserId === userId) return true
+    return false
+  }, [canEditAclFn, canShareFn, userId])
+
   const revokeGrant = useCallback((grantId: string) => {
     setGrants((prev) => {
-      const grant = prev.find((candidate) => candidate.id === grantId && !candidate.revokedAt)
-      if (!grant || !canEditAclFn(grant.resource, prev)) return prev
+      const grant = prev.find((candidate) => candidate.id === grantId && isGrantActive(candidate))
+      if (!grant || !canManageGrant(grant, prev)) return prev
 
       return prev.map((candidate) =>
-        candidate.id === grantId && !candidate.revokedAt
+        candidate.id === grantId && isGrantActive(candidate)
           ? { ...candidate, revokedAt: new Date().toISOString() }
           : candidate,
       )
     })
-  }, [canEditAclFn, setGrants])
+  }, [canManageGrant, setGrants])
 
   // Project-level grants
   const projectUserGrants = useMemo(() => getProjectUserGrantsFromList(grants), [grants])
@@ -789,7 +701,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const updateGrantProfile = useCallback((grantId: string, profileId: AccessProfileId) => {
     setGrants((prev) => {
       const grant = prev.find((candidate) => candidate.id === grantId)
-      if (!grant || !canEditAclFn(grant.resource, prev)) return prev
+      if (!grant || !canManageGrant(grant, prev)) return prev
       if (!canGrantProfileForResourceFn(grant.resource, profileId, prev)) return prev
 
       return prev.map((candidate) => (
@@ -802,14 +714,14 @@ export function AccessProvider({ children }: { children: ReactNode }) {
           : candidate
       ))
     })
-  }, [roleGroups, canEditAclFn, canGrantProfileForResourceFn, setGrants])
+  }, [roleGroups, canManageGrant, canGrantProfileForResourceFn, setGrants])
 
   // Inherited grants display — walks parent chain for folder inheritance
   const getInheritedGrants = useCallback((resourceId: string) => {
     const inherited: { grant: Grant; fromResourceId: string; fromResourceName: string }[] = []
     let parentId = nodeToParent.get(resourceId)
     while (parentId) {
-      const parentGrants = grants.filter(g => g.resource.id === parentId && !g.revokedAt)
+      const parentGrants = grants.filter(g => g.resource.id === parentId && isGrantActive(g))
       if (parentGrants.length > 0) {
         const name = findNodeInTree(fileTree, parentId)?.name ?? parentId
         for (const g of parentGrants) {
@@ -825,9 +737,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const getCollectionRippleGrants = useCallback((assetId: string) => {
     const rippled: { grant: Grant; fromResourceId: string; fromResourceName: string }[] = []
     for (const collection of collections) {
-      const collectionAssetIds = new Set(collection.assetIds.flatMap(getCollectionAssetIdVariants))
+      const collectionAssetIds = new Set(collection.assetIds.flatMap(getAssetIdVariants))
       if (!collectionAssetIds.has(assetId)) continue
-      const collGrants = grants.filter(g => g.resource.id === collection.id && !g.revokedAt)
+      const collGrants = grants.filter(g => g.resource.id === collection.id && isGrantActive(g))
       for (const g of collGrants) {
         rippled.push({ grant: g, fromResourceId: collection.id, fromResourceName: collection.name })
       }
@@ -837,12 +749,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
   const contextValue = useMemo(() => ({
     canAccess,
-    getAccessPath,
     filterByAccess,
-    accessibleFolderIds,
     sharesCreatedByMe,
     sharesReceivedByMe,
     allProjectShares,
+    visibleShares,
     revokeShare,
     getPermission,
     canEdit: canEditFn,
@@ -884,12 +795,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     unreadInboxCount,
   }), [
     canAccess,
-    getAccessPath,
     filterByAccess,
-    accessibleFolderIds,
     sharesCreatedByMe,
     sharesReceivedByMe,
     allProjectShares,
+    visibleShares,
     revokeShare,
     getPermission,
     canEditFn,

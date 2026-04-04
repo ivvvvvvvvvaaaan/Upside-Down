@@ -1,11 +1,10 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, PanelRight, Play, Music, FileText, Share2, Download, Image as ImageIcon } from 'lucide-react'
+import { ArrowLeft, PanelRight, Info, Play, Music, FileText, Share2, Download, Image as ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import {
   Stack,
   Text,
@@ -13,9 +12,9 @@ import {
   Tag,
   EmptyState,
   AssetDetailPanel,
+  MobileToolbar,
 } from '@/components/ui'
-import { AppLayout } from '@/components/layouts'
-import { useAccess, usePersona, useViewPreferences, useSmartCollections } from '@/hooks'
+import { useAccess, usePersona, useViewPreferences, useSmartCollections, useMobilePanel } from '@/hooks'
 import type { Asset, DepartmentId } from '@/lib/data'
 import { getReviewNoteSummary } from '@/lib/review-notes'
 import { getContextAssetGroups } from '@/lib/context-relationships'
@@ -149,13 +148,12 @@ function AssetPreview({ asset }: { asset: Asset }) {
 }
 
 export function AssetDetailView({ assetId }: AssetDetailViewProps) {
-  const pathname = usePathname()
   const router = useRouter()
-  const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
 
   const { hydrated } = usePersona()
   const { filterByAccess } = useAccess()
   const { sidePanelOpen, setSidePanelOpen } = useViewPreferences()
+  const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
   const { scopedAssets, ensureAssetsLoaded } = useSmartCollections()
 
   const [asset, setAsset] = useState<Asset | null>(null)
@@ -203,161 +201,159 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
   // Loading state
   if (loading) {
     return (
-      <AppLayout hideNav>
-        <div className="h-full flex flex-col">
-          <div className="flex-1 min-h-0 overflow-auto">
-            <div className="p-6">
-              <div className="max-w-7xl mx-auto">
-                <Stack spacing="lg">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded bg-surface-3 animate-breathe" />
-                    <div className="h-6 w-48 rounded bg-surface-3 animate-breathe" />
-                  </div>
-                  <div className="aspect-video rounded bg-surface-3 animate-breathe" />
-                </Stack>
-              </div>
+      <div className="h-full flex flex-col">
+        <div className="flex-1 min-h-0 overflow-auto">
+          <div className="p-6">
+            <div className="max-w-7xl mx-auto">
+              <Stack spacing="lg">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded bg-surface-3 animate-breathe" />
+                  <div className="h-6 w-48 rounded bg-surface-3 animate-breathe" />
+                </div>
+                <div className="aspect-video rounded bg-surface-3 animate-breathe" />
+              </Stack>
             </div>
           </div>
         </div>
-      </AppLayout>
+      </div>
     )
   }
 
   // Asset not found
   if (!asset) {
     return (
-      <AppLayout hideNav>
-        <div className="h-full flex flex-col">
-          <div className="flex-1 min-h-0 overflow-auto">
-            <div className="p-6">
-              <div className="max-w-7xl mx-auto">
-                <Stack spacing="lg">
-                  <div className="md:hidden">
-                    <Button asChild variant="icon" size="icon" aria-label="Menu">
-                      <Link href={menuHref}>
-                        <ArrowLeft className="w-4 h-4" />
-                        <span className="sr-only">Menu</span>
-                      </Link>
-                    </Button>
-                  </div>
-                  <EmptyState
-                    title="Asset not found"
-                    message="This asset may have been deleted or doesn't exist."
-                  >
-                    <Button
-                      variant="secondary"
-                      onClick={() => router.push('/nextgen')}
-                      className="mt-4"
-                    >
-                      Back to Library
-                    </Button>
-                  </EmptyState>
-                </Stack>
-              </div>
-            </div>
-          </div>
-        </div>
-      </AppLayout>
-    )
-  }
-
-  return (
-    <AppLayout hideNav>
-      <div className="h-full flex">
-        {/* Main content area */}
-        <div className="flex-1 min-w-0 flex flex-col">
-          <div className="flex-1 min-h-0 overflow-auto">
-            <div className="p-6">
+      <div className="h-full flex flex-col">
+        <div className="flex-1 min-h-0 overflow-auto">
+          <div className="p-6">
+            <div className="max-w-7xl mx-auto">
               <Stack spacing="lg">
-                {/* Top bar: Back button + panel toggle */}
-                <div className="flex items-center justify-between">
+                <MobileToolbar title="Asset" />
+                <EmptyState
+                  title="Asset not found"
+                  message="This asset may have been deleted or doesn't exist."
+                >
                   <Button
-                    variant="tertiary"
-                    icon={<ArrowLeft />}
-                    onClick={() => router.back()}
+                    variant="secondary"
+                    onClick={() => router.push('/nextgen')}
+                    className="mt-4"
                   >
-                    <span className="hidden lg:inline">Back</span>
+                    Back to Library
                   </Button>
-                  <Button
-                    variant="icon"
-                    onClick={() => setSidePanelOpen(!sidePanelOpen)}
-                    aria-label={sidePanelOpen ? 'Close panel' : 'Open panel'}
-                    className={cn(sidePanelOpen && 'bg-surface-3')}
-                  >
-                    <PanelRight className="w-4 h-4" />
-                  </Button>
-                </div>
-
-                {/* Asset Preview */}
-                <div className="bg-surface-flat rounded overflow-hidden aspect-video relative">
-                  <AssetPreview asset={asset} />
-                </div>
-
-                {/* Action bar below preview */}
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <Text variant="headline-1" weight="bold" className="mb-1 truncate">
-                      {asset.name}
-                    </Text>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Tag>{typeTag}</Tag>
-                      {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
-                      {asset.isFinal && <Tag type="positive">Final</Tag>}
-                      {asset.department && (
-                        <Tag type="neutral">
-                          {DEPARTMENT_NAMES[asset.department]}
-                        </Tag>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {reviewNoteSummary && (
-                      <Button
-                        asChild
-                        variant="secondary"
-                        icon={<FileText />}
-                      >
-                        <a
-                          href={reviewNoteSummary.externalUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <span className="hidden lg:inline">Creative Review</span>
-                        </a>
-                      </Button>
-                    )}
-                    <Button
-                      variant="secondary"
-                      icon={<Share2 />}
-                      onClick={() => console.log('Share asset:', asset.id)}
-                    >
-                      <span className="hidden lg:inline">Share</span>
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      icon={<Download />}
-                      onClick={() => console.log('Download asset:', asset.id)}
-                    >
-                      <span className="hidden lg:inline">Download</span>
-                    </Button>
-                  </div>
-                </div>
+                </EmptyState>
               </Stack>
             </div>
           </div>
         </div>
-
-        {/* Side panel */}
-        <AssetDetailPanel
-          asset={asset}
-          open={sidePanelOpen}
-          onClose={() => setSidePanelOpen(false)}
-          reviewNoteSummary={reviewNoteSummary}
-          contextGroups={contextGroups}
-          onContextAssetClick={handlePanelAssetSwitch}
-          onVersionSelect={handlePanelAssetSwitch}
-        />
       </div>
-    </AppLayout>
+    )
+  }
+
+  return (
+    <div className="h-full flex">
+      {/* Main content area */}
+      <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex-1 min-h-0 overflow-auto">
+          <div className="p-6">
+            <Stack spacing="lg">
+              {/* Top bar: Back button + panel toggle */}
+              <MobileToolbar title={asset.name} actions={
+                <Button
+                  variant="icon"
+                  size="icon"
+                  onClick={togglePanel}
+                  aria-label={panelOpen ? 'Close panel' : 'Open panel'}
+                  className={cn(panelOpen && 'bg-surface-3')}
+                >
+                  <Info className="w-4 h-4" />
+                </Button>
+              } />
+              <div className="hidden md:flex items-center justify-between">
+                <Button
+                  variant="tertiary"
+                  icon={<ArrowLeft />}
+                  onClick={() => router.back()}
+                >
+                  Back
+                </Button>
+                <Button
+                  variant="icon"
+                  onClick={togglePanel}
+                  aria-label={panelOpen ? 'Close panel' : 'Open panel'}
+                  className={cn(panelOpen && 'bg-surface-3')}
+                >
+                  <PanelRight className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {/* Asset Preview */}
+              <div className="bg-surface-flat rounded overflow-hidden aspect-video relative">
+                <AssetPreview asset={asset} />
+              </div>
+
+              {/* Action bar below preview */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <Text variant="headline-1" weight="bold" className="mb-1 truncate hidden md:block">
+                    {asset.name}
+                  </Text>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Tag>{typeTag}</Tag>
+                    {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
+                    {asset.isFinal && <Tag type="positive">Final</Tag>}
+                    {asset.department && (
+                      <Tag type="neutral">
+                        {DEPARTMENT_NAMES[asset.department]}
+                      </Tag>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {reviewNoteSummary && (
+                    <Button
+                      asChild
+                      variant="secondary"
+                      icon={<FileText />}
+                    >
+                      <a
+                        href={reviewNoteSummary.externalUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <span className="hidden lg:inline">Creative Review</span>
+                      </a>
+                    </Button>
+                  )}
+                  <Button
+                    variant="secondary"
+                    icon={<Share2 />}
+                    onClick={() => console.log('Share asset:', asset.id)}
+                  >
+                    <span className="hidden lg:inline">Share</span>
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    icon={<Download />}
+                    onClick={() => console.log('Download asset:', asset.id)}
+                  >
+                    <span className="hidden lg:inline">Download</span>
+                  </Button>
+                </div>
+              </div>
+            </Stack>
+          </div>
+        </div>
+      </div>
+
+      {/* Side panel */}
+      <AssetDetailPanel
+        asset={asset}
+        open={panelOpen}
+        onClose={closePanel}
+        reviewNoteSummary={reviewNoteSummary}
+        contextGroups={contextGroups}
+        onContextAssetClick={handlePanelAssetSwitch}
+        onVersionSelect={handlePanelAssetSwitch}
+      />
+    </div>
   )
 }

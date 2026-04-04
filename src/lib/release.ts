@@ -14,6 +14,7 @@
  */
 
 import type { Grant } from '@/lib/grants'
+import { isGrantActive } from '@/lib/grants'
 import { buildReleaseDomains } from '@/lib/scenario'
 import type { ReleaseDomain } from '@/lib/scenario'
 
@@ -51,7 +52,7 @@ export function deriveReleasedDomains(
   grants: Grant[],
 ): ReleaseDomain[] {
   const activeGrants = grants.filter(
-    g => g.resource.id === resourceId && !g.revokedAt && g.principal.type === 'team',
+    g => g.resource.id === resourceId && isGrantActive(g) && g.principal.type === 'team',
   )
   const grantedTeamIds = new Set(
     activeGrants

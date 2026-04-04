@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight, Settings } from 'lucide-react'
@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { SettingsModal } from './settings-modal'
 import { PersonaPicker } from './persona-picker'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 
 /**
  * Project Breadcrumb
@@ -115,10 +116,40 @@ function getBreadcrumbs(pathname: string): BreadcrumbItem[] {
   return crumbs
 }
 
+function BreadcrumbCrumb({ crumb, isLast }: { crumb: BreadcrumbItem; isLast: boolean }) {
+  if (!isLast && (crumb.href || crumb.onClick)) {
+    return crumb.href ? (
+      <Link
+        href={crumb.href}
+        className="text-foreground-subtle hover:text-foreground transition-colors whitespace-nowrap"
+      >
+        {crumb.label}
+      </Link>
+    ) : (
+      <button
+        onClick={crumb.onClick}
+        className="text-foreground-subtle hover:text-foreground transition-colors whitespace-nowrap"
+      >
+        {crumb.label}
+      </button>
+    )
+  }
+  return (
+    <span className={cn('whitespace-nowrap', isLast ? 'text-foreground truncate' : 'text-foreground-subtle')}>
+      {crumb.label}
+    </span>
+  )
+}
+
 export function ProjectBreadcrumb() {
   const pathname = usePathname()
   const { extras } = useContext(BreadcrumbExtrasContext)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const isMobile = useIsMobile()
+
+  // Reset collapsed state on navigation
+  useEffect(() => { setExpanded(false) }, [pathname])
 
   // Only show on nextgen routes
   if (!pathname.startsWith('/nextgen')) {
@@ -136,51 +167,46 @@ export function ProjectBreadcrumb() {
     basePathname = pathname
   }
   const baseCrumbs = getBreadcrumbs(basePathname)
-
   const allCrumbs: BreadcrumbItem[] = [...baseCrumbs, ...extras]
 
+  // On mobile with 3+ crumbs, collapse middle segments to [...]
+  const shouldCollapse = isMobile && !expanded && allCrumbs.length > 2
+  const visibleCrumbs = shouldCollapse
+    ? [allCrumbs[0], allCrumbs[allCrumbs.length - 1]]
+    : allCrumbs
+
   return (
-    <div className="h-12 px-4 flex items-center justify-between border-b border-border-dim bg-surface-1">
-      <nav className="flex items-center gap-1 text-body-0-regular">
-        {allCrumbs.map((crumb, index) => {
-          const isLast = index === allCrumbs.length - 1
+    <div className="h-12 px-4 flex items-center justify-between border-b border-border-dim bg-surface-1 min-w-0">
+      <nav className="flex items-center gap-1 text-body-0-regular min-w-0 overflow-hidden">
+        {visibleCrumbs.map((crumb, index) => {
+          const isLast = index === visibleCrumbs.length - 1
 
           return (
-            <span key={index} className="flex items-center gap-1">
+            <span key={index} className="flex items-center gap-1 min-w-0">
               {index > 0 && (
-                <ChevronRight className="w-3 h-3 text-foreground-dim" />
-              )}
-              {!isLast && (crumb.href || crumb.onClick) ? (
-                crumb.href ? (
-                  <Link
-                    href={crumb.href}
-                    className="text-foreground-subtle hover:text-foreground transition-colors"
-                  >
-                    {crumb.label}
-                  </Link>
-                ) : (
-                  <button
-                    onClick={crumb.onClick}
-                    className="text-foreground-subtle hover:text-foreground transition-colors"
-                  >
-                    {crumb.label}
-                  </button>
-                )
-              ) : (
-                <span
-                  className={cn(
-                    isLast ? 'text-foreground' : 'text-foreground-subtle'
+                <>
+                  <ChevronRight className="w-3 h-3 text-foreground-dim flex-shrink-0" />
+                  {shouldCollapse && index === 1 && (
+                    <>
+                      <button
+                        onClick={() => setExpanded(true)}
+                        className="text-foreground-subtle hover:text-foreground transition-colors px-0.5"
+                        aria-label="Show full path"
+                      >
+                        &hellip;
+                      </button>
+                      <ChevronRight className="w-3 h-3 text-foreground-dim flex-shrink-0" />
+                    </>
                   )}
-                >
-                  {crumb.label}
-                </span>
+                </>
               )}
+              <BreadcrumbCrumb crumb={crumb} isLast={isLast} />
             </span>
           )
         })}
       </nav>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-shrink-0">
         <Button
           variant="icon"
           compact

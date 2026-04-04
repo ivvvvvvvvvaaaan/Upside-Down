@@ -22,5 +22,7 @@ export { PersonaProvider, usePersona } from './usePersona'
 
 export { AccessProvider, useAccess } from './useAccess'
 
+export { useMobilePanel } from './useMobilePanel'
+
 export { useCuts } from './useCuts'
 export type { AccessibleCutEntry } from './useCuts'

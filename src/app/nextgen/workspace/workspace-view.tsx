@@ -18,14 +18,14 @@ import {
   SelectionBar,
   NewFolderModal,
   AccessModal,
+  MobileToolbar,
 } from '@/components/ui'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import type { FileNode, FileViewMode } from '@/components/ui/file-explorer'
 import { ContextMenu } from '@/components/ui/context-menu'
 import type { ContextMenuItem } from '@/components/ui/context-menu'
-import { AppLayout } from '@/components/layouts'
-import { getGridColumns, useViewPreferences, useCompactBar, useWorkspaceState, useResourceSelection, useFileTree, useAccess, usePersona } from '@/hooks'
+import { getGridColumns, useViewPreferences, useCompactBar, useWorkspaceState, useResourceSelection, useFileTree, useAccess, usePersona, useMobilePanel } from '@/hooks'
 
 import type { DepartmentId } from '@/components/department/types'
 import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
@@ -36,8 +36,8 @@ import { WorkspaceSidePanel } from '@/components/department/WorkspaceSidePanel'
 import { AssetDetailPanel } from '@/components/ui/asset-detail-panel'
 import { getContextAssetGroups } from '@/lib/context-relationships'
 import { useSmartCollections } from '@/hooks'
-import { ArrowLeft, List, Columns, LayoutGrid, PanelRight, Lock, Users, FolderPlus } from 'lucide-react'
-import Link from 'next/link'
+import { useIsMobile } from '@/hooks/useMediaQuery'
+import { List, Columns, LayoutGrid, PanelRight, Info, Lock, Users, FolderPlus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { departmentConfigs } from '@/lib/department-configs'
 import { assetToSelectionEntity, folderToSelectionEntity } from '@/lib/selection-actions'
@@ -176,12 +176,10 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   const { canAccess, sharesReceivedByMe, getInheritedGrants } = useAccess()
   const { activePersona } = usePersona()
   const { scopedAssets, ensureAssetsLoaded } = useSmartCollections()
-  const menuHref = departmentId
-    ? `/nextgen/menu?return=%2Fnextgen%2Fworkspace%2F${departmentId}`
-    : '/nextgen/menu?return=%2Fnextgen%2Fworkspace'
-
   const { layout, setLayout, cardSize, setCardSize, viewMode, setViewMode, sidePanelOpen: showPanel, setSidePanelOpen: setShowPanel } = useViewPreferences()
+  const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(showPanel, setShowPanel)
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
+  const isMobile = useIsMobile()
   const {
     selectedIds,
     primaryId,
@@ -617,18 +615,6 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   }, [effectiveNode, departmentId, getFileTreeDeptFiles])
   const landingDrillFolder = landingDrillPath[landingDrillPath.length - 1] ?? null
   const pageTitle = landingDrillFolder?.name ?? currentFolder?.name ?? departmentName
-  const backHref = isLanding
-    ? landingFolderId
-      ? urlPath.length > 0
-        ? buildLandingFolderHref(landingFolderId, urlPath.slice(0, -1))
-        : '/nextgen/workspace'
-      : undefined
-    : isInsideFolder
-      ? urlPath.length <= 1
-        ? `/nextgen/workspace/${departmentId}`
-        : `/nextgen/workspace/${departmentId}/${urlPath.slice(0, -1).join('/')}`
-      : '/nextgen/workspace'
-
   const isGridView = viewMode === 'grid'
   const explorerViewMode = (isGridView ? 'list' : viewMode) as FileViewMode
 
@@ -638,27 +624,24 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
 
   if (!isLanding && !departmentAccessible && !folderAccessible) {
     return (
-      <AppLayout>
-        <div className="h-full flex flex-col">
-          <div className="flex-1 min-h-0 overflow-auto">
-            <div className="p-6">
-              <div className="max-w-7xl mx-auto">
-                <EmptyState
-                  title="Access Restricted"
-                  message={`You don't have workspace access to ${departmentName}. Shared items will still appear in Search, Collections, or Inbox.`}
-                />
-              </div>
+      <div className="h-full flex flex-col">
+        <div className="flex-1 min-h-0 overflow-auto">
+          <div className="p-6">
+            <div className="max-w-7xl mx-auto">
+              <EmptyState
+                title="Access Restricted"
+                message={`You don't have workspace access to ${departmentName}. Shared items will still appear in Search, Collections, or Inbox.`}
+              />
             </div>
           </div>
         </div>
-      </AppLayout>
+      </div>
     )
   }
 
   return (
-    <AppLayout>
-      <div className="h-full flex flex-col">
-        <div className="flex-1 min-h-0 flex">
+    <div className="h-full flex flex-col">
+      <div className="flex-1 min-h-0 flex">
         <div ref={scrollRef} className={cn('flex-1 min-h-0', isGridView ? 'overflow-auto' : 'flex flex-col')}>
           <CompactBar
             visible={showCompactBar}
@@ -681,49 +664,44 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
           <div className="p-6">
             <div className="max-w-7xl mx-auto">
               <Stack spacing="lg">
-                {/* Mobile menu button */}
-                <div className="flex items-center justify-between w-full md:hidden">
-                  <Button asChild variant="icon" size="icon" aria-label="Menu">
-                    <Link href={menuHref}>
-                      <ArrowLeft className="w-4 h-4" />
-                      <span className="sr-only">Menu</span>
-                    </Link>
+                {/* Mobile nav */}
+                <MobileToolbar title={pageTitle} actions={
+                  <Button
+                    variant="icon"
+                    size="icon"
+                    aria-label={panelOpen ? 'Close panel' : 'Open panel'}
+                    onClick={togglePanel}
+                    className={cn(panelOpen && 'bg-surface-3')}
+                  >
+                    <Info className="w-4 h-4" />
                   </Button>
-                  <div className="flex items-center gap-2">
-                    <HawkinsSearch
-                      value={searchQuery}
-                      onValueChange={setSearchQuery}
-                      filters={filterOptions}
-                    />
-                    <SortDropdown
-                      fields={sortFields}
-                      value={sortCriteria}
-                      onChange={setSortCriteria}
-                      iconOnly
-                    />
-                    <AppearanceDropdown
-                      iconOnly
-                      layout={layout}
-                      onLayoutChange={setLayout}
-                      cardSize={cardSize}
-                      onCardSizeChange={setCardSize}
-                      showLayoutOptions={false}
-                    />
-                    <Button
-                      variant="icon"
-                      aria-label="Toggle panel"
-                      onClick={() => setShowPanel(!showPanel)}
-                      className={cn(showPanel && 'bg-surface-3')}
-                    >
-                      <PanelRight className="w-4 h-4" />
-                    </Button>
-                  </div>
+                } />
+                <div className="flex items-center gap-2 md:hidden">
+                  <HawkinsSearch
+                    value={searchQuery}
+                    onValueChange={setSearchQuery}
+                    filters={filterOptions}
+                  />
+                  <SortDropdown
+                    fields={sortFields}
+                    value={sortCriteria}
+                    onChange={setSortCriteria}
+                    iconOnly
+                  />
+                  <AppearanceDropdown
+                    iconOnly
+                    layout={layout}
+                    onLayoutChange={setLayout}
+                    cardSize={cardSize}
+                    onCardSizeChange={setCardSize}
+                    showLayoutOptions={false}
+                  />
                 </div>
 
                 {/* Header */}
                 <div ref={headerRef} className="flex flex-col gap-3">
                   <div className="flex items-center justify-between gap-4">
-                    <PageHeader title={pageTitle} backHref={backHref ?? undefined} />
+                    <PageHeader title={pageTitle} hideTitleOnMobile />
                     <div className="hidden md:flex items-center gap-2">
                       <SortDropdown
                         fields={sortFields}
@@ -755,9 +733,9 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                       </Button>
                       <Button
                         variant="icon"
-                        aria-label="Toggle panel"
-                        onClick={() => setShowPanel(!showPanel)}
-                        className={cn(showPanel && 'bg-surface-3')}
+                        aria-label={panelOpen ? 'Close panel' : 'Open panel'}
+                        onClick={togglePanel}
+                        className={cn(panelOpen && 'bg-surface-3')}
                       >
                         <PanelRight className="w-4 h-4" />
                       </Button>
@@ -815,14 +793,16 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                                 state={selectedIds.has(node.id) ? 'Selected' : 'Normal'}
                                 onClick={isLocked
                                   ? () => alert('Access requested for "' + node.name + '". An administrator will review your request.')
-                                  : (e) => {
-                                    const selectionEntry = selectionEntryById.get(node.id)
-                                    if (selectionEntry) {
-                                      handleSelectionClick(selectionEntry.entity, e as React.MouseEvent, currentGridSelectionEntities)
-                                    }
-                                  }
+                                  : isMobile
+                                    ? () => handleFolderDrilldown(node)
+                                    : (e) => {
+                                        const selectionEntry = selectionEntryById.get(node.id)
+                                        if (selectionEntry) {
+                                          handleSelectionClick(selectionEntry.entity, e as React.MouseEvent, currentGridSelectionEntities)
+                                        }
+                                      }
                                 }
-                                onDoubleClick={isLocked ? undefined : () => handleFolderDrilldown(node)}
+                                onDoubleClick={isLocked || isMobile ? undefined : () => handleFolderDrilldown(node)}
                                 onMenuClick={isLocked ? undefined : (e) => {
                                   setContextMenu({ x: e.clientX, y: e.clientY, node })
                                 }}
@@ -893,8 +873,8 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
         {primarySelectionEntry?.node.type === 'file' && selectedNodeDepartmentId && primarySelectionEntry.asset ? (
           <AssetDetailPanel
             asset={primarySelectionEntry.asset}
-            open={showPanel}
-            onClose={() => { clearSelection(); setShowPanel(false) }}
+            open={panelOpen}
+            onClose={() => { clearSelection(); closePanel() }}
             contextGroups={selectedFileContextGroups}
             onContextAssetClick={handlePanelAssetSwitch}
             activeContext={{ type: 'workspace' }}
@@ -902,8 +882,8 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
         ) : (
           <WorkspaceSidePanel
             node={effectiveNode}
-            open={showPanel}
-            onClose={() => setShowPanel(false)}
+            open={panelOpen}
+            onClose={closePanel}
             departmentId={effectiveNodeDepartmentId}
             folderVariant={
               primarySelectionEntry?.node && sharedFolderIds.has(primarySelectionEntry.node.id)
@@ -914,45 +894,44 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
             }
           />
         )}
-        </div>
-
-        {/* Context Menu */}
-        {contextMenu && contextMenuItems.length > 0 && (
-          <ContextMenu
-            x={contextMenu.x}
-            y={contextMenu.y}
-            items={contextMenuItems}
-            onClose={closeContextMenu}
-          />
-        )}
-
-        <SelectionBar
-          selectedEntities={selectedEntities}
-          onClear={clearSelection}
-        />
-        <NewFolderModal
-          open={newFolderModalOpen}
-          onOpenChange={setNewFolderModalOpen}
-          onCreate={handleCreateFolder}
-        />
-        {accessModalNode && (
-          <AccessModal
-            open={!!accessModalNode}
-            onClose={() => setAccessModalNode(null)}
-            resourceId={getAclResourceId(accessModalNode)}
-            resourceRef={{
-              id: getAclResourceId(accessModalNode),
-              type: accessModalNode.type === 'folder' ? 'folder' : 'asset',
-              departmentId,
-            }}
-            inheritedGrants={getInheritedGrants(getAclResourceId(accessModalNode)).map(({ grant, fromResourceName }) => ({
-              grant,
-              fromResourceName,
-            }))}
-            title={accessModalNode.name}
-          />
-        )}
       </div>
-    </AppLayout>
+
+      {/* Context Menu */}
+      {contextMenu && contextMenuItems.length > 0 && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenuItems}
+          onClose={closeContextMenu}
+        />
+      )}
+
+      <SelectionBar
+        selectedEntities={selectedEntities}
+        onClear={clearSelection}
+      />
+      <NewFolderModal
+        open={newFolderModalOpen}
+        onOpenChange={setNewFolderModalOpen}
+        onCreate={handleCreateFolder}
+      />
+      {accessModalNode && (
+        <AccessModal
+          open={!!accessModalNode}
+          onClose={() => setAccessModalNode(null)}
+          resourceId={getAclResourceId(accessModalNode)}
+          resourceRef={{
+            id: getAclResourceId(accessModalNode),
+            type: accessModalNode.type === 'folder' ? 'folder' : 'asset',
+            departmentId,
+          }}
+          inheritedGrants={getInheritedGrants(getAclResourceId(accessModalNode)).map(({ grant, fromResourceName }) => ({
+            grant,
+            fromResourceName,
+          }))}
+          title={accessModalNode.name}
+        />
+      )}
+    </div>
   )
 }

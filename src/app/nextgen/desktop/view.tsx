@@ -76,17 +76,21 @@ export function DesktopView() {
   const { activePersona, setActivePersona, hydrated } = usePersona()
   const [windows, setWindows] = useState<WindowState[]>(initialWindows)
   const [activeWindowId, setActiveWindowId] = useState<string | null>('finder')
-  const [cloudSyncEnabled, setCloudSyncEnabled] = useState(() => {
-    if (typeof window === 'undefined') return true
-    const saved = localStorage.getItem(STORAGE_KEYS.CLOUD_SYNC)
-    return saved !== null ? saved === 'true' : true
-  })
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => {
-    if (typeof window === 'undefined') return 'synced'
-    const saved = localStorage.getItem(STORAGE_KEYS.SYNC_STATUS) as SyncStatus | null
-    return saved && ['synced', 'syncing', 'error', 'offline'].includes(saved) ? saved : 'synced'
-  })
+  const [cloudSyncEnabled, setCloudSyncEnabled] = useState(true)
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('synced')
   const [showSettings, setShowSettings] = useState(false)
+
+  useEffect(() => {
+    const savedCloudSync = localStorage.getItem(STORAGE_KEYS.CLOUD_SYNC)
+    if (savedCloudSync !== null) {
+      setCloudSyncEnabled(savedCloudSync === 'true')
+    }
+
+    const savedSyncStatus = localStorage.getItem(STORAGE_KEYS.SYNC_STATUS) as SyncStatus | null
+    if (savedSyncStatus && ['synced', 'syncing', 'error', 'offline'].includes(savedSyncStatus)) {
+      setSyncStatus(savedSyncStatus)
+    }
+  }, [])
 
   useEffect(() => {
     if (!hydrated) return

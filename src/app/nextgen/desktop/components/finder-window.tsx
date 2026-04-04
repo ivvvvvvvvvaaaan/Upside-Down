@@ -360,18 +360,7 @@ export function FinderWindow({
 }: FinderWindowProps) {
   const [selectedSidebar, setSelectedSidebar] = useState('workspace')
   const [viewMode, setViewMode] = useState<'icons' | 'list' | 'columns'>('list')
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => {
-    if (typeof window === 'undefined') return new Set(DEFAULT_EXPANDED_FOLDERS)
-    const saved = localStorage.getItem(EXPANDED_FOLDERS_STORAGE_KEY)
-    if (saved) {
-      try {
-        return new Set(JSON.parse(saved))
-      } catch {
-        return new Set(DEFAULT_EXPANDED_FOLDERS)
-      }
-    }
-    return new Set(DEFAULT_EXPANDED_FOLDERS)
-  })
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(DEFAULT_EXPANDED_FOLDERS))
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
 
   // Folder navigation state (for icons view) - stores folder IDs to avoid stale references
@@ -395,6 +384,16 @@ export function FinderWindow({
       renameInputRef.current.select()
     }
   }, [renamingId])
+
+  useEffect(() => {
+    const saved = localStorage.getItem(EXPANDED_FOLDERS_STORAGE_KEY)
+    if (!saved) return
+    try {
+      setExpandedFolders(new Set(JSON.parse(saved)))
+    } catch {
+      setExpandedFolders(new Set(DEFAULT_EXPANDED_FOLDERS))
+    }
+  }, [])
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{

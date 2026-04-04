@@ -13,6 +13,7 @@ import type { RoleGroup } from '@/lib/grants'
 import { buildAccessDisplayEntries } from './access-display'
 import type { AccessDisplayEntry } from './access-display'
 import { buildShareSearchResults } from '@/lib/share-search'
+import type { GuestLinkSeed } from '@/lib/scenario'
 
 interface AccessPanelProps {
   resourceId: string
@@ -139,6 +140,88 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name
       )}
     </div>
   )
+}
+
+function GuestLinksSection({
+  resourceId,
+  resourceRef,
+  readOnly,
+  canAddGrants,
+  getResourceGuestLinks,
+  createGuestLink,
+  revokeGuestLink,
+}: {
+  resourceId: string
+  resourceRef?: ResourceRef
+  readOnly: boolean
+  canAddGrants: boolean
+  getResourceGuestLinks: (id: string) => GuestLinkSeed[]
+  createGuestLink: (resource: ResourceRef, options: { allowDownload: boolean; passcode: boolean; expiresInDays: number }) => void
+  revokeGuestLink: (linkId: string) => void
+}) {
+  const links = getResourceGuestLinks(resourceId)
+
+  if (links.length > 0) {
+    return (
+      <>
+        {links.map(link => (
+          <div key={link.id} className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Link2 className="w-4 h-4 text-foreground-dim flex-shrink-0" />
+                <span className="text-body-0-regular text-foreground truncate">Link</span>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <Button
+                  variant="secondary"
+                  compact
+                  onClick={() => navigator.clipboard.writeText(`https://share.example.com/${link.id}`)}
+                >
+                  Copy link
+                </Button>
+                {!readOnly && canAddGrants && (
+                  <Button
+                    variant="secondary"
+                    compact
+                    onClick={() => revokeGuestLink(link.id)}
+                    className="text-foreground-negative"
+                  >
+                    Revoke
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-3 pl-6">
+              <span className="text-body-0-regular text-foreground-dim">
+                {link.allowDownload ? 'View + Download' : 'View only'}
+              </span>
+              <span className="text-body-0-regular text-foreground-dim">
+                Expires {link.expiresAt}
+              </span>
+              <span className="text-body-0-regular text-foreground-dim">
+                {link.passcode ? 'Passcode required' : 'No passcode'}
+              </span>
+            </div>
+          </div>
+        ))}
+      </>
+    )
+  }
+
+  if (!readOnly && canAddGrants && resourceRef) {
+    return (
+      <Button
+        variant="secondary"
+        compact
+        onClick={() => createGuestLink(resourceRef, { allowDownload: false, passcode: false, expiresInDays: 7 })}
+        icon={<Link2 className="w-3.5 h-3.5" />}
+      >
+        Create link
+      </Button>
+    )
+  }
+
+  return null
 }
 
 export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLabel = 'Not shared', inheritedGrants }: AccessPanelProps) {
@@ -361,67 +444,15 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
       )}
 
       {/* Links */}
-      {(() => {
-        const links = getResourceGuestLinks(resourceId)
-
-        if (links.length > 0) {
-          return links.map(link => (
-            <div key={link.id} className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Link2 className="w-4 h-4 text-foreground-dim flex-shrink-0" />
-                  <span className="text-body-0-regular text-foreground truncate">Link</span>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <Button
-                    variant="secondary"
-                    compact
-                    onClick={() => navigator.clipboard.writeText(`https://share.example.com/${link.id}`)}
-                  >
-                    Copy link
-                  </Button>
-                  {!readOnly && canAddGrants && (
-                    <Button
-                      variant="secondary"
-                      compact
-                      onClick={() => revokeGuestLink(link.id)}
-                      className="text-foreground-negative"
-                    >
-                      Revoke
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-3 pl-6">
-                <span className="text-body-0-regular text-foreground-dim">
-                  {link.allowDownload ? 'View + Download' : 'View only'}
-                </span>
-                <span className="text-body-0-regular text-foreground-dim">
-                  Expires {link.expiresAt}
-                </span>
-                <span className="text-body-0-regular text-foreground-dim">
-                  {link.passcode ? 'Passcode required' : 'No passcode'}
-                </span>
-              </div>
-            </div>
-          ))
-        }
-
-        if (!readOnly && canAddGrants && resourceRef) {
-          return (
-            <Button
-              variant="secondary"
-              compact
-              onClick={() => createGuestLink(resourceRef, { allowDownload: false, passcode: false, expiresInDays: 7 })}
-              icon={<Link2 className="w-3.5 h-3.5" />}
-            >
-              Create link
-            </Button>
-          )
-        }
-
-        return null
-      })()}
+      <GuestLinksSection
+        resourceId={resourceId}
+        resourceRef={resourceRef}
+        readOnly={readOnly}
+        canAddGrants={canAddGrants}
+        getResourceGuestLinks={getResourceGuestLinks}
+        createGuestLink={createGuestLink}
+        revokeGuestLink={revokeGuestLink}
+      />
 
       {userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && (
         <p className="text-body-0-regular text-foreground-dim">{emptyLabel}</p>

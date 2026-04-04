@@ -10,15 +10,17 @@ export interface PageHeaderProps {
   className?: string
   /** When provided, shows a back arrow button linking to this href */
   backHref?: string
+  /** Hide the title on mobile (shown in MobileToolbar instead) */
+  hideTitleOnMobile?: boolean
 }
 
 /**
  * Standard page header with title, optional description, and optional back button
  */
-export function PageHeader({ title, description, backHref, className }: PageHeaderProps) {
+export function PageHeader({ title, description, backHref, className, hideTitleOnMobile }: PageHeaderProps) {
   return (
     <div className={cn('flex flex-col gap-2', className)}>
-      <div className={cn('flex items-center', backHref && 'gap-3')}>
+      <div className={cn('flex items-center', backHref && 'gap-3', hideTitleOnMobile && 'hidden md:flex')}>
         {backHref && (
           <Button asChild variant="icon" size="icon" aria-label="Back" className="-my-4">
             <Link href={backHref}>

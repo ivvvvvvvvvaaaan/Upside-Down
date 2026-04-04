@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, PanelRight } from 'lucide-react'
+import { PanelRight, Info, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import {
   Stack,
   Text,
@@ -15,30 +14,31 @@ import {
   EmptyState,
   CollectionSidePanel,
   AssetDetailPanel,
+  MobileToolbar,
 } from '@/components/ui'
-import { AppLayout } from '@/components/layouts'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
-import { getGridColumns, useAccess, useAssetSelection, usePersona, useViewPreferences, useUserCollections, useSmartCollections } from '@/hooks'
+import { getGridColumns, useAccess, useAssetSelection, usePersona, useViewPreferences, useUserCollections, useSmartCollections, useMobilePanel } from '@/hooks'
 import type { Asset } from '@/lib/data'
 import { PERSONAS } from '@/lib/personas'
 import { assetToSelectionEntity } from '@/lib/selection-actions'
 import { getContextAssetGroups } from '@/lib/context-relationships'
+import { AccessModal } from '@/components/ui/access-modal'
+import type { ResourceRef } from '@/lib/grants'
 
 interface UserCollectionDetailViewProps {
   collectionId: string
 }
 
 export function UserCollectionDetailView({ collectionId }: UserCollectionDetailViewProps) {
-  const pathname = usePathname()
   const router = useRouter()
-  const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
 
   const { activePersona, isAdmin, hydrated } = usePersona()
-  const { filterByAccess, sharesReceivedByMe, allProjectShares, getVisibleCollection } = useAccess()
+  const { filterByAccess, sharesReceivedByMe, allProjectShares, getVisibleCollection, canShare } = useAccess()
   const { getCollection, deleteCollection } = useUserCollections()
   const { getRelatedCollectionsForAssets, scopedAssets, ensureAssetsLoaded } = useSmartCollections()
   const { selectedIds, primaryId, handleAssetClick, selectOnly, clearSelection } = useAssetSelection()
   const { cardSize, sidePanelOpen, setSidePanelOpen } = useViewPreferences()
+  const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
 
   const [assets, setAssets] = useState<Asset[]>([])
@@ -48,6 +48,9 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const collection = getVisibleCollection(collectionId)
   const isOwner = hydrated && (isAdmin || (!!rawCollection && rawCollection.createdBy === activePersona?.email))
   const hasCollectionAccess = hydrated && !!collection
+  const [shareModalOpen, setShareModalOpen] = useState(false)
+  const collectionResourceRef: ResourceRef = { id: collectionId, type: 'collection' }
+  const showShareButton = hasCollectionAccess && canShare(collectionResourceRef)
 
   useEffect(() => {
     void ensureAssetsLoaded()
@@ -146,145 +149,156 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   // Collection not found
   if ((!collection || !hasCollectionAccess) && !loading) {
     return (
-      <AppLayout>
-        <div className="h-full flex flex-col">
-          <div className="flex-1 min-h-0 overflow-auto">
-            <div className="p-6">
-              <div className="max-w-7xl mx-auto">
-                <Stack spacing="lg">
-                  <div className="md:hidden">
-                    <Button asChild variant="icon" size="icon" aria-label="Menu">
-                      <Link href={menuHref}>
-                        <ArrowLeft className="w-4 h-4" />
-                        <span className="sr-only">Menu</span>
-                      </Link>
-                    </Button>
-                  </div>
-                  <EmptyState
-                    title="Collection not found"
-                    message="This collection may have been deleted or doesn't exist."
+      <div className="h-full flex flex-col">
+        <div className="flex-1 min-h-0 overflow-auto">
+          <div className="p-6">
+            <div className="max-w-7xl mx-auto">
+              <Stack spacing="lg">
+                <MobileToolbar title="Collection" />
+                <EmptyState
+                  title="Collection not found"
+                  message="This collection may have been deleted or doesn't exist."
+                >
+                  <Button
+                    variant="secondary"
+                    onClick={() => router.push('/nextgen/collections')}
+                    className="mt-4"
                   >
-                    <Button
-                      variant="secondary"
-                      onClick={() => router.push('/nextgen/collections')}
-                      className="mt-4"
-                    >
-                      Back to Collections
-                    </Button>
-                  </EmptyState>
-                </Stack>
-              </div>
+                    Back to Collections
+                  </Button>
+                </EmptyState>
+              </Stack>
             </div>
           </div>
         </div>
-      </AppLayout>
+      </div>
     )
   }
 
   return (
-    <AppLayout>
-      <div className="h-full flex">
-        {/* Main content area */}
-        <div className="flex-1 min-w-0 flex flex-col">
-          <div className="flex-1 min-h-0 overflow-auto">
-            <div className="p-6">
-              <div className="max-w-7xl mx-auto">
-                <Stack spacing="lg">
-                  <div className="md:hidden">
-                    <Button asChild variant="icon" size="icon" aria-label="Menu">
-                      <Link href={menuHref}>
-                        <ArrowLeft className="w-4 h-4" />
-                        <span className="sr-only">Menu</span>
-                      </Link>
-                    </Button>
-                  </div>
+    <div className="h-full flex">
+      {/* Main content area */}
+      <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex-1 min-h-0 overflow-auto">
+          <div className="p-6">
+            <div className="max-w-7xl mx-auto">
+              <Stack spacing="lg">
+                <MobileToolbar title={displayName || 'Collection'} actions={
+                  <Button
+                    variant="icon"
+                    size="icon"
+                    onClick={togglePanel}
+                    aria-label={panelOpen ? 'Close info' : 'Open info'}
+                    className={cn(panelOpen && 'bg-surface-3')}
+                  >
+                    <Info className="w-4 h-4" />
+                  </Button>
+                } />
 
-                  <div>
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <Text variant="headline-1" weight="bold" className="mb-2">
-                          {displayName || 'Loading...'}
-                        </Text>
-                        <Text variant="body-2" color="secondary">
-                          {loading
-                            ? 'Loading assets...'
-                            : assets.length === 0
-                            ? 'No assets'
-                            : `${assets.length} asset${assets.length !== 1 ? 's' : ''}`
-                          }
-                          {sharedBy && ` · Shared by ${sharedBy}`}
-                        </Text>
-                      </div>
+                <div>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <Text variant="headline-1" weight="bold" className="mb-2 hidden md:block">
+                        {displayName || 'Loading...'}
+                      </Text>
+                      <Text variant="body-2" color="secondary">
+                        {loading
+                          ? 'Loading assets...'
+                          : assets.length === 0
+                          ? 'No assets'
+                          : `${assets.length} asset${assets.length !== 1 ? 's' : ''}`
+                        }
+                        {sharedBy && ` · Shared by ${sharedBy}`}
+                      </Text>
+                    </div>
+                    <div className="hidden md:flex items-center gap-2">
+                      {showShareButton && (
+                        <Button
+                          variant="icon"
+                          onClick={() => setShareModalOpen(true)}
+                          aria-label="Share collection"
+                        >
+                          <Share2 className="w-4 h-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="icon"
-                        onClick={() => setSidePanelOpen(!sidePanelOpen)}
-                        aria-label={sidePanelOpen ? 'Close panel' : 'Open panel'}
-                        className={cn(sidePanelOpen && 'bg-surface-3')}
+                        onClick={togglePanel}
+                        aria-label={panelOpen ? 'Close panel' : 'Open panel'}
+                        className={cn(panelOpen && 'bg-surface-3')}
                       >
                         <PanelRight className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
+                </div>
 
-                  {loading ? (
-                    <CardGrid columns={getGridColumns(cardSize)} gap="4">
-                      {[...Array(6)].map((_, i) => (
-                        <AssetCard key={i} loading />
-                      ))}
-                    </CardGrid>
-                  ) : assets.length > 0 ? (
-                    <CardGrid columns={getGridColumns(cardSize)} gap="4">
-                      {assets.map((asset) => (
-                        <AssetCard
-                          key={asset.id}
-                          asset={asset}
-                          selected={selectedIds.has(asset.id)}
-                          primary={primaryId === asset.id}
-                          onClick={(a, e) => handleAssetClick(a, e, assets)}
-                          onMenuClick={handleMenuClick}
-                          showDepartment
-                          shared={sharedBy ? false : undefined}
-                        />
-                      ))}
-                    </CardGrid>
-                  ) : (
-                    <EmptyState
-                      title="No assets"
-                      message="This collection doesn't have any assets yet"
-                    />
-                  )}
-                </Stack>
-              </div>
+                {loading ? (
+                  <CardGrid columns={getGridColumns(cardSize)} gap="4">
+                    {[...Array(6)].map((_, i) => (
+                      <AssetCard key={i} loading />
+                    ))}
+                  </CardGrid>
+                ) : assets.length > 0 ? (
+                  <CardGrid columns={getGridColumns(cardSize)} gap="4">
+                    {assets.map((asset) => (
+                      <AssetCard
+                        key={asset.id}
+                        asset={asset}
+                        selected={selectedIds.has(asset.id)}
+                        primary={primaryId === asset.id}
+                        onClick={(a, e) => handleAssetClick(a, e, assets)}
+                        onMenuClick={handleMenuClick}
+                        showDepartment
+                        shared={sharedBy ? false : undefined}
+                      />
+                    ))}
+                  </CardGrid>
+                ) : (
+                  <EmptyState
+                    title="No assets"
+                    message="This collection doesn't have any assets yet"
+                  />
+                )}
+              </Stack>
             </div>
           </div>
-
-          <SelectionBar
-            selectedEntities={selectedEntities}
-            onClear={clearSelection}
-          />
         </div>
 
-        {/* Side panel - asset detail when selected, collection settings otherwise */}
-        <AssetDetailPanel
-          asset={primaryAsset!}
-          open={sidePanelOpen && !!primaryAsset}
-          onClose={() => { clearSelection(); setSidePanelOpen(false) }}
-          activeCollectionId={collectionId}
-          activeContext={{ type: 'collection', id: collectionId }}
-          contextGroups={primaryAssetContextGroups}
-          onContextAssetClick={handlePanelAssetSwitch}
+        <SelectionBar
+          selectedEntities={selectedEntities}
+          onClear={clearSelection}
         />
-        {collection && hasCollectionAccess && (
-          <CollectionSidePanel
-            collection={collection}
-            open={sidePanelOpen && !primaryAsset}
-            onClose={() => setSidePanelOpen(false)}
-            onDelete={handleDeleteCollection}
-            canDelete={isOwner}
-            relationships={relationships}
-          />
-        )}
       </div>
-    </AppLayout>
+
+      {/* Side panel - asset detail when selected, collection settings otherwise */}
+      <AssetDetailPanel
+        asset={primaryAsset!}
+        open={panelOpen && !!primaryAsset}
+        onClose={() => { clearSelection(); closePanel() }}
+        activeCollectionId={collectionId}
+        activeContext={{ type: 'collection', id: collectionId }}
+        contextGroups={primaryAssetContextGroups}
+        onContextAssetClick={handlePanelAssetSwitch}
+      />
+      {collection && hasCollectionAccess && (
+        <CollectionSidePanel
+          collection={collection}
+          open={panelOpen && !primaryAsset}
+          onClose={closePanel}
+          onDelete={handleDeleteCollection}
+          canDelete={isOwner}
+          relationships={relationships}
+        />
+      )}
+
+      <AccessModal
+        open={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        resourceId={collectionId}
+        resourceRef={collectionResourceRef}
+        title={collection?.name}
+      />
+    </div>
   )
 }

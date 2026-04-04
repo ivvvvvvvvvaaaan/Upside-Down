@@ -1,14 +1,13 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Film, PanelRight, X } from 'lucide-react'
+import { Film, PanelRight, Info, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
-import { PageHeader, EmptyState, SelectionBar, Button } from '@/components/ui'
+import { PageHeader, EmptyState, SelectionBar, Button, MobileToolbar } from '@/components/ui'
 import { AssetCard } from '@/components/ui/asset-card'
 import { ReleaseModal } from '@/components/ui/release-modal'
-import { AppLayout } from '@/components/layouts'
-import { useCuts, usePersona, useAssetSelection, useSmartCollections, useViewPreferences, type AccessibleCutEntry } from '@/hooks'
+import { useCuts, usePersona, useAssetSelection, useSmartCollections, useViewPreferences, useMobilePanel, type AccessibleCutEntry } from '@/hooks'
 import type { SeedCut } from '@/lib/scenario'
 import { compareCutsByStageAndVersion } from '@/lib/cuts'
 import { assetToSelectionEntity } from '@/lib/selection-actions'
@@ -56,6 +55,7 @@ export function LibraryView() {
   const { accessibleCuts } = useCuts()
   const { scopedAssets } = useSmartCollections()
   const { sidePanelOpen, setSidePanelOpen } = useViewPreferences()
+  const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
   const {
     selectedIds,
     primaryId,
@@ -152,15 +152,26 @@ export function LibraryView() {
     router.push(`/nextgen/assets/${nextAsset.id}`)
   }
   if (!hydrated) {
-    return <AppLayout><div className="flex-1" /></AppLayout>
+    return <div className="h-full" />
   }
 
   return (
-    <AppLayout>
+    <>
       <div className="h-full flex min-h-0">
         <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
-            <div className="flex items-start justify-between gap-4">
+            <MobileToolbar title="Cuts" actions={
+              <Button
+                variant="icon"
+                size="icon"
+                onClick={togglePanel}
+                aria-label={panelOpen ? 'Close panel' : 'Open panel'}
+                className={cn(panelOpen && 'bg-surface-3')}
+              >
+                <Info className="w-4 h-4" />
+              </Button>
+            } />
+            <div className="hidden md:flex items-start justify-between gap-4">
               <PageHeader
                 title="Cuts"
                 description={
@@ -171,9 +182,9 @@ export function LibraryView() {
               />
               <Button
                 variant="icon"
-                onClick={() => setSidePanelOpen(!sidePanelOpen)}
-                aria-label={sidePanelOpen ? 'Close panel' : 'Open panel'}
-                className={cn(sidePanelOpen && 'bg-surface-3')}
+                onClick={togglePanel}
+                aria-label={panelOpen ? 'Close panel' : 'Open panel'}
+                className={cn(panelOpen && 'bg-surface-3')}
               >
                 <PanelRight className="w-4 h-4" />
               </Button>
@@ -202,18 +213,13 @@ export function LibraryView() {
               />
             )}
           </div>
-
-          <SelectionBar
-            selectedEntities={selectedEntities}
-            onClear={clearSelection}
-          />
         </div>
 
-        <ResponsivePanel open={sidePanelOpen} onClose={() => setSidePanelOpen(false)}>
+        <ResponsivePanel open={panelOpen} onClose={closePanel}>
           {primaryAsset ? (
             <AssetDetailPanelContent
               asset={primaryAsset}
-              onClose={() => { clearSelection(); setSidePanelOpen(false) }}
+              onClose={() => { clearSelection(); closePanel() }}
               contextGroups={contextGroups}
               olderVersions={primaryOlderVersions}
               onContextAssetClick={handlePanelAssetSwitch}
@@ -223,7 +229,7 @@ export function LibraryView() {
             <>
               <div className="flex items-center justify-between gap-3 p-4 border-b border-border-dim">
                 <span className="text-body-0-bold text-foreground">Info</span>
-                <Button variant="icon" compact onClick={() => setSidePanelOpen(false)} className="flex-shrink-0">
+                <Button variant="icon" compact onClick={closePanel} className="flex-shrink-0">
                   <X className="w-4 h-4" />
                 </Button>
               </div>
@@ -239,11 +245,16 @@ export function LibraryView() {
         </ResponsivePanel>
       </div>
 
+      <SelectionBar
+        selectedEntities={selectedEntities}
+        onClear={clearSelection}
+      />
+
       <ReleaseModal
         open={!!releaseTarget}
         onClose={() => setReleaseTarget(null)}
         cut={releaseTarget}
       />
-    </AppLayout>
+    </>
   )
 }

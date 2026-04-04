@@ -64,6 +64,13 @@ export type Grant = {
 }
 
 
+/** Check if a grant is active (not revoked, not expired) */
+export function isGrantActive(grant: Grant): boolean {
+  if (grant.revokedAt) return false
+  if (grant.expiresAt && grant.expiresAt < new Date().toISOString().slice(0, 10)) return false
+  return true
+}
+
 export const DEFAULT_ROLE_GROUPS: RoleGroup[] = buildRoleGroups()
 export const DEFAULT_GRANTS: Grant[] = buildGrants()
 
@@ -182,7 +189,7 @@ function resolveMatchingGrants(
   resourceId: string,
 ): { direct: Grant[]; team: Grant[] } {
   const activeGrants = grants.filter(
-    (grant) => grant.resource.id === resourceId && !grant.revokedAt,
+    (grant) => grant.resource.id === resourceId && isGrantActive(grant),
   )
 
   return {
@@ -223,7 +230,7 @@ export function getResourceLabel(resourceId: string): string {
 }
 
 function getProjectLevelGrants(grants: Grant[]): Grant[] {
-  return grants.filter((grant) => grant.resource.type === 'project' && !grant.revokedAt)
+  return grants.filter((grant) => grant.resource.type === 'project' && isGrantActive(grant))
 }
 
 function isPolicyResource(resource: Pick<ResourceRef, 'id' | 'type'>): boolean {
@@ -394,11 +401,11 @@ function grantToView(grant: Grant): GrantView {
 }
 
 export function getResourceGrants(resourceId: string, grants: Grant[]): Grant[] {
-  return grants.filter((grant) => grant.resource.id === resourceId && !grant.revokedAt)
+  return grants.filter((grant) => grant.resource.id === resourceId && isGrantActive(grant))
 }
 
 function getGrantsByGrantor(userId: string, grants: Grant[]): Grant[] {
-  return grants.filter((grant) => grant.grantedByUserId === userId && !grant.revokedAt)
+  return grants.filter((grant) => grant.grantedByUserId === userId && isGrantActive(grant))
 }
 
 function getGrantsForUser(userId: string, grants: Grant[]): Grant[] {
@@ -411,7 +418,7 @@ function getGrantsForUser(userId: string, grants: Grant[]): Grant[] {
 }
 
 function getAllActiveGrants(grants: Grant[]): Grant[] {
-  return grants.filter((grant) => !grant.revokedAt)
+  return grants.filter((grant) => isGrantActive(grant))
 }
 
 export function buildSharesCreatedByMe(userId: string, grants: Grant[]): GrantView[] {
