@@ -1,7 +1,7 @@
 'use client'
 
-import { useCallback } from 'react'
-import { useRouter, useSearchParams, usePathname } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { useIsMobile } from './useMediaQuery'
 
 /**
@@ -15,16 +15,32 @@ export function useMobilePanel(sidePanelOpen: boolean, setSidePanelOpen: (open: 
   const isMobile = useIsMobile()
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
+  const [isInfoParam, setIsInfoParam] = useState(false)
 
-  const isInfoParam = searchParams.get('info') === '1'
   const isOpen = isMobile ? isInfoParam : sidePanelOpen
+
+  useEffect(() => {
+    if (!isMobile) {
+      setIsInfoParam(false)
+      return
+    }
+
+    const syncFromLocation = () => {
+      setIsInfoParam(new URLSearchParams(window.location.search).get('info') === '1')
+    }
+
+    syncFromLocation()
+    window.addEventListener('popstate', syncFromLocation)
+    return () => window.removeEventListener('popstate', syncFromLocation)
+  }, [isMobile, pathname])
 
   const toggle = useCallback(() => {
     if (isMobile) {
       if (isInfoParam) {
+        setIsInfoParam(false)
         router.back()
       } else {
+        setIsInfoParam(true)
         router.push(`${pathname}?info=1`)
       }
     } else {
@@ -34,6 +50,7 @@ export function useMobilePanel(sidePanelOpen: boolean, setSidePanelOpen: (open: 
 
   const close = useCallback(() => {
     if (isMobile && isInfoParam) {
+      setIsInfoParam(false)
       router.back()
     } else {
       setSidePanelOpen(false)
