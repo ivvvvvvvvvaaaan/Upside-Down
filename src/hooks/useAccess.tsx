@@ -38,6 +38,7 @@ import type {
   ShareMode,
 } from '@/lib/grants'
 import { useFileTree } from './useFileTree'
+import { isUserInTeam } from '@/lib/teams'
 import { getDepartmentWorkspaceFiles, findNodeInTree, DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { SCENARIO, buildGuestLinks } from '@/lib/scenario'
@@ -141,6 +142,9 @@ interface AccessContextValue {
   // Add shared content to workspace as a synced reference folder
   addToWorkspace: (shareId: string, departmentId: DepartmentId) => void
   workspaceReferenceIds: Set<string>
+
+  // Dropbox mode — check if current user can upload to a collection
+  canUploadToCollection: (collectionId: string) => boolean
 }
 
 const AccessContext = createContext<AccessContextValue | null>(null)
@@ -626,6 +630,20 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     markShareRead(shareId)
   }, [sharesReceivedByMe, workspaceReferenceIds, createFolder, markShareRead])
 
+  // Dropbox mode — check if current user can upload to a collection
+  const canUploadToCollection = useCallback((collectionId: string): boolean => {
+    if (!userId) return false
+    return grants.some(g =>
+      g.resource.id === collectionId &&
+      isGrantActive(g) &&
+      g.allowUpload &&
+      (
+        (g.principal.type === 'user' && g.principal.userId === userId) ||
+        (g.principal.type === 'team' && isUserInTeam(userId, g.principal.teamId))
+      )
+    )
+  }, [userId, grants])
+
   // Shares visible to the current user — grants on resources they can access
   const visibleShares = useMemo(() => {
     if (!activePersona) return allProjectShares // admin sees all
@@ -679,7 +697,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     resource: ResourceRef,
     principal: PrincipalRef,
     profileId: AccessProfileId,
-    options?: { shareMode?: ShareMode; snapshotAssetIds?: string[] },
+    options?: { shareMode?: ShareMode; snapshotAssetIds?: string[]; allowUpload?: boolean },
   ) => {
     if (activePersona && !userId) return
 
@@ -697,6 +715,12 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         grantedAt: new Date().toISOString().slice(0, 10),
         shareMode: options?.shareMode,
         snapshotAssetIds: options?.snapshotAssetIds,
+        allowUpload: options?.allowUpload,
+      }
+
+      // If upload is enabled, add the upload permission
+      if (options?.allowUpload) {
+        newGrant.permissions = [...newGrant.permissions, 'upload']
       }
 
       return [...prev, newGrant]
@@ -842,6 +866,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     unreadInboxCount,
     addToWorkspace,
     workspaceReferenceIds,
+    canUploadToCollection,
   }), [
     canAccess,
     filterByAccess,
@@ -889,6 +914,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     unreadInboxCount,
     addToWorkspace,
     workspaceReferenceIds,
+    canUploadToCollection,
   ])
 
   return (

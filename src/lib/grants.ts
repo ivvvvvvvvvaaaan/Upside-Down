@@ -39,6 +39,7 @@ export type Permission =
   | 'comment'
   | 'share'
   | 'edit-acl'
+  | 'upload'
 
 export type RoleGroup = {
   id: AccessProfileId
@@ -67,6 +68,8 @@ export type Grant = {
   shareMode?: ShareMode
   /** Frozen asset IDs for snapshot mode — overrides collection.assetIds for this recipient */
   snapshotAssetIds?: string[]
+  /** Dropbox mode — recipient can upload deliveries into this collection */
+  allowUpload?: boolean
 }
 
 
