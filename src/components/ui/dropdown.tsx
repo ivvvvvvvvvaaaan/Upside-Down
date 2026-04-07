@@ -84,7 +84,7 @@ export function Dropdown({
               'inline-flex items-center gap-1.5 rounded border border-border-dim',
               'bg-transparent hover:border-border-subtle transition-colors',
               'text-foreground disabled:opacity-50',
-              size === 'compact' ? 'px-2 py-1 text-label-0-regular' : 'px-3 py-2 text-body-0-regular',
+              size === 'compact' ? 'h-8 px-2 text-label-0-regular' : 'h-10 px-3 text-body-0-regular',
               triggerClassName,
             )}
           >
