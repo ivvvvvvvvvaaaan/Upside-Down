@@ -53,18 +53,6 @@ export type WorkspaceCollection = {
 export type Collection = CuratedCollection | SmartCollectionEntry | WorkspaceCollection
 
 // ---------------------------------------------------------------------------
-// Common fields (available on all flavors without narrowing)
-// ---------------------------------------------------------------------------
-
-export type CollectionCommon = {
-  id: string
-  name: string
-  createdBy?: string
-  createdAt: Date
-  flavor: Collection['flavor']
-}
-
-// ---------------------------------------------------------------------------
 // Type guards
 // ---------------------------------------------------------------------------
 

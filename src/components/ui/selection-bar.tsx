@@ -10,7 +10,9 @@ import { BatchShareModal } from './batch-share-modal'
 import { CollectionMembershipModal } from './collection-membership-modal'
 import { useAccess } from '@/hooks'
 import { useShareAsCollection } from '@/hooks/useShareAsCollection'
+import type { ShareTarget } from '@/hooks/useShareAsCollection'
 import type { SelectionEntity } from '@/lib/selection-actions'
+import type { ResourceRef } from '@/lib/grants'
 import { evaluateSelectionActions, getSelectionCountLabel } from '@/lib/selection-actions'
 
 interface SelectionBarProps {
@@ -59,7 +61,7 @@ export function SelectionBar({
   const [showBatchShareModal, setShowBatchShareModal] = useState(false)
   const [showAccessModal, setShowAccessModal] = useState(false)
   // Resolved share target (may differ from selected entity if folder → collection)
-  const [shareTarget, setShareTarget] = useState<import('@/hooks/useShareAsCollection').ShareTarget | null>(null)
+  const [shareTarget, setShareTarget] = useState<ShareTarget | null>(null)
 
   const evaluation = useMemo(() => evaluateSelectionActions({
     selectedEntities,
@@ -173,7 +175,7 @@ export function SelectionBar({
           open={showAccessModal}
           onClose={() => { setShowAccessModal(false); setShareTarget(null) }}
           resourceId={shareTarget.resourceRef.id}
-          resourceRef={shareTarget.resourceRef as import('@/lib/grants').ResourceRef}
+          resourceRef={shareTarget.resourceRef as ResourceRef}
           title={shareTarget.name}
         />
       )}

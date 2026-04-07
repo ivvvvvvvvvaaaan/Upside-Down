@@ -67,19 +67,18 @@ export function useCollections(): UseCollectionsValue {
   const userCollections = useUserCollections()
   const smartCollections = useSmartCollections()
 
-  // Merge all collections into a unified list
-  const allCollections = useMemo((): Collection[] => {
-    const curated = userCollections.collections.map(fromUserCollection)
-    const smart = smartCollections.allCollections.map(fromSmartCollection)
-    return [...curated, ...smart]
-  }, [userCollections.collections, smartCollections.allCollections])
+  const curatedCollections = useMemo(
+    () => userCollections.collections.map(fromUserCollection),
+    [userCollections.collections],
+  )
 
-  // Visible collections (persona-scoped)
+  const allCollections = useMemo((): Collection[] => {
+    return [...curatedCollections, ...smartCollections.allCollections.map(fromSmartCollection)]
+  }, [curatedCollections, smartCollections.allCollections])
+
   const visibleCollections = useMemo((): Collection[] => {
-    const curated = userCollections.collections.map(fromUserCollection)
-    const smart = smartCollections.visibleCollections.map(fromSmartCollection)
-    return [...curated, ...smart]
-  }, [userCollections.collections, smartCollections.visibleCollections])
+    return [...curatedCollections, ...smartCollections.visibleCollections.map(fromSmartCollection)]
+  }, [curatedCollections, smartCollections.visibleCollections])
 
   // Unified lookup — check both providers
   const getCollection = useCallback((id: string): Collection | undefined => {

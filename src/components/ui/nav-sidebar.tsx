@@ -575,9 +575,7 @@ function SharedCollectionNavItems() {
   return (
     <>
       {sharedCollections.map((entry) => {
-        const href = entry.resourceType === 'smart-collection'
-          ? `/nextgen/collections/${entry.resourceId}`
-          : `/nextgen/collections/${entry.resourceId}`
+        const href = `/nextgen/collections/${entry.resourceId}`
         const count = getCollectionAssetCount(entry.resourceId)
         return (
           <TreeNavLink
