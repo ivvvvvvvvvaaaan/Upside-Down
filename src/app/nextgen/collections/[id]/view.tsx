@@ -17,6 +17,7 @@ import {
   MobileToolbar,
 } from '@/components/ui'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
+import { Upload } from 'lucide-react'
 import { getGridColumns, useAccess, useAssetSelection, usePersona, useViewPreferences, useUserCollections, useSmartCollections, useMobilePanel } from '@/hooks'
 import type { Asset } from '@/lib/data'
 import { PERSONAS } from '@/lib/personas'
@@ -33,7 +34,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const router = useRouter()
 
   const { activePersona, isAdmin, hydrated } = usePersona()
-  const { filterByAccess, sharesReceivedByMe, allProjectShares, getVisibleCollection, canShare } = useAccess()
+  const { filterByAccess, sharesReceivedByMe, allProjectShares, getVisibleCollection, canShare, canUploadToCollection } = useAccess()
   const { getCollection, deleteCollection } = useUserCollections()
   const { getRelatedCollectionsForAssets, scopedAssets, ensureAssetsLoaded } = useSmartCollections()
   const { selectedIds, primaryId, handleAssetClick, selectOnly, clearSelection } = useAssetSelection()
@@ -259,6 +260,20 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                     title="No assets"
                     message="This collection doesn't have any assets yet"
                   />
+                )}
+
+                {/* Upload zone — shown for recipients with upload permission */}
+                {canUploadToCollection(collectionId) && (
+                  <div className="mt-6 border-2 border-dashed border-border-dim rounded-lg p-8 flex flex-col items-center gap-3 text-center hover:border-border-subtle transition-colors">
+                    <Upload className="w-8 h-8 text-foreground-dim" />
+                    <div>
+                      <p className="text-body-0-bold text-foreground">Upload deliveries</p>
+                      <p className="text-body-0-regular text-foreground-dim">Drop files here or click to upload</p>
+                    </div>
+                    <Button variant="secondary">
+                      Choose files
+                    </Button>
+                  </div>
                 )}
               </Stack>
             </div>
