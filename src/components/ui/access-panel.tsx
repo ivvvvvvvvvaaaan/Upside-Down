@@ -236,7 +236,8 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
   const canAddGrants = Boolean(resourceRef) && canShare(resourceRef)
   const canManageAllGrants = Boolean(resourceRef) && canEditAcl(resourceRef)
 
-  // Role group as quick preset, toggles as custom override
+  // Role group as quick preset, toggles as custom override (progressive disclosure)
+  const [customMode, setCustomMode] = useState(false)
   const [selectedRole, setSelectedRole] = useState<AccessProfileId | 'custom'>('viewer')
   const [canDownload, setCanDownload] = useState(false)
   const [canComment, setCanComment] = useState(false)
@@ -261,7 +262,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
     if (!rg) return
     setCanDownload(rg.permissions.includes('download'))
     setCanComment(rg.permissions.includes('comment'))
-    setCanUpload(rg.permissions.includes('upload') || rg.permissions.includes('write'))
+    setCanUpload(rg.permissions.includes('upload'))
   }
 
   // When a toggle changes manually, switch to custom mode
@@ -429,54 +430,70 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
         </div>
       )}
 
-      {/* Role + capability toggles */}
+      {/* Permissions — role preset or custom toggles (progressive disclosure) */}
       {!readOnly && canAddGrants && (
         <div className="space-y-3">
-          {/* Role group dropdown — quick preset */}
-          <div className="flex items-center justify-between">
-            <span className="text-body-0-bold text-foreground-dim">Permission</span>
-            <Select
-              options={roleOptions}
-              value={selectedRole}
-              onChange={handleRoleChange}
-              className="w-auto flex-shrink-0"
-            />
-          </div>
-
-          {/* Capability toggles — selecting a role pre-fills these, manual toggle switches to Custom */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between py-1">
-              <span className="text-body-0-regular text-foreground">Can download</span>
-              <Toggle checked={canDownload} onChange={handleToggle(setCanDownload)} aria-label="Can download" />
-            </div>
-            <div className="flex items-center justify-between py-1">
-              <span className="text-body-0-regular text-foreground">Can comment</span>
-              <Toggle checked={canComment} onChange={handleToggle(setCanComment)} aria-label="Can comment" />
-            </div>
-            <div className="flex items-center justify-between py-1">
-              <span className="text-body-0-regular text-foreground">Can upload</span>
-              <Toggle checked={canUpload} onChange={handleToggle(setCanUpload)} aria-label="Can upload" />
-            </div>
-            <div className="flex items-center justify-between py-1">
-              <div className="flex items-center gap-3">
-                <span className="text-body-0-regular text-foreground">Expires</span>
-                {expires && (
-                  <select
-                    value={expiresInDays}
-                    onChange={e => setExpiresInDays(Number(e.target.value))}
-                    className="text-body-0-regular text-foreground bg-surface-flat border border-border-dim rounded px-2 py-0.5"
-                >
-                  <option value={1}>1 day</option>
-                  <option value={7}>7 days</option>
-                  <option value={14}>14 days</option>
-                  <option value={30}>30 days</option>
-                  <option value={90}>90 days</option>
-                </select>
-              )}
-            </div>
-            <Toggle checked={expires} onChange={handleToggle(setExpires)} aria-label="Expires" />
-          </div>
-          </div>
+          {!customMode ? (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-body-0-bold text-foreground-dim">Permission</span>
+                <Select
+                  options={roleOptions.filter(o => o.value !== 'custom')}
+                  value={selectedRole === 'custom' ? 'viewer' : selectedRole}
+                  onChange={handleRoleChange}
+                  className="w-auto flex-shrink-0"
+                />
+              </div>
+              <button
+                onClick={() => { setCustomMode(true); setSelectedRole('custom') }}
+                className="text-body-0-regular text-foreground-system-link hover:underline"
+              >
+                Customize permissions
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-body-0-regular text-foreground">Can download</span>
+                  <Toggle checked={canDownload} onChange={handleToggle(setCanDownload)} aria-label="Can download" />
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-body-0-regular text-foreground">Can comment</span>
+                  <Toggle checked={canComment} onChange={handleToggle(setCanComment)} aria-label="Can comment" />
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-body-0-regular text-foreground">Can upload</span>
+                  <Toggle checked={canUpload} onChange={handleToggle(setCanUpload)} aria-label="Can upload" />
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <div className="flex items-center gap-3">
+                    <span className="text-body-0-regular text-foreground">Expires</span>
+                    {expires && (
+                      <select
+                        value={expiresInDays}
+                        onChange={e => setExpiresInDays(Number(e.target.value))}
+                        className="text-body-0-regular text-foreground bg-surface-flat border border-border-dim rounded px-2 py-0.5"
+                      >
+                        <option value={1}>1 day</option>
+                        <option value={7}>7 days</option>
+                        <option value={14}>14 days</option>
+                        <option value={30}>30 days</option>
+                        <option value={90}>90 days</option>
+                      </select>
+                    )}
+                  </div>
+                  <Toggle checked={expires} onChange={handleToggle(setExpires)} aria-label="Expires" />
+                </div>
+              </div>
+              <button
+                onClick={() => { setCustomMode(false); handleRoleChange('viewer') }}
+                className="text-body-0-regular text-foreground-system-link hover:underline"
+              >
+                Use preset
+              </button>
+            </>
+          )}
         </div>
       )}
 
