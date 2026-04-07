@@ -2,8 +2,10 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { X, Users, Search, Info, Link2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Input } from './input'
 import { Select } from './select'
+import { Dropdown } from './dropdown'
 import { Button } from './button'
 import { Avatar } from './avatar'
 import { Toggle } from './switch'
@@ -238,14 +240,25 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
 
   // Role + expiration — consistent model at every level
   const [addAsRole, setAddAsRole] = useState<AccessProfileId>('view')
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false)
   const [expires, setExpires] = useState(false)
   const [expiresInDays, setExpiresInDays] = useState(7)
+
+  const ROLE_DESCRIPTIONS: Record<string, string> = {
+    view: 'Open and download',
+    comment: 'View + leave review notes',
+    contribute: 'View + edit + comment',
+    edit: 'Edit + share with others',
+    manage: 'Full control',
+  }
 
   const addRoleOptions = useMemo(() => {
     if (!resourceRef) return roleGroupOptions(roleGroups)
     const allowedProfiles = new Set(getGrantableProfiles(resourceRef))
     return roleGroupOptions(roleGroups).filter((option) => allowedProfiles.has(option.value as AccessProfileId))
   }, [resourceRef, roleGroups, getGrantableProfiles])
+
+  const selectedRoleLabel = addRoleOptions.find(o => o.value === addAsRole)?.label ?? 'Can view'
 
   // Users with 'share' can modify grants they created; 'edit-acl' can modify any grant
   const canManageGrant = (grant: Grant): boolean => {
@@ -390,12 +403,31 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
                 </div>
               )}
             </div>
-            <Select
-              options={addRoleOptions}
-              value={addAsRole}
-              onChange={(value) => setAddAsRole(value as AccessProfileId)}
-              className="w-auto flex-shrink-0"
-            />
+            <Dropdown
+              label={selectedRoleLabel}
+              align="end"
+              width="lg"
+              open={roleDropdownOpen}
+              onOpenChange={setRoleDropdownOpen}
+            >
+              <div className="py-1">
+                {addRoleOptions.map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => { setAddAsRole(option.value as AccessProfileId); setRoleDropdownOpen(false) }}
+                    className={cn(
+                      'w-full text-left px-4 py-2 hover:bg-surface-2 transition-colors',
+                      addAsRole === option.value && 'bg-surface-2',
+                    )}
+                  >
+                    <span className="text-body-0-bold text-foreground block">{option.label}</span>
+                    {ROLE_DESCRIPTIONS[option.value] && (
+                      <span className="text-label-0-regular text-foreground-dim block">{ROLE_DESCRIPTIONS[option.value]}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </Dropdown>
           </div>
           <div className="flex items-center justify-between py-1">
             <div className="flex items-center gap-3">
