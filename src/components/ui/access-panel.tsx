@@ -417,11 +417,11 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
                     key={option.value}
                     onClick={() => { setAddAsRole(option.value as AccessProfileId); setRoleDropdownOpen(false) }}
                     className={cn(
-                      'w-full text-left px-4 py-2 hover:bg-surface-2 transition-colors',
-                      addAsRole === option.value && 'bg-surface-2',
+                      'w-full text-left px-4 py-2 hover:bg-surface-3 transition-colors rounded',
+                      addAsRole === option.value && 'bg-surface-3',
                     )}
                   >
-                    <span className="text-body-0-bold text-foreground block">{option.label}</span>
+                    <span className="text-body-0-regular text-foreground block">{option.label}</span>
                     {ROLE_DESCRIPTIONS[option.value] && (
                       <span className="text-label-0-regular text-foreground-dim block">{ROLE_DESCRIPTIONS[option.value]}</span>
                     )}
