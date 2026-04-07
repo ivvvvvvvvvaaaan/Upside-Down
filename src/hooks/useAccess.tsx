@@ -137,6 +137,10 @@ interface AccessContextValue {
   readShareIds: Set<string>
   markShareRead: (id: string) => void
   unreadInboxCount: number
+
+  // Add shared content to workspace as a synced reference folder
+  addToWorkspace: (shareId: string, departmentId: DepartmentId) => void
+  workspaceReferenceIds: Set<string>
 }
 
 const AccessContext = createContext<AccessContextValue | null>(null)
@@ -186,7 +190,7 @@ function loadStoredRoleGroups(): RoleGroup[] {
 export function AccessProvider({ children }: { children: ReactNode }) {
   const { activePersona } = usePersona()
   const { collections } = useUserCollections()
-  const { tree: fileTree } = useFileTree()
+  const { tree: fileTree, createFolder } = useFileTree()
   const [grants, setGrantsState] = useState<Grant[]>(() => structuredClone(DEFAULT_GRANTS))
   const setGrants: typeof setGrantsState = useCallback((action) => {
     setGrantsState((prev) => {
@@ -284,6 +288,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       return next
     })
   }, [])
+
+  // Workspace references state — populated by addToWorkspace below
+  const [workspaceReferenceIds, setWorkspaceReferenceIds] = useState<Set<string>>(() => new Set())
 
   const toggleDepartmentDiscovery = useCallback((deptId: DepartmentId) => {
     setDiscoveryDisabledDepts((prev) => {
@@ -600,6 +607,25 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return buildAllProjectShares(grants)
   }, [grants])
 
+  // Add shared content to workspace as a synced reference folder
+  const addToWorkspace = useCallback((shareId: string, departmentId: DepartmentId) => {
+    const share = sharesReceivedByMe.find(s => s.id === shareId)
+    if (!share) return
+    if (workspaceReferenceIds.has(shareId)) return
+
+    const deptRootId = DEPARTMENT_FOLDER_MAP[departmentId]?.id
+    if (deptRootId) {
+      createFolder(deptRootId, `${share.label} ↗`)
+    }
+
+    setWorkspaceReferenceIds(prev => {
+      const next = new Set(prev)
+      next.add(shareId)
+      return next
+    })
+    markShareRead(shareId)
+  }, [sharesReceivedByMe, workspaceReferenceIds, createFolder, markShareRead])
+
   // Shares visible to the current user — grants on resources they can access
   const visibleShares = useMemo(() => {
     if (!activePersona) return allProjectShares // admin sees all
@@ -814,6 +840,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     readShareIds,
     markShareRead,
     unreadInboxCount,
+    addToWorkspace,
+    workspaceReferenceIds,
   }), [
     canAccess,
     filterByAccess,
@@ -859,6 +887,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     readShareIds,
     markShareRead,
     unreadInboxCount,
+    addToWorkspace,
+    workspaceReferenceIds,
   ])
 
   return (
