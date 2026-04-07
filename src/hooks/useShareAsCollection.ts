@@ -1,13 +1,13 @@
 /**
  * Hook: Share as Collection
  *
- * When sharing a folder, auto-creates a curated collection from the folder's
- * contents and returns a resourceRef pointing to the collection.
- * When sharing a collection or asset, passes through directly.
+ * When sharing a folder, auto-creates a workspace collection bound to the
+ * folder path. The collection resolves assets from the folder at query time —
+ * when new files land in the folder, the collection's contents update.
  *
- * Folder shares default to snapshot mode — the asset list is frozen at share
- * time. This prevents new files added to the folder from auto-leaking to
- * recipients without approval.
+ * For snapshot shares (vendor handoffs, time-boxed access), the sharer
+ * toggles snapshot mode in the share modal. The grant then freezes the
+ * asset list at share time via snapshotAssetIds.
  */
 
 import { useCallback } from 'react'
@@ -20,52 +20,54 @@ export interface ShareTarget {
   name: string
   /** Default share mode for this target */
   defaultShareMode: ShareMode
-  /** Asset IDs to freeze for snapshot mode (only for folder → collection conversions) */
-  snapshotAssetIds?: string[]
+  /** Current asset IDs (for snapshot mode — caller freezes these on the grant) */
+  currentAssetIds?: string[]
 }
 
 export function useShareAsCollection() {
-  const { collections, createCollection } = useUserCollections()
+  const { collections, createWorkspaceCollection } = useUserCollections()
 
   /**
    * Given a resourceRef, ensure it points to a collection.
-   * If it's a folder, create a collection from its contents first.
-   * Returns the collection's resourceRef, name, and default share mode.
+   * If it's a folder, create a workspace collection bound to it.
    */
   const resolveShareTarget = useCallback((
     resourceRef: ResourceRef,
     label: string,
   ): ShareTarget => {
-    // Already a collection or smart-collection — pass through, default to live
+    // Already a collection or smart-collection — pass through
     if (resourceRef.type === 'collection' || resourceRef.type === 'smart-collection') {
       return { resourceRef, name: label, defaultShareMode: 'live' }
     }
 
-    // Folder → create a curated collection from folder contents, default to snapshot
+    // Folder → create a workspace collection bound to this folder (live by default)
     if (resourceRef.type === 'folder') {
-      const assetIds = getAssetIdsForFolder(resourceRef.id)
-      const collectionName = `${label} (shared)`
-      const existing = collections.find(c => c.name === collectionName)
+      const collectionName = label
+      const existing = collections.find(c => c.name === collectionName && c.boundFolderId === resourceRef.id)
       if (existing) {
         return {
           resourceRef: { id: existing.id, type: 'collection' },
           name: existing.name,
-          defaultShareMode: 'snapshot',
-          snapshotAssetIds: assetIds,
+          defaultShareMode: 'live',
+          currentAssetIds: getAssetIdsForFolder(resourceRef.id),
         }
       }
-      const collection = createCollection(collectionName, assetIds)
+      const collection = createWorkspaceCollection(
+        collectionName,
+        resourceRef.id,
+        resourceRef.departmentId ?? '',
+      )
       return {
         resourceRef: { id: collection.id, type: 'collection' },
         name: collection.name,
-        defaultShareMode: 'snapshot',
-        snapshotAssetIds: assetIds,
+        defaultShareMode: 'live',
+        currentAssetIds: getAssetIdsForFolder(resourceRef.id),
       }
     }
 
-    // Asset, cut, etc. — pass through as-is, no share mode concept
+    // Asset, cut, etc. — pass through as-is
     return { resourceRef, name: label, defaultShareMode: 'live' }
-  }, [collections, createCollection])
+  }, [collections, createWorkspaceCollection])
 
   return { resolveShareTarget }
 }

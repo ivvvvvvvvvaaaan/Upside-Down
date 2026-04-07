@@ -75,7 +75,18 @@ export function isWorkspace(c: Collection): c is WorkspaceCollection {
 import type { UserCollection } from '@/hooks/useUserCollections'
 import type { SmartCollection } from '@/lib/data-client'
 
-export function fromUserCollection(uc: UserCollection): CuratedCollection {
+export function fromUserCollection(uc: UserCollection): CuratedCollection | WorkspaceCollection {
+  if (uc.boundFolderId && uc.boundDepartmentId) {
+    return {
+      flavor: 'workspace',
+      id: uc.id,
+      name: uc.name,
+      boundFolderId: uc.boundFolderId,
+      boundDepartmentId: uc.boundDepartmentId as DepartmentId,
+      createdBy: uc.createdBy,
+      createdAt: uc.createdAt,
+    }
+  }
   return {
     flavor: 'curated',
     id: uc.id,

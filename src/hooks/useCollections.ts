@@ -92,7 +92,7 @@ export function useCollections(): UseCollectionsValue {
   // Create curated collection (delegates to user collections)
   const createCurated = useCallback((name: string, assetIds: string[]): CuratedCollection => {
     const uc = userCollections.createCollection(name, assetIds)
-    return fromUserCollection(uc)
+    return fromUserCollection(uc) as CuratedCollection
   }, [userCollections])
 
   // Add assets to curated collection

@@ -76,6 +76,9 @@ type ScenarioCollection = {
   name: string
   createdBy: string
   assetIds: string[]
+  /** If set, this collection resolves assets from a folder at query time */
+  boundFolderId?: string
+  boundDepartmentId?: string
 }
 
 type ScenarioCut = {
@@ -556,9 +559,10 @@ export const SCENARIO: Scenario = {
     { id: 'coll-creature-designs',  name: 'Car Designs', createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-demogorgon', 'ws-art-concept-creature', 'ws-art-char-eleven'] },
     { id: 'coll-key-locations',     name: 'Key Circuits',    createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-ud-env', 'ws-art-concept-lab', 'ws-art-env-byers', 'ws-art-env-starcourt'] },
     { id: 'coll-hero-shots',        name: 'Hero Shots',       createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-020-010', 'ws-vfx-comp-eleven'] },
-    // Collections created from folder shares (unified model — no direct folder shares)
-    { id: 'coll-cam-selects',      name: 'Camera Selects',   createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-sel-1', 'ws-cam-sel-2', 'ws-cam-sel-billy', 'ws-cam-sel-eleven', 'ws-cam-sel-portal'] },
-    { id: 'coll-cam-lens-data',    name: 'Lens Data',        createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-lens-1', 'ws-cam-lens-2', 'ws-cam-lens-3', 'ws-cam-lens-arri', 'ws-cam-lens-cooke', 'ws-cam-lens-zeiss'] },
+    // Workspace collections (folder-bound, live sync) — ongoing cross-department workflows
+    { id: 'coll-cam-selects',      name: 'Camera Selects',   createdBy: 'tnakamura@netflix.com', assetIds: [], boundFolderId: 'ws-cam-selects', boundDepartmentId: 'camera' },
+    { id: 'coll-cam-lens-data',    name: 'Lens Data',        createdBy: 'tnakamura@netflix.com', assetIds: [], boundFolderId: 'ws-cam-lensmaps', boundDepartmentId: 'camera' },
+    // Curated collections (snapshot shares — discrete handoffs)
     { id: 'coll-cam-dailies',      name: 'Dailies (concept reference)', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'] },
     { id: 'coll-vfx-vendor-drop',  name: 'Framestore Drop',  createdBy: 'schen@netflix.com', assetIds: [] },
   ],
@@ -859,5 +863,7 @@ export function buildSeedCollections(): UserCollection[] {
     assetIds: c.assetIds,
     createdAt: new Date('2026-02-14'),
     createdBy: c.createdBy,
+    boundFolderId: c.boundFolderId,
+    boundDepartmentId: c.boundDepartmentId,
   }))
 }

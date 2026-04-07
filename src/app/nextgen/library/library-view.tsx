@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { Film, PanelRight, Info, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
-import { PageHeader, EmptyState, SelectionBar, Button, MobileToolbar } from '@/components/ui'
+import { PageHeader, EmptyState, SelectionBar, Button, MobileToolbar, CardGrid } from '@/components/ui'
 import { AssetCard } from '@/components/ui/asset-card'
 import { ReleaseModal } from '@/components/ui/release-modal'
 import { useCuts, usePersona, useAssetSelection, useSmartCollections, useViewPreferences, useMobilePanel, type AccessibleCutEntry } from '@/hooks'
@@ -34,7 +34,7 @@ function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, o
           {cuts.length} {cuts.length === 1 ? 'version' : 'versions'}
         </span>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <CardGrid columns={4} gap="4">
         {cuts.map((cut) => (
           <AssetCard
             key={cut.asset.id}
@@ -45,7 +45,7 @@ function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, o
             onMenuClick={onMenuClick ? () => onMenuClick(cut.asset) : undefined}
           />
         ))}
-      </div>
+      </CardGrid>
     </div>
   )
 }
@@ -157,9 +157,10 @@ export function LibraryView() {
 
   return (
     <>
-      <div className="h-full flex min-h-0">
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
+      <div className="h-full flex">
+        <div className="flex-1 min-w-0 flex flex-col">
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
             <MobileToolbar title="Cuts" actions={
               <Button
                 variant="icon"
@@ -212,6 +213,7 @@ export function LibraryView() {
                   : 'Cuts shared to you or your teams will appear here.'}
               />
             )}
+            </div>
           </div>
         </div>
 

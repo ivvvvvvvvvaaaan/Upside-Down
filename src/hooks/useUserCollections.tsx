@@ -15,11 +15,15 @@ export type UserCollection = {
   assetIds: string[]
   createdAt: Date
   createdBy?: string
+  /** If set, this collection resolves assets from a folder at query time */
+  boundFolderId?: string
+  boundDepartmentId?: string
 }
 
 interface UserCollectionsContextValue {
   collections: UserCollection[]
   createCollection: (name: string, assetIds: string[]) => UserCollection
+  createWorkspaceCollection: (name: string, folderId: string, departmentId: string) => UserCollection
   addAssetsToCollection: (id: string, assetIds: string[]) => void
   deleteCollection: (id: string) => void
   getCollection: (id: string) => UserCollection | undefined
@@ -38,6 +42,20 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
       assetIds,
       createdAt: new Date(),
       createdBy: activePersona?.email,
+    }
+    setCollections(prev => [...prev, newCollection])
+    return newCollection
+  }, [activePersona])
+
+  const createWorkspaceCollection = useCallback((name: string, folderId: string, departmentId: string): UserCollection => {
+    const newCollection: UserCollection = {
+      id: `ws-col-${Date.now()}`,
+      name,
+      assetIds: [], // resolved at query time from boundFolderId
+      createdAt: new Date(),
+      createdBy: activePersona?.email,
+      boundFolderId: folderId,
+      boundDepartmentId: departmentId,
     }
     setCollections(prev => [...prev, newCollection])
     return newCollection
@@ -66,10 +84,11 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
     <UserCollectionsContext.Provider value={useMemo(() => ({
       collections,
       createCollection,
+      createWorkspaceCollection,
       addAssetsToCollection,
       deleteCollection,
       getCollection,
-    }), [collections, createCollection, addAssetsToCollection, deleteCollection, getCollection])}>
+    }), [collections, createCollection, createWorkspaceCollection, addAssetsToCollection, deleteCollection, getCollection])}>
       {children}
     </UserCollectionsContext.Provider>
   )

@@ -40,6 +40,7 @@ import type {
 import { useFileTree } from './useFileTree'
 import { isUserInTeam } from '@/lib/teams'
 import { getDepartmentWorkspaceFiles, findNodeInTree, DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
+import { getAssetIdsForFolder } from '@/lib/data-client'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { SCENARIO, buildGuestLinks } from '@/lib/scenario'
 import type { GuestLinkSeed } from '@/lib/scenario'
@@ -172,7 +173,7 @@ function mergePermissions(...permissionSets: Permission[][]): Permission[] {
 
 // Bump this when grant schema or seed data changes — forces localStorage re-seed
 // Bump when grant schema or seed data changes — forces localStorage re-seed
-const GRANTS_VERSION = 19
+const GRANTS_VERSION = 20
 
 function loadStoredGrants(): Grant[] {
   if (typeof window === 'undefined') return structuredClone(DEFAULT_GRANTS)
@@ -424,10 +425,18 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         ? collectionAccess.permissions
         : (grant.ripplePermissions ?? VIEW_ONLY_CAP)
 
-      // Snapshot mode: use frozen asset IDs from the grant instead of live collection
-      const assetIds = (grant.shareMode === 'snapshot' && grant.snapshotAssetIds)
-        ? grant.snapshotAssetIds
-        : collection.assetIds
+      // Resolve asset IDs based on share mode and collection type:
+      // 1. Snapshot: use frozen asset IDs from the grant
+      // 2. Workspace collection (folder-bound): resolve from folder at query time
+      // 3. Regular collection: use collection.assetIds
+      let assetIds: string[]
+      if (grant.shareMode === 'snapshot' && grant.snapshotAssetIds) {
+        assetIds = grant.snapshotAssetIds
+      } else if (collection.boundFolderId) {
+        assetIds = getAssetIdsForFolder(collection.boundFolderId)
+      } else {
+        assetIds = collection.assetIds
+      }
 
       for (const assetId of assetIds) {
         for (const variantId of getAssetIdVariants(assetId)) {
