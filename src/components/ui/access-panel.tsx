@@ -6,6 +6,7 @@ import { Input } from './input'
 import { Select } from './select'
 import { Button } from './button'
 import { Avatar } from './avatar'
+import { Toggle } from './switch'
 import { useAccess, usePersona } from '@/hooks'
 import type { Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
 import { getRoleGroup } from '@/lib/grants'
@@ -236,6 +237,11 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
   const canAddGrants = Boolean(resourceRef) && canShare(resourceRef)
   const canManageAllGrants = Boolean(resourceRef) && canEditAcl(resourceRef)
 
+  // Share options — shown when adding new grants
+  const isCollectionResource = resourceRef?.type === 'collection' || resourceRef?.type === 'smart-collection'
+  const [snapshotMode, setSnapshotMode] = useState(false)
+  const [allowUpload, setAllowUpload] = useState(false)
+
   // Users with 'share' can modify grants they created; 'edit-acl' can modify any grant
   const canManageGrant = (grant: Grant): boolean => {
     if (readOnly) return false
@@ -295,7 +301,10 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
     if (principal.type === 'user' && principal.userId === activePersona?.id) return
     if (principal.type === 'user' && grants.some((grant) => grant.principal.type === 'user' && grant.principal.userId === principal.userId)) return
     if (principal.type === 'team' && grants.some((grant) => grant.principal.type === 'team' && grant.principal.teamId === principal.teamId)) return
-    createGrant(resourceRef, principal, addAsRole)
+    createGrant(resourceRef, principal, addAsRole, {
+      shareMode: snapshotMode ? 'snapshot' : 'live',
+      allowUpload: allowUpload || undefined,
+    })
     setQuery('')
     setShowDropdown(false)
   }
@@ -394,6 +403,27 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
             onChange={(value) => setAddAsRole(value as AccessProfileId)}
             className="w-auto flex-shrink-0"
           />
+        </div>
+      )}
+
+      {/* Share options — shown for collections when user can add grants */}
+      {!readOnly && canAddGrants && isCollectionResource && (
+        <div className="space-y-3">
+          <h3 className="text-label-1-bold text-foreground-dim">Share Options</h3>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-body-0-regular text-foreground">Snapshot</p>
+              <p className="text-label-0-regular text-foreground-dim">Freeze contents at share time</p>
+            </div>
+            <Toggle checked={snapshotMode} onChange={setSnapshotMode} aria-label="Snapshot mode" />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-body-0-regular text-foreground">Allow uploads</p>
+              <p className="text-label-0-regular text-foreground-dim">Recipients can add files to this collection</p>
+            </div>
+            <Toggle checked={allowUpload} onChange={setAllowUpload} aria-label="Allow uploads" />
+          </div>
         </div>
       )}
 

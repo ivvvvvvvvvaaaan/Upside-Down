@@ -93,7 +93,7 @@ interface AccessContextValue {
   visibleCollections: UserCollection[]
   getVisibleCollection: (id: string) => UserCollection | undefined
   getCollectionAssetCount: (id: string) => number
-  createGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId) => void
+  createGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId, options?: { shareMode?: ShareMode; snapshotAssetIds?: string[]; allowUpload?: boolean }) => void
   getGrantableProfiles: (resource: ResourceRef) => AccessProfileId[]
   revokeGrant: (grantId: string) => void
   grants: Grant[]
