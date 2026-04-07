@@ -145,6 +145,10 @@ interface AccessContextValue {
 
   // Dropbox mode — check if current user can upload to a collection
   canUploadToCollection: (collectionId: string) => boolean
+
+  // Review links — authenticated direct links with expiration
+  createReviewLink: (resource: ResourceRef, principal: PrincipalRef, expiresInDays?: number) => string | undefined
+  getGrantByReviewLinkId: (linkId: string) => Grant | undefined
 }
 
 const AccessContext = createContext<AccessContextValue | null>(null)
@@ -644,6 +648,36 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     )
   }, [userId, grants])
 
+  // Review links — create an authenticated, expiring review grant
+  const createReviewLink = useCallback((resource: ResourceRef, principal: PrincipalRef, expiresInDays: number = 7): string | undefined => {
+    if (!activePersona) return undefined
+    if (!canCreateGrantForResource(activePersona.id, resource, grants)) return undefined
+
+    const linkId = `review-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const now = new Date()
+    const expires = new Date(now)
+    expires.setDate(expires.getDate() + expiresInDays)
+
+    const newGrant: Grant = {
+      id: `grant-review-${Date.now()}`,
+      resource,
+      principal,
+      templateId: 'commenter',
+      permissions: getPermissionsForProfile('commenter', roleGroups),
+      grantedByUserId: activePersona.id,
+      grantedAt: now.toISOString().slice(0, 10),
+      expiresAt: expires.toISOString().slice(0, 10),
+      reviewLinkId: linkId,
+    }
+
+    setGrants(prev => [...prev, newGrant])
+    return linkId
+  }, [activePersona, grants, roleGroups, setGrants])
+
+  const getGrantByReviewLinkId = useCallback((linkId: string): Grant | undefined => {
+    return grants.find(g => g.reviewLinkId === linkId && isGrantActive(g))
+  }, [grants])
+
   // Shares visible to the current user — grants on resources they can access
   const visibleShares = useMemo(() => {
     if (!activePersona) return allProjectShares // admin sees all
@@ -867,6 +901,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     addToWorkspace,
     workspaceReferenceIds,
     canUploadToCollection,
+    createReviewLink,
+    getGrantByReviewLinkId,
   }), [
     canAccess,
     filterByAccess,
@@ -915,6 +951,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     addToWorkspace,
     workspaceReferenceIds,
     canUploadToCollection,
+    createReviewLink,
+    getGrantByReviewLinkId,
   ])
 
   return (

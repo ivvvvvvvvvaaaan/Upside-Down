@@ -70,6 +70,8 @@ export type Grant = {
   snapshotAssetIds?: string[]
   /** Dropbox mode — recipient can upload deliveries into this collection */
   allowUpload?: boolean
+  /** Review link ID — when set, this grant is accessible via /nextgen/review/[linkId] */
+  reviewLinkId?: string
 }
 
 
