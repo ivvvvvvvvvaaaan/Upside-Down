@@ -6,8 +6,9 @@ import { Popover, PopoverContent, PopoverTrigger } from './popover'
 import { cn } from '@/lib/utils'
 
 /*
- * Dropdown - Button trigger with attached popover panel.
- * Use Modal for centered overlays with backdrop.
+ * Dropdown — two trigger modes:
+ * - iconOnly: uses Button (for toolbar icon buttons that open menus)
+ * - default: uses a lightweight select-style trigger (for form controls)
  */
 
 export interface DropdownProps {
@@ -23,17 +24,23 @@ export interface DropdownProps {
   width?: 'auto' | 'sm' | 'md' | 'lg' | 'xl'
   /** Disabled state */
   disabled?: boolean
-  /** Children rendered inside the popover (use Card.Body/Card.Footer) */
+  /** Children rendered inside the popover */
   children: React.ReactNode
-  /** Additional className for the trigger button */
+  /** Additional className for the trigger */
   triggerClassName?: string
   /** Controlled open state */
   open?: boolean
   /** Callback when open state changes */
   onOpenChange?: (open: boolean) => void
-  /** Show only icon in trigger */
+  /** Show only icon in trigger (uses Button) */
   iconOnly?: boolean
 }
+
+const TRIANGLE = (
+  <svg className="size-2 flex-shrink-0" fill="currentColor" viewBox="0 0 12 12">
+    <path d="M2 4.5L6 8.5L10 4.5H2Z" />
+  </svg>
+)
 
 export function Dropdown({
   label,
@@ -59,17 +66,33 @@ export function Dropdown({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <Button
-          variant={iconOnly ? 'icon' : 'secondary'}
-          size={iconOnly ? 'icon' : size === 'compact' ? 'compact' : 'default'}
-          icon={iconOnly ? undefined : icon}
-          dropdown={!iconOnly}
-          disabled={disabled}
-          className={triggerClassName}
-          aria-label={iconOnly ? label : undefined}
-        >
-          {iconOnly ? icon : label}
-        </Button>
+        {iconOnly ? (
+          <Button
+            variant="icon"
+            size="icon"
+            disabled={disabled}
+            className={triggerClassName}
+            aria-label={label}
+          >
+            {icon}
+          </Button>
+        ) : (
+          <button
+            type="button"
+            disabled={disabled}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded border border-border-dim',
+              'bg-surface-flat hover:border-border-subtle transition-colors',
+              'text-foreground disabled:opacity-50',
+              size === 'compact' ? 'px-2 py-1 text-label-0-regular' : 'px-3 py-2 text-body-0-regular',
+              triggerClassName,
+            )}
+          >
+            {icon}
+            <span className="truncate">{label}</span>
+            {TRIANGLE}
+          </button>
+        )}
       </PopoverTrigger>
       <PopoverContent
         align={align}
