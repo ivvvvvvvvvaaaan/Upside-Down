@@ -26,3 +26,5 @@ export { useMobilePanel } from './useMobilePanel'
 
 export { useCuts } from './useCuts'
 export type { AccessibleCutEntry } from './useCuts'
+
+export { useCollections } from './useCollections'
