@@ -223,6 +223,14 @@ Grant = {
 - Focused review surface (playback, comments, ontology)
 - Forwarding a link doesn't grant access — requires authentication
 
+### Phase F: Live workspace sync
+
+- When a "live" collection is "added to workspace", the reference folder auto-syncs with the collection's current contents
+- New assets added to the source collection appear in the recipient's workspace without manual action
+- Workspace view resolves reference folder contents from the live collection at render time, not from the static file tree
+- Enables Nick's workflow: VFX coord adds shot to "VFX-to-Editorial" → Maria's workspace auto-updates
+- Snapshot collections remain frozen — only live shares auto-sync
+
 ---
 
 ## Security Constraints
