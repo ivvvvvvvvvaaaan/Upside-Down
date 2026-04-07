@@ -602,15 +602,8 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
   const DEPT_FOLDER_IDS = new Set(Object.values(DEPARTMENT_FOLDER_MAP).map(d => d.id))
   const workspaceFolders = fileTree.filter((f) => f.type === 'folder' && !DEPT_FOLDER_IDS.has(f.id)) as WorkspaceFileNode[]
   const accessibleDepartments = DEPARTMENT_NAV_ITEMS.filter((item) => canAccess(DEPARTMENT_FOLDER_MAP[item.id].id))
-  const accessibleDepartmentIds = new Set(accessibleDepartments.map((item) => item.id))
-  const workspaceFolderIds = new Set(workspaceFolders.map((folder) => folder.id))
-  const receivedSharedFolders = sharesReceivedByMe.filter((entry) => {
-    if (entry.resourceType !== 'folder') return false
-    if (workspaceFolderIds.has(entry.resourceId)) return false
-    if (entry.departmentId && accessibleDepartmentIds.has(entry.departmentId)) return false
-    return true
-  })
-  const showWorkspaceLink = accessibleDepartments.length > 0 || workspaceFolders.length > 0 || receivedSharedFolders.length > 0
+  // In the unified model, shared content appears under Collections, not Workspaces
+  const showWorkspaceLink = accessibleDepartments.length > 0 || workspaceFolders.length > 0
   const sharedCollectionIds = new Set(
     (isAdmin ? allProjectShares : sharesReceivedByMe)
       .filter((entry) => entry.resourceType === 'collection')
@@ -643,15 +636,6 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
             <TreeNavLink href="/nextgen/workspace" label="Workspaces" defaultExpanded={true}>
               {accessibleDepartments.map((item) => (
                 <DepartmentNavItem key={item.href} item={item} />
-              ))}
-              {receivedSharedFolders.map((entry) => (
-                <TreeNavLink
-                  key={entry.id}
-                  href={entry.departmentId ? `/nextgen/workspace/${entry.departmentId}/${entry.resourceId}` : `/nextgen/workspace/${entry.resourceId}`}
-                  label={entry.label}
-                  trailingIcon={<FolderSymlink className="w-3.5 h-3.5 text-foreground-dim" />}
-                  indent
-                />
               ))}
               {workspaceFolders.map((folder) => (
                 <TreeNavLink key={folder.id} href={`/nextgen/workspace/${folder.id}`} label={folder.name} defaultExpanded={false}>
