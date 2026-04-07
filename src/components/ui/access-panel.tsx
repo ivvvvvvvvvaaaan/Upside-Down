@@ -85,7 +85,7 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name
               )}
             </>
           ) : (
-            <span className="text-body-0-regular text-foreground-dim px-2 py-1">
+            <span className="inline-flex items-center h-8 px-2 rounded border border-border-dim text-label-0-regular text-foreground-dim">
               {roleLabel}
             </span>
           )}
@@ -128,7 +128,7 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name
                     )}
                   </>
                 ) : member.roleLabel ? (
-                  <span className="text-body-0-regular text-foreground-dim flex-shrink-0">{member.roleLabel}</span>
+                  <span className="inline-flex items-center h-8 px-2 rounded border border-border-dim text-label-0-regular text-foreground-dim flex-shrink-0">{member.roleLabel}</span>
                 ) : null}
               </div>
             </div>
