@@ -59,7 +59,7 @@ export function SelectionBar({
   const [showBatchShareModal, setShowBatchShareModal] = useState(false)
   const [showAccessModal, setShowAccessModal] = useState(false)
   // Resolved share target (may differ from selected entity if folder → collection)
-  const [shareTarget, setShareTarget] = useState<{ resourceRef: { id: string; type: string }; name: string } | null>(null)
+  const [shareTarget, setShareTarget] = useState<import('@/hooks/useShareAsCollection').ShareTarget | null>(null)
 
   const evaluation = useMemo(() => evaluateSelectionActions({
     selectedEntities,

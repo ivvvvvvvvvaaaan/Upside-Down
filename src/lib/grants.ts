@@ -49,6 +49,8 @@ export type RoleGroup = {
 
 export type RipplePolicy = 'view-only' | 'match-grant' | 'custom'
 
+export type ShareMode = 'live' | 'snapshot'
+
 export type Grant = {
   id: string
   resource: ResourceRef
@@ -61,6 +63,10 @@ export type Grant = {
   expiresAt?: string
   ripplePolicy?: RipplePolicy
   ripplePermissions?: Permission[]
+  /** Live = recipient sees evolving contents. Snapshot = frozen at share time. */
+  shareMode?: ShareMode
+  /** Frozen asset IDs for snapshot mode — overrides collection.assetIds for this recipient */
+  snapshotAssetIds?: string[]
 }
 
 

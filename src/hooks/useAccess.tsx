@@ -35,6 +35,7 @@ import type {
   AccessProfileId,
   RoleGroup,
   Permission,
+  ShareMode,
 } from '@/lib/grants'
 import { useFileTree } from './useFileTree'
 import { getDepartmentWorkspaceFiles, findNodeInTree, DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
@@ -375,20 +376,33 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       canEdit: boolean
     }>()
 
-    for (const collection of collections) {
-      const collectionAccess = collectionAccessById.get(collection.id)
+    // Grant-driven: iterate grants on collections, not collections themselves.
+    // This supports per-recipient asset sets via snapshot mode.
+    const collectionGrants = grants.filter(g =>
+      (g.resource.type === 'collection' || g.resource.type === 'smart-collection') && isGrantActive(g)
+    )
+
+    for (const grant of collectionGrants) {
+      const collectionAccess = collectionAccessById.get(grant.resource.id)
       if (!collectionAccess) continue
 
+      const collection = collections.find(c => c.id === grant.resource.id)
+      if (!collection) continue
+
       // Apply ripple policy from the grant (default: view-only)
-      const grant = grants.find(g => g.resource.id === collection.id && isGrantActive(g))
-      const policy = grant?.ripplePolicy ?? 'view-only'
+      const policy = grant.ripplePolicy ?? 'view-only'
       const cappedPermissions = policy === 'view-only'
         ? collectionAccess.permissions.filter(p => VIEW_ONLY_CAP.includes(p))
         : policy === 'match-grant'
         ? collectionAccess.permissions
-        : (grant?.ripplePermissions ?? VIEW_ONLY_CAP)
+        : (grant.ripplePermissions ?? VIEW_ONLY_CAP)
 
-      for (const assetId of collection.assetIds) {
+      // Snapshot mode: use frozen asset IDs from the grant instead of live collection
+      const assetIds = (grant.shareMode === 'snapshot' && grant.snapshotAssetIds)
+        ? grant.snapshotAssetIds
+        : collection.assetIds
+
+      for (const assetId of assetIds) {
         for (const variantId of getAssetIdVariants(assetId)) {
           const current = accessById.get(variantId)
           accessById.set(variantId, {
@@ -635,7 +649,12 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       .filter((profileId) => canGrantProfileForResourceFn(resource, profileId))
   }, [roleGroups, canGrantProfileForResourceFn])
 
-  const createGrant = useCallback((resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId) => {
+  const createGrant = useCallback((
+    resource: ResourceRef,
+    principal: PrincipalRef,
+    profileId: AccessProfileId,
+    options?: { shareMode?: ShareMode; snapshotAssetIds?: string[] },
+  ) => {
     if (activePersona && !userId) return
 
     setGrants((prev) => {
@@ -650,6 +669,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         permissions: getPermissionsForProfile(profileId, roleGroups),
         grantedByUserId: grantorUserId,
         grantedAt: new Date().toISOString().slice(0, 10),
+        shareMode: options?.shareMode,
+        snapshotAssetIds: options?.snapshotAssetIds,
       }
 
       return [...prev, newGrant]
