@@ -73,7 +73,7 @@ export function AccessSummary({
             </div>
           ))}
         </div>
-        {(isAdmin || (resourceRef && canShare(resourceRef))) && (
+        {(isAdmin || (resourceRef && resourceRef.type !== 'folder' && canShare(resourceRef))) && (
           <Button
             variant="secondary"
             onClick={() => setModalOpen(true)}

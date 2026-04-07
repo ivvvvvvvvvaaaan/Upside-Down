@@ -95,7 +95,7 @@ interface AccessContextValue {
   visibleCollections: UserCollection[]
   getVisibleCollection: (id: string) => UserCollection | undefined
   getCollectionAssetCount: (id: string) => number
-  createGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId, options?: { shareMode?: ShareMode; snapshotAssetIds?: string[]; allowUpload?: boolean }) => void
+  createGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId, options?: { permissions?: Permission[]; shareMode?: ShareMode; snapshotAssetIds?: string[]; allowUpload?: boolean; expiresInDays?: number }) => void
   getGrantableProfiles: (resource: ResourceRef) => AccessProfileId[]
   revokeGrant: (grantId: string) => void
   grants: Grant[]
@@ -803,35 +803,44 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     resource: ResourceRef,
     principal: PrincipalRef,
     profileId: AccessProfileId,
-    options?: { shareMode?: ShareMode; snapshotAssetIds?: string[]; allowUpload?: boolean },
+    options?: {
+      permissions?: Permission[]
+      shareMode?: ShareMode
+      snapshotAssetIds?: string[]
+      allowUpload?: boolean
+      expiresInDays?: number
+    },
   ) => {
     if (activePersona && !userId) return
 
     setGrants((prev) => {
       if (!canShareFn(resource, prev)) return prev
-      if (!canGrantProfileForResourceFn(resource, profileId, prev)) return prev
+
+      // Use explicit permissions if provided (toggle-based), otherwise resolve from profile
+      const grantPermissions = options?.permissions ?? getPermissionsForProfile(profileId, roleGroups)
+
+      const now = new Date()
+      const expiresAt = options?.expiresInDays
+        ? new Date(now.getTime() + options.expiresInDays * 86400000).toISOString().slice(0, 10)
+        : undefined
 
       const newGrant: Grant = {
         id: `grant-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         resource,
         principal,
-        templateId: profileId,
-        permissions: getPermissionsForProfile(profileId, roleGroups),
+        templateId: options?.permissions ? undefined : profileId,
+        permissions: grantPermissions,
         grantedByUserId: grantorUserId,
-        grantedAt: new Date().toISOString().slice(0, 10),
+        grantedAt: now.toISOString().slice(0, 10),
+        expiresAt,
         shareMode: options?.shareMode,
         snapshotAssetIds: options?.snapshotAssetIds,
         allowUpload: options?.allowUpload,
       }
 
-      // If upload is enabled, add the upload permission
-      if (options?.allowUpload) {
-        newGrant.permissions = [...newGrant.permissions, 'upload']
-      }
-
       return [...prev, newGrant]
     })
-  }, [activePersona, userId, roleGroups, canShareFn, canGrantProfileForResourceFn, grantorUserId, setGrants])
+  }, [activePersona, userId, roleGroups, canShareFn, grantorUserId, setGrants])
 
   const canManageGrant = useCallback((grant: Grant, currentGrants: Grant[]): boolean => {
     if (canEditAclFn(grant.resource, currentGrants)) return true
