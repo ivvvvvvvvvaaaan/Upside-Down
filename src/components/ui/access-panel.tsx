@@ -408,6 +408,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
               size="standard"
               align="end"
               width="lg"
+              triggerClassName="text-body-0-regular"
               open={roleDropdownOpen}
               onOpenChange={setRoleDropdownOpen}
             >
