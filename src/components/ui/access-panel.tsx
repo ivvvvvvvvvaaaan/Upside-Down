@@ -8,7 +8,7 @@ import { Button } from './button'
 import { Avatar } from './avatar'
 import { Toggle } from './switch'
 import { useAccess, usePersona } from '@/hooks'
-import type { Grant, AccessProfileId, ResourceRef, PrincipalRef, Permission } from '@/hooks/useAccess'
+import type { Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
 import { getRoleGroup } from '@/lib/grants'
 import type { RoleGroup } from '@/lib/grants'
 import { buildAccessDisplayEntries } from './access-display'
@@ -236,40 +236,16 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
   const canAddGrants = Boolean(resourceRef) && canShare(resourceRef)
   const canManageAllGrants = Boolean(resourceRef) && canEditAcl(resourceRef)
 
-  // Role group as quick preset, toggles as custom override (progressive disclosure)
-  const [customMode, setCustomMode] = useState(false)
-  const [selectedRole, setSelectedRole] = useState<AccessProfileId | 'custom'>('viewer')
-  const [canDownload, setCanDownload] = useState(false)
-  const [canComment, setCanComment] = useState(false)
-  const [canUpload, setCanUpload] = useState(false)
+  // Role + expiration — consistent model at every level
+  const [addAsRole, setAddAsRole] = useState<AccessProfileId>('viewer')
   const [expires, setExpires] = useState(false)
   const [expiresInDays, setExpiresInDays] = useState(7)
 
-  // Role options for the dropdown
-  const roleOptions = useMemo(() => {
-    const opts = roleGroups
-      .filter(rg => rg.id !== 'owner' && rg.id !== 'link-viewer')
-      .map(rg => ({ value: rg.id, label: rg.name }))
-    return [...opts, { value: 'custom' as const, label: 'Custom' }]
-  }, [roleGroups])
-
-  // When role changes, sync toggles to match the role's permissions
-  const handleRoleChange = (value: string) => {
-    const roleId = value as AccessProfileId | 'custom'
-    setSelectedRole(roleId)
-    if (roleId === 'custom') return
-    const rg = roleGroups.find(r => r.id === roleId)
-    if (!rg) return
-    setCanDownload(rg.permissions.includes('download'))
-    setCanComment(rg.permissions.includes('comment'))
-    setCanUpload(rg.permissions.includes('upload'))
-  }
-
-  // When a toggle changes manually, switch to custom mode
-  const handleToggle = (setter: (v: boolean) => void) => (value: boolean) => {
-    setter(value)
-    setSelectedRole('custom')
-  }
+  const addRoleOptions = useMemo(() => {
+    if (!resourceRef) return roleGroupOptions(roleGroups)
+    const allowedProfiles = new Set(getGrantableProfiles(resourceRef))
+    return roleGroupOptions(roleGroups).filter((option) => allowedProfiles.has(option.value as AccessProfileId))
+  }, [resourceRef, roleGroups, getGrantableProfiles])
 
   // Users with 'share' can modify grants they created; 'edit-acl' can modify any grant
   const canManageGrant = (grant: Grant): boolean => {
@@ -318,25 +294,9 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
     if (principal.type === 'user' && grants.some((grant) => grant.principal.type === 'user' && grant.principal.userId === principal.userId)) return
     if (principal.type === 'team' && grants.some((grant) => grant.principal.type === 'team' && grant.principal.teamId === principal.teamId)) return
 
-    if (selectedRole !== 'custom') {
-      // Role-based: use the role group's permissions
-      createGrant(resourceRef, principal, selectedRole, {
-        allowUpload: canUpload || undefined,
-        expiresInDays: expires ? expiresInDays : undefined,
-      })
-    } else {
-      // Custom: build permissions from toggle state
-      const permissions: Permission[] = ['open']
-      if (canDownload) permissions.push('download')
-      if (canComment) permissions.push('comment')
-      if (canUpload) permissions.push('upload')
-
-      createGrant(resourceRef, principal, 'viewer', {
-        permissions,
-        allowUpload: canUpload || undefined,
-        expiresInDays: expires ? expiresInDays : undefined,
-      })
-    }
+    createGrant(resourceRef, principal, addAsRole, {
+      expiresInDays: expires ? expiresInDays : undefined,
+    })
     setQuery('')
     setShowDropdown(false)
   }
@@ -430,70 +390,73 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
         </div>
       )}
 
-      {/* Permissions — role preset or custom toggles (progressive disclosure) */}
-      {!readOnly && canAddGrants && (
+      {/* Search + role dropdown + expiration */}
+      {!readOnly && resourceRef && canAddGrants && addRoleOptions.length > 0 && (
         <div className="space-y-3">
-          {!customMode ? (
-            <>
-              <div className="flex items-center justify-between">
-                <span className="text-body-0-bold text-foreground-dim">Permission</span>
-                <Select
-                  options={roleOptions.filter(o => o.value !== 'custom')}
-                  value={selectedRole === 'custom' ? 'viewer' : selectedRole}
-                  onChange={handleRoleChange}
-                  className="w-auto flex-shrink-0"
-                />
-              </div>
-              <button
-                onClick={() => { setCustomMode(true); setSelectedRole('custom') }}
-                className="text-body-0-regular text-foreground-system-link hover:underline"
-              >
-                Customize permissions
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-body-0-regular text-foreground">Can download</span>
-                  <Toggle checked={canDownload} onChange={handleToggle(setCanDownload)} aria-label="Can download" />
+          <div className="flex items-start gap-2">
+            <div ref={dropdownRef} className="relative flex-1">
+              <Input
+                type="text"
+                value={query}
+                onChange={e => { setQuery(e.target.value); setShowDropdown(true) }}
+                onFocus={() => query.trim() && setShowDropdown(true)}
+                placeholder="Add people or teams..."
+                icon={<Search className="w-4 h-4" />}
+                iconPosition="left"
+              />
+              {showDropdown && query.trim() && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 max-h-[240px] overflow-y-auto">
+                  {results.map((result) => (
+                    <button
+                      key={result.key}
+                      onClick={() => handleAddPrincipal(result.principal)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors"
+                    >
+                      {result.kind === 'user' ? (
+                        <Avatar name={result.name} size="sm" />
+                      ) : (
+                        <span className="w-6 h-6 rounded-full flex items-center justify-center bg-surface-3 text-foreground-dim flex-shrink-0">
+                          <Users className="w-3 h-3" />
+                        </span>
+                      )}
+                      <div className="min-w-0">
+                        <span className="text-body-0-regular text-foreground truncate block">{result.name}</span>
+                        <span className="text-body-0-regular text-foreground-dim truncate block">{result.subtitle}</span>
+                      </div>
+                    </button>
+                  ))}
+                  {!hasResults && (
+                    <div className="px-3 py-2 text-body-0-regular text-foreground-dim">No matches</div>
+                  )}
                 </div>
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-body-0-regular text-foreground">Can comment</span>
-                  <Toggle checked={canComment} onChange={handleToggle(setCanComment)} aria-label="Can comment" />
-                </div>
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-body-0-regular text-foreground">Can upload</span>
-                  <Toggle checked={canUpload} onChange={handleToggle(setCanUpload)} aria-label="Can upload" />
-                </div>
-                <div className="flex items-center justify-between py-1">
-                  <div className="flex items-center gap-3">
-                    <span className="text-body-0-regular text-foreground">Expires</span>
-                    {expires && (
-                      <select
-                        value={expiresInDays}
-                        onChange={e => setExpiresInDays(Number(e.target.value))}
-                        className="text-body-0-regular text-foreground bg-surface-flat border border-border-dim rounded px-2 py-0.5"
-                      >
-                        <option value={1}>1 day</option>
-                        <option value={7}>7 days</option>
-                        <option value={14}>14 days</option>
-                        <option value={30}>30 days</option>
-                        <option value={90}>90 days</option>
-                      </select>
-                    )}
-                  </div>
-                  <Toggle checked={expires} onChange={handleToggle(setExpires)} aria-label="Expires" />
-                </div>
-              </div>
-              <button
-                onClick={() => { setCustomMode(false); handleRoleChange('viewer') }}
-                className="text-body-0-regular text-foreground-system-link hover:underline"
-              >
-                Use preset
-              </button>
-            </>
-          )}
+              )}
+            </div>
+            <Select
+              options={addRoleOptions}
+              value={addAsRole}
+              onChange={(value) => setAddAsRole(value as AccessProfileId)}
+              className="w-auto flex-shrink-0"
+            />
+          </div>
+          <div className="flex items-center justify-between py-1">
+            <div className="flex items-center gap-3">
+              <span className="text-body-0-regular text-foreground">Expires</span>
+              {expires && (
+                <select
+                  value={expiresInDays}
+                  onChange={e => setExpiresInDays(Number(e.target.value))}
+                  className="text-body-0-regular text-foreground bg-surface-flat border border-border-dim rounded px-2 py-0.5"
+                >
+                  <option value={1}>1 day</option>
+                  <option value={7}>7 days</option>
+                  <option value={14}>14 days</option>
+                  <option value={30}>30 days</option>
+                  <option value={90}>90 days</option>
+                </select>
+              )}
+            </div>
+            <Toggle checked={expires} onChange={setExpires} aria-label="Expires" />
+          </div>
         </div>
       )}
 
