@@ -7,6 +7,7 @@ import { Modal } from './modal'
 import { Button } from './button'
 import { Input } from './input'
 import { Select } from './select'
+import { RoleSelect } from './role-select'
 import { Avatar } from './avatar'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import { useAccess } from '@/hooks'
@@ -154,15 +155,17 @@ function PeopleTab({
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <Select
-                    options={options}
-                    value={grant.templateId ?? 'view'}
-                    onChange={(v) => onRoleChange(grant.id, v as AccessProfileId)}
-                    size="compact"
-                    borderless
-                    className="w-auto flex-shrink-0"
-                    disabled={!canManage}
-                  />
+                  {canManage ? (
+                    <RoleSelect
+                      options={options}
+                      value={grant.templateId ?? 'view'}
+                      onChange={(v) => onRoleChange(grant.id, v as AccessProfileId)}
+                    />
+                  ) : (
+                    <span className="text-body-0-regular text-foreground-dim px-2 py-1">
+                      {options.find(o => o.value === (grant.templateId ?? 'view'))?.label ?? grant.templateId}
+                    </span>
+                  )}
                   {canManage && (
                     <Button variant="icon" size="compact-icon" onClick={() => onRemove(grant.id)}>
                       <X className="w-3 h-3" />
@@ -269,7 +272,7 @@ function DepartmentsTab({
                   )}
                 </button>
                 {team ? (
-                  <Select
+                  <RoleSelect
                     options={[{ value: noDefaultAccessValue, label: 'No default access' }, ...options]}
                     value={defaultRoleValue}
                     onChange={(value) => {
@@ -289,10 +292,6 @@ function DepartmentsTab({
                         value as AccessProfileId,
                       )
                     }}
-                    size="compact"
-                    borderless
-                    className="w-auto flex-shrink-0"
-                    disabled={readOnly || (grant ? !canEditDepartment : !canShareDepartment)}
                   />
                 ) : (
                   <span className="text-label-0-regular text-foreground-dim flex-shrink-0">
@@ -320,7 +319,7 @@ function DepartmentsTab({
                           </div>
                           {isEditingOverride ? (
                             <div className="flex items-center gap-1 flex-shrink-0">
-                              <Select
+                              <RoleSelect
                                 options={[{ value: noDefaultAccessValue, label: defaultMemberLabel }, ...options]}
                                 value={memberValue}
                                 onChange={(value) => {
@@ -345,10 +344,6 @@ function DepartmentsTab({
                                     value as AccessProfileId,
                                   )
                                 }}
-                                size="compact"
-                                borderless
-                                className="w-auto min-w-[170px]"
-                                disabled={readOnly || (overrideGrant ? !canEditDepartment : !canShareDepartment)}
                               />
                               <span className="text-label-0-regular text-foreground-dim">
                                 Override

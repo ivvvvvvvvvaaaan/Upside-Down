@@ -31,11 +31,11 @@ describe('grant-based access model', () => {
 
     expect(lisa.hasAccess).toBe(true)
     expect(lisa.source).toBe('team')
-    expect(lisa.effectiveProfile).toBe('edit')
+    expect(lisa.effectiveProfile).toBe('manage')
 
     expect(maria.hasAccess).toBe(true)
     expect(maria.source).toBe('team')
-    expect(maria.effectiveProfile).toBe('edit')
+    expect(maria.effectiveProfile).toBe('manage')
   })
 
   it('lets a direct person override outrank the department default', () => {

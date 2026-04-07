@@ -5,8 +5,8 @@ import { X, Users, Search, Info, Link2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from './input'
 import { Select } from './select'
-import { Dropdown } from './dropdown'
 import { Button } from './button'
+import { RoleSelect } from './role-select'
 import { Avatar } from './avatar'
 import { Toggle } from './switch'
 import { useAccess, usePersona } from '@/hooks'
@@ -30,53 +30,6 @@ function roleGroupOptions(roleGroups: RoleGroup[]) {
   return roleGroups
     .filter((rg) => rg.id !== 'owner' && rg.id !== 'link-viewer')
     .map((rg) => ({ value: rg.id, label: rg.name }))
-}
-
-const ROLE_DESCRIPTIONS: Record<string, string> = {
-  view: 'Open and download',
-  comment: 'View + leave review notes',
-  contribute: 'View + edit + comment',
-  edit: 'Edit + share with others',
-  manage: 'Full control',
-}
-
-function RoleSelect({ value, options, onChange, size = 'compact' }: {
-  value: string
-  options: { value: string; label: string }[]
-  onChange: (value: string) => void
-  size?: 'compact' | 'standard'
-}) {
-  const [open, setOpen] = useState(false)
-  const selectedLabel = options.find(o => o.value === value)?.label ?? value
-  return (
-    <Dropdown
-      label={selectedLabel}
-      size={size}
-      align="end"
-      width="lg"
-      open={open}
-      onOpenChange={setOpen}
-      triggerClassName="text-body-0-regular"
-    >
-      <div className="py-1">
-        {options.map(option => (
-          <button
-            key={option.value}
-            onClick={() => { onChange(option.value); setOpen(false) }}
-            className={cn(
-              'w-full text-left px-4 py-2 hover:bg-surface-3 transition-colors rounded',
-              value === option.value && 'bg-surface-3',
-            )}
-          >
-            <span className="text-body-0-regular text-foreground block">{option.label}</span>
-            {ROLE_DESCRIPTIONS[option.value] && (
-              <span className="text-label-0-regular text-foreground-dim block">{ROLE_DESCRIPTIONS[option.value]}</span>
-            )}
-          </button>
-        ))}
-      </div>
-    </Dropdown>
-  )
 }
 
 function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name, subtitle, roleLabel, members }: {

@@ -213,8 +213,8 @@ export const SCENARIO: Scenario = {
 
   departmentAccess: [
     { dept: 'vfx', defaultTeamId: 'vfx-core', defaultProfile: 'manage' },
-    { dept: 'editorial', defaultTeamId: 'editorial', defaultProfile: 'edit' },
-    { dept: 'art-design', defaultTeamId: 'art-design', defaultProfile: 'edit' },
+    { dept: 'editorial', defaultTeamId: 'editorial', defaultProfile: 'manage' },
+    { dept: 'art-design', defaultTeamId: 'art-design', defaultProfile: 'manage' },
     { dept: 'camera', defaultTeamId: 'camera-team', defaultProfile: 'manage' },
     { dept: 'audio-sound', defaultTeamId: 'audio-team', defaultProfile: 'manage' },
   ],
