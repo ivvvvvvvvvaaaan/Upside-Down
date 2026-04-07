@@ -143,6 +143,10 @@ interface AccessContextValue {
   addToWorkspace: (shareId: string, departmentId: DepartmentId) => void
   workspaceReferenceIds: Set<string>
 
+  // Workspace reference sync
+  getWorkspaceReferenceAssets: (folderId: string) => string[] | undefined
+  isWorkspaceReference: (folderId: string) => boolean
+
   // Dropbox mode — check if current user can upload to a collection
   canUploadToCollection: (collectionId: string) => boolean
 
@@ -297,8 +301,13 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  // Workspace references state — populated by addToWorkspace below
+  // Workspace references — maps share ID to the folder + collection info
   const [workspaceReferenceIds, setWorkspaceReferenceIds] = useState<Set<string>>(() => new Set())
+  const [workspaceReferences, setWorkspaceReferences] = useState<Map<string, {
+    folderId: string
+    collectionResourceId: string
+    shareMode: 'live' | 'snapshot'
+  }>>(() => new Map())
 
   const toggleDepartmentDiscovery = useCallback((deptId: DepartmentId) => {
     setDiscoveryDisabledDepts((prev) => {
@@ -624,9 +633,25 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     if (workspaceReferenceIds.has(shareId)) return
 
     const deptRootId = DEPARTMENT_FOLDER_MAP[departmentId]?.id
-    if (deptRootId) {
-      createFolder(deptRootId, `${share.label} ↗`)
-    }
+    if (!deptRootId) return
+
+    const folderId = createFolder(deptRootId, `${share.label} ↗`)
+
+    // Find the grant to determine share mode
+    const grant = grants.find(g =>
+      g.resource.id === share.resourceId && isGrantActive(g)
+    )
+    const shareMode = grant?.shareMode ?? 'live'
+
+    setWorkspaceReferences(prev => {
+      const next = new Map(prev)
+      next.set(shareId, {
+        folderId,
+        collectionResourceId: share.resourceId,
+        shareMode,
+      })
+      return next
+    })
 
     setWorkspaceReferenceIds(prev => {
       const next = new Set(prev)
@@ -634,7 +659,31 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       return next
     })
     markShareRead(shareId)
-  }, [sharesReceivedByMe, workspaceReferenceIds, createFolder, markShareRead])
+  }, [sharesReceivedByMe, workspaceReferenceIds, grants, createFolder, markShareRead])
+
+  // Resolve assets for a workspace reference folder
+  // Live references return the current collection contents; snapshots return the frozen list
+  const getWorkspaceReferenceAssets = useCallback((folderId: string): string[] | undefined => {
+    for (const [, ref] of Array.from(workspaceReferences)) {
+      if (ref.folderId !== folderId) continue
+
+      if (ref.shareMode === 'snapshot') {
+        const grant = grants.find(g =>
+          g.resource.id === ref.collectionResourceId && isGrantActive(g) && g.snapshotAssetIds
+        )
+        return grant?.snapshotAssetIds
+      }
+
+      // Live: resolve from the current collection contents
+      const collection = collections.find(c => c.id === ref.collectionResourceId)
+      return collection?.assetIds
+    }
+    return undefined
+  }, [workspaceReferences, grants, collections])
+
+  const isWorkspaceReference = useCallback((folderId: string): boolean => {
+    return Array.from(workspaceReferences.values()).some(ref => ref.folderId === folderId)
+  }, [workspaceReferences])
 
   // Dropbox mode — check if current user can upload to a collection
   const canUploadToCollection = useCallback((collectionId: string): boolean => {
@@ -902,6 +951,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     unreadInboxCount,
     addToWorkspace,
     workspaceReferenceIds,
+    getWorkspaceReferenceAssets,
+    isWorkspaceReference,
     canUploadToCollection,
     createReviewLink,
     getGrantByReviewLinkId,
@@ -952,6 +1003,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     unreadInboxCount,
     addToWorkspace,
     workspaceReferenceIds,
+    getWorkspaceReferenceAssets,
+    isWorkspaceReference,
     canUploadToCollection,
     createReviewLink,
     getGrantByReviewLinkId,
