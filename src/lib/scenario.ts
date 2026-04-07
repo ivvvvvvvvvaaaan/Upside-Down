@@ -393,38 +393,40 @@ export const SCENARIO: Scenario = {
         { toTeam: 'vfx-core', as: 'viewer' },
       ],
     },
-    // Vendor drop folder: VFX coordinator gives Framestore a scoped upload point
-    // Vendor can see and upload to this specific folder only — not the rest of VFX
+    // Vendor drop collection: VFX coordinator gives Framestore a scoped upload point
     {
-      resource: { id: 'ws-vfx-vendor-framestore', type: 'folder', dept: 'vfx' },
-      label: 'Framestore',
+      resource: { id: 'coll-vfx-vendor-drop', type: 'collection', dept: 'vfx' },
+      label: 'Framestore Drop',
       by: 'vfx-coordinator',
       date: '2026-01-15',
-      context: 'Sarah creates a designated upload point for Framestore. James can drop comp deliveries into this specific folder — he can see its contents and upload new files, but cannot browse the rest of the VFX workspace. Sarah\'s team reviews each delivery before pulling it into their pipeline.',
+      context: 'Sarah creates a collection for Framestore deliveries. James can see the brief and upload comp deliveries — he cannot browse the rest of the VFX workspace.',
+      allowUpload: true,
       grants: [
-        { to: 'vendor-framestore', as: 'contributor' },
+        { to: 'vendor-framestore', as: 'viewer' },
       ],
     },
     // (Stale cut shares removed — VFX timing now via cut-ep301-lc-1 share)
     // --- Camera department shares ---
     // Camera DIT shares selected takes with editorial + director
     {
-      resource: { id: 'ws-cam-selects', type: 'folder', dept: 'camera' },
+      resource: { id: 'coll-cam-selects', type: 'collection', dept: 'camera' },
       label: 'Camera Selects',
       by: 'camera-dit',
       date: '2026-02-05',
-      context: 'Tom shares the selects folder with editorial — Maria and Lisa need ongoing access to pull camera-original takes into the timeline as they cut.',
+      shareMode: 'live',
+      context: 'Tom shares camera selects as a live collection with editorial — Maria and Lisa see new selects as Tom adds them. They pull camera-original takes into the timeline as they cut.',
       grants: [
         { toTeam: 'editorial', as: 'viewer' },
       ],
     },
     // Camera DIT shares lens distortion data with VFX for comp accuracy
     {
-      resource: { id: 'ws-cam-lensmaps', type: 'folder', dept: 'camera' },
+      resource: { id: 'coll-cam-lens-data', type: 'collection', dept: 'camera' },
       label: 'Lens Data',
       by: 'camera-dit',
       date: '2026-01-25',
-      context: 'Tom shares lens distortion maps and test charts with VFX. Mike and Sarah need these for accurate lens-matching in Nuke — without them, CG elements won\'t sit correctly in the plate.',
+      shareMode: 'live',
+      context: 'Tom shares lens distortion maps and test charts as a live collection with VFX. Mike and Sarah need these for accurate lens-matching in Nuke — new lens data auto-syncs as Tom adds it.',
       grants: [
         { to: 'vfx-supervisor', as: 'viewer' },
         { to: 'vfx-coordinator', as: 'viewer' },
@@ -471,12 +473,14 @@ export const SCENARIO: Scenario = {
     },
     // Temporary cross-department access: art gets camera dailies for 2 weeks of concept work
     {
-      resource: { id: 'ws-cam-dailies', type: 'folder', dept: 'camera' },
+      resource: { id: 'coll-cam-dailies', type: 'collection', dept: 'camera' },
       label: 'Dailies (concept reference)',
       by: 'camera-dit',
       date: '2026-02-10',
       expiresAt: '2026-02-24',
-      context: 'Tom gives Priya two weeks of access to raw dailies so she can study on-set lighting and costume detail for her concept paintings. Access is time-boxed because dailies contain ungraded footage that shouldn\'t circulate long-term.',
+      shareMode: 'snapshot',
+      snapshotAssetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'],
+      context: 'Tom gives Priya a two-week snapshot of raw dailies for concept painting reference. Snapshot mode — Priya sees exactly these 5 takes, not future dailies. Time-boxed because ungraded footage shouldn\'t circulate long-term.',
       grants: [
         { to: 'art-artist', as: 'viewer' },
       ],
@@ -552,6 +556,11 @@ export const SCENARIO: Scenario = {
     { id: 'coll-creature-designs',  name: 'Car Designs', createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-demogorgon', 'ws-art-concept-creature', 'ws-art-char-eleven'] },
     { id: 'coll-key-locations',     name: 'Key Circuits',    createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-ud-env', 'ws-art-concept-lab', 'ws-art-env-byers', 'ws-art-env-starcourt'] },
     { id: 'coll-hero-shots',        name: 'Hero Shots',       createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-020-010', 'ws-vfx-comp-eleven'] },
+    // Collections created from folder shares (unified model — no direct folder shares)
+    { id: 'coll-cam-selects',      name: 'Camera Selects',   createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-sel-1', 'ws-cam-sel-2', 'ws-cam-sel-billy', 'ws-cam-sel-eleven', 'ws-cam-sel-portal'] },
+    { id: 'coll-cam-lens-data',    name: 'Lens Data',        createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-lens-1', 'ws-cam-lens-2', 'ws-cam-lens-3', 'ws-cam-lens-arri', 'ws-cam-lens-cooke', 'ws-cam-lens-zeiss'] },
+    { id: 'coll-cam-dailies',      name: 'Dailies (concept reference)', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'] },
+    { id: 'coll-vfx-vendor-drop',  name: 'Framestore Drop',  createdBy: 'schen@netflix.com', assetIds: [] },
   ],
 
   cuts: [

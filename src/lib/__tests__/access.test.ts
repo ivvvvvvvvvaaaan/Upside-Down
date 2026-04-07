@@ -70,8 +70,8 @@ describe('grant-based access model', () => {
   })
 
   it('resolves direct resource shares correctly', () => {
-    expect(userHasAccess('vfx-supervisor', 'ws-cam-lensmaps', DEFAULT_GRANTS)).toBe(true)
-    expect(userHasAccess('vendor-framestore', 'ws-cam-lensmaps', DEFAULT_GRANTS)).toBe(false)
+    expect(userHasAccess('vfx-supervisor', 'coll-cam-lens-data', DEFAULT_GRANTS)).toBe(true)
+    expect(userHasAccess('vendor-framestore', 'coll-cam-lens-data', DEFAULT_GRANTS)).toBe(false)
   })
 
   it('lets resource shares target access groups as real ACL principals', () => {
