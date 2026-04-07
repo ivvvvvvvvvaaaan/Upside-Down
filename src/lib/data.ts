@@ -3,6 +3,8 @@ import {
   MOCK_COLLECTIONS,
 } from '@/lib/data-client'
 import type { Asset, Collection, DepartmentId } from '@/lib/data-client'
+import { seedCutToAsset } from '@/lib/cuts'
+import { buildCuts } from '@/lib/scenario'
 
 export type {
   AssetType,
@@ -70,7 +72,10 @@ export function getAssets(): Asset[] {
 }
 
 function getAllAssets(): Asset[] {
-  return mergePrototypeAssets(getAssets())
+  const assets = mergePrototypeAssets(getAssets())
+  // Include cuts so they're resolvable by ID (for collections containing cuts)
+  const cutAssets = buildCuts().map(c => seedCutToAsset(c))
+  return [...assets, ...cutAssets]
 }
 
 export function getAssetsByDepartment(departmentId: DepartmentId): Asset[] {
