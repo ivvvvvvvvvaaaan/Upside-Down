@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { X, ArrowRight, LayoutGrid, FileText, Folder, Film, Clock, Link2, Lock } from 'lucide-react'
+import { X, ArrowRight, LayoutGrid, FileText, Film, Clock, Link2, Lock } from 'lucide-react'
 import { Modal } from './modal'
 import { Tag } from './tag'
 import { Avatar } from './avatar'
@@ -33,7 +33,6 @@ function formatDate(dateStr: string) {
 
 function ResourceIcon({ type }: { type: string }) {
   if (type === 'collection' || type === 'smart-collection') return <LayoutGrid className="w-3.5 h-3.5" />
-  if (type === 'folder') return <Folder className="w-3.5 h-3.5" />
   if (type === 'cut') return <Film className="w-3.5 h-3.5" />
   return <FileText className="w-3.5 h-3.5" />
 }
@@ -64,6 +63,8 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
         context: share.context,
         revoked: share.revoked ?? false,
         expiresAt: share.expiresAt,
+        shareMode: share.shareMode,
+        allowUpload: share.allowUpload,
       }
     })
 
@@ -181,6 +182,15 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
                                   <Lock className="w-3 h-3 mr-0.5 inline" />
                                   Passcode
                                 </Tag>
+                              )}
+                              {'shareMode' in event && event.shareMode === 'snapshot' && (
+                                <Tag size="compact" type="informative" variant="border">Snapshot</Tag>
+                              )}
+                              {'shareMode' in event && event.shareMode === 'live' && (
+                                <Tag size="compact" type="positive" variant="border">Live</Tag>
+                              )}
+                              {'allowUpload' in event && event.allowUpload && (
+                                <Tag size="compact" type="announcement" variant="border">Upload</Tag>
                               )}
                             </div>
 
