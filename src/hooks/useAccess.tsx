@@ -420,7 +420,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
       // Apply ripple policy from the grant (default: view-only)
       const policy = grant.ripplePolicy ?? 'view-only'
-      const cappedPermissions = policy === 'view-only'
+      const baseCappedPermissions = policy === 'view-only'
         ? collectionAccess.permissions.filter(p => VIEW_ONLY_CAP.includes(p))
         : policy === 'match-grant'
         ? collectionAccess.permissions
@@ -432,7 +432,23 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         ? grant.snapshotAssetIds
         : resolveCollectionAssetIds(collection)
 
+      // Resolve the sharer's own permissions — ripple can never exceed what the sharer has
+      const sharerId = grant.grantedByUserId
+      const sharerAccess = sharerId ? resolveAccess(sharerId, '', grants, roleGroups) : null
+
       for (const assetId of assetIds) {
+        // Cap ripple at sharer's permissions on this specific asset
+        let cappedPermissions = baseCappedPermissions
+        if (sharerId) {
+          const sharerAssetAccess = resolveAccess(sharerId, assetId, grants, roleGroups)
+          if (sharerAssetAccess.hasAccess) {
+            cappedPermissions = baseCappedPermissions.filter(p => sharerAssetAccess.permissions.includes(p))
+          } else {
+            // Sharer doesn't have access to this asset — skip it entirely
+            continue
+          }
+        }
+
         for (const variantId of getAssetIdVariants(assetId)) {
           const current = accessById.get(variantId)
           accessById.set(variantId, {
