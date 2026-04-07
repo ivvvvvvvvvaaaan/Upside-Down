@@ -28,7 +28,7 @@ export function RoleSelect({ value, options, onChange, size = 'compact' }: {
       width="lg"
       open={open}
       onOpenChange={setOpen}
-      triggerClassName="text-body-0-regular"
+      triggerClassName={size === 'compact' ? 'text-label-0-regular' : 'text-body-0-regular'}
     >
       <div className="py-1">
         {options.map(option => (
