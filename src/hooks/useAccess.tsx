@@ -171,7 +171,8 @@ function mergePermissions(...permissionSets: Permission[][]): Permission[] {
 
 
 // Bump this when grant schema or seed data changes — forces localStorage re-seed
-const GRANTS_VERSION = 18
+// Bump when grant schema or seed data changes — forces localStorage re-seed
+const GRANTS_VERSION = 19
 
 function loadStoredGrants(): Grant[] {
   if (typeof window === 'undefined') return structuredClone(DEFAULT_GRANTS)
