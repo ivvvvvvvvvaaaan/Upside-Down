@@ -25,7 +25,7 @@ export interface ShareTarget {
 }
 
 export function useShareAsCollection() {
-  const { createCollection, getCollection } = useUserCollections()
+  const { collections, createCollection } = useUserCollections()
 
   /**
    * Given a resourceRef, ensure it points to a collection.
@@ -44,8 +44,8 @@ export function useShareAsCollection() {
     // Folder → create a curated collection from folder contents, default to snapshot
     if (resourceRef.type === 'folder') {
       const assetIds = getAssetIdsForFolder(resourceRef.id)
-      const existingName = `${label} (shared)`
-      const existing = getCollection(existingName)
+      const collectionName = `${label} (shared)`
+      const existing = collections.find(c => c.name === collectionName)
       if (existing) {
         return {
           resourceRef: { id: existing.id, type: 'collection' },
@@ -54,7 +54,7 @@ export function useShareAsCollection() {
           snapshotAssetIds: assetIds,
         }
       }
-      const collection = createCollection(existingName, assetIds)
+      const collection = createCollection(collectionName, assetIds)
       return {
         resourceRef: { id: collection.id, type: 'collection' },
         name: collection.name,
@@ -65,7 +65,7 @@ export function useShareAsCollection() {
 
     // Asset, cut, etc. — pass through as-is, no share mode concept
     return { resourceRef, name: label, defaultShareMode: 'live' }
-  }, [createCollection, getCollection])
+  }, [collections, createCollection])
 
   return { resolveShareTarget }
 }

@@ -397,11 +397,13 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       (g.resource.type === 'collection' || g.resource.type === 'smart-collection') && isGrantActive(g)
     )
 
+    const collectionById = new Map(collections.map(c => [c.id, c]))
+
     for (const grant of collectionGrants) {
       const collectionAccess = collectionAccessById.get(grant.resource.id)
       if (!collectionAccess) continue
 
-      const collection = collections.find(c => c.id === grant.resource.id)
+      const collection = collectionById.get(grant.resource.id)
       if (!collection) continue
 
       // Apply ripple policy from the grant (default: view-only)
