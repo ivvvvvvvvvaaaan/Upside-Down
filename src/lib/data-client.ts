@@ -336,6 +336,11 @@ for (const asset of PROTOTYPE_ASSETS) {
   }
 }
 
+/** Get asset IDs for assets in a given folder (by sourceFolderIds) */
+export function getAssetIdsForFolder(folderId: string): string[] {
+  return (PROTOTYPE_ASSETS_BY_FOLDER.get(folderId) ?? []).map(a => a.id)
+}
+
 function uniquePreviewImages(images: Array<string | undefined>, max: number = 6): string[] | undefined {
   const deduped = Array.from(new Set(images.filter(Boolean) as string[])).slice(0, max)
   return deduped.length > 0 ? deduped : undefined

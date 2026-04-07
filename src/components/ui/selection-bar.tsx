@@ -9,6 +9,7 @@ import { AccessModal } from './access-modal'
 import { BatchShareModal } from './batch-share-modal'
 import { CollectionMembershipModal } from './collection-membership-modal'
 import { useAccess } from '@/hooks'
+import { useShareAsCollection } from '@/hooks/useShareAsCollection'
 import type { SelectionEntity } from '@/lib/selection-actions'
 import { evaluateSelectionActions, getSelectionCountLabel } from '@/lib/selection-actions'
 
@@ -53,9 +54,12 @@ export function SelectionBar({
   className,
 }: SelectionBarProps) {
   const { canShare, getGrantableProfiles } = useAccess()
+  const { resolveShareTarget } = useShareAsCollection()
   const [showCollectionModal, setShowCollectionModal] = useState(false)
   const [showBatchShareModal, setShowBatchShareModal] = useState(false)
   const [showAccessModal, setShowAccessModal] = useState(false)
+  // Resolved share target (may differ from selected entity if folder → collection)
+  const [shareTarget, setShareTarget] = useState<{ resourceRef: { id: string; type: string }; name: string } | null>(null)
 
   const evaluation = useMemo(() => evaluateSelectionActions({
     selectedEntities,
@@ -81,6 +85,10 @@ export function SelectionBar({
   const handleShare = () => {
     if (!evaluation.actions.share.enabled) return
     if (evaluation.shareMode === 'single') {
+      const entity = selectedEntities[0]
+      // Resolve folder → collection before opening share modal
+      const resolved = resolveShareTarget(entity.resourceRef, entity.label)
+      setShareTarget(resolved)
       setShowAccessModal(true)
       return
     }
@@ -160,13 +168,13 @@ export function SelectionBar({
         allowedProfiles={evaluation.allowedShareProfiles}
       />
 
-      {singleSelectedEntity && (
+      {shareTarget && (
         <AccessModal
           open={showAccessModal}
-          onClose={() => setShowAccessModal(false)}
-          resourceId={singleSelectedEntity.resourceRef.id}
-          resourceRef={singleSelectedEntity.resourceRef}
-          title={singleSelectedEntity.label}
+          onClose={() => { setShowAccessModal(false); setShareTarget(null) }}
+          resourceId={shareTarget.resourceRef.id}
+          resourceRef={shareTarget.resourceRef as import('@/lib/grants').ResourceRef}
+          title={shareTarget.name}
         />
       )}
     </>
