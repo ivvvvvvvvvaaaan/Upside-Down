@@ -37,7 +37,7 @@ export interface DropdownProps {
 }
 
 const TRIANGLE = (
-  <svg className="size-2 flex-shrink-0" fill="currentColor" viewBox="0 0 12 12">
+  <svg className="size-2.5 flex-shrink-0" fill="currentColor" viewBox="0 0 12 12">
     <path d="M2 4.5L6 8.5L10 4.5H2Z" />
   </svg>
 )
