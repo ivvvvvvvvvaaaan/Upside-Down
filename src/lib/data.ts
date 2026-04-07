@@ -1,10 +1,12 @@
 import { mergePrototypeAssets } from '@/lib/prototype-assets'
 import {
   MOCK_COLLECTIONS,
+  getAssetIdsForFolder,
 } from '@/lib/data-client'
 import type { Asset, Collection, DepartmentId } from '@/lib/data-client'
 import { seedCutToAsset } from '@/lib/cuts'
 import { buildCuts } from '@/lib/scenario'
+import type { UserCollection } from '@/hooks/useUserCollections'
 
 export type {
   AssetType,
@@ -101,6 +103,29 @@ export function getAssetsByIds(ids: string[]): Asset[] {
   return ids
     .map((id) => resolveAssetById(id, assetsById))
     .filter(Boolean) as Asset[]
+}
+
+/**
+ * Single source of truth for resolving a collection's asset IDs.
+ * Handles all collection types:
+ * - Workspace (folder-bound): resolves from folder contents
+ * - Curated: uses stored assetIds
+ * - Smart: caller should use filterAssets instead
+ */
+export function resolveCollectionAssetIds(collection: UserCollection): string[] {
+  if (collection.boundFolderId) {
+    return getAssetIdsForFolder(collection.boundFolderId)
+  }
+  return collection.assetIds
+}
+
+/**
+ * Resolve full Asset objects for a collection.
+ * Single function used by both API routes and hooks.
+ */
+export function resolveCollectionAssets(collection: UserCollection): Asset[] {
+  const ids = resolveCollectionAssetIds(collection)
+  return getAssetsByIds(ids)
 }
 
 export function getCollections(): Collection[] {

@@ -41,6 +41,7 @@ import { useFileTree } from './useFileTree'
 import { isUserInTeam } from '@/lib/teams'
 import { getDepartmentWorkspaceFiles, findNodeInTree, DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 import { getAssetIdsForFolder } from '@/lib/data-client'
+import { resolveCollectionAssetIds } from '@/lib/data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { SCENARIO, buildGuestLinks } from '@/lib/scenario'
 import type { GuestLinkSeed } from '@/lib/scenario'
@@ -425,18 +426,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         ? collectionAccess.permissions
         : (grant.ripplePermissions ?? VIEW_ONLY_CAP)
 
-      // Resolve asset IDs based on share mode and collection type:
-      // 1. Snapshot: use frozen asset IDs from the grant
-      // 2. Workspace collection (folder-bound): resolve from folder at query time
-      // 3. Regular collection: use collection.assetIds
-      let assetIds: string[]
-      if (grant.shareMode === 'snapshot' && grant.snapshotAssetIds) {
-        assetIds = grant.snapshotAssetIds
-      } else if (collection.boundFolderId) {
-        assetIds = getAssetIdsForFolder(collection.boundFolderId)
-      } else {
-        assetIds = collection.assetIds
-      }
+      // Resolve asset IDs: snapshot uses frozen IDs from grant,
+      // otherwise resolveCollectionAssetIds handles all collection types
+      const assetIds = (grant.shareMode === 'snapshot' && grant.snapshotAssetIds)
+        ? grant.snapshotAssetIds
+        : resolveCollectionAssetIds(collection)
 
       for (const assetId of assetIds) {
         for (const variantId of getAssetIdVariants(assetId)) {
@@ -599,13 +593,14 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     })
   }, [activePersona, canAccess])
 
-  // Collection asset counts — access-filtered
+  // Collection asset counts — uses resolveCollectionAssetIds for consistent resolution
   const collectionAssetCounts = useMemo(() => {
     const counts = new Map<string, number>()
     for (const collection of collections) {
       if (!collectionAccessById.has(collection.id)) continue
+      const assetIds = resolveCollectionAssetIds(collection)
       let count = 0
-      for (const assetId of collection.assetIds) {
+      for (const assetId of assetIds) {
         if (canAccess(assetId)) count++
       }
       counts.set(collection.id, count)

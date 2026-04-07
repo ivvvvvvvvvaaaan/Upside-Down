@@ -23,6 +23,7 @@ import type { Asset } from '@/lib/data'
 import { PERSONAS } from '@/lib/personas'
 import { assetToSelectionEntity } from '@/lib/selection-actions'
 import { getContextAssetGroups } from '@/lib/context-relationships'
+import { resolveCollectionAssets } from '@/lib/data'
 import { AccessModal } from '@/components/ui/access-modal'
 import type { ResourceRef } from '@/lib/grants'
 
@@ -87,7 +88,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
 
 
 
-  // Fetch assets by IDs when collection loads
+  // Resolve assets using the unified resolution function
   useEffect(() => {
     if (!hydrated) return
     if (!collection || !hasCollectionAccess) {
@@ -96,25 +97,15 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
       return
     }
 
-    const fetchAssets = async () => {
-      setLoading(true)
-      try {
-        const response = await fetch('/api/assets/by-ids', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids: collection.assetIds }),
-        })
-        if (!response.ok) throw new Error('Failed to fetch assets')
-        const fetchedAssets = await response.json()
-        setAssets(filterByAccess(fetchedAssets))
-      } catch (error) {
-        console.error('Failed to fetch assets:', error)
-        setAssets([])
-      }
-      setLoading(false)
+    setLoading(true)
+    try {
+      const resolved = resolveCollectionAssets(collection)
+      setAssets(filterByAccess(resolved))
+    } catch (error) {
+      console.error('Failed to resolve collection assets:', error)
+      setAssets([])
     }
-
-    fetchAssets()
+    setLoading(false)
   }, [hydrated, collection, hasCollectionAccess, filterByAccess])
 
   const handleMenuClick = (asset: Asset) => {
