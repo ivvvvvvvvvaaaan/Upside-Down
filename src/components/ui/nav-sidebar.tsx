@@ -28,7 +28,9 @@ import {
   Send,
   type LucideIcon,
 } from 'lucide-react'
-import { useSmartCollections, useFileTree, useAccess, usePersona } from '@/hooks'
+import { useSmartCollections, useFileTree, useAccess, usePersona, useCollections } from '@/hooks'
+import { isSmart, isCurated } from '@/lib/collection-types'
+import type { SmartCollectionEntry } from '@/lib/collection-types'
 import { matchesFilter } from '@/lib/smart-collection-filters'
 import type { DepartmentId } from '@/components/department/types'
 import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
@@ -522,21 +524,21 @@ function SmartCollectionNavItem({ collection, getChildren, indent, badge }: {
   const pathname = usePathname()
   const children = collection.groupBy ? getChildren(collection.id) : []
   const activeChild = children.find((child) => {
-    const childHref = `/nextgen/smart-collections/${child.id}`
+    const childHref = `/nextgen/collections/${child.id}`
     return pathname === childHref || pathname.startsWith(childHref + '/')
   })
   if (collection.groupBy && children.length > 0) {
     return (
       <TreeNavLink
         key={collection.id}
-        href={`/nextgen/smart-collections/${collection.id}`}
+        href={`/nextgen/collections/${collection.id}`}
         label={collection.name}
         badge={badge}
         defaultExpanded={false}
         autoExpandOnActiveChild={false}
         collapsedPreview={activeChild ? (
           <NavLink
-            href={`/nextgen/smart-collections/${activeChild.id}`}
+            href={`/nextgen/collections/${activeChild.id}`}
             label={activeChild.name}
           />
         ) : undefined}
@@ -544,7 +546,7 @@ function SmartCollectionNavItem({ collection, getChildren, indent, badge }: {
         {children.map(child => (
           <NavLink
             key={child.id}
-            href={`/nextgen/smart-collections/${child.id}`}
+            href={`/nextgen/collections/${child.id}`}
             label={child.name}
           />
         ))}
@@ -554,7 +556,7 @@ function SmartCollectionNavItem({ collection, getChildren, indent, badge }: {
   return (
     <TreeNavLink
       key={collection.id}
-      href={`/nextgen/smart-collections/${collection.id}`}
+      href={`/nextgen/collections/${collection.id}`}
       label={collection.name}
       badge={badge}
       indent={indent}
@@ -574,7 +576,7 @@ function SharedCollectionNavItems() {
     <>
       {sharedCollections.map((entry) => {
         const href = entry.resourceType === 'smart-collection'
-          ? `/nextgen/smart-collections/${entry.resourceId}`
+          ? `/nextgen/collections/${entry.resourceId}`
           : `/nextgen/collections/${entry.resourceId}`
         const count = getCollectionAssetCount(entry.resourceId)
         return (
@@ -597,6 +599,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
   const { tree: fileTree } = useFileTree()
   const { sharesReceivedByMe, allProjectShares, canAccess, visibleCollections: userCollections, getCollectionAssetCount } = useAccess()
   const { activePersona, isAdmin } = usePersona()
+  const { visibleCollections: unifiedCollections } = useCollections()
   // Workspace-level folders: top-level folders created by user (exclude department folders already rendered above)
   const DEPT_FOLDER_IDS = new Set(Object.values(DEPARTMENT_FOLDER_MAP).map(d => d.id))
   const workspaceFolders = fileTree.filter((f) => f.type === 'folder' && !DEPT_FOLDER_IDS.has(f.id)) as WorkspaceFileNode[]
@@ -662,19 +665,24 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
         </div>
       </div>
 
-      {/* Collections — smart + user */}
+      {/* Collections — unified: smart + curated + received */}
       <SectionHeader title="Collections" />
       <div className="px-3 space-y-1">
-        {smartCollections.map((collection) => (
-            <SmartCollectionNavItem
-              key={collection.id}
-              collection={collection}
-              getChildren={getChildren}
-              indent
-              badge={smartCollectionCounts.get(collection.id) || undefined}
-            />
-          ))}
-        {ownedCollections.map((collection) => (
+        {/* Smart collections (system) — keep expandable tree rendering */}
+        {unifiedCollections.filter(isSmart).filter(c => !c.parentId).map((collection) => (
+          <SmartCollectionNavItem
+            key={collection.id}
+            collection={collection}
+            getChildren={getChildren}
+            indent
+            badge={smartCollectionCounts.get(collection.id) || undefined}
+          />
+        ))}
+        {/* My collections (curated, owned by me) */}
+        {unifiedCollections.filter(isCurated).filter(c => {
+          if (activePersona) return c.createdBy === activePersona.email
+          return !sharedCollectionIds.has(c.id)
+        }).map((collection) => (
           <TreeNavLink
             key={collection.id}
             href={`/nextgen/collections/${collection.id}`}
@@ -683,6 +691,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
             indent
           />
         ))}
+        {/* Received collections (shared by others) */}
         <SharedCollectionNavItems />
         <button
           onClick={onNewCollection}
