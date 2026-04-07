@@ -405,6 +405,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
             </div>
             <Dropdown
               label={selectedRoleLabel}
+              size="standard"
               align="end"
               width="lg"
               open={roleDropdownOpen}
