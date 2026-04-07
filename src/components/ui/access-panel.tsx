@@ -32,6 +32,53 @@ function roleGroupOptions(roleGroups: RoleGroup[]) {
     .map((rg) => ({ value: rg.id, label: rg.name }))
 }
 
+const ROLE_DESCRIPTIONS: Record<string, string> = {
+  view: 'Open and download',
+  comment: 'View + leave review notes',
+  contribute: 'View + edit + comment',
+  edit: 'Edit + share with others',
+  manage: 'Full control',
+}
+
+function RoleSelect({ value, options, onChange, size = 'compact' }: {
+  value: string
+  options: { value: string; label: string }[]
+  onChange: (value: string) => void
+  size?: 'compact' | 'standard'
+}) {
+  const [open, setOpen] = useState(false)
+  const selectedLabel = options.find(o => o.value === value)?.label ?? value
+  return (
+    <Dropdown
+      label={selectedLabel}
+      size={size}
+      align="end"
+      width="lg"
+      open={open}
+      onOpenChange={setOpen}
+      triggerClassName="text-body-0-regular"
+    >
+      <div className="py-1">
+        {options.map(option => (
+          <button
+            key={option.value}
+            onClick={() => { onChange(option.value); setOpen(false) }}
+            className={cn(
+              'w-full text-left px-4 py-2 hover:bg-surface-3 transition-colors rounded',
+              value === option.value && 'bg-surface-3',
+            )}
+          >
+            <span className="text-body-0-regular text-foreground block">{option.label}</span>
+            {ROLE_DESCRIPTIONS[option.value] && (
+              <span className="text-label-0-regular text-foreground-dim block">{ROLE_DESCRIPTIONS[option.value]}</span>
+            )}
+          </button>
+        ))}
+      </div>
+    </Dropdown>
+  )
+}
+
 function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name, subtitle, roleLabel, members }: {
   grant: Grant
   readOnly: boolean
@@ -72,13 +119,10 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name
                   {getRoleGroup(roleGroups, grant.templateId ?? 'owner')?.name ?? 'Owner'}
                 </span>
               ) : (
-                <Select
+                <RoleSelect
                   options={roleGroupOptions(roleGroups)}
                   value={grant.templateId ?? 'view'}
                   onChange={(value) => onUpdateProfile(grant.id, value as AccessProfileId)}
-                  size="compact"
-                  borderless
-                  className="w-auto flex-shrink-0"
                 />
               )}
               {!isOwner && onRemove && (
@@ -119,13 +163,10 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name
               <div className="flex items-center gap-1 flex-shrink-0">
                 {!readOnly && member.grantId && onUpdateProfile ? (
                   <>
-                    <Select
+                    <RoleSelect
                       options={roleGroupOptions(roleGroups)}
                       value={member.roleValue ?? 'view'}
                       onChange={(value) => onUpdateProfile(member.grantId!, value as AccessProfileId)}
-                      size="compact"
-                      borderless
-                      className="w-auto flex-shrink-0"
                     />
                     {onRemove && (
                       <Button variant="icon" size="compact-icon" onClick={() => onRemove(member.grantId!)}>
@@ -240,25 +281,14 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
 
   // Role + expiration — consistent model at every level
   const [addAsRole, setAddAsRole] = useState<AccessProfileId>('view')
-  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false)
   const [expires, setExpires] = useState(false)
   const [expiresInDays, setExpiresInDays] = useState(7)
-
-  const ROLE_DESCRIPTIONS: Record<string, string> = {
-    view: 'Open and download',
-    comment: 'View + leave review notes',
-    contribute: 'View + edit + comment',
-    edit: 'Edit + share with others',
-    manage: 'Full control',
-  }
 
   const addRoleOptions = useMemo(() => {
     if (!resourceRef) return roleGroupOptions(roleGroups)
     const allowedProfiles = new Set(getGrantableProfiles(resourceRef))
     return roleGroupOptions(roleGroups).filter((option) => allowedProfiles.has(option.value as AccessProfileId))
   }, [resourceRef, roleGroups, getGrantableProfiles])
-
-  const selectedRoleLabel = addRoleOptions.find(o => o.value === addAsRole)?.label ?? 'Can view'
 
   // Users with 'share' can modify grants they created; 'edit-acl' can modify any grant
   const canManageGrant = (grant: Grant): boolean => {
@@ -403,33 +433,12 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
                 </div>
               )}
             </div>
-            <Dropdown
-              label={selectedRoleLabel}
+            <RoleSelect
+              options={addRoleOptions}
+              value={addAsRole}
+              onChange={(value) => setAddAsRole(value as AccessProfileId)}
               size="standard"
-              align="end"
-              width="lg"
-              triggerClassName="text-body-0-regular"
-              open={roleDropdownOpen}
-              onOpenChange={setRoleDropdownOpen}
-            >
-              <div className="py-1">
-                {addRoleOptions.map(option => (
-                  <button
-                    key={option.value}
-                    onClick={() => { setAddAsRole(option.value as AccessProfileId); setRoleDropdownOpen(false) }}
-                    className={cn(
-                      'w-full text-left px-4 py-2 hover:bg-surface-3 transition-colors rounded',
-                      addAsRole === option.value && 'bg-surface-3',
-                    )}
-                  >
-                    <span className="text-body-0-regular text-foreground block">{option.label}</span>
-                    {ROLE_DESCRIPTIONS[option.value] && (
-                      <span className="text-label-0-regular text-foreground-dim block">{ROLE_DESCRIPTIONS[option.value]}</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </Dropdown>
+            />
           </div>
           <div className="flex items-center justify-between py-1">
             <div className="flex items-center gap-3">
