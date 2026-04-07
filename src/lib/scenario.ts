@@ -50,6 +50,14 @@ type ScenarioShare = {
   revoked?: boolean
   /** ISO date — grant expires after this date */
   expiresAt?: string
+  /** Live or snapshot share mode */
+  shareMode?: 'live' | 'snapshot'
+  /** Frozen asset IDs for snapshot shares */
+  snapshotAssetIds?: string[]
+  /** Allow recipient to upload into this collection */
+  allowUpload?: boolean
+  /** Review link ID for direct review access */
+  reviewLinkId?: string
 }
 
 type ScenarioGuestLink = {
@@ -473,6 +481,37 @@ export const SCENARIO: Scenario = {
         { to: 'art-artist', as: 'viewer' },
       ],
     },
+
+    // --- Unified Collection Model scenarios ---
+
+    // Snapshot share: Sarah shares VFX delivery package with vendor (frozen contents)
+    {
+      resource: { id: 'ws-vfx-coll-for-vendor', type: 'collection', dept: 'vfx' },
+      label: 'Framestore Week 12 Delivery',
+      by: 'vfx-coordinator',
+      date: '2026-02-16',
+      context: 'Sarah sends Framestore the approved shots for this week. Snapshot mode freezes the 8 shots at share time — next week\'s batch won\'t leak into this delivery. Upload enabled so James can deliver rendered frames back.',
+      shareMode: 'snapshot',
+      snapshotAssetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-010-030', 'ws-vfx-020-010', 'ws-vfx-020-020'],
+      allowUpload: true,
+      grants: [
+        { to: 'vendor-framestore', as: 'viewer' },
+      ],
+    },
+
+    // Review link: Maria shares assembly with David for review (direct link, expiring)
+    {
+      resource: { id: 'ws-edit-coll-dailies', type: 'collection', dept: 'editorial' },
+      label: 'EP301 Assembly Review',
+      by: 'editorial-artist',
+      date: '2026-02-18',
+      expiresAt: '2026-02-25',
+      context: 'Maria sends David a review link for the EP301 assembly. He gets a focused review surface — playback, comments, ontology. No workspace, no filing. Link expires after one week.',
+      reviewLinkId: 'review-ep301-assembly-david',
+      grants: [
+        { to: 'creative-david', as: 'commenter' },
+      ],
+    },
   ],
 
   guestLinks: [
@@ -673,6 +712,19 @@ export function buildGrants(): Grant[] {
       }
       if (share.expiresAt) {
         grant.expiresAt = share.expiresAt
+      }
+      if (share.shareMode) {
+        grant.shareMode = share.shareMode
+      }
+      if (share.snapshotAssetIds) {
+        grant.snapshotAssetIds = share.snapshotAssetIds
+      }
+      if (share.allowUpload) {
+        grant.allowUpload = true
+        grant.permissions = [...grant.permissions, 'upload']
+      }
+      if (share.reviewLinkId) {
+        grant.reviewLinkId = share.reviewLinkId
       }
       grants.push(grant)
     }
