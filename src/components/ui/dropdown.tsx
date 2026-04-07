@@ -82,7 +82,7 @@ export function Dropdown({
             disabled={disabled}
             className={cn(
               'inline-flex items-center gap-1.5 rounded border border-border-dim',
-              'bg-surface-flat hover:border-border-subtle transition-colors',
+              'bg-transparent hover:border-border-subtle transition-colors',
               'text-foreground disabled:opacity-50',
               size === 'compact' ? 'px-2 py-1 text-label-0-regular' : 'px-3 py-2 text-body-0-regular',
               triggerClassName,
