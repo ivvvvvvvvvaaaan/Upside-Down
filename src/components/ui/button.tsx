@@ -108,13 +108,12 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             {children}
             {dropdown && (
               <svg
-                className="size-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+                className="size-2"
+                fill="currentColor"
+                viewBox="0 0 12 12"
                 xmlns="http://www.w3.org/2000/svg"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <path d="M2 4.5L6 8.5L10 4.5H2Z" />
               </svg>
             )}
           </>
