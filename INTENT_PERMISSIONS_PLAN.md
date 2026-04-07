@@ -1,10 +1,10 @@
-# Toggle-Based Share Permissions
+# Share Permissions: Role Groups + Capability Toggles
 
 ## Context
 
-The current share modal has a role dropdown (viewer/commenter/editor/manager/etc.) that was designed around file operations. These labels are confusing when sharing collections — "Full access" on a collection doesn't mean full access to the content inside. Users don't think in abstract permission tiers. They think in concrete capabilities: "can they download it? can they leave notes? can they upload into it?"
+The share modal needs two things: a quick path (pick a named role) and a custom path (toggle individual capabilities). Following Iconik's model of Teams (WHO) × Role Groups (WHAT) × Objects (WHERE), but with better UX for the common case.
 
-**Decision**: Replace the role dropdown with toggles. Default is view-only. Each toggle adds a specific capability the sharer understands.
+**Decision**: Role group dropdown as the default quick path. Capability toggles as the custom override. Selecting a role pre-fills the toggles. Manually toggling switches to "Custom" mode.
 
 ---
 
@@ -14,15 +14,20 @@ The current share modal has a role dropdown (viewer/commenter/editor/manager/etc
 Share "EP301 Assembly Selects" with:
 [Search for people...]
 
-☐ Can download
-☐ Can comment
-☐ Can upload
-☐ Expires  [7 days ▾]
+Permission: [View only ▾]     ← role group dropdown (quick path)
+
+Can download    [off]         ← toggles (pre-filled by role, manual = Custom)
+Can comment     [off]
+Can upload      [off]
+Expires         [off]  [7 days ▾]
 
 [Share]
 ```
 
-Default: view only (can open, can browse — nothing else).
+- **Default path**: pick a role group → toggles auto-fill to match
+- **Custom path**: toggle manually → dropdown switches to "Custom"
+- Role groups are defined by coordinators in settings (reusable, centrally managed)
+- Toggles are the escape hatch for one-off cases
 
 Each toggle is a yes/no decision:
 - **Can download** — save to their machine

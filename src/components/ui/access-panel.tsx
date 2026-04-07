@@ -236,12 +236,39 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
   const canAddGrants = Boolean(resourceRef) && canShare(resourceRef)
   const canManageAllGrants = Boolean(resourceRef) && canEditAcl(resourceRef)
 
-  // Capability toggles — replace role dropdown
+  // Role group as quick preset, toggles as custom override
+  const [selectedRole, setSelectedRole] = useState<AccessProfileId | 'custom'>('viewer')
   const [canDownload, setCanDownload] = useState(false)
   const [canComment, setCanComment] = useState(false)
   const [canUpload, setCanUpload] = useState(false)
   const [expires, setExpires] = useState(false)
   const [expiresInDays, setExpiresInDays] = useState(7)
+
+  // Role options for the dropdown
+  const roleOptions = useMemo(() => {
+    const opts = roleGroups
+      .filter(rg => rg.id !== 'owner' && rg.id !== 'link-viewer')
+      .map(rg => ({ value: rg.id, label: rg.name }))
+    return [...opts, { value: 'custom' as const, label: 'Custom' }]
+  }, [roleGroups])
+
+  // When role changes, sync toggles to match the role's permissions
+  const handleRoleChange = (value: string) => {
+    const roleId = value as AccessProfileId | 'custom'
+    setSelectedRole(roleId)
+    if (roleId === 'custom') return
+    const rg = roleGroups.find(r => r.id === roleId)
+    if (!rg) return
+    setCanDownload(rg.permissions.includes('download'))
+    setCanComment(rg.permissions.includes('comment'))
+    setCanUpload(rg.permissions.includes('upload') || rg.permissions.includes('write'))
+  }
+
+  // When a toggle changes manually, switch to custom mode
+  const handleToggle = (setter: (v: boolean) => void) => (value: boolean) => {
+    setter(value)
+    setSelectedRole('custom')
+  }
 
   // Users with 'share' can modify grants they created; 'edit-acl' can modify any grant
   const canManageGrant = (grant: Grant): boolean => {
@@ -290,17 +317,25 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
     if (principal.type === 'user' && grants.some((grant) => grant.principal.type === 'user' && grant.principal.userId === principal.userId)) return
     if (principal.type === 'team' && grants.some((grant) => grant.principal.type === 'team' && grant.principal.teamId === principal.teamId)) return
 
-    // Build permissions from toggle state
-    const permissions: Permission[] = ['open']
-    if (canDownload) permissions.push('download')
-    if (canComment) permissions.push('comment')
-    if (canUpload) permissions.push('upload')
+    if (selectedRole !== 'custom') {
+      // Role-based: use the role group's permissions
+      createGrant(resourceRef, principal, selectedRole, {
+        allowUpload: canUpload || undefined,
+        expiresInDays: expires ? expiresInDays : undefined,
+      })
+    } else {
+      // Custom: build permissions from toggle state
+      const permissions: Permission[] = ['open']
+      if (canDownload) permissions.push('download')
+      if (canComment) permissions.push('comment')
+      if (canUpload) permissions.push('upload')
 
-    createGrant(resourceRef, principal, 'viewer', {
-      permissions,
-      allowUpload: canUpload || undefined,
-      expiresInDays: expires ? expiresInDays : undefined,
-    })
+      createGrant(resourceRef, principal, 'viewer', {
+        permissions,
+        allowUpload: canUpload || undefined,
+        expiresInDays: expires ? expiresInDays : undefined,
+      })
+    }
     setQuery('')
     setShowDropdown(false)
   }
@@ -394,29 +429,42 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
         </div>
       )}
 
-      {/* Capability toggles */}
+      {/* Role + capability toggles */}
       {!readOnly && canAddGrants && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between py-1">
-            <span className="text-body-0-regular text-foreground">Can download</span>
-            <Toggle checked={canDownload} onChange={setCanDownload} aria-label="Can download" />
+        <div className="space-y-3">
+          {/* Role group dropdown — quick preset */}
+          <div className="flex items-center justify-between">
+            <span className="text-body-0-bold text-foreground-dim">Permission</span>
+            <Select
+              options={roleOptions}
+              value={selectedRole}
+              onChange={handleRoleChange}
+              className="w-auto flex-shrink-0"
+            />
           </div>
-          <div className="flex items-center justify-between py-1">
-            <span className="text-body-0-regular text-foreground">Can comment</span>
-            <Toggle checked={canComment} onChange={setCanComment} aria-label="Can comment" />
-          </div>
-          <div className="flex items-center justify-between py-1">
-            <span className="text-body-0-regular text-foreground">Can upload</span>
-            <Toggle checked={canUpload} onChange={setCanUpload} aria-label="Can upload" />
-          </div>
-          <div className="flex items-center justify-between py-1">
-            <div className="flex items-center gap-3">
-              <span className="text-body-0-regular text-foreground">Expires</span>
-              {expires && (
-                <select
-                  value={expiresInDays}
-                  onChange={e => setExpiresInDays(Number(e.target.value))}
-                  className="text-body-0-regular text-foreground bg-surface-flat border border-border-dim rounded px-2 py-0.5"
+
+          {/* Capability toggles — selecting a role pre-fills these, manual toggle switches to Custom */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between py-1">
+              <span className="text-body-0-regular text-foreground">Can download</span>
+              <Toggle checked={canDownload} onChange={handleToggle(setCanDownload)} aria-label="Can download" />
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <span className="text-body-0-regular text-foreground">Can comment</span>
+              <Toggle checked={canComment} onChange={handleToggle(setCanComment)} aria-label="Can comment" />
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <span className="text-body-0-regular text-foreground">Can upload</span>
+              <Toggle checked={canUpload} onChange={handleToggle(setCanUpload)} aria-label="Can upload" />
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <div className="flex items-center gap-3">
+                <span className="text-body-0-regular text-foreground">Expires</span>
+                {expires && (
+                  <select
+                    value={expiresInDays}
+                    onChange={e => setExpiresInDays(Number(e.target.value))}
+                    className="text-body-0-regular text-foreground bg-surface-flat border border-border-dim rounded px-2 py-0.5"
                 >
                   <option value={1}>1 day</option>
                   <option value={7}>7 days</option>
@@ -426,7 +474,8 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
                 </select>
               )}
             </div>
-            <Toggle checked={expires} onChange={setExpires} aria-label="Expires" />
+            <Toggle checked={expires} onChange={handleToggle(setExpires)} aria-label="Expires" />
+          </div>
           </div>
         </div>
       )}
