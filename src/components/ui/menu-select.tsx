@@ -80,10 +80,7 @@ export function MenuSelect({
               value === option.value && 'bg-surface-3',
             )}
           >
-            <span className={cn(
-              'block',
-              size === 'compact' ? 'text-label-0-regular text-foreground' : 'text-body-0-regular text-foreground',
-            )}>
+            <span className="text-body-0-regular text-foreground block">
               {option.label}
             </span>
             {option.description && (
