@@ -22,7 +22,7 @@ describe('grant-based access model', () => {
     const result = resolveAccess('vfx-coordinator', 'ws-vfx', DEFAULT_GRANTS)
     expect(result.hasAccess).toBe(true)
     expect(result.source).toBe('team')
-    expect(result.effectiveProfile).toBe('manager')
+    expect(result.effectiveProfile).toBe('manage')
   })
 
   it('uses department team defaults consistently for all department members', () => {
@@ -31,11 +31,11 @@ describe('grant-based access model', () => {
 
     expect(lisa.hasAccess).toBe(true)
     expect(lisa.source).toBe('team')
-    expect(lisa.effectiveProfile).toBe('editor')
+    expect(lisa.effectiveProfile).toBe('edit')
 
     expect(maria.hasAccess).toBe(true)
     expect(maria.source).toBe('team')
-    expect(maria.effectiveProfile).toBe('editor')
+    expect(maria.effectiveProfile).toBe('edit')
   })
 
   it('lets a direct person override outrank the department default', () => {
@@ -43,8 +43,8 @@ describe('grant-based access model', () => {
       id: 'editorial-override',
       resource: { id: 'ws-editorial', type: 'folder', departmentId: 'editorial' },
       principal: { type: 'user', userId: 'editorial-coordinator' },
-      templateId: 'manager',
-      permissions: DEFAULT_ROLE_GROUPS.find((group) => group.id === 'manager')!.permissions,
+      templateId: 'manage',
+      permissions: DEFAULT_ROLE_GROUPS.find((group) => group.id === 'manage')!.permissions,
       grantedByUserId: 'studio-alex',
       grantedAt: '2026-04-02',
     }
@@ -53,7 +53,7 @@ describe('grant-based access model', () => {
 
     expect(lisa.hasAccess).toBe(true)
     expect(lisa.source).toBe('direct')
-    expect(lisa.effectiveProfile).toBe('manager')
+    expect(lisa.effectiveProfile).toBe('manage')
   })
 
   it('keeps studio and creative users explicit-share only for resource access', () => {
@@ -80,8 +80,8 @@ describe('grant-based access model', () => {
       id: 'access-group-grant',
       resource: reviewFolder,
       principal: { type: 'team', teamId: 'studio-leadership' },
-      templateId: 'viewer',
-      permissions: DEFAULT_ROLE_GROUPS.find((group) => group.id === 'viewer')!.permissions,
+      templateId: 'view',
+      permissions: DEFAULT_ROLE_GROUPS.find((group) => group.id === 'view')!.permissions,
       grantedByUserId: 'editorial-coordinator',
       grantedAt: '2026-04-02',
     }
@@ -92,11 +92,11 @@ describe('grant-based access model', () => {
 
     expect(alex.hasAccess).toBe(true)
     expect(alex.source).toBe('team')
-    expect(alex.effectiveProfile).toBe('viewer')
+    expect(alex.effectiveProfile).toBe('view')
 
     expect(david.hasAccess).toBe(true)
     expect(david.source).toBe('team')
-    expect(david.effectiveProfile).toBe('viewer')
+    expect(david.effectiveProfile).toBe('view')
 
     expect(james.hasAccess).toBe(false)
   })
@@ -113,58 +113,58 @@ describe('grant-based access model', () => {
 describe('capability decomposition', () => {
   it('roleGroupHasPermission checks capabilities correctly', () => {
     expect(roleGroupHasPermission(DEFAULT_ROLE_GROUPS, 'owner', 'edit-acl')).toBe(true)
-    expect(roleGroupHasPermission(DEFAULT_ROLE_GROUPS, 'editor', 'edit-acl')).toBe(false)
-    expect(roleGroupHasPermission(DEFAULT_ROLE_GROUPS, 'viewer', 'open')).toBe(true)
-    expect(roleGroupHasPermission(DEFAULT_ROLE_GROUPS, 'viewer', 'write')).toBe(false)
-    expect(roleGroupHasPermission(DEFAULT_ROLE_GROUPS, 'commenter', 'comment')).toBe(true)
-    expect(roleGroupHasPermission(DEFAULT_ROLE_GROUPS, 'commenter', 'delete')).toBe(false)
+    expect(roleGroupHasPermission(DEFAULT_ROLE_GROUPS, 'edit', 'edit-acl')).toBe(false)
+    expect(roleGroupHasPermission(DEFAULT_ROLE_GROUPS, 'view', 'open')).toBe(true)
+    expect(roleGroupHasPermission(DEFAULT_ROLE_GROUPS, 'view', 'write')).toBe(false)
+    expect(roleGroupHasPermission(DEFAULT_ROLE_GROUPS, 'comment', 'comment')).toBe(true)
+    expect(roleGroupHasPermission(DEFAULT_ROLE_GROUPS, 'comment', 'delete')).toBe(false)
   })
 
   it('getRoleGroup returns the correct group', () => {
-    const editor = getRoleGroup(DEFAULT_ROLE_GROUPS, 'editor')
+    const editor = getRoleGroup(DEFAULT_ROLE_GROUPS, 'edit')
     expect(editor).toBeDefined()
-    expect(editor!.name).toBe('Can edit & share')
+    expect(editor!.name).toBe('Can edit')
     expect(editor!.permissions).toContain('write')
     expect(editor!.permissions).not.toContain('edit-acl')
   })
 
   it('profileCanEdit uses template write permission', () => {
-    expect(profileCanEdit('editor')).toBe(true)
-    expect(profileCanEdit('viewer')).toBe(false)
-    expect(profileCanEdit('contributor')).toBe(true)
-    expect(profileCanEdit('commenter')).toBe(false)
+    expect(profileCanEdit('edit')).toBe(true)
+    expect(profileCanEdit('view')).toBe(false)
+    expect(profileCanEdit('contribute')).toBe(true)
+    expect(profileCanEdit('comment')).toBe(false)
   })
 
   it('custom role groups can change template permissions', () => {
     const customGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS.map((group) =>
-      group.id === 'editor'
+      group.id === 'edit'
         ? { ...group, permissions: ['open', 'comment'] as Permission[] }
         : group,
     )
 
-    expect(profileCanEdit('editor', customGroups)).toBe(false)
-    expect(roleGroupHasPermission(customGroups, 'editor', 'write')).toBe(false)
-    expect(profileCanEdit('contributor', customGroups)).toBe(true)
+    expect(profileCanEdit('edit', customGroups)).toBe(false)
+    expect(roleGroupHasPermission(customGroups, 'edit', 'write')).toBe(false)
+    expect(profileCanEdit('contribute', customGroups)).toBe(true)
   })
 
   it('resolveAccess includes explicit grant permissions in the result', () => {
     const result = resolveAccess('vendor-framestore', 'ws-vfx-coll-for-vendor', DEFAULT_GRANTS)
     expect(result.hasAccess).toBe(true)
-    expect(result.effectiveProfile).toBe('viewer')
+    expect(result.effectiveProfile).toBe('view')
     expect(result.permissions).toEqual(['open', 'download'])
     expect(result.canEdit).toBe(false)
   })
 
   it('resolveAccess respects custom role groups for explicit department-root access', () => {
     const customGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS.map((group) =>
-      group.id === 'manager'
+      group.id === 'manage'
         ? { ...group, permissions: ['open'] as Permission[] }
         : group,
     )
 
     const result = resolveAccess('vfx-supervisor', 'ws-vfx', DEFAULT_GRANTS, customGroups)
     expect(result.hasAccess).toBe(true)
-    expect(result.effectiveProfile).toBe('manager')
+    expect(result.effectiveProfile).toBe('manage')
     expect(result.canEdit).toBe(false)
     expect(result.permissions).toEqual(['open'])
   })
@@ -199,11 +199,11 @@ describe('capability decomposition', () => {
   })
 
   it('prevents editors from delegating profiles with permissions they do not have', () => {
-    const editorPermissions = DEFAULT_ROLE_GROUPS.find((group) => group.id === 'editor')!.permissions
+    const editorPermissions = DEFAULT_ROLE_GROUPS.find((group) => group.id === 'edit')!.permissions
 
-    expect(canAssignProfile(editorPermissions, 'viewer', DEFAULT_ROLE_GROUPS)).toBe(true)
-    expect(canAssignProfile(editorPermissions, 'contributor', DEFAULT_ROLE_GROUPS)).toBe(true)
-    expect(canAssignProfile(editorPermissions, 'manager', DEFAULT_ROLE_GROUPS)).toBe(false)
+    expect(canAssignProfile(editorPermissions, 'view', DEFAULT_ROLE_GROUPS)).toBe(true)
+    expect(canAssignProfile(editorPermissions, 'contribute', DEFAULT_ROLE_GROUPS)).toBe(true)
+    expect(canAssignProfile(editorPermissions, 'manage', DEFAULT_ROLE_GROUPS)).toBe(false)
   })
 })
 
@@ -211,7 +211,7 @@ describe('project-level roles', () => {
   it('project roles apply to the project settings resource only', () => {
     const projectAccess = resolveAccess('studio-alex', PROJECT_RESOURCE.id, DEFAULT_GRANTS)
     expect(projectAccess.hasAccess).toBe(true)
-    expect(projectAccess.effectiveProfile).toBe('viewer')
+    expect(projectAccess.effectiveProfile).toBe('view')
     expect(projectAccess.source).toBe('project-direct')
 
     const unrelatedAccess = resolveAccess('studio-alex', 'some-random-resource', DEFAULT_GRANTS)

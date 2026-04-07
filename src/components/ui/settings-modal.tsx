@@ -99,7 +99,7 @@ function PeopleTab({
     const persona = availablePeople.find((p) => p.email === email)
     if (!persona) return
     if (grants.some((g) => g.principal.type === 'user' && g.principal.userId === persona.id)) return
-    onAdd({ type: 'user', userId: persona.id }, 'viewer')
+    onAdd({ type: 'user', userId: persona.id }, 'view')
     setNewEmail('')
   }
 
@@ -156,7 +156,7 @@ function PeopleTab({
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <Select
                     options={options}
-                    value={grant.templateId ?? 'viewer'}
+                    value={grant.templateId ?? 'view'}
                     onChange={(v) => onRoleChange(grant.id, v as AccessProfileId)}
                     size="compact"
                     borderless

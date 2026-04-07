@@ -72,7 +72,7 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name
               ) : (
                 <Select
                   options={roleGroupOptions(roleGroups)}
-                  value={grant.templateId ?? 'viewer'}
+                  value={grant.templateId ?? 'view'}
                   onChange={(value) => onUpdateProfile(grant.id, value as AccessProfileId)}
                   size="compact"
                   borderless
@@ -119,7 +119,7 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name
                   <>
                     <Select
                       options={roleGroupOptions(roleGroups)}
-                      value={member.roleValue ?? 'viewer'}
+                      value={member.roleValue ?? 'view'}
                       onChange={(value) => onUpdateProfile(member.grantId!, value as AccessProfileId)}
                       size="compact"
                       borderless
@@ -237,7 +237,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
   const canManageAllGrants = Boolean(resourceRef) && canEditAcl(resourceRef)
 
   // Role + expiration — consistent model at every level
-  const [addAsRole, setAddAsRole] = useState<AccessProfileId>('viewer')
+  const [addAsRole, setAddAsRole] = useState<AccessProfileId>('view')
   const [expires, setExpires] = useState(false)
   const [expiresInDays, setExpiresInDays] = useState(7)
 

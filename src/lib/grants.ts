@@ -24,11 +24,11 @@ export type PrincipalRef =
 
 export type AccessProfileId =
   | 'owner'
-  | 'manager'
-  | 'editor'
-  | 'contributor'
-  | 'commenter'
-  | 'viewer'
+  | 'manage'
+  | 'edit'
+  | 'contribute'
+  | 'comment'
+  | 'view'
   | 'link-viewer'
 
 export type Permission =
@@ -89,11 +89,11 @@ const SEED_LABELS = buildLabels()
 
 const TEMPLATE_RANK: Record<AccessProfileId, number> = {
   owner: 7,
-  manager: 6,
-  editor: 5,
-  contributor: 4,
-  commenter: 3,
-  viewer: 2,
+  manage: 6,
+  edit: 5,
+  contribute: 4,
+  comment: 3,
+  view: 2,
   'link-viewer': 1,
 }
 

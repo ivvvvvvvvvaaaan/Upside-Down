@@ -40,7 +40,7 @@ export function BatchShareModal({
   const { roleGroups, getResourceGrants, createGrant } = useAccess()
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
-  const [addAsRole, setAddAsRole] = useState<AccessProfileId>('viewer')
+  const [addAsRole, setAddAsRole] = useState<AccessProfileId>('view')
   const [appliedRecipients, setAppliedRecipients] = useState<string[]>([])
   const dropdownRef = useRef<HTMLDivElement>(null)
 

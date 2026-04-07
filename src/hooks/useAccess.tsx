@@ -174,7 +174,7 @@ function mergePermissions(...permissionSets: Permission[][]): Permission[] {
 
 // Bump this when grant schema or seed data changes — forces localStorage re-seed
 // Bump when grant schema or seed data changes — forces localStorage re-seed
-const GRANTS_VERSION = 20
+const GRANTS_VERSION = 21
 
 function loadStoredGrants(): Grant[] {
   if (typeof window === 'undefined') return structuredClone(DEFAULT_GRANTS)
@@ -734,8 +734,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       id: `grant-review-${Date.now()}`,
       resource,
       principal,
-      templateId: 'commenter',
-      permissions: getPermissionsForProfile('commenter', roleGroups),
+      templateId: 'comment',
+      permissions: getPermissionsForProfile('comment', roleGroups),
       grantedByUserId: activePersona.id,
       grantedAt: now.toISOString().slice(0, 10),
       expiresAt: expires.toISOString().slice(0, 10),

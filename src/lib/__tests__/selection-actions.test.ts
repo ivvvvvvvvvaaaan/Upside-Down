@@ -23,7 +23,7 @@ describe('evaluateSelectionActions', () => {
 
     const result = evaluateSelectionActions({
       selectedEntities: [asset],
-      ...createShareContext(['asset-1'], { 'asset-1': ['viewer', 'editor'] }),
+      ...createShareContext(['asset-1'], { 'asset-1': ['view', 'edit'] }),
     })
 
     expect(result.selectionKind).toBe('asset')
@@ -50,8 +50,8 @@ describe('evaluateSelectionActions', () => {
     const result = evaluateSelectionActions({
       selectedEntities: [asset, folder],
       ...createShareContext(['asset-1', 'folder-1'], {
-        'asset-1': ['viewer', 'editor'],
-        'folder-1': ['editor'],
+        'asset-1': ['view', 'edit'],
+        'folder-1': ['edit'],
       }),
     })
 
@@ -80,8 +80,8 @@ describe('evaluateSelectionActions', () => {
     const result = evaluateSelectionActions({
       selectedEntities: [allowed, blocked],
       ...createShareContext(['asset-1', 'asset-2'], {
-        'asset-1': ['viewer', 'editor'],
-        'asset-2': ['viewer', 'editor'],
+        'asset-1': ['view', 'edit'],
+        'asset-2': ['view', 'edit'],
       }),
     })
 
@@ -106,8 +106,8 @@ describe('evaluateSelectionActions', () => {
     const result = evaluateSelectionActions({
       selectedEntities: [first, second],
       ...createShareContext(['folder-1', 'folder-2'], {
-        'folder-1': ['editor'],
-        'folder-2': ['viewer'],
+        'folder-1': ['edit'],
+        'folder-2': ['view'],
       }),
     })
 
@@ -122,7 +122,7 @@ describe('evaluateSelectionActions', () => {
 
     const result = evaluateSelectionActions({
       selectedEntities: [collection],
-      ...createShareContext(['collection-1'], { 'collection-1': ['viewer', 'editor'] }),
+      ...createShareContext(['collection-1'], { 'collection-1': ['view', 'edit'] }),
     })
 
     expect(result.selectionKind).toBe('collection')
