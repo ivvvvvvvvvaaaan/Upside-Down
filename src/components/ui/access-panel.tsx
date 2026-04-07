@@ -349,47 +349,6 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
         <p className="text-body-0-regular text-foreground-dim">You can manage shares you created. Only admins can modify shares created by others.</p>
       )}
 
-      {/* Search row */}
-      {!readOnly && resourceRef && canAddGrants && (
-        <div ref={dropdownRef} className="relative">
-          <Input
-            type="text"
-            value={query}
-            onChange={e => { setQuery(e.target.value); setShowDropdown(true) }}
-            onFocus={() => query.trim() && setShowDropdown(true)}
-            placeholder="Add people or teams..."
-            icon={<Search className="w-4 h-4" />}
-            iconPosition="left"
-          />
-          {showDropdown && query.trim() && (
-            <div className="absolute left-0 right-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 max-h-[240px] overflow-y-auto">
-              {results.map((result) => (
-                <button
-                  key={result.key}
-                  onClick={() => handleAddPrincipal(result.principal)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors"
-                >
-                  {result.kind === 'user' ? (
-                    <Avatar name={result.name} size="sm" />
-                  ) : (
-                    <span className="w-6 h-6 rounded-full flex items-center justify-center bg-surface-3 text-foreground-dim flex-shrink-0">
-                      <Users className="w-3 h-3" />
-                    </span>
-                  )}
-                  <div className="min-w-0">
-                    <span className="text-body-0-regular text-foreground truncate block">{result.name}</span>
-                    <span className="text-body-0-regular text-foreground-dim truncate block">{result.subtitle}</span>
-                  </div>
-                </button>
-              ))}
-              {!hasResults && (
-                <div className="px-3 py-2 text-body-0-regular text-foreground-dim">No matches</div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Search + role dropdown + expiration */}
       {!readOnly && resourceRef && canAddGrants && addRoleOptions.length > 0 && (
         <div className="space-y-3">
