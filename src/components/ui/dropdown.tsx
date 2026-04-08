@@ -58,7 +58,7 @@ export function DropdownMenuItem({ icon, label, onClick, destructive }: Dropdown
     <button
       onClick={onClick}
       className={cn(
-        'w-full flex items-center gap-2 px-3 py-1.5 text-body-0-regular hover:bg-surface-3 transition-colors text-left',
+        'w-full flex items-center gap-2 px-3 py-2.5 text-body-0-regular hover:bg-surface-highlight transition-colors text-left',
         destructive ? 'text-foreground-system-error' : 'text-foreground',
       )}
     >
@@ -87,6 +87,13 @@ export function Dropdown({
   compact = false,
   ghost = false,
 }: DropdownProps) {
+  const [internalOpen, setInternalOpen] = React.useState(false)
+  const isOpen = open ?? internalOpen
+  const handleOpenChange = (next: boolean) => {
+    setInternalOpen(next)
+    onOpenChange?.(next)
+  }
+
   const widthClasses = {
     auto: 'w-auto',
     sm: 'w-48',
@@ -96,14 +103,14 @@ export function Dropdown({
   }
 
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         {iconOnly ? (
           <Button
             variant="icon"
             compact={compact}
             disabled={disabled}
-            className={triggerClassName}
+            className={cn(isOpen && 'bg-surface-3', triggerClassName)}
             aria-label={label}
           >
             {icon}
@@ -116,8 +123,12 @@ export function Dropdown({
               'inline-flex items-center justify-between gap-1.5 rounded transition-colors',
               'text-foreground disabled:opacity-50',
               ghost
-                ? 'bg-transparent hover:bg-surface-highlight'
-                : 'border border-border-dim bg-surface-highlight hover:border-border-subtle',
+                ? 'bg-transparent'
+                : (
+                  isOpen
+                    ? 'bg-surface-flat dark:bg-white/[0.04] ring-2 ring-inset ring-border-system-focus'
+                    : 'bg-surface-flat dark:bg-white/[0.04] ring-1 ring-inset ring-border-dim'
+                ),
               ghost
                 ? (size === 'compact' ? 'h-8 px-3 text-label-1-bold' : 'h-10 px-3 text-body-1-bold')
                 : (size === 'compact' ? 'h-8 px-3 text-label-0-regular' : 'h-10 px-3 text-body-0-regular'),
@@ -132,7 +143,7 @@ export function Dropdown({
       </PopoverTrigger>
       <PopoverContent
         align={align}
-        className={cn(widthClasses[width], 'p-0')}
+        className={cn(widthClasses[width], 'bg-surface-mid p-0')}
       >
         {children}
       </PopoverContent>

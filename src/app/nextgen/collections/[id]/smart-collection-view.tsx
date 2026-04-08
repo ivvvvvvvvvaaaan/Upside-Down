@@ -71,7 +71,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     handleSelectionClick: handleCollectionSelectionClick,
     clearSelection: clearCollectionSelection,
   } = useResourceSelection<{ id: string; name: string }>()
-  const { layout, setLayout, cardSize, setCardSize, sidePanelOpen, setSidePanelOpen, showMetadata, setShowMetadata } = useViewPreferences()
+  const { layout, setLayout, cardSize, setCardSize, sidePanelOpen, setSidePanelOpen, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
   const isMobile = useIsMobile()
@@ -371,8 +371,10 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                       cardSize={cardSize}
                       onCardSizeChange={setCardSize}
                       showLayoutOptions={false}
-                      showMetadata={showMetadata}
-                      onShowMetadataChange={setShowMetadata}
+                      showTags={showTags}
+                      onShowTagsChange={setShowTags}
+                      metadataFields={metadataFields}
+                      onMetadataFieldChange={setMetadataField}
                     />
                   </div>
 
@@ -394,8 +396,10 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                           onCardSizeChange={setCardSize}
                           showLayoutOptions={false}
                           iconOnly={sidePanelOpen}
-                          showMetadata={showMetadata}
-                          onShowMetadataChange={setShowMetadata}
+                          showTags={showTags}
+                          onShowTagsChange={setShowTags}
+                          metadataFields={metadataFields}
+                          onMetadataFieldChange={setMetadataField}
                         />
                         {showShareButton && (
                           <Button

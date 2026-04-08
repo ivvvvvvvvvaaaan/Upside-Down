@@ -37,7 +37,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-[4px] font-sans text-center ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-system-focus focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4",
+  "inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-[4px] font-sans text-center ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-system-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4",
   {
     variants: {
       variant: {
@@ -45,7 +45,7 @@ const buttonVariants = cva(
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         secondary: "bg-transparent border border-border-subtle text-foreground dark:border-border-inverse-subtle dark:text-foreground hover:bg-surface-highlight dark:hover:bg-white/10 disabled:bg-transparent disabled:opacity-40 disabled:border-opacity-20",
         "secondary-destructive":
-          "bg-transparent border border-destructive-secondary-border border-opacity-40 text-foreground-system-error hover:bg-white/10 focus-visible:ring-border-system-error focus-visible:ring-offset-2",
+          "bg-transparent border border-destructive-secondary-border border-opacity-40 text-foreground-system-error hover:bg-white/10",
         tertiary: "bg-transparent text-foreground hover:bg-surface-highlight dark:hover:bg-white/10",
         icon: "bg-transparent text-foreground hover:bg-surface-highlight dark:hover:bg-white/10",
       },

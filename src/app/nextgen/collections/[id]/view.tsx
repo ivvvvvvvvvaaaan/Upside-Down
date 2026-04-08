@@ -65,7 +65,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const { showToast } = useToast()
   const { getRelatedCollectionsForAssets, scopedAssets, ensureAssetsLoaded } = useSmartCollections()
   const { selectedIds, primaryId, handleAssetClick, selectOnly, clearSelection } = useAssetSelection()
-  const { cardSize, setCardSize, sidePanelOpen, setSidePanelOpen, showMetadata, setShowMetadata } = useViewPreferences()
+  const { cardSize, setCardSize, sidePanelOpen, setSidePanelOpen, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const [sortCriteria, setSortCriteria] = useState<import('@/components/ui').SortCriterion[]>([{ field: 'name', direction: 'asc' as const }])
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
@@ -335,8 +335,10 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         cardSize={cardSize}
                         onCardSizeChange={setCardSize}
                         showLayoutOptions={false}
-                        showMetadata={showMetadata}
-                        onShowMetadataChange={setShowMetadata}
+                        showTags={showTags}
+                        onShowTagsChange={setShowTags}
+                        metadataFields={metadataFields}
+                        onMetadataFieldChange={setMetadataField}
                       />
                       {showUpload && (
                         <Button

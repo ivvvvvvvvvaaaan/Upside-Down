@@ -116,7 +116,8 @@ export function useViewPreferences(): UseViewPreferencesReturn {
   const [hideEmptyCollections, setHideEmptyCollectionsState] = useState<boolean>(DEFAULT_PREFERENCES.hideEmptyCollections)
   const [viewMode, setViewModeState] = useState<string>(DEFAULT_PREFERENCES.viewMode)
   const [sidePanelOpen, setSidePanelOpenState] = useState<boolean>(DEFAULT_PREFERENCES.sidePanelOpen)
-  const [showMetadata, setShowMetadataState] = useState<boolean>(DEFAULT_PREFERENCES.showMetadata)
+  const [showTags, setShowTagsState] = useState<boolean>(DEFAULT_PREFERENCES.showTags)
+  const [metadataFields, setMetadataFieldsState] = useState<MetadataFieldVisibility>(DEFAULT_PREFERENCES.metadataFields)
 
   // Load preferences on mount
   useEffect(() => {
@@ -127,11 +128,12 @@ export function useViewPreferences(): UseViewPreferencesReturn {
     setHideEmptyCollectionsState(prefs.hideEmptyCollections)
     setViewModeState(prefs.viewMode)
     setSidePanelOpenState(prefs.sidePanelOpen)
-    setShowMetadataState(prefs.showMetadata)
+    setShowTagsState(prefs.showTags)
+    setMetadataFieldsState(prefs.metadataFields)
   }, [])
 
   const prefsRef = useRef(DEFAULT_PREFERENCES)
-  useEffect(() => { prefsRef.current = { layout, cardSize, hideEmptyCollections, viewMode, sidePanelOpen, showMetadata } }, [layout, cardSize, hideEmptyCollections, viewMode, sidePanelOpen, showMetadata])
+  useEffect(() => { prefsRef.current = { layout, cardSize, hideEmptyCollections, viewMode, sidePanelOpen, showTags, metadataFields } }, [layout, cardSize, hideEmptyCollections, viewMode, sidePanelOpen, showTags, metadataFields])
 
   const persist = useCallback((patch: Partial<ViewPreferences>) => {
     if (mounted) savePreferences({ ...prefsRef.current, ...patch })
@@ -162,9 +164,15 @@ export function useViewPreferences(): UseViewPreferencesReturn {
     persist({ sidePanelOpen: open })
   }, [persist])
 
-  const setShowMetadata = useCallback((show: boolean) => {
-    setShowMetadataState(show)
-    persist({ showMetadata: show })
+  const setShowTags = useCallback((show: boolean) => {
+    setShowTagsState(show)
+    persist({ showTags: show })
+  }, [persist])
+
+  const setMetadataField = useCallback((field: keyof MetadataFieldVisibility, show: boolean) => {
+    const next = { ...prefsRef.current.metadataFields, [field]: show }
+    setMetadataFieldsState(next)
+    persist({ metadataFields: next })
   }, [persist])
 
   return {
@@ -173,12 +181,14 @@ export function useViewPreferences(): UseViewPreferencesReturn {
     hideEmptyCollections,
     viewMode,
     sidePanelOpen,
+    showTags,
+    metadataFields,
     setLayout,
     setCardSize,
     setHideEmptyCollections,
     setViewMode,
     setSidePanelOpen,
-    showMetadata,
-    setShowMetadata,
+    setShowTags,
+    setMetadataField,
   }
 }

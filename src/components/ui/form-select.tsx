@@ -84,16 +84,12 @@ export function FormSelect({
             'flex items-center justify-between gap-3 rounded w-full',
             sizeClasses[size],
             'px-3',
-            'bg-surface-flat dark:bg-white/[0.04] border border-border-dim',
+            'bg-surface-flat dark:bg-white/[0.04] ring-1 ring-inset ring-border-dim',
             'text-body-0-regular',
             hasValue ? 'text-foreground' : 'text-foreground-subtle',
             'transition-colors',
-            // Hover state
-            !disabled && 'hover:bg-surface-highlight',
-            // Focus state - 2px indigo border
-            'focus:outline-none focus:border-border-system-focus focus:ring-1 focus:ring-inset focus:ring-border-system-focus',
-            // Open state
-            'data-[state=open]:border-border-system-focus data-[state=open]:ring-1 data-[state=open]:ring-inset data-[state=open]:ring-border-system-focus',
+            'focus:outline-none focus:ring-2 focus:ring-inset focus:ring-border-system-focus',
+            'data-[state=open]:ring-2 data-[state=open]:ring-inset data-[state=open]:ring-border-system-focus',
             // Disabled state
             disabled && 'opacity-40 cursor-not-allowed',
             className
@@ -105,7 +101,7 @@ export function FormSelect({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="p-1 min-w-[var(--radix-popover-trigger-width)]"
+        className="bg-surface-mid p-1 min-w-[var(--radix-popover-trigger-width)]"
       >
         <div className="flex flex-col">
           {options.map((option) => (
@@ -114,17 +110,19 @@ export function FormSelect({
               type="button"
               onClick={() => handleSelect(option.value)}
               className={cn(
-                'flex items-center justify-between gap-2 px-3 py-2 rounded',
+                'flex items-start gap-2 px-3 py-2.5 rounded',
                 'text-body-0-regular text-foreground',
                 'transition-colors',
                 'hover:bg-surface-highlight',
                 option.value === value && 'bg-surface-selected-subtle'
               )}
             >
+              <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
+                {option.value === value && (
+                  <Check className="w-4 h-4 text-foreground" />
+                )}
+              </span>
               <span className="truncate">{option.label}</span>
-              {option.value === value && (
-                <Check className="w-4 h-4 shrink-0 text-foreground" />
-              )}
             </button>
           ))}
         </div>

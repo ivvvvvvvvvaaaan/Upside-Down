@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { PageHeader, EmptyState, SelectionBar, Button, MobileToolbar, CardGrid } from '@/components/ui'
 import { AssetCard } from '@/components/ui/asset-card'
 import { ReleaseModal } from '@/components/ui/release-modal'
-import { useCuts, usePersona, useAssetSelection, useSmartCollections, useViewPreferences, useMobilePanel, useAccess, type VisibleCutEntry } from '@/hooks'
+import { useCuts, usePersona, useAssetSelection, useSmartCollections, useViewPreferences, useMobilePanel, useAccess, type VisibleCutEntry, type MetadataFieldVisibility } from '@/hooks'
 import type { SeedCut } from '@/lib/scenario'
 import { compareCutsByStageAndVersion } from '@/lib/cuts'
 import { assetToSelectionEntity } from '@/lib/selection-actions'
@@ -16,7 +16,7 @@ import type { Asset } from '@/lib/data'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
 import { AssetDetailPanelContent } from '@/components/ui/asset-detail-panel'
 
-function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, onMenuClick, onRequestAccess }: {
+function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, onMenuClick, onRequestAccess, showTags, metadataFields }: {
   episode: string
   cuts: VisibleCutEntry[]
   selectedIds: Set<string>
@@ -24,6 +24,8 @@ function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, o
   onAssetClick: (asset: Asset, event: React.MouseEvent, allAssets: Asset[]) => void
   onMenuClick?: (asset: Asset) => void
   onRequestAccess: (asset: Asset) => void
+  showTags?: boolean
+  metadataFields?: MetadataFieldVisibility
 }) {
   const allAssets = cuts.map(c => c.asset)
   return (
@@ -46,6 +48,8 @@ function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, o
             onMenuClick={onMenuClick ? () => onMenuClick(cut.asset) : undefined}
             restricted={cut.visibility === 'discoverable'}
             onRequestAccess={onRequestAccess}
+            showTags={showTags}
+            metadataFields={metadataFields}
           />
         ))}
       </CardGrid>
@@ -58,7 +62,7 @@ export function LibraryView() {
   const { visibleCuts, accessibleCuts } = useCuts()
   const { requestAccess } = useAccess()
   const { scopedAssets } = useSmartCollections()
-  const { sidePanelOpen, setSidePanelOpen } = useViewPreferences()
+  const { sidePanelOpen, setSidePanelOpen, showTags, metadataFields } = useViewPreferences()
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
   const {
     selectedIds,
@@ -211,6 +215,8 @@ export function LibraryView() {
                     onAssetClick={handleAssetClick}
                     onMenuClick={canRelease ? handleMenuClick : undefined}
                     onRequestAccess={handleRequestAccess}
+                    showTags={showTags}
+                    metadataFields={metadataFields}
                   />
                 ))}
               </div>

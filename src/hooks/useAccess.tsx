@@ -105,6 +105,7 @@ interface AccessContextValue {
   createGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId, options?: { permissions?: Permission[]; shareMode?: ShareMode; snapshotAssetIds?: string[]; allowUpload?: boolean; expiresInDays?: number }) => void
   getGrantableProfiles: (resource: ResourceRef) => AccessProfileId[]
   revokeGrant: (grantId: string) => void
+  revokeUserAccess: (userId: string) => void
   canManageGrant: (grant: Grant) => boolean
   grants: Grant[]
   updateGrantProfile: (grantId: string, profileId: AccessProfileId) => void
@@ -930,6 +931,31 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     })
   }, [canManageGrantForState, setGrants])
 
+  const revokeUserAccess = useCallback((targetUserId: string) => {
+    setGrants((prev) => {
+      if (!canEditAclFn(PROJECT_RESOURCE, prev)) return prev
+
+      const revokedAt = new Date().toISOString()
+      let changed = false
+      const next = prev.map((grant) => {
+        if (
+          grant.principal.type !== 'user'
+          || grant.principal.userId !== targetUserId
+          || !isGrantActive(grant)
+        ) {
+          return grant
+        }
+
+        changed = true
+        return { ...grant, revokedAt }
+      })
+
+      return changed ? next : prev
+    })
+
+    setAccessRequests((prev) => prev.filter((request) => request.requestedByUserId !== targetUserId))
+  }, [canEditAclFn, setGrants])
+
   const canManageGuestLinkForState = useCallback((link: GuestLinkSeed, currentGrants: Grant[]): boolean => {
     if (!activePersona) return true
     const resource: ResourceRef = {
@@ -1068,6 +1094,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     createGrant,
     getGrantableProfiles,
     revokeGrant,
+    revokeUserAccess,
     canManageGrant,
     grants,
     updateGrantProfile,
@@ -1118,6 +1145,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     createGrant,
     getGrantableProfiles,
     revokeGrant,
+    revokeUserAccess,
     canManageGrant,
     grants,
     updateGrantProfile,

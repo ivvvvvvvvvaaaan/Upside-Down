@@ -93,11 +93,11 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
       compact: 'h-8',
     }
 
-    const validationBorderClasses = {
-      undefined: 'border-border-dim',
-      success: 'border-border-system-success',
-      warning: 'border-border-system-warning',
-      error: 'border-border-system-error',
+    const validationRingClasses = {
+      undefined: 'ring-border-dim',
+      success: 'ring-border-system-success',
+      warning: 'ring-border-system-warning',
+      error: 'ring-border-system-error',
     }
 
     const validationMessageClasses = {
@@ -150,15 +150,19 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
               size === 'compact' ? 'text-label-0-regular' : 'text-body-0-regular',
               borderless
                 ? 'bg-transparent border-transparent hover:bg-surface-highlight'
-                : 'bg-surface-flat dark:bg-white/[0.04] border',
+                : 'bg-surface-flat dark:bg-white/[0.04] ring-1 ring-inset',
               sizeClasses[size],
               'px-3',
               showClear ? 'pr-16' : 'pr-8',
-              !borderless && validationBorderClasses[validationStatus],
+              !borderless && validationRingClasses[validationStatus],
               hasValue ? 'text-foreground' : 'text-foreground-subtle',
               'transition-colors',
-              // Focus state - 2px indigo border
-              'focus:outline-none focus:border-border-system-focus focus:ring-1 focus:ring-inset focus:ring-border-system-focus',
+              'focus:outline-none',
+              !borderless && (
+                validationStatus === 'error'
+                  ? 'focus:ring-2 focus:ring-inset focus:ring-border-system-error'
+                  : 'focus:ring-2 focus:ring-inset focus:ring-border-system-focus'
+              ),
               // Disabled state
               disabled && 'opacity-40 cursor-not-allowed'
             )}

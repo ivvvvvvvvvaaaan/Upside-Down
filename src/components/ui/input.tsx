@@ -64,12 +64,12 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             className={cn(
               'w-full h-10 rounded text-body-0-regular',
-              'bg-surface-flat dark:bg-white/[0.04] border border-border-dim',
+              'bg-surface-flat dark:bg-white/[0.04] ring-1 ring-inset ring-border-dim',
               'text-foreground placeholder:text-foreground-dim',
               'transition-colors',
-              'focus:outline-none focus:border-border-system-focus focus:ring-1 focus:ring-inset focus:ring-border-system-focus',
+              'focus:outline-none focus:ring-2 focus:ring-inset focus:ring-border-system-focus',
               'disabled:opacity-50 disabled:cursor-not-allowed',
-              error && 'border-error focus:border-error focus:ring-error',
+              error && 'ring-border-system-error focus:ring-border-system-error',
               icon && iconPosition === 'left' ? 'pl-10 pr-3' : icon && iconPosition === 'right' ? 'pl-3 pr-10' : 'px-3',
               className
             )}

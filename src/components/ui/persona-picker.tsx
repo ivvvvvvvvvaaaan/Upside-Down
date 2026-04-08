@@ -66,9 +66,23 @@ export function PersonaPicker({
               )}
             </>
           ) : (
-            <span className="w-7 h-7 rounded-full bg-surface-3 flex items-center justify-center">
-              <Shield className="w-4 h-4 text-foreground-dim" />
-            </span>
+            <>
+              <span className="w-7 h-7 rounded-full bg-surface-3 flex items-center justify-center">
+                <Shield className="w-4 h-4 text-foreground-dim" />
+              </span>
+              {showLabel && (
+                compactSingleLine ? (
+                  <span className="hidden md:block text-label-0-regular text-foreground truncate max-w-40 text-left">
+                    Admin
+                  </span>
+                ) : (
+                  <span className="hidden md:flex flex-col leading-tight text-left">
+                    <span className="text-label-0-regular text-foreground">Admin</span>
+                    <span className="text-label-0-regular text-foreground-dim">All access</span>
+                  </span>
+                )
+              )}
+            </>
           )}
         </button>
       ) : (

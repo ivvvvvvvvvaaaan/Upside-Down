@@ -1,17 +1,17 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { Search, ChevronDown, Plus, X, Info } from 'lucide-react'
+import { useState, useMemo, useCallback } from 'react'
+import { Search, ChevronDown, Plus, X, Info, RefreshCw } from 'lucide-react'
 import { Facepile } from './facepile'
 import { Modal } from './modal'
 import { Button } from './button'
 import { Input } from './input'
-import { Select } from './select'
+import { MenuSelect } from './menu-select'
 import { RoleSelect } from './role-select'
 import { Avatar } from './avatar'
 import { DepartmentAvatar } from './department-avatar'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
-import { useAccess } from '@/hooks'
+import { useAccess, usePersona } from '@/hooks'
 import { cn } from '@/lib/utils'
 import { PERSONAS, DIRECTORY_UPDATED_EVENT } from '@/lib/personas'
 import type { User } from '@/lib/personas'
@@ -143,14 +143,71 @@ function addOrMoveDepartmentMember(departmentId: DepartmentId, teamId: string, e
   return persona
 }
 
+function removePersonFromDirectory(userId: string): User | null {
+  const persona = PERSONAS.find((candidate) => candidate.id === userId)
+  if (!persona) return null
+
+  persona.departmentId = undefined
+  persona.teamIds = []
+
+  for (const team of TEAMS) {
+    team.memberUserIds = team.memberUserIds.filter((memberId) => memberId !== userId)
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(DIRECTORY_UPDATED_EVENT))
+  }
+
+  return persona
+}
+
+function removeDepartmentMember(departmentId: DepartmentId, teamId: string, userId: string): User | null {
+  const persona = PERSONAS.find((candidate) => candidate.id === userId)
+  if (!persona) return null
+
+  const team = TEAMS.find((candidate) => candidate.id === teamId)
+  if (team) {
+    team.memberUserIds = team.memberUserIds.filter((memberId) => memberId !== userId)
+  }
+
+  persona.teamIds = persona.teamIds.filter((id) => id !== teamId)
+
+  if (persona.departmentId === departmentId) {
+    const nextDepartmentTeam = TEAMS.find(
+      (candidate) => candidate.departmentId && persona.teamIds.includes(candidate.id),
+    )
+    persona.departmentId = nextDepartmentTeam?.departmentId
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(DIRECTORY_UPDATED_EVENT))
+  }
+
+  return persona
+}
+
+type PendingDepartmentInvite = {
+  id: string
+  email: string
+  departmentId: DepartmentId
+  teamId: string
+  displayName: string
+}
+
 // --- People tab ---
 
 function PeopleTab({
   grants,
   directoryVersion,
+  canRemoveParticipants,
+  activeUserId,
+  onRemoveParticipant,
 }: {
   grants: Grant[]
   directoryVersion: number
+  canRemoveParticipants: boolean
+  activeUserId?: string
+  onRemoveParticipant?: (userId: string) => void
 }) {
   const policyResourceIds = useMemo(
     () => new Set(['project', ...Object.values(DEPARTMENT_FOLDER_MAP).map((folder) => folder.id)]),
@@ -159,11 +216,17 @@ function PeopleTab({
 
   const participants = useMemo(() => {
     void directoryVersion
-    const stats = new Map<string, { received: number; shared: number }>()
+    const stats = new Map<string, { received: number; shared: number; directGrantCount: number; teamCount: number }>()
 
     const touch = (userId: string, field: 'received' | 'shared') => {
-      const current = stats.get(userId) ?? { received: 0, shared: 0 }
+      const current = stats.get(userId) ?? { received: 0, shared: 0, directGrantCount: 0, teamCount: 0 }
       current[field] += 1
+      stats.set(userId, current)
+    }
+
+    const noteDirectGrant = (userId: string) => {
+      const current = stats.get(userId) ?? { received: 0, shared: 0, directGrantCount: 0, teamCount: 0 }
+      current.directGrantCount += 1
       stats.set(userId, current)
     }
 
@@ -175,6 +238,7 @@ function PeopleTab({
 
       if (grant.principal.type === 'user') {
         touch(grant.principal.userId, 'received')
+        noteDirectGrant(grant.principal.userId)
         continue
       }
 
@@ -188,7 +252,8 @@ function PeopleTab({
     return PERSONAS
       .filter((persona) => persona.departmentId || stats.has(persona.id))
       .map((persona) => {
-        const involvement = stats.get(persona.id) ?? { received: 0, shared: 0 }
+        const involvement = stats.get(persona.id) ?? { received: 0, shared: 0, directGrantCount: 0, teamCount: 0 }
+        const teamCount = TEAMS.filter((team) => team.memberUserIds.includes(persona.id)).length
         const primaryLabel = persona.departmentId
           ? `${DEPARTMENT_FOLDER_MAP[persona.departmentId].name} member`
           : persona.role === 'vendor'
@@ -203,6 +268,9 @@ function PeopleTab({
           ...persona,
           primaryLabel,
           activityLabel: activityParts.length > 0 ? activityParts.join(' · ') : 'No active shares',
+          directGrantCount: involvement.directGrantCount,
+          teamCount,
+          canRemove: persona.id !== activeUserId && (Boolean(persona.departmentId) || involvement.directGrantCount > 0 || teamCount > 0),
         }
       })
       .sort((a, b) => {
@@ -211,13 +279,18 @@ function PeopleTab({
         if (aDept !== bDept) return aDept - bDept
         return a.name.localeCompare(b.name)
       })
-  }, [grants, policyResourceIds, directoryVersion])
+  }, [grants, policyResourceIds, directoryVersion, activeUserId])
 
   return (
     <div className="space-y-3">
       <p className="text-body-0-regular text-foreground-dim">
         People appear here because they belong to a department or are involved through explicit shares. Add new working users from the Departments tab, and use share controls on assets or collections for ad hoc access.
       </p>
+      {canRemoveParticipants && (
+        <p className="text-label-0-regular text-foreground-dim">
+          Project admins can remove a person here to revoke their direct shares and remove them from department and team membership.
+        </p>
+      )}
 
       {participants.length === 0 ? (
         <p className="text-body-0-regular text-foreground-dim py-4 text-center">No participants yet.</p>
@@ -237,9 +310,22 @@ function PeopleTab({
                   <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
                 </div>
               </div>
-              <div className="text-right flex-shrink-0">
-                <div className="text-label-0-regular text-foreground">{persona.primaryLabel}</div>
-                <div className="text-label-0-regular text-foreground-dim">{persona.activityLabel}</div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="text-right">
+                  <div className="text-label-0-regular text-foreground">{persona.primaryLabel}</div>
+                  <div className="text-label-0-regular text-foreground-dim">{persona.activityLabel}</div>
+                </div>
+                {canRemoveParticipants && persona.canRemove && onRemoveParticipant && (
+                  <Button
+                    variant="icon"
+                    size="compact-icon"
+                    aria-label={`Remove ${persona.name} from project access`}
+                    title="Remove access"
+                    onClick={() => onRemoveParticipant(persona.id)}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                )}
               </div>
             </div>
           ))}
@@ -334,7 +420,14 @@ function DepartmentsTab({
   onRemoveGrant,
   canShareResource,
   canEditResource,
-  onDirectoryChange,
+  pendingInvites,
+  inviteEmail,
+  onInviteEmailChange,
+  selectedDepartmentId,
+  onSelectedDepartmentChange,
+  onStageInvite,
+  onRemovePendingInvite,
+  onRemoveDepartmentMember,
   readOnly = false,
 }: {
   roleGroups: RoleGroup[]
@@ -344,12 +437,18 @@ function DepartmentsTab({
   onRemoveGrant: (grantId: string) => void
   canShareResource: (resource: ResourceRef) => boolean
   canEditResource: (resource: ResourceRef) => boolean
-  onDirectoryChange: () => void
+  pendingInvites: PendingDepartmentInvite[]
+  inviteEmail: string
+  onInviteEmailChange: (value: string) => void
+  selectedDepartmentId: DepartmentId
+  onSelectedDepartmentChange: (departmentId: DepartmentId) => void
+  onStageInvite: () => boolean
+  onRemovePendingInvite: (inviteId: string) => void
+  onRemoveDepartmentMember: (departmentId: DepartmentId, teamId: string, userId: string) => void
   readOnly?: boolean
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [editingOverrides, setEditingOverrides] = useState<Set<string>>(new Set())
-  const [inviteEmails, setInviteEmails] = useState<Partial<Record<DepartmentId, string>>>({})
 
   const toggle = (id: string) => {
     setExpanded(prev => {
@@ -369,12 +468,71 @@ function DepartmentsTab({
     })),
     [],
   )
+  const departmentOptions = useMemo(
+    () => departments.map(({ departmentId, folder }) => ({ value: departmentId, label: folder.name })),
+    [departments],
+  )
+  const pendingByDepartment = useMemo(() => {
+    const map = new Map<DepartmentId, PendingDepartmentInvite[]>()
+    for (const invite of pendingInvites) {
+      const existing = map.get(invite.departmentId) ?? []
+      existing.push(invite)
+      map.set(invite.departmentId, existing)
+    }
+    return map
+  }, [pendingInvites])
+  const canStageInvite = inviteEmail.trim().length > 0
 
   return (
     <div className="space-y-3">
       <p className="text-body-0-regular text-foreground-dim">
         Departments own content. Members get workspace access automatically based on the role set here.
       </p>
+      {!readOnly && (
+        <div className="space-y-2">
+          <p className="text-body-0-regular text-foreground-dim">
+            Queue someone into a department, then confirm with Update Access in the footer.
+          </p>
+          <div className="flex items-start gap-2">
+            <Input
+              icon={<Search />}
+              iconPosition="left"
+              type="email"
+              value={inviteEmail}
+              onChange={(e) => onInviteEmailChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return
+                e.preventDefault()
+                if (onStageInvite()) {
+                  setExpanded((prev) => new Set(prev).add(selectedDepartmentId))
+                }
+              }}
+              placeholder="Add by email..."
+            />
+            <MenuSelect
+              className="w-48 flex-shrink-0"
+              options={departmentOptions}
+              value={selectedDepartmentId}
+              onChange={(value) => onSelectedDepartmentChange(value as DepartmentId)}
+              size="standard"
+              align="start"
+              width="sm"
+            />
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (onStageInvite()) {
+                  setExpanded((prev) => new Set(prev).add(selectedDepartmentId))
+                }
+              }}
+              disabled={!canStageInvite}
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              Add
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-1">
         {departments.map(({ departmentId, folder, team }) => {
@@ -382,6 +540,7 @@ function DepartmentsTab({
           const members = (team?.memberUserIds ?? [])
             .map(uid => PERSONAS.find(p => p.id === uid))
             .filter(Boolean)
+          const pendingMembers = pendingByDepartment.get(departmentId) ?? []
           const resourceRef: ResourceRef = { id: folder.id, type: 'folder', departmentId }
           const rootGrants = getResourceGrants(resourceRef.id)
           const grant = team
@@ -408,6 +567,7 @@ function DepartmentsTab({
                     <span className="text-body-0-bold text-foreground truncate block">{folder.name}</span>
                     <span className="text-label-0-regular text-foreground-dim block">
                       {members.length} {members.length === 1 ? 'member' : 'members'}
+                      {pendingMembers.length > 0 ? ` · ${pendingMembers.length} pending` : ''}
                     </span>
                   </div>
                   {!isOpen && members.length > 0 && (
@@ -449,31 +609,78 @@ function DepartmentsTab({
               </div>
               {isOpen && (
                 <div className="px-2 pb-2">
+                  {pendingMembers.map((invite) => (
+                    <div key={invite.id} className="flex items-center gap-2 py-1.5 pl-2 pr-0 rounded">
+                      <Avatar name={invite.displayName} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <span className="text-body-0-regular text-foreground truncate block">{invite.displayName}</span>
+                        <span className="text-label-0-regular text-foreground-dim truncate block">{invite.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-label-0-regular text-foreground-dim">New user</span>
+                        <Button
+                          variant="secondary"
+                          compact
+                          onClick={() => onRemovePendingInvite(invite.id)}
+                          aria-label={`Remove pending addition for ${invite.displayName}`}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                   {members.filter(Boolean).map((persona) => persona && (
                     (() => {
                       const overrideGrant = rootGrants.find(
                         (candidate) => candidate.principal.type === 'user' && candidate.principal.userId === persona.id,
                       )
                       const overrideKey = `${departmentId}:${persona.id}`
-                      const isEditingOverride = editingOverrides.has(overrideKey) || Boolean(overrideGrant)
+                      const isEditingOverride = editingOverrides.has(overrideKey)
                       const memberValue = overrideGrant?.templateId ?? noDefaultAccessValue
+                      const displayedMemberLabel = overrideGrant?.templateId
+                        ? profileLabel(overrideGrant.templateId, roleGroups)
+                        : defaultMemberLabel
+                      const removeAccessValue = '__remove_department_access__'
+                      const overrideOptions = [
+                        ...(overrideGrant ? options : [{ value: noDefaultAccessValue, label: displayedMemberLabel }]),
+                        ...options,
+                        {
+                          value: removeAccessValue,
+                          label: 'Remove Access',
+                          destructive: true,
+                          separated: true,
+                        },
+                      ]
 
                       return (
-                        <div key={persona.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-surface-3/40 transition-colors">
+                        <div key={persona.id} className="flex items-center gap-2 py-1.5 pl-2 pr-0 rounded">
                           <Avatar name={persona.name} size="sm" />
                           <div className="min-w-0 flex-1">
                             <span className="text-body-0-regular text-foreground truncate block">{persona.name}</span>
                             <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
                           </div>
                           {isEditingOverride ? (
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <RoleSelect
-                                options={[{ value: noDefaultAccessValue, label: defaultMemberLabel }, ...options]}
+                            <div className="flex items-center flex-shrink-0">
+                              <MenuSelect
+                                options={overrideOptions}
                                 value={memberValue}
+                                size="compact"
+                                width="sm"
+                                align="end"
                                 disabled={readOnly || (overrideGrant ? !canEditDepartment : !canShareDepartment)}
                                 onChange={(value) => {
                                   if (value === noDefaultAccessValue) {
+                                    setEditingOverrides((prev) => {
+                                      const next = new Set(prev)
+                                      next.delete(overrideKey)
+                                      return next
+                                    })
+                                    return
+                                  }
+
+                                  if (value === removeAccessValue) {
                                     if (overrideGrant) onRemoveGrant(overrideGrant.id)
+                                    onRemoveDepartmentMember(departmentId, team!.id, persona.id)
                                     setEditingOverrides((prev) => {
                                       const next = new Set(prev)
                                       next.delete(overrideKey)
@@ -484,48 +691,29 @@ function DepartmentsTab({
 
                                   if (overrideGrant) {
                                     onRoleChange(overrideGrant.id, value as AccessProfileId)
-                                    return
+                                  } else {
+                                    onAddGrant(
+                                      resourceRef,
+                                      { type: 'user', userId: persona.id },
+                                      value as AccessProfileId,
+                                    )
                                   }
 
-                                  onAddGrant(
-                                    resourceRef,
-                                    { type: 'user', userId: persona.id },
-                                    value as AccessProfileId,
-                                  )
+                                  setEditingOverrides((prev) => {
+                                    const next = new Set(prev)
+                                    next.delete(overrideKey)
+                                    return next
+                                  })
                                 }}
                               />
-                              <span className="text-label-0-regular text-foreground-dim">
-                                Override
-                              </span>
-                              {!readOnly && (
-                                <Button
-                                  variant="icon"
-                                  size="compact-icon"
-                                  onClick={() => {
-                                    if (overrideGrant && canEditDepartment) {
-                                      onRemoveGrant(overrideGrant.id)
-                                    }
-                                    setEditingOverrides((prev) => {
-                                      const next = new Set(prev)
-                                      next.delete(overrideKey)
-                                      return next
-                                    })
-                                  }}
-                                  disabled={overrideGrant ? !canEditDepartment : false}
-                                >
-                                  <X className="w-3 h-3" />
-                                </Button>
-                              )}
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <span className="text-label-0-regular text-foreground-dim text-right px-1">
-                                {defaultMemberLabel}
-                              </span>
+                            <div className="flex items-center flex-shrink-0">
                               {!readOnly && canShareDepartment && (
                                 <Button
                                   variant="secondary"
                                   compact
+                                  icon={<RefreshCw className="w-3 h-3" />}
                                   onClick={() => {
                                     setEditingOverrides((prev) => new Set(prev).add(overrideKey))
                                   }}
@@ -541,45 +729,6 @@ function DepartmentsTab({
                   ))}
                   {members.length === 0 && (
                     <p className="text-label-0-regular text-foreground-dim py-2 px-2 text-center">No members yet</p>
-                  )}
-                  {!readOnly && canShareDepartment && team && (
-                    <div className="px-2 pt-3 mt-2 border-t border-border-dim space-y-2">
-                      <p className="text-label-0-regular text-foreground-dim">
-                        Add someone to {folder.name}. They&apos;ll inherit this department&apos;s default workspace access.
-                      </p>
-                      <div className="flex gap-2">
-                        <Input
-                          icon={<Search />}
-                          iconPosition="left"
-                          type="email"
-                          value={inviteEmails[departmentId] ?? ''}
-                          onChange={(e) => setInviteEmails((prev) => ({ ...prev, [departmentId]: e.target.value }))}
-                          onKeyDown={(e) => {
-                            if (e.key !== 'Enter') return
-                            const email = inviteEmails[departmentId]?.trim()
-                            if (!email) return
-                            addOrMoveDepartmentMember(departmentId, team.id, email)
-                            setInviteEmails((prev) => ({ ...prev, [departmentId]: '' }))
-                            onDirectoryChange()
-                          }}
-                          placeholder={`Add to ${folder.name} by email...`}
-                        />
-                        <Button
-                          variant="secondary"
-                          onClick={() => {
-                            const email = inviteEmails[departmentId]?.trim()
-                            if (!email) return
-                            addOrMoveDepartmentMember(departmentId, team.id, email)
-                            setInviteEmails((prev) => ({ ...prev, [departmentId]: '' }))
-                            onDirectoryChange()
-                          }}
-                          disabled={!inviteEmails[departmentId]?.trim()}
-                        >
-                          <Plus className="w-3 h-3 mr-1" />
-                          Add
-                        </Button>
-                      </div>
-                    </div>
                   )}
                 </div>
               )}
@@ -701,14 +850,21 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     createGrant,
     updateGrantProfile,
     revokeGrant,
+    revokeUserAccess,
     canShare,
     canEditAcl,
     getDiscoverySettings,
     setDiscoveryEnabledForType,
     toggleDepartmentDiscoveryForType,
   } = useAccess()
+  const { activePersona } = usePersona()
   const canManageProject = canEditAcl(PROJECT_RESOURCE)
+  const [activeTab, setActiveTab] = useState('departments')
   const [directoryVersion, setDirectoryVersion] = useState(0)
+  const [pendingDepartmentInvites, setPendingDepartmentInvites] = useState<PendingDepartmentInvite[]>([])
+  const departmentIds = useMemo(() => Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[], [])
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<DepartmentId>(departmentIds[0] ?? 'vfx')
   const canManageDepartments = useMemo(
     () => (Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[]).some((departmentId) => {
       const resourceRef: ResourceRef = {
@@ -721,6 +877,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     [canShare, canEditAcl],
   )
   const canManageAnything = canManageDepartments || canManageProject
+  const hasPendingDepartmentInvites = pendingDepartmentInvites.length > 0
   const discoverySections: { resourceType: DiscoveryResourceType; title: string; description: string }[] = [
     {
       resourceType: 'asset',
@@ -734,8 +891,62 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     },
   ]
 
+  const resetPendingDepartmentInvites = useCallback(() => {
+    setPendingDepartmentInvites([])
+    setInviteEmail('')
+  }, [])
+
+  const stageDepartmentInvite = useCallback(() => {
+    const normalizedEmail = inviteEmail.trim().toLowerCase()
+    if (!normalizedEmail) return false
+
+    const team = TEAMS.find((candidate) => candidate.departmentId === selectedDepartmentId)
+    if (!team) return false
+
+    const existingPersona = PERSONAS.find((candidate) => candidate.email.toLowerCase() === normalizedEmail)
+    if (team.memberUserIds.includes(existingPersona?.id ?? '')) {
+      setInviteEmail('')
+      return false
+    }
+
+    setPendingDepartmentInvites((prev) => {
+      const next = prev.filter((invite) => invite.email !== normalizedEmail)
+      next.push({
+        id: `pending-${selectedDepartmentId}-${normalizedEmail}`,
+        email: normalizedEmail,
+        departmentId: selectedDepartmentId,
+        teamId: team.id,
+        displayName: existingPersona?.name ?? toDisplayNameFromEmail(normalizedEmail),
+      })
+      return next
+    })
+    setInviteEmail('')
+    return true
+  }, [inviteEmail, selectedDepartmentId])
+
+  const applyPendingDepartmentInvites = useCallback(() => {
+    if (pendingDepartmentInvites.length === 0) return
+    for (const invite of pendingDepartmentInvites) {
+      addOrMoveDepartmentMember(invite.departmentId, invite.teamId, invite.email)
+    }
+    setDirectoryVersion((prev) => prev + 1)
+    resetPendingDepartmentInvites()
+  }, [pendingDepartmentInvites, resetPendingDepartmentInvites])
+
+  const handleRemoveDepartmentMember = useCallback((departmentId: DepartmentId, teamId: string, userId: string) => {
+    removeDepartmentMember(departmentId, teamId, userId)
+    setDirectoryVersion((prev) => prev + 1)
+  }, [])
+
+  const handleModalOpenChange = useCallback((nextOpen: boolean) => {
+    if (!nextOpen) {
+      resetPendingDepartmentInvites()
+    }
+    onOpenChange(nextOpen)
+  }, [onOpenChange, resetPendingDepartmentInvites])
+
   return (
-    <Modal open={open} onOpenChange={onOpenChange} size="md">
+    <Modal open={open} onOpenChange={handleModalOpenChange} size="md">
       <div className="flex flex-col max-h-[80vh]">
         <div className="pb-0">
           <Modal.Header
@@ -758,7 +969,12 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             </div>
           )}
 
-          <Tabs defaultValue="departments" className="px-6 pt-4">
+          <Tabs
+            defaultValue="departments"
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="px-6 pt-4"
+          >
             <TabsList>
               <Tab value="departments">Departments</Tab>
               <Tab value="people">People</Tab>
@@ -771,6 +987,19 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 <PeopleTab
                   grants={grants}
                   directoryVersion={directoryVersion}
+                  canRemoveParticipants={canManageProject}
+                  activeUserId={activePersona?.id}
+                  onRemoveParticipant={(userId) => {
+                    const persona = PERSONAS.find((candidate) => candidate.id === userId)
+                    const name = persona?.name ?? 'this person'
+                    const confirmed = window.confirm(
+                      `Remove ${name} from the project? This revokes direct shares and removes department and team membership.`,
+                    )
+                    if (!confirmed) return
+                    revokeUserAccess(userId)
+                    removePersonFromDirectory(userId)
+                    setDirectoryVersion((prev) => prev + 1)
+                  }}
                 />
               </TabsContent>
               <TabsContent value="departments">
@@ -782,7 +1011,16 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   onRemoveGrant={revokeGrant}
                   canShareResource={canShare}
                   canEditResource={canEditAcl}
-                  onDirectoryChange={() => setDirectoryVersion((prev) => prev + 1)}
+                  pendingInvites={pendingDepartmentInvites}
+                  inviteEmail={inviteEmail}
+                  onInviteEmailChange={setInviteEmail}
+                  selectedDepartmentId={selectedDepartmentId}
+                  onSelectedDepartmentChange={setSelectedDepartmentId}
+                  onStageInvite={stageDepartmentInvite}
+                  onRemovePendingInvite={(inviteId) => {
+                    setPendingDepartmentInvites((prev) => prev.filter((invite) => invite.id !== inviteId))
+                  }}
+                  onRemoveDepartmentMember={handleRemoveDepartmentMember}
                   readOnly={!canManageDepartments && !canManageProject}
                 />
               </TabsContent>
@@ -823,10 +1061,33 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           </Tabs>
         </div>
 
-        <div className="flex justify-end px-6 py-4 border-t border-border-dim">
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-border-dim">
+          {hasPendingDepartmentInvites ? (
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  resetPendingDepartmentInvites()
+                  onOpenChange(false)
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  applyPendingDepartmentInvites()
+                  onOpenChange(false)
+                }}
+              >
+                Update Access
+              </Button>
+            </>
+          ) : (
+            <Button variant="secondary" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          )}
         </div>
       </div>
     </Modal>

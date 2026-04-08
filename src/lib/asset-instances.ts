@@ -121,7 +121,7 @@ export function generateAssetInstances(
           name,
           sourceFileId: node.id,
           sourceFileName: node.name,
-          sourcePath: [...pathParts, node.name].join('/'),
+          sourcePath: [...pathParts, node.name].join(' / '),
           department: departmentId,
           category,
           type: inferAssetType(node.extension, node.name),

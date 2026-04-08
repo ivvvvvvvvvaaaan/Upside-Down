@@ -9,6 +9,11 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Asset, DepartmentId } from '@/lib/data'
+import type { MetadataFieldVisibility } from '@/hooks/useViewPreferences'
+
+const STATUS_LABELS = new Set(['Key Art', 'Final'])
+const BADGE_EXTENSIONS = new Set(['exr', 'nk', 'mb', 'hip', 'prproj', 'psd', 'ai', 'ptx', 'tiff', 'tx', 'pdf', 'zip', 'cube', 'xlsx'])
+const FILE_3D_EXTENSIONS = new Set(['nk', 'mb', 'hip', 'prproj'])
 
 // Department short names for display
 const DEPARTMENT_NAMES: Record<DepartmentId, string> = {
@@ -72,8 +77,10 @@ export interface AssetCardProps {
   onRequestAccess?: (asset: Asset) => void
   /** Show "Shared" tag — asset originates from outside the user's department */
   shared?: boolean
-  /** Show structured metadata chips (scene, take, camera, episode). Default: true */
-  showMetadata?: boolean
+  /** Show tags row (type, version, status, release). Default: true */
+  showTags?: boolean
+  /** Per-field metadata visibility */
+  metadataFields?: MetadataFieldVisibility
 }
 
 // Placeholder image for assets without thumbnails
@@ -92,7 +99,8 @@ export function AssetCard({
   restricted = false,
   shared,
   onRequestAccess,
-  showMetadata = true,
+  showTags = true,
+  metadataFields,
 }: AssetCardProps) {
   const router = useRouter()
   // Primary implies selected
@@ -184,7 +192,6 @@ export function AssetCard({
     : asset.videoMeta?.duration
 
   // Show file extension badge when there's no duration — production formats, documents, archives
-  const BADGE_EXTENSIONS = new Set(['exr', 'nk', 'mb', 'hip', 'prproj', 'psd', 'ai', 'ptx', 'tiff', 'tx', 'pdf', 'zip', 'cube', 'xlsx'])
   const extBadge = !duration && asset.extension && BADGE_EXTENSIONS.has(asset.extension) ? asset.extension.toUpperCase() : undefined
 
   // Get type tag label
@@ -205,6 +212,12 @@ export function AssetCard({
     return <Tag variant="glass">{tagLabel}</Tag>
   }
 
+  // Pre-compute tag classification (avoid recreating inside JSX IIFEs)
+  const typeTag = asset.tags?.find(t => t.source === 'system' && !STATUS_LABELS.has(t.label))
+  const statusTag = asset.tags?.find(t => STATUS_LABELS.has(t.label)) ?? (asset.isKeyArt ? { label: 'Key Art', source: 'system' as const } : null)
+  const releaseTags = asset.tags?.filter(t => t.source === 'system' && !STATUS_LABELS.has(t.label) && t !== typeTag) ?? []
+  const showField = (f: keyof MetadataFieldVisibility) => metadataFields?.[f] !== false
+
   // Render thumbnail based on type
   const renderThumbnail = () => {
     // Audio assets get icon placeholder
@@ -220,7 +233,7 @@ export function AssetCard({
     // forceEmptyPreview overrides to always show placeholder
     const thumbnailSrc = forceEmptyPreview ? EMPTY_ASSET_PLACEHOLDER : asset.thumbnail
 
-    const is3DFile = asset.extension && ['nk', 'mb', 'hip', 'prproj'].includes(asset.extension)
+    const is3DFile = asset.extension && FILE_3D_EXTENSIONS.has(asset.extension)
 
     return thumbnailSrc ? (
       <Image
@@ -325,75 +338,42 @@ export function AssetCard({
 
         {/* Tags + Metadata chips */}
         <div className="flex items-center gap-1 flex-wrap">
-          {/* Type tag */}
-          {(() => {
-            if (asset.tags?.length) {
-              const statusLabels = new Set(['Key Art', 'Final'])
-              const typeTag = asset.tags.find(t => t.source === 'system' && !statusLabels.has(t.label))
-              return typeTag ? <Tag variant="glass">{typeTag.label}</Tag> : renderTypeTag()
-            }
-            return renderTypeTag()
-          })()}
-
-          {/* Version */}
-          {asset.version != null && <Tag variant="border">{`V${asset.version}`}</Tag>}
-
-          {/* Status (Final, Key Art) */}
-          {(() => {
-            if (asset.tags?.length) {
-              const statusTag = asset.tags.find(t => t.label === 'Final' || t.label === 'Key Art')
-              if (statusTag) return (
+          {showTags && (
+            <>
+              {typeTag ? <Tag variant="glass">{typeTag.label}</Tag> : renderTypeTag()}
+              {asset.version != null && <Tag variant="border">{`V${asset.version}`}</Tag>}
+              {statusTag && (
                 <Tag type={statusTag.label === 'Final' ? 'positive' : 'announcement'} variant="fill">
                   {statusTag.label}
                 </Tag>
-              )
-            } else if (asset.isKeyArt) {
-              return <Tag type="announcement" variant="fill">Key Art</Tag>
-            }
-            return null
-          })()}
-
-          {/* Release tags (cuts: SC, CI, ALL, +N) */}
-          {asset.tags?.filter(t => t.source === 'system' && !['Key Art', 'Final'].includes(t.label))
-            .filter(t => {
-              // Exclude the type tag (already shown above)
-              const statusLabels = new Set(['Key Art', 'Final'])
-              const typeTag = asset.tags?.find(tag => tag.source === 'system' && !statusLabels.has(tag.label))
-              return t !== typeTag
-            })
-            .map(t => {
-              const tag = (
-                <Tag key={t.label} type={t.label === 'ALL' ? 'positive' : 'notice'} variant="fill">
-                  {t.label}
-                </Tag>
-              )
-              return t.description ? <Tooltip key={t.label} label={t.description}>{tag}</Tooltip> : tag
-            })}
-
-          {/* Department (when shared) */}
-          {isShared && asset.department && (
-            <Tag variant="glass">{DEPARTMENT_NAMES[asset.department] ?? asset.department}</Tag>
-          )}
-
-          {/* Structured metadata chips */}
-          {showMetadata && (
-            <>
-              {asset.shotMeta && (
-                <>
-                  {asset.shotMeta.scene && <Tag variant="glass">Scene: {asset.shotMeta.scene}</Tag>}
-                  {asset.shotMeta.take && <Tag variant="glass">Take: {asset.shotMeta.take}</Tag>}
-                  {asset.shotMeta.camera && <Tag variant="glass">Camera: {asset.shotMeta.camera}</Tag>}
-                </>
               )}
-              {asset.sequenceMeta && (
-                <>
-                  {asset.sequenceMeta.sequence && <Tag variant="glass">{asset.sequenceMeta.sequence}</Tag>}
-                  {asset.sequenceMeta.shot && <Tag variant="glass">{asset.sequenceMeta.shot}</Tag>}
-                </>
+              {releaseTags.map(t => {
+                const tag = (
+                  <Tag key={t.label} type={t.label === 'ALL' ? 'positive' : 'notice'} variant="fill">
+                    {t.label}
+                  </Tag>
+                )
+                return t.description ? <Tooltip key={t.label} label={t.description}>{tag}</Tooltip> : tag
+              })}
+              {isShared && asset.department && (
+                <Tag variant="glass">{DEPARTMENT_NAMES[asset.department] ?? asset.department}</Tag>
               )}
-              {asset.episode && <Tag variant="glass">{asset.episode}</Tag>}
             </>
           )}
+          {asset.shotMeta && (
+            <>
+              {showField('scene') && asset.shotMeta.scene && <Tag variant="glass">Scene: {asset.shotMeta.scene}</Tag>}
+              {showField('take') && asset.shotMeta.take && <Tag variant="glass">Take: {asset.shotMeta.take}</Tag>}
+              {showField('camera') && asset.shotMeta.camera && <Tag variant="glass">Camera: {asset.shotMeta.camera}</Tag>}
+            </>
+          )}
+          {asset.sequenceMeta && (
+            <>
+              {showField('sequence') && asset.sequenceMeta.sequence && <Tag variant="glass">{asset.sequenceMeta.sequence}</Tag>}
+              {showField('shot') && asset.sequenceMeta.shot && <Tag variant="glass">{asset.sequenceMeta.shot}</Tag>}
+            </>
+          )}
+          {showField('episode') && asset.episode && <Tag variant="glass">{asset.episode}</Tag>}
         </div>
       </div>
     </div>

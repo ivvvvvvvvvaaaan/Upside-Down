@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Dropdown } from './dropdown'
 
@@ -32,6 +33,8 @@ export interface MenuSelectOption {
   description?: string
   /** Render in destructive (red) style */
   destructive?: boolean
+  /** Render a divider above this option */
+  separated?: boolean
 }
 
 export interface MenuSelectProps {
@@ -58,11 +61,15 @@ export function MenuSelect({
   const [open, setOpen] = useState(false)
   const selectedLabel = options.find(o => o.value === value)?.label ?? value
   const hasDescriptions = options.some(o => o.description)
+  const triggerClasses = cn(
+    size === 'compact' ? 'text-label-0-regular min-w-28' : 'text-body-0-regular min-w-36',
+    className,
+  )
 
   if (disabled) {
     return (
       <span className={cn(
-        'inline-flex items-center justify-between gap-1.5 rounded border border-border-dim bg-surface-highlight text-foreground-dim opacity-50',
+        'inline-flex items-center justify-between gap-1.5 rounded bg-surface-flat dark:bg-white/[0.04] ring-1 ring-inset ring-border-dim text-foreground-dim opacity-50',
         size === 'compact' ? 'h-8 px-3 text-label-0-regular min-w-28' : 'h-10 px-3 text-body-0-regular min-w-36',
         className,
       )}>
@@ -82,35 +89,37 @@ export function MenuSelect({
       width={width}
       open={open}
       onOpenChange={setOpen}
-      triggerClassName={cn(
-        size === 'compact' ? 'text-label-0-regular min-w-28' : 'text-body-0-regular min-w-36',
-        className,
-      )}
+      triggerClassName={triggerClasses}
     >
       <div className="py-1">
         {options.map((option, i) => {
           const prevOption = i > 0 ? options[i - 1] : null
-          const showSeparator = option.destructive && prevOption && !prevOption.destructive
+          const showSeparator = option.separated || (option.destructive && prevOption && !prevOption.destructive)
+          const isSelected = value === option.value && !option.destructive
           return (
             <div key={option.value}>
               {showSeparator && <div className="my-1 border-t border-border-dim" />}
               <button
                 onClick={() => { onChange(option.value); setOpen(false) }}
                 className={cn(
-                  'w-full text-left px-3 transition-colors',
-                  hasDescriptions ? 'py-2' : 'py-1.5',
-                  'hover:bg-surface-3',
-                  value === option.value && !option.destructive && 'bg-surface-3',
+                  'flex w-full items-start gap-2 px-3 py-2.5 text-left text-body-0-regular transition-colors',
+                  'hover:bg-surface-highlight',
+                  isSelected && 'bg-surface-highlight',
                 )}
               >
-                <span className={cn('text-body-0-regular block', option.destructive ? 'text-foreground-system-error' : 'text-foreground')}>
-                  {option.label}
+                <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
+                  {isSelected ? <Check className="h-4 w-4 text-foreground" /> : null}
                 </span>
-                {option.description && (
-                  <span className="text-label-0-regular text-foreground-dim block">
-                    {option.description}
+                <div className="min-w-0 flex-1">
+                  <span className={cn('block', option.destructive ? 'text-foreground-system-error' : 'text-foreground')}>
+                    {option.label}
                   </span>
-                )}
+                  {hasDescriptions && option.description && (
+                    <span className="text-label-0-regular text-foreground-dim block">
+                      {option.description}
+                    </span>
+                  )}
+                </div>
               </button>
             </div>
           )

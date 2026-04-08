@@ -5,6 +5,8 @@ import { Card } from './card'
 import { Dropdown } from './dropdown'
 import { ToggleButtonGroup } from './toggle-button-group'
 import type { ToggleButtonOption } from './toggle-button-group'
+import { Toggle } from './switch'
+import type { MetadataFieldVisibility } from '@/hooks/useViewPreferences'
 
 export type LayoutType = 'grid' | 'list' | 'gallery'
 export type CardSize = 'sm' | 'md' | 'lg'
@@ -27,9 +29,12 @@ export interface AppearanceDropdownProps {
   viewMode?: string
   /** Callback when view mode changes (used with viewModeOptions) */
   onViewModeChange?: (mode: string) => void
-  /** Show/hide structured metadata chips on asset cards */
-  showMetadata?: boolean
-  onShowMetadataChange?: (show: boolean) => void
+  /** Show/hide tags row on asset cards */
+  showTags?: boolean
+  onShowTagsChange?: (show: boolean) => void
+  /** Per-field metadata visibility */
+  metadataFields?: MetadataFieldVisibility
+  onMetadataFieldChange?: (field: keyof MetadataFieldVisibility, show: boolean) => void
 }
 
 export function AppearanceDropdown({
@@ -45,8 +50,10 @@ export function AppearanceDropdown({
   viewModeOptions,
   viewMode,
   onViewModeChange,
-  showMetadata,
-  onShowMetadataChange,
+  showTags,
+  onShowTagsChange,
+  metadataFields,
+  onMetadataFieldChange,
 }: AppearanceDropdownProps) {
   return (
     <Dropdown
@@ -60,6 +67,7 @@ export function AppearanceDropdown({
     >
       <Card.Body padding="lg">
         <div className="space-y-3 min-w-56">
+          <p className="text-label-1-bold text-foreground">Appearance</p>
           {viewModeOptions && viewMode != null && onViewModeChange && (
             <ToggleButtonGroup
               options={viewModeOptions}
@@ -113,19 +121,29 @@ export function AppearanceDropdown({
             </div>
           )}
 
-          {onShowMetadataChange && (
+          {onShowTagsChange && (
             <div className="flex items-center justify-between">
-              <span className="text-body-0-regular text-foreground">Metadata</span>
-              <ToggleButtonGroup
-                options={[
-                  { value: 'show' as const, label: 'Show' },
-                  { value: 'hide' as const, label: 'Hide' },
-                ]}
-                value={showMetadata ? 'show' : 'hide'}
-                onChange={(val) => onShowMetadataChange(val === 'show')}
-                compact
-              />
+              <span className="text-body-0-regular text-foreground">Tags</span>
+              <Toggle checked={showTags ?? true} onChange={onShowTagsChange} aria-label="Tags" />
             </div>
+          )}
+
+          {onMetadataFieldChange && metadataFields && (
+            <>
+              <div className="pt-1 border-t border-border-dim">
+                <span className="text-label-0-bold text-foreground-dim uppercase">Metadata</span>
+              </div>
+              {(['scene', 'take', 'camera', 'sequence', 'shot', 'episode'] as const).map(field => (
+                <div key={field} className="flex items-center justify-between">
+                  <span className="text-body-0-regular text-foreground capitalize">{field}</span>
+                  <Toggle
+                    checked={metadataFields[field]}
+                    onChange={(v) => onMetadataFieldChange(field, v)}
+                    aria-label={field}
+                  />
+                </div>
+              ))}
+            </>
           )}
 
         </div>
