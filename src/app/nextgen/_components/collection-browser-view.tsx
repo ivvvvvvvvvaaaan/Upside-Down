@@ -112,6 +112,10 @@ export function CollectionBrowserView({
     setCardSize,
     hideEmptyCollections,
     setHideEmptyCollections,
+    showTags,
+    setShowTags,
+    metadataFields,
+    setMetadataField,
   } = useViewPreferences()
   const isMobile = useIsMobile()
 
@@ -305,6 +309,8 @@ export function CollectionBrowserView({
                         forceEmptyPreview={forceEmptyPreview}
                         processing={showProcessing}
                         showDepartment
+                        showTags={showTags}
+                        metadataFields={metadataFields}
                       />
                     ))}
                   </CardGrid>
@@ -385,6 +391,10 @@ export function CollectionBrowserView({
                   onLayoutChange={setLayout}
                   cardSize={cardSize}
                   onCardSizeChange={setCardSize}
+                  showTags={showTags}
+                  onShowTagsChange={setShowTags}
+                  metadataFields={metadataFields}
+                  onMetadataFieldChange={setMetadataField}
                   {...hideEmptyProps}
                 />
               </div>
@@ -402,6 +412,10 @@ export function CollectionBrowserView({
                       onLayoutChange={setLayout}
                       cardSize={cardSize}
                       onCardSizeChange={setCardSize}
+                      showTags={showTags}
+                      onShowTagsChange={setShowTags}
+                      metadataFields={metadataFields}
+                      onMetadataFieldChange={setMetadataField}
                       {...hideEmptyProps}
                     />
                   </div>

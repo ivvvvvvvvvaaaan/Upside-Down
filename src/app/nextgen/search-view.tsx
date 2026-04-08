@@ -20,8 +20,8 @@ interface MediaLibrarySearchViewProps {
 export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
-  const { cardSize } = useViewPreferences()
-  const { filterByAccess, canAccess, canDiscover, requestAccess } = useAccess()
+  const { cardSize, showTags, metadataFields } = useViewPreferences()
+  const { filterByAccess, canAccess, getVisibilityState, requestAccess } = useAccess()
   const { allAssets, assetsLoaded, assetsLoading, ensureAssetsLoaded } = useSmartCollections()
 
   useEffect(() => {
@@ -33,24 +33,21 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     return assetsLoaded ? allAssets : []
   }, [allAssets, assetsLoaded])
 
-  const accessibleSearchAssets = useMemo(() => {
-    return filterByAccess(allSearchableAssets)
-  }, [allSearchableAssets, filterByAccess])
-
-  // IDs of assets the user can fully access (for determining restricted state)
-  const accessibleIds = useMemo(() => {
-    const ids = new Set<string>()
-    for (const a of accessibleSearchAssets) ids.add(a.id)
-    return ids
-  }, [accessibleSearchAssets])
-
   const accessibleRecentAssets = useMemo(() => {
     return filterByAccess(recentAssets)
   }, [recentAssets, filterByAccess])
 
+  const getAssetVisibility = useCallback((asset: Asset) => {
+    return getVisibilityState({
+      id: asset.id,
+      type: 'asset',
+      departmentId: asset.department,
+    })
+  }, [getVisibilityState])
+
   const isRestricted = useCallback((asset: Asset) => {
-    return !canAccess(asset.id) && canDiscover(asset.id, asset.department)
-  }, [canAccess, canDiscover])
+    return getAssetVisibility(asset) === 'discoverable'
+  }, [getAssetVisibility])
 
   const handleRequestAccess = useCallback((asset: Asset) => {
     requestAccess(asset.id, { id: asset.id, type: 'asset', departmentId: asset.department })
@@ -62,8 +59,8 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     if (!assetsLoaded) return null
     return allSearchableAssets
       .filter((asset) => matchesFilter(asset, { query: searchQuery }))
-      .filter((asset) => accessibleIds.has(asset.id) || canDiscover(asset.id, asset.department))
-  }, [searchQuery, allSearchableAssets, accessibleIds, canDiscover, assetsLoaded])
+      .filter((asset) => getAssetVisibility(asset) !== 'hidden')
+  }, [searchQuery, allSearchableAssets, getAssetVisibility, assetsLoaded])
 
   const curatedResults = useMemo(() => searchResults?.filter(a => !a.isAutoPromoted) ?? [], [searchResults])
   const workspaceResults = useMemo(() => searchResults?.filter(a => a.isAutoPromoted) ?? [], [searchResults])
@@ -153,6 +150,8 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                             showDepartment
                             restricted={isRestricted(asset)}
                             onRequestAccess={handleRequestAccess}
+                            showTags={showTags}
+                            metadataFields={metadataFields}
                           />
                         ))}
                       </CardGrid>
@@ -173,6 +172,8 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                             showDepartment
                             restricted={isRestricted(asset)}
                             onRequestAccess={handleRequestAccess}
+                            showTags={showTags}
+                            metadataFields={metadataFields}
                           />
                         ))}
                       </CardGrid>
@@ -205,6 +206,8 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                           showDepartment
                           restricted={isRestricted(asset)}
                           onRequestAccess={handleRequestAccess}
+                          showTags={showTags}
+                          metadataFields={metadataFields}
                         />
                       ))}
                     </CardGrid>

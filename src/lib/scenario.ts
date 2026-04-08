@@ -12,6 +12,7 @@ import type {
   ResourceType,
 } from '@/lib/grants'
 import type { UserCollection } from '@/hooks/useUserCollections'
+import { SEED_USER_SMART_COLLECTIONS, SYSTEM_DEFAULT_SMART_COLLECTIONS } from '@/lib/smart-collection-seeds'
 
 // --- Scenario shape types ---
 
@@ -94,6 +95,14 @@ type ScenarioDepartmentAccess = {
   defaultProfile: AccessProfileId
 }
 
+export type DiscoveryResourceType = 'asset' | 'cut'
+
+type ScenarioDiscoveryRule = {
+  enabled: boolean
+  roles: UserRole[]
+  disabledDepartments: DepartmentId[]
+}
+
 type ReleaseDomainGroup = 'Studio' | 'Wide' | 'Other'
 
 type ScenarioReleaseDomain = {
@@ -112,10 +121,8 @@ type ScenarioReleaseDomain = {
 
 type Scenario = {
   projectName: string
-  /** Project-level: allow users to see restricted assets as blurred tiles */
-  discoveryEnabled: boolean
-  /** Departments that opt out of discovery even when project has it enabled */
-  discoveryDisabledDepartments: DepartmentId[]
+  /** Project-level: allow users to discover restricted assets/cuts without opening them */
+  discovery: Record<DiscoveryResourceType, ScenarioDiscoveryRule>
   /** System-level release domains configured for this project */
   releaseDomains: ScenarioReleaseDomain[]
   roleGroups: ScenarioRoleGroup[]
@@ -136,8 +143,18 @@ type Scenario = {
 
 export const SCENARIO: Scenario = {
   projectName: 'Apex S1',
-  discoveryEnabled: true,
-  discoveryDisabledDepartments: ['audio-sound'],
+  discovery: {
+    asset: {
+      enabled: true,
+      roles: ['studio-exec', 'creative', 'manager', 'artist'],
+      disabledDepartments: ['audio-sound'],
+    },
+    cut: {
+      enabled: true,
+      roles: ['studio-exec', 'creative', 'manager', 'artist'],
+      disabledDepartments: [],
+    },
+  },
 
   // Release domains — system-level config, maps real Content Hub release targets
   // Each domain defines WHO gets grants when content is released to that domain
@@ -603,6 +620,10 @@ export function buildLabels(): Record<string, string> {
     labels[coll.id] = coll.name
   }
 
+  for (const collection of [...SYSTEM_DEFAULT_SMART_COLLECTIONS, ...SEED_USER_SMART_COLLECTIONS]) {
+    labels[collection.id] = collection.name
+  }
+
   // Cut names
   for (const cut of SCENARIO.cuts) {
     labels[cut.id] = cut.name
@@ -631,8 +652,27 @@ export function buildGrants(): Grant[] {
 
   const grants: Grant[] = []
 
-  // Resource-level shares
   const sharerGrantsSeen = new Set<string>()
+
+  for (const collection of SEED_USER_SMART_COLLECTIONS) {
+    const owner = SCENARIO.people.find((person) => person.email === collection.createdBy)
+    if (!owner) continue
+
+    const key = `${owner.id}:${collection.id}`
+    sharerGrantsSeen.add(key)
+
+    grants.push({
+      id: grantId(),
+      resource: { id: collection.id, type: 'smart-collection' },
+      principal: { type: 'user', userId: owner.id },
+      templateId: 'manager',
+      permissions: permissionsForTemplate('manager'),
+      grantedByUserId: owner.id,
+      grantedAt: collection.createdAt.toISOString().slice(0, 10),
+    })
+  }
+
+  // Resource-level shares
   for (const share of SCENARIO.shares) {
     const resource = {
       id: share.resource.id,

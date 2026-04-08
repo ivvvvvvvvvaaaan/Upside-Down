@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { PageHeader, EmptyState, SelectionBar, Button, MobileToolbar } from '@/components/ui'
 import { AssetCard } from '@/components/ui/asset-card'
 import { ReleaseModal } from '@/components/ui/release-modal'
-import { useCuts, usePersona, useAssetSelection, useSmartCollections, useViewPreferences, useMobilePanel, type AccessibleCutEntry } from '@/hooks'
+import { useCuts, usePersona, useAssetSelection, useSmartCollections, useViewPreferences, useMobilePanel, useAccess, type CutEntry } from '@/hooks'
 import type { SeedCut } from '@/lib/scenario'
 import { compareCutsByStageAndVersion } from '@/lib/cuts'
 import { assetToSelectionEntity } from '@/lib/selection-actions'
@@ -16,13 +16,16 @@ import type { Asset } from '@/lib/data'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
 import { AssetDetailPanelContent } from '@/components/ui/asset-detail-panel'
 
-function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, onMenuClick }: {
+function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, onMenuClick, onRequestAccess, showTags, metadataFields }: {
   episode: string
-  cuts: AccessibleCutEntry[]
+  cuts: CutEntry[]
   selectedIds: Set<string>
   primaryId: string | null
   onAssetClick: (asset: Asset, event: React.MouseEvent, allAssets: Asset[]) => void
   onMenuClick?: (asset: Asset) => void
+  onRequestAccess?: (asset: Asset) => void
+  showTags?: boolean
+  metadataFields?: import('@/hooks/useViewPreferences').MetadataFieldVisibility
 }) {
   const allAssets = cuts.map(c => c.asset)
   return (
@@ -41,8 +44,12 @@ function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, o
             asset={cut.asset}
             selected={selectedIds.has(cut.asset.id)}
             primary={primaryId === cut.asset.id}
+            restricted={cut.visibilityState === 'discoverable'}
+            onRequestAccess={onRequestAccess}
             onClick={(a, e) => onAssetClick(a, e, allAssets)}
-            onMenuClick={onMenuClick ? () => onMenuClick(cut.asset) : undefined}
+            onMenuClick={onMenuClick && cut.visibilityState === 'accessible' ? () => onMenuClick(cut.asset) : undefined}
+            showTags={showTags}
+            metadataFields={metadataFields}
           />
         ))}
       </div>
@@ -52,9 +59,10 @@ function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, o
 
 export function LibraryView() {
   const { hydrated, isAdmin, activePersona } = usePersona()
-  const { accessibleCuts } = useCuts()
+  const { visibleCuts, accessibleCuts } = useCuts()
+  const { requestAccess } = useAccess()
   const { scopedAssets } = useSmartCollections()
-  const { sidePanelOpen, setSidePanelOpen } = useViewPreferences()
+  const { sidePanelOpen, setSidePanelOpen, showTags, metadataFields } = useViewPreferences()
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
   const {
     selectedIds,
@@ -68,6 +76,10 @@ export function LibraryView() {
 
   const isEditorialMember = activePersona?.departmentId === 'editorial'
 
+  const handleRequestAccess = (asset: Asset) => {
+    requestAccess(asset.id, { id: asset.id, type: 'cut', departmentId: 'editorial' })
+  }
+
   const canRelease = useMemo(() => {
     return isEditorialMember || isAdmin
   }, [isEditorialMember, isAdmin])
@@ -75,31 +87,33 @@ export function LibraryView() {
   // Deduplicate: keep only the latest version per episode+stage, track older versions
   const { latestCuts, olderVersionsMap } = useMemo(() => {
     // Group by versionGroupId (episode+stage)
-    const groups = new Map<string, AccessibleCutEntry[]>()
-    for (const cut of accessibleCuts) {
+    const groups = new Map<string, CutEntry[]>()
+    for (const cut of visibleCuts) {
       const key = cut.asset.versionGroupId ?? cut.asset.id
       const existing = groups.get(key) ?? []
       existing.push(cut)
       groups.set(key, existing)
     }
 
-    const latest: AccessibleCutEntry[] = []
+    const latest: CutEntry[] = []
     const older = new Map<string, Asset[]>()
 
     for (const [, entries] of Array.from(groups)) {
       entries.sort((a, b) => compareCutsByStageAndVersion(a.asset, b.asset))
       latest.push(entries[0]) // highest stage + version first
       if (entries.length > 1) {
-        older.set(entries[0].asset.id, entries.slice(1).map(e => e.asset))
+        older.set(entries[0].asset.id, entries.slice(1)
+          .filter((entry) => entry.visibilityState === 'accessible')
+          .map(e => e.asset))
       }
     }
 
     return { latestCuts: latest, olderVersionsMap: older }
-  }, [accessibleCuts])
+  }, [visibleCuts])
 
   // Group by episode, sort by stage + version (latest first)
   const episodes = useMemo(() => {
-    const map = new Map<string, AccessibleCutEntry[]>()
+    const map = new Map<string, CutEntry[]>()
     for (const cut of latestCuts) {
       const ep = cut.asset.episode ?? 'Unknown'
       const existing = map.get(ep) ?? []
@@ -157,9 +171,10 @@ export function LibraryView() {
 
   return (
     <>
-      <div className="h-full flex min-h-0">
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
+      <div className="h-full flex">
+        <div className="flex-1 min-w-0 flex flex-col">
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
             <MobileToolbar title="Cuts" actions={
               <Button
                 variant="icon"
@@ -172,14 +187,14 @@ export function LibraryView() {
               </Button>
             } />
             <div className="hidden md:flex items-start justify-between gap-4">
-              <PageHeader
-                title="Cuts"
-                description={
-                  accessibleCuts.length > 0
-                    ? `${accessibleCuts.length} cuts across ${episodes.length} ${episodes.length === 1 ? 'episode' : 'episodes'}`
+                <PageHeader
+                  title="Cuts"
+                  description={
+                  visibleCuts.length > 0
+                    ? `${visibleCuts.length} cuts across ${episodes.length} ${episodes.length === 1 ? 'episode' : 'episodes'}`
                     : 'Cuts will appear here as they become available'
-                }
-              />
+                  }
+                />
               <Button
                 variant="icon"
                 onClick={togglePanel}
@@ -201,6 +216,9 @@ export function LibraryView() {
                     primaryId={primaryId}
                     onAssetClick={handleAssetClick}
                     onMenuClick={canRelease ? handleMenuClick : undefined}
+                    onRequestAccess={handleRequestAccess}
+                    showTags={showTags}
+                    metadataFields={metadataFields}
                   />
                 ))}
               </div>
@@ -209,9 +227,10 @@ export function LibraryView() {
                 title="No cuts yet"
                 message={isEditorialMember
                   ? 'Upload or assemble cuts in your workspace — they will appear here automatically.'
-                  : 'Cuts shared to you or your teams will appear here.'}
+                  : 'Cuts shared to you, or discoverable to your role, will appear here.'}
               />
             )}
+            </div>
           </div>
         </div>
 

@@ -147,6 +147,7 @@ function GuestLinksSection({
   resourceRef,
   readOnly,
   canAddGrants,
+  canManageGuestLink,
   getResourceGuestLinks,
   createGuestLink,
   revokeGuestLink,
@@ -155,6 +156,7 @@ function GuestLinksSection({
   resourceRef?: ResourceRef
   readOnly: boolean
   canAddGrants: boolean
+  canManageGuestLink: (link: GuestLinkSeed) => boolean
   getResourceGuestLinks: (id: string) => GuestLinkSeed[]
   createGuestLink: (resource: ResourceRef, options: { allowDownload: boolean; passcode: boolean; expiresInDays: number }) => void
   revokeGuestLink: (linkId: string) => void
@@ -179,7 +181,7 @@ function GuestLinksSection({
                 >
                   Copy link
                 </Button>
-                {!readOnly && canAddGrants && (
+                {!readOnly && canManageGuestLink(link) && (
                   <Button
                     variant="secondary"
                     compact
@@ -225,7 +227,7 @@ function GuestLinksSection({
 }
 
 export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLabel = 'Not shared', inheritedGrants }: AccessPanelProps) {
-  const { getResourceGrants, createGrant, revokeGrant, updateGrantProfile, roleGroups, canShare, canEditAcl, getGrantableProfiles, getResourceGuestLinks, createGuestLink, revokeGuestLink } = useAccess()
+  const { getResourceGrants, createGrant, revokeGrant, updateGrantProfile, roleGroups, canShare, canEditAcl, canManageGrant, getGrantableProfiles, getResourceGuestLinks, canManageGuestLink, createGuestLink, revokeGuestLink } = useAccess()
   const { activePersona } = usePersona()
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
@@ -236,13 +238,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
   const canAddGrants = Boolean(resourceRef) && canShare(resourceRef)
   const canManageAllGrants = Boolean(resourceRef) && canEditAcl(resourceRef)
 
-  // Users with 'share' can modify grants they created; 'edit-acl' can modify any grant
-  const canManageGrant = (grant: Grant): boolean => {
-    if (readOnly) return false
-    if (canManageAllGrants) return true
-    if (canAddGrants && activePersona && grant.grantedByUserId === activePersona.id) return true
-    return false
-  }
+  const canManageGrantEntry = (grant: Grant): boolean => !readOnly && canManageGrant(grant.id)
   const addRoleOptions = useMemo(() => {
     if (!resourceRef) return roleGroupOptions(roleGroups)
     const allowedProfiles = new Set(getGrantableProfiles(resourceRef))
@@ -304,7 +300,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
     const directRaw = grants.map((grant) => ({
       key: `direct-${grant.id}`,
       grant,
-      readOnly: !canManageGrant(grant),
+      readOnly: !canManageGrantEntry(grant),
       sourceName: undefined as string | undefined,
     }))
 
@@ -321,7 +317,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
       activePersona?.id,
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grants, canManageAllGrants, canAddGrants, readOnly, activePersona?.id, inheritedGrants, roleGroups, activePersona])
+  }, [grants, canManageGrantEntry, activePersona?.id, inheritedGrants, roleGroups, activePersona])
 
   const directEntries = useMemo(() => allEntries.filter(e => !e.sourceName), [allEntries])
   const inheritedEntries = useMemo(() => allEntries.filter(e => !!e.sourceName), [allEntries])
@@ -345,7 +341,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
         </div>
       )}
       {!readOnly && canAddGrants && !canManageAllGrants && (
-        <p className="text-body-0-regular text-foreground-dim">You can manage shares you created. Only admins can modify shares created by others.</p>
+        <p className="text-body-0-regular text-foreground-dim">You can manage shares you created. Users with full access can modify any share.</p>
       )}
 
       {/* Search row: input + role dropdown */}
@@ -449,6 +445,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
         resourceRef={resourceRef}
         readOnly={readOnly}
         canAddGrants={canAddGrants}
+        canManageGuestLink={canManageGuestLink}
         getResourceGuestLinks={getResourceGuestLinks}
         createGuestLink={createGuestLink}
         revokeGuestLink={revokeGuestLink}

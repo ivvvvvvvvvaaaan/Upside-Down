@@ -567,7 +567,13 @@ function SharedCollectionNavItems() {
   const { sharesReceivedByMe, allProjectShares, getCollectionAssetCount } = useAccess()
   const { isAdmin } = usePersona()
   const entries = isAdmin ? allProjectShares : sharesReceivedByMe
-  const sharedCollections = entries.filter(e => e.resourceType === 'collection' || e.resourceType === 'smart-collection')
+  const seenResourceIds = new Set<string>()
+  const sharedCollections = entries.filter((entry) => {
+    if (entry.resourceType !== 'collection' && entry.resourceType !== 'smart-collection') return false
+    if (seenResourceIds.has(entry.resourceId)) return false
+    seenResourceIds.add(entry.resourceId)
+    return true
+  })
   if (sharedCollections.length === 0) return null
 
   return (
@@ -603,10 +609,13 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
   const accessibleDepartments = DEPARTMENT_NAV_ITEMS.filter((item) => canAccess(DEPARTMENT_FOLDER_MAP[item.id].id))
   const accessibleDepartmentIds = new Set(accessibleDepartments.map((item) => item.id))
   const workspaceFolderIds = new Set(workspaceFolders.map((folder) => folder.id))
+  const sharedFolderIds = new Set<string>()
   const receivedSharedFolders = sharesReceivedByMe.filter((entry) => {
     if (entry.resourceType !== 'folder') return false
     if (workspaceFolderIds.has(entry.resourceId)) return false
     if (entry.departmentId && accessibleDepartmentIds.has(entry.departmentId)) return false
+    if (sharedFolderIds.has(entry.resourceId)) return false
+    sharedFolderIds.add(entry.resourceId)
     return true
   })
   const showWorkspaceLink = accessibleDepartments.length > 0 || workspaceFolders.length > 0 || receivedSharedFolders.length > 0

@@ -7,6 +7,7 @@ import type { UserCollection } from './useUserCollections'
 import type { Asset } from '@/lib/data'
 import { getAssetIdVariants } from '@/lib/data'
 import type { DepartmentId } from '@/components/department/types'
+import type { UserRole } from '@/lib/personas'
 import {
   DEFAULT_GRANTS,
   DEFAULT_ROLE_GROUPS,
@@ -17,13 +18,10 @@ import {
   buildSharesCreatedByMe,
   buildSharesReceivedByMe,
   buildAllProjectShares,
-  userHasAccess,
   resolveAccess,
   mostPermissiveProfile,
   getPermissionsForProfile,
   canAssignProfile,
-  canCreateGrantForResource,
-  canEditAclForResource,
   isGrantActive,
 } from '@/lib/grants'
 import type {
@@ -40,7 +38,7 @@ import { useFileTree } from './useFileTree'
 import { getDepartmentWorkspaceFiles, findNodeInTree, DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { SCENARIO, buildGuestLinks } from '@/lib/scenario'
-import type { GuestLinkSeed } from '@/lib/scenario'
+import type { GuestLinkSeed, DiscoveryResourceType } from '@/lib/scenario'
 
 export type AccessRequest = {
   id: string
@@ -53,23 +51,18 @@ export type AccessRequest = {
 // Re-export types consumers may need
 export type { Grant, GrantView, ResourceRef, ResourceType, PrincipalRef, AccessProfileId, RoleGroup, Permission }
 
-export type AccessPathSource =
-  | 'department'           // user is in the same department
-  | 'direct-grant'         // explicit grant on this resource
-  | 'folder-inheritance'   // inherited from a parent folder grant
-  | 'collection-ripple'    // accessible via a shared collection
-  | 'admin'                // admin bypass
+export type VisibilityState = 'accessible' | 'discoverable' | 'hidden'
 
-export type AccessPath = {
-  source: AccessPathSource
-  /** The resource that provided access (collection id, folder id, etc.) */
-  viaResourceId?: string
-  /** Human-readable name of the resource that provided access */
-  viaResourceName?: string
-  /** Who shared it (user id of the grant creator) */
-  sharedByUserId?: string
-  /** Can the user browse the workspace folder where this asset lives */
-  canBrowseWorkspace: boolean
+type DiscoverySettings = Record<DiscoveryResourceType, {
+  enabled: boolean
+  roles: UserRole[]
+  disabledDepartments: Set<DepartmentId>
+}>
+
+type EffectiveAccess = {
+  templateId: AccessProfileId | null
+  permissions: Permission[]
+  canEdit: boolean
 }
 
 interface AccessContextValue {
@@ -81,8 +74,6 @@ interface AccessContextValue {
   sharesCreatedByMe: GrantView[]
   sharesReceivedByMe: GrantView[]
   allProjectShares: GrantView[]
-  visibleShares: GrantView[]
-  revokeShare: (resourceId: string) => void
 
   // New grant-based API
   getPermission: (id: string) => AccessProfileId | null
@@ -116,19 +107,21 @@ interface AccessContextValue {
   // Resource-scoped ACL authority
   canShare: (resource: ResourceRef) => boolean
   canEditAcl: (resource: ResourceRef) => boolean
+  canManageGrant: (grantId: string) => boolean
 
   // Discovery
-  discoveryEnabled: boolean
-  setDiscoveryEnabled: (enabled: boolean) => void
-  discoveryDisabledDepartments: Set<DepartmentId>
-  toggleDepartmentDiscovery: (deptId: DepartmentId) => void
-  canDiscover: (id: string, departmentId?: DepartmentId) => boolean
+  discoverySettings: DiscoverySettings
+  setDiscoveryEnabledForType: (resourceType: DiscoveryResourceType, enabled: boolean) => void
+  toggleDepartmentDiscoveryForType: (resourceType: DiscoveryResourceType, deptId: DepartmentId) => void
+  getVisibilityState: (resource: ResourceRef) => VisibilityState
+  canDiscover: (id: string, departmentId?: DepartmentId, resourceType?: DiscoveryResourceType) => boolean
   requestAccess: (resourceId: string, resourceRef: ResourceRef) => void
   accessRequests: AccessRequest[]
 
   // Guest links
   guestLinks: GuestLinkSeed[]
   getResourceGuestLinks: (resourceId: string) => GuestLinkSeed[]
+  canManageGuestLink: (link: GuestLinkSeed) => boolean
   createGuestLink: (resource: ResourceRef, options: { allowDownload: boolean; passcode: boolean; expiresInDays: number }) => GuestLinkSeed | undefined
   revokeGuestLink: (linkId: string) => void
 
@@ -201,38 +194,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const getResourceGuestLinks = useCallback((resourceId: string) =>
     guestLinks.filter(l => l.resource.id === resourceId),
   [guestLinks])
-  const createGuestLink = useCallback((resource: ResourceRef, options: { allowDownload: boolean; passcode: boolean; expiresInDays: number }) => {
-    if (!activePersona) return
-    if (!canCreateGrantForResource(activePersona.id, resource, grants)) return
-    const now = new Date()
-    const expires = new Date(now)
-    expires.setDate(expires.getDate() + options.expiresInDays)
-    const link: GuestLinkSeed = {
-      id: `link-${Date.now()}`,
-      resource: { id: resource.id, type: resource.type, departmentId: resource.departmentId },
-      label: resource.id,
-      permissions: options.allowDownload ? ['open', 'download'] : ['open'],
-      templateId: 'link-viewer',
-      createdByUserId: activePersona.id,
-      createdAt: now.toISOString().slice(0, 10),
-      expiresAt: expires.toISOString().slice(0, 10),
-      allowDownload: options.allowDownload,
-      passcode: options.passcode,
-    }
-    setGuestLinks(prev => [...prev, link])
-    return link
-  }, [activePersona, grants])
-  const revokeGuestLink = useCallback((linkId: string) => {
-    setGuestLinks(prev => {
-      const link = prev.find(l => l.id === linkId)
-      if (!link) return prev
-      if (activePersona) {
-        const resource: ResourceRef = { id: link.resource.id, type: link.resource.type as ResourceType, departmentId: link.resource.departmentId }
-        if (!canCreateGrantForResource(activePersona.id, resource, grants)) return prev
-      }
-      return prev.filter(l => l.id !== linkId)
-    })
-  }, [activePersona, grants])
 
   const [roleGroups, setRoleGroupsState] = useState<RoleGroup[]>(() => structuredClone(DEFAULT_ROLE_GROUPS))
   const setRoleGroups: typeof setRoleGroupsState = useCallback((action) => {
@@ -243,10 +204,18 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     })
   }, [])
   const [readShareIds, setReadShareIds] = useState<Set<string>>(() => new Set())
-  const [discoveryEnabled, setDiscoveryEnabled] = useState(SCENARIO.discoveryEnabled)
-  const [discoveryDisabledDepts, setDiscoveryDisabledDepts] = useState<Set<DepartmentId>>(
-    () => new Set(SCENARIO.discoveryDisabledDepartments)
-  )
+  const [discoverySettings, setDiscoverySettings] = useState<DiscoverySettings>(() => ({
+    asset: {
+      enabled: SCENARIO.discovery.asset.enabled,
+      roles: [...SCENARIO.discovery.asset.roles],
+      disabledDepartments: new Set(SCENARIO.discovery.asset.disabledDepartments),
+    },
+    cut: {
+      enabled: SCENARIO.discovery.cut.enabled,
+      roles: [...SCENARIO.discovery.cut.roles],
+      disabledDepartments: new Set(SCENARIO.discovery.cut.disabledDepartments),
+    },
+  }))
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([])
 
   useEffect(() => {
@@ -284,12 +253,29 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const toggleDepartmentDiscovery = useCallback((deptId: DepartmentId) => {
-    setDiscoveryDisabledDepts((prev) => {
-      const next = new Set(prev)
-      if (next.has(deptId)) next.delete(deptId)
-      else next.add(deptId)
-      return next
+  const setDiscoveryEnabledForType = useCallback((resourceType: DiscoveryResourceType, enabled: boolean) => {
+    setDiscoverySettings((prev) => ({
+      ...prev,
+      [resourceType]: {
+        ...prev[resourceType],
+        enabled,
+      },
+    }))
+  }, [])
+
+  const toggleDepartmentDiscoveryForType = useCallback((resourceType: DiscoveryResourceType, deptId: DepartmentId) => {
+    setDiscoverySettings((prev) => {
+      const nextDepartments = new Set(prev[resourceType].disabledDepartments)
+      if (nextDepartments.has(deptId)) nextDepartments.delete(deptId)
+      else nextDepartments.add(deptId)
+
+      return {
+        ...prev,
+        [resourceType]: {
+          ...prev[resourceType],
+          disabledDepartments: nextDepartments,
+        },
+      }
     })
   }, [])
 
@@ -299,15 +285,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const getResourceDepartmentId = useCallback((resourceId: string): DepartmentId | undefined => {
     return nodeToDepartment.get(resourceId) ?? ROOT_ID_TO_DEPARTMENT[resourceId]
   }, [nodeToDepartment])
-
-  // Discovery: can user see a restricted asset as a blurred tile?
-  const canDiscover = useCallback((id: string, departmentId?: DepartmentId): boolean => {
-    if (!activePersona) return true // admin sees everything
-    if (!discoveryEnabled) return false
-    const dept = departmentId ?? nodeToDepartment.get(id)
-    if (dept && discoveryDisabledDepts.has(dept)) return false
-    return true
-  }, [activePersona, discoveryEnabled, discoveryDisabledDepts, nodeToDepartment])
 
   const requestAccess = useCallback((resourceId: string, resourceRef: ResourceRef) => {
     if (!userId) return
@@ -379,29 +356,28 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       const collectionAccess = collectionAccessById.get(collection.id)
       if (!collectionAccess) continue
 
-      // Apply ripple policy from the grant (default: view-only)
-      const grant = grants.find(g => g.resource.id === collection.id && isGrantActive(g))
-      const policy = grant?.ripplePolicy ?? 'view-only'
-      const cappedPermissions = policy === 'view-only'
-        ? collectionAccess.permissions.filter(p => VIEW_ONLY_CAP.includes(p))
-        : policy === 'match-grant'
-        ? collectionAccess.permissions
-        : (grant?.ripplePermissions ?? VIEW_ONLY_CAP)
+      const ripplePermissions = collectionAccess.permissions.filter((permission) =>
+        VIEW_ONLY_CAP.includes(permission),
+      )
+      if (!ripplePermissions.includes('open')) continue
+
+      const rippleTemplateId: AccessProfileId | null = ripplePermissions.includes('download') ? 'viewer' : null
 
       for (const assetId of collection.assetIds) {
         for (const variantId of getAssetIdVariants(assetId)) {
           const current = accessById.get(variantId)
+          const permissions = mergePermissions(current?.permissions ?? [], ripplePermissions)
           accessById.set(variantId, {
-            templateId: mostPermissiveProfile(current?.templateId ?? null, collectionAccess.templateId),
-            permissions: mergePermissions(current?.permissions ?? [], cappedPermissions),
-            canEdit: Boolean(current?.canEdit || cappedPermissions.includes('write')),
+            templateId: current?.templateId ?? rippleTemplateId,
+            permissions,
+            canEdit: false,
           })
         }
       }
     }
 
     return accessById
-  }, [collections, collectionAccessById, grants])
+  }, [collections, collectionAccessById])
 
   const visibleCollections = useMemo(() => {
     return collections.filter((collection) => collectionAccessById.has(collection.id))
@@ -411,6 +387,105 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return visibleCollections.find((collection) => collection.id === id)
   }, [visibleCollections])
 
+  const getInheritedFolderAccess = useCallback((
+    resourceId: string,
+    currentGrants: Grant[] = grants,
+  ): EffectiveAccess => {
+    if (!userId) {
+      return {
+        templateId: null,
+        permissions: [],
+        canEdit: false,
+      }
+    }
+
+    let templateId: AccessProfileId | null = null
+    let permissions: Permission[] = []
+
+    let parentId = nodeToParent.get(resourceId)
+    while (parentId) {
+      const inheritedAccess = resolveAccess(
+        userId,
+        parentId,
+        currentGrants,
+        roleGroups,
+        getResourceDepartmentId(parentId),
+      )
+
+      if (inheritedAccess.permissions.length > 0) {
+        templateId = mostPermissiveProfile(templateId, inheritedAccess.effectiveProfile)
+        permissions = mergePermissions(permissions, inheritedAccess.permissions)
+      }
+
+      parentId = nodeToParent.get(parentId)
+    }
+
+    return {
+      templateId,
+      permissions,
+      canEdit: permissions.includes('write'),
+    }
+  }, [userId, grants, nodeToParent, roleGroups, getResourceDepartmentId])
+
+  const getEffectiveAccessForId = useCallback((
+    resourceId: string,
+    currentGrants: Grant[] = grants,
+  ): EffectiveAccess => {
+    if (!activePersona) {
+      return {
+        templateId: 'owner',
+        permissions: getPermissionsForProfile('owner', roleGroups),
+        canEdit: true,
+      }
+    }
+
+    if (!userId) {
+      return {
+        templateId: null,
+        permissions: [],
+        canEdit: false,
+      }
+    }
+
+    const explicitAccess = resolveAccess(
+      userId,
+      resourceId,
+      currentGrants,
+      roleGroups,
+      getResourceDepartmentId(resourceId),
+    )
+    const inheritedAccess = getInheritedFolderAccess(resourceId, currentGrants)
+    const collectionAccess = collectionAccessById.get(resourceId)
+    const collectionRippleAccess = collectionAssetAccessById.get(resourceId)
+
+    const permissions = mergePermissions(
+      explicitAccess.permissions,
+      inheritedAccess.permissions,
+      collectionAccess?.permissions ?? [],
+      collectionRippleAccess?.permissions ?? [],
+    )
+
+    return {
+      templateId: [
+        explicitAccess.effectiveProfile,
+        inheritedAccess.templateId,
+        collectionAccess?.templateId ?? null,
+        collectionRippleAccess?.templateId ?? null,
+      ].reduce<AccessProfileId | null>((best, next) => mostPermissiveProfile(best, next), null),
+      permissions,
+      canEdit: permissions.includes('write'),
+    }
+  }, [
+    activePersona,
+    userId,
+    grants,
+    roleGroups,
+    getResourceDepartmentId,
+    getInheritedFolderAccess,
+    collectionAccessById,
+    collectionAssetAccessById,
+  ])
+
   const currentUserPermissionsForResource = useCallback((
     resource: ResourceRef,
     currentGrants: Grant[] = grants,
@@ -418,33 +493,52 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     if (!activePersona) return getPermissionsForProfile('owner', roleGroups)
     if (!userId) return []
 
-    if (resource.type === 'collection') {
-      const collection = collections.find((candidate) => candidate.id === resource.id)
-      if (collection?.createdBy === activePersona.email) {
-        return getPermissionsForProfile('owner', roleGroups)
-      }
-    }
+    const collectionOwnerPermissions = resource.type === 'collection'
+      ? (() => {
+          const collection = collections.find((candidate) => candidate.id === resource.id)
+          return collection?.createdBy === activePersona.email
+            ? getPermissionsForProfile('owner', roleGroups)
+            : []
+        })()
+      : []
 
-    return resolveAccess(
+    const explicitAccess = resolveAccess(
       userId,
       resource.id,
       currentGrants,
       roleGroups,
-      resource.departmentId,
-    ).permissions
-  }, [activePersona, userId, collections, grants, roleGroups])
+      resource.departmentId ?? getResourceDepartmentId(resource.id),
+    )
+    const inheritedAccess = getInheritedFolderAccess(resource.id, currentGrants)
+    const collectionRipplePermissions =
+      resource.type === 'asset' || resource.type === 'cut'
+        ? collectionAssetAccessById.get(resource.id)?.permissions ?? []
+        : []
+
+    return mergePermissions(
+      explicitAccess.permissions,
+      inheritedAccess.permissions,
+      collectionOwnerPermissions,
+      collectionRipplePermissions,
+    )
+  }, [
+    activePersona,
+    userId,
+    collections,
+    grants,
+    roleGroups,
+    getResourceDepartmentId,
+    getInheritedFolderAccess,
+    collectionAssetAccessById,
+  ])
 
   const canShareFn = useCallback((resource: ResourceRef, currentGrants: Grant[] = grants): boolean => {
     if (!activePersona) return true
     if (!userId) return false
 
-    if (resource.type === 'collection') {
-      const permissions = currentUserPermissionsForResource(resource, currentGrants)
-      return permissions.includes('share') || permissions.includes('edit-acl')
-    }
-
-    return canCreateGrantForResource(userId, resource, currentGrants, roleGroups)
-  }, [activePersona, userId, grants, roleGroups, currentUserPermissionsForResource])
+    const permissions = currentUserPermissionsForResource(resource, currentGrants)
+    return permissions.includes('share') || permissions.includes('edit-acl')
+  }, [activePersona, userId, grants, currentUserPermissionsForResource])
 
   const canGrantProfileForResourceFn = useCallback((
     resource: ResourceRef,
@@ -453,23 +547,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   ): boolean => {
     if (profileId === 'owner' || profileId === 'link-viewer') return false
 
-    if (!activePersona) {
-      if (resource.type === 'folder') {
-        const targetPermissions = getPermissionsForProfile(profileId, roleGroups)
-        return targetPermissions.includes('write')
-      }
-
-      return true
-    }
+    if (!activePersona) return true
     if (!userId) return false
 
     const currentPermissions = currentUserPermissionsForResource(resource, currentGrants)
     if (!canAssignProfile(currentPermissions, profileId, roleGroups)) return false
-
-    if (resource.type === 'folder') {
-      const targetPermissions = getPermissionsForProfile(profileId, roleGroups)
-      return targetPermissions.includes('write')
-    }
 
     return true
   }, [activePersona, userId, grants, roleGroups, currentUserPermissionsForResource])
@@ -478,12 +560,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     if (!activePersona) return true
     if (!userId) return false
 
-    if (resource.type === 'collection') {
-      return currentUserPermissionsForResource(resource, currentGrants).includes('edit-acl')
-    }
-
-    return canEditAclForResource(userId, resource, currentGrants, roleGroups)
-  }, [activePersona, userId, grants, roleGroups, currentUserPermissionsForResource])
+    return currentUserPermissionsForResource(resource, currentGrants).includes('edit-acl')
+  }, [activePersona, userId, grants, currentUserPermissionsForResource])
 
   const updateRoleGroup = useCallback((id: string, permissions: Permission[]) => {
     if (!canEditAclFn(PROJECT_RESOURCE)) return
@@ -515,25 +593,40 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     setRoleGroups(structuredClone(DEFAULT_ROLE_GROUPS))
   }, [canEditAclFn, setRoleGroups])
 
-  // canAccess: explicit grants plus collection/folder inheritance
+  // canAccess: explicit grants plus folder inheritance and collection ripple
   const canAccess = useCallback((id: string): boolean => {
-    if (!activePersona) return true
-    if (!userId) return false
+    return getEffectiveAccessForId(id).permissions.includes('open')
+  }, [getEffectiveAccessForId])
 
-    // Explicit grants (direct, team, inherited via folder tree walking in resolveAccess)
-    if (userHasAccess(userId, id, grants, nodeToDepartment.get(id), roleGroups)) return true
-    // Collection access
-    if (collectionAccessById.has(id)) return true
-    if (collectionAssetAccessById.has(id)) return true
-    // Folder inheritance: check if any ancestor has a grant
-    let parentId = nodeToParent.get(id)
-    while (parentId) {
-      if (userHasAccess(userId, parentId, grants, nodeToDepartment.get(parentId), roleGroups)) return true
-      parentId = nodeToParent.get(parentId)
-    }
+  const getVisibilityState = useCallback((resource: ResourceRef): VisibilityState => {
+    if (!activePersona) return 'accessible'
+    if (canAccess(resource.id)) return 'accessible'
 
-    return false
-  }, [activePersona, userId, grants, collectionAccessById, collectionAssetAccessById, nodeToDepartment, nodeToParent, roleGroups])
+    const discoveryType: DiscoveryResourceType | null = resource.type === 'cut'
+      ? 'cut'
+      : resource.type === 'asset'
+      ? 'asset'
+      : null
+
+    if (!discoveryType) return 'hidden'
+
+    const settings = discoverySettings[discoveryType]
+    if (!settings.enabled) return 'hidden'
+    if (!settings.roles.includes(activePersona.role)) return 'hidden'
+
+    const dept = resource.departmentId ?? getResourceDepartmentId(resource.id)
+    if (dept && settings.disabledDepartments.has(dept)) return 'hidden'
+
+    return 'discoverable'
+  }, [activePersona, canAccess, discoverySettings, getResourceDepartmentId])
+
+  const canDiscover = useCallback((id: string, departmentId?: DepartmentId, resourceType: DiscoveryResourceType = 'asset'): boolean => {
+    return getVisibilityState({
+      id,
+      type: resourceType,
+      departmentId,
+    }) === 'discoverable'
+  }, [getVisibilityState])
 
   // filterByAccess: filter assets by persona access
   const filterByAccess = useCallback((assets: Asset[]): Asset[] => {
@@ -570,59 +663,30 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   // Share views
   const sharesCreatedByMe = useMemo(() => {
     if (!userId) return []
-    return buildSharesCreatedByMe(userId, grants)
-  }, [userId, grants])
+    return buildSharesCreatedByMe(userId, grants, roleGroups)
+  }, [userId, grants, roleGroups])
 
   const sharesReceivedByMe = useMemo(() => {
     if (!userId) return []
-    return buildSharesReceivedByMe(userId, grants)
-  }, [userId, grants])
+    return buildSharesReceivedByMe(userId, grants, roleGroups)
+  }, [userId, grants, roleGroups])
 
   const unreadInboxCount = useMemo(() => {
     return sharesReceivedByMe.filter((s) => !readShareIds.has(s.id)).length
   }, [sharesReceivedByMe, readShareIds])
 
   const allProjectShares = useMemo(() => {
-    return buildAllProjectShares(grants)
-  }, [grants])
-
-  // Shares visible to the current user — grants on resources they can access
-  const visibleShares = useMemo(() => {
-    if (!activePersona) return allProjectShares // admin sees all
-    return allProjectShares.filter(s => canAccess(s.resourceId))
-  }, [activePersona, allProjectShares, canAccess])
-
-  // Revoke all grants for a resource
-  const revokeShare = useCallback((resourceId: string) => {
-    setGrants((prev) => {
-      const activeGrant = prev.find((grant) => grant.resource.id === resourceId && isGrantActive(grant))
-      if (!activeGrant || !canEditAclFn(activeGrant.resource, prev)) return prev
-
-      return prev.map((grant) =>
-        grant.resource.id === resourceId && isGrantActive(grant)
-          ? { ...grant, revokedAt: new Date().toISOString() }
-          : grant,
-      )
-    })
-  }, [canEditAclFn, setGrants])
+    return buildAllProjectShares(grants, roleGroups)
+  }, [grants, roleGroups])
 
   // New API
   const getPermission = useCallback((id: string): AccessProfileId | null => {
-    if (!userId) return 'owner' // admin
-    const explicitAccess = resolveAccess(userId, id, grants, roleGroups, getResourceDepartmentId(id))
-    if (explicitAccess.effectiveProfile) return explicitAccess.effectiveProfile
-    if (collectionAccessById.has(id)) return collectionAccessById.get(id)?.templateId ?? null
-    return collectionAssetAccessById.get(id)?.templateId ?? null
-  }, [userId, grants, roleGroups, collectionAccessById, collectionAssetAccessById, getResourceDepartmentId])
+    return getEffectiveAccessForId(id).templateId
+  }, [getEffectiveAccessForId])
 
   const canEditFn = useCallback((id: string): boolean => {
-    if (!activePersona) return true // admin
-    if (!userId) return false
-    const explicitAccess = resolveAccess(userId, id, grants, roleGroups, getResourceDepartmentId(id))
-    if (explicitAccess.canEdit) return true
-    if (collectionAccessById.get(id)?.canEdit) return true
-    return collectionAssetAccessById.get(id)?.canEdit ?? false
-  }, [activePersona, userId, grants, roleGroups, collectionAccessById, collectionAssetAccessById, getResourceDepartmentId])
+    return getEffectiveAccessForId(id).canEdit
+  }, [getEffectiveAccessForId])
 
   const getResourceGrants = useCallback((id: string): Grant[] => {
     return getResourceGrantsFromList(id, grants)
@@ -639,8 +703,18 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     if (activePersona && !userId) return
 
     setGrants((prev) => {
-      if (!canShareFn(resource, prev)) return prev
-      if (!canGrantProfileForResourceFn(resource, profileId, prev)) return prev
+      const isSmartCollectionOwnerBootstrap =
+        Boolean(userId) &&
+        resource.type === 'smart-collection' &&
+        principal.type === 'user' &&
+        principal.userId === userId &&
+        profileId === 'manager' &&
+        !prev.some((grant) => grant.resource.id === resource.id && isGrantActive(grant))
+
+      if (!isSmartCollectionOwnerBootstrap) {
+        if (!canShareFn(resource, prev)) return prev
+        if (!canGrantProfileForResourceFn(resource, profileId, prev)) return prev
+      }
 
       const newGrant: Grant = {
         id: `grant-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -661,6 +735,58 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     if (userId && canShareFn(grant.resource, currentGrants) && grant.grantedByUserId === userId) return true
     return false
   }, [canEditAclFn, canShareFn, userId])
+
+  const canManageGrantById = useCallback((grantId: string): boolean => {
+    const grant = grants.find((candidate) => candidate.id === grantId && isGrantActive(candidate))
+    if (!grant) return false
+    return canManageGrant(grant, grants)
+  }, [grants, canManageGrant])
+
+  const createGuestLink = useCallback((resource: ResourceRef, options: { allowDownload: boolean; passcode: boolean; expiresInDays: number }) => {
+    if (!canShareFn(resource, grants)) return
+
+    const now = new Date()
+    const expires = new Date(now)
+    expires.setDate(expires.getDate() + options.expiresInDays)
+
+    const link: GuestLinkSeed = {
+      id: `link-${Date.now()}`,
+      resource: { id: resource.id, type: resource.type, departmentId: resource.departmentId },
+      label: resource.id,
+      permissions: options.allowDownload ? ['open', 'download'] : ['open'],
+      templateId: 'link-viewer',
+      createdByUserId: grantorUserId,
+      createdAt: now.toISOString().slice(0, 10),
+      expiresAt: expires.toISOString().slice(0, 10),
+      allowDownload: options.allowDownload,
+      passcode: options.passcode,
+    }
+
+    setGuestLinks(prev => [...prev, link])
+    return link
+  }, [canShareFn, grants, grantorUserId])
+
+  const canManageGuestLink = useCallback((link: GuestLinkSeed, currentGrants: Grant[] = grants): boolean => {
+    const resource: ResourceRef = {
+      id: link.resource.id,
+      type: link.resource.type as ResourceType,
+      departmentId: link.resource.departmentId,
+    }
+
+    if (!activePersona) return true
+    if (canEditAclFn(resource, currentGrants)) return true
+    if (userId && canShareFn(resource, currentGrants) && link.createdByUserId === userId) return true
+    return false
+  }, [activePersona, grants, userId, canEditAclFn, canShareFn])
+
+  const revokeGuestLink = useCallback((linkId: string) => {
+    setGuestLinks(prev => {
+      const link = prev.find(l => l.id === linkId)
+      if (!link) return prev
+      if (!canManageGuestLink(link, grants)) return prev
+      return prev.filter(l => l.id !== linkId)
+    })
+  }, [grants, canManageGuestLink])
 
   const revokeGrant = useCallback((grantId: string) => {
     setGrants((prev) => {
@@ -753,8 +879,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     sharesCreatedByMe,
     sharesReceivedByMe,
     allProjectShares,
-    visibleShares,
-    revokeShare,
     getPermission,
     canEdit: canEditFn,
     getResourceGrants,
@@ -779,15 +903,17 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     getCollectionRippleGrants,
     canShare: canShareFn,
     canEditAcl: canEditAclFn,
-    discoveryEnabled,
-    setDiscoveryEnabled,
-    discoveryDisabledDepartments: discoveryDisabledDepts,
-    toggleDepartmentDiscovery,
+    canManageGrant: canManageGrantById,
+    discoverySettings,
+    setDiscoveryEnabledForType,
+    toggleDepartmentDiscoveryForType,
+    getVisibilityState,
     canDiscover,
     requestAccess,
     accessRequests,
     guestLinks,
     getResourceGuestLinks,
+    canManageGuestLink,
     createGuestLink,
     revokeGuestLink,
     readShareIds,
@@ -799,8 +925,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     sharesCreatedByMe,
     sharesReceivedByMe,
     allProjectShares,
-    visibleShares,
-    revokeShare,
     getPermission,
     canEditFn,
     getResourceGrants,
@@ -825,14 +949,17 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     getCollectionRippleGrants,
     canShareFn,
     canEditAclFn,
-    discoveryEnabled,
-    discoveryDisabledDepts,
-    toggleDepartmentDiscovery,
+    canManageGrantById,
+    discoverySettings,
+    setDiscoveryEnabledForType,
+    toggleDepartmentDiscoveryForType,
+    getVisibilityState,
     canDiscover,
     requestAccess,
     accessRequests,
     guestLinks,
     getResourceGuestLinks,
+    canManageGuestLink,
     createGuestLink,
     revokeGuestLink,
     readShareIds,

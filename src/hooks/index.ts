@@ -4,7 +4,7 @@ export { useResourceSelection } from './useResourceSelection'
 export { useCollectionAssets } from './useCollectionAssets'
 
 export { useViewPreferences, getGridColumns } from './useViewPreferences'
-export type { CollectionViewType } from './useViewPreferences'
+export type { CollectionViewType, MetadataFieldVisibility } from './useViewPreferences'
 
 export { useCompactBar } from './use-compact-bar'
 
@@ -25,4 +25,4 @@ export { AccessProvider, useAccess } from './useAccess'
 export { useMobilePanel } from './useMobilePanel'
 
 export { useCuts } from './useCuts'
-export type { AccessibleCutEntry } from './useCuts'
+export type { CutEntry } from './useCuts'

@@ -176,7 +176,6 @@ export function InboxView() {
           <Card className="flex-1 overflow-y-auto m-4">
             <SharedDetailContent
               entry={selectedEntry}
-              isCreator={false}
               showAccess={false}
             />
           </Card>

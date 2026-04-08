@@ -5,12 +5,32 @@ const STORAGE_KEY = 'collection-view-preferences'
 
 export type CollectionViewType = 'all' | 'character' | 'location' | 'scene'
 
+export type MetadataFieldVisibility = {
+  scene: boolean
+  take: boolean
+  camera: boolean
+  sequence: boolean
+  shot: boolean
+  episode: boolean
+}
+
+const DEFAULT_METADATA_FIELDS: MetadataFieldVisibility = {
+  scene: true,
+  take: true,
+  camera: true,
+  sequence: true,
+  shot: true,
+  episode: true,
+}
+
 interface ViewPreferences {
   layout: LayoutType
   cardSize: CardSize
   hideEmptyCollections: boolean
   viewMode: string
   sidePanelOpen: boolean
+  showTags: boolean
+  metadataFields: MetadataFieldVisibility
 }
 
 const DEFAULT_PREFERENCES: ViewPreferences = {
@@ -19,6 +39,8 @@ const DEFAULT_PREFERENCES: ViewPreferences = {
   hideEmptyCollections: false,
   viewMode: 'grid',
   sidePanelOpen: false,
+  showTags: true,
+  metadataFields: DEFAULT_METADATA_FIELDS,
 }
 
 const VALID_LAYOUTS: LayoutType[] = ['grid', 'list', 'gallery']
@@ -39,6 +61,10 @@ function getStoredPreferences(): ViewPreferences {
         hideEmptyCollections: typeof parsed.hideEmptyCollections === 'boolean' ? parsed.hideEmptyCollections : DEFAULT_PREFERENCES.hideEmptyCollections,
         viewMode: typeof parsed.viewMode === 'string' ? parsed.viewMode : DEFAULT_PREFERENCES.viewMode,
         sidePanelOpen: typeof parsed.sidePanelOpen === 'boolean' ? parsed.sidePanelOpen : DEFAULT_PREFERENCES.sidePanelOpen,
+        showTags: typeof parsed.showTags === 'boolean' ? parsed.showTags : DEFAULT_PREFERENCES.showTags,
+        metadataFields: parsed.metadataFields && typeof parsed.metadataFields === 'object'
+          ? { ...DEFAULT_METADATA_FIELDS, ...parsed.metadataFields }
+          : DEFAULT_METADATA_FIELDS,
       }
   } catch (error) {
     console.warn('Failed to read view preferences from localStorage:', error)
@@ -61,11 +87,15 @@ export interface UseViewPreferencesReturn {
   hideEmptyCollections: boolean
   viewMode: string
   sidePanelOpen: boolean
+  showTags: boolean
+  metadataFields: MetadataFieldVisibility
   setLayout: (layout: LayoutType) => void
   setCardSize: (cardSize: CardSize) => void
   setHideEmptyCollections: (hide: boolean) => void
   setViewMode: (mode: string) => void
   setSidePanelOpen: (open: boolean) => void
+  setShowTags: (show: boolean) => void
+  setMetadataField: (field: keyof MetadataFieldVisibility, show: boolean) => void
 }
 
 export function getGridColumns(cardSize: CardSize): 3 | 4 | 6 {
@@ -86,6 +116,8 @@ export function useViewPreferences(): UseViewPreferencesReturn {
   const [hideEmptyCollections, setHideEmptyCollectionsState] = useState<boolean>(DEFAULT_PREFERENCES.hideEmptyCollections)
   const [viewMode, setViewModeState] = useState<string>(DEFAULT_PREFERENCES.viewMode)
   const [sidePanelOpen, setSidePanelOpenState] = useState<boolean>(DEFAULT_PREFERENCES.sidePanelOpen)
+  const [showTags, setShowTagsState] = useState<boolean>(DEFAULT_PREFERENCES.showTags)
+  const [metadataFields, setMetadataFieldsState] = useState<MetadataFieldVisibility>(DEFAULT_PREFERENCES.metadataFields)
 
   // Load preferences on mount
   useEffect(() => {
@@ -96,10 +128,12 @@ export function useViewPreferences(): UseViewPreferencesReturn {
     setHideEmptyCollectionsState(prefs.hideEmptyCollections)
     setViewModeState(prefs.viewMode)
     setSidePanelOpenState(prefs.sidePanelOpen)
+    setShowTagsState(prefs.showTags)
+    setMetadataFieldsState(prefs.metadataFields)
   }, [])
 
   const prefsRef = useRef(DEFAULT_PREFERENCES)
-  useEffect(() => { prefsRef.current = { layout, cardSize, hideEmptyCollections, viewMode, sidePanelOpen } }, [layout, cardSize, hideEmptyCollections, viewMode, sidePanelOpen])
+  useEffect(() => { prefsRef.current = { layout, cardSize, hideEmptyCollections, viewMode, sidePanelOpen, showTags, metadataFields } }, [layout, cardSize, hideEmptyCollections, viewMode, sidePanelOpen, showTags, metadataFields])
 
   const persist = useCallback((patch: Partial<ViewPreferences>) => {
     if (mounted) savePreferences({ ...prefsRef.current, ...patch })
@@ -130,16 +164,33 @@ export function useViewPreferences(): UseViewPreferencesReturn {
     persist({ sidePanelOpen: open })
   }, [persist])
 
+  const setShowTags = useCallback((show: boolean) => {
+    setShowTagsState(show)
+    persist({ showTags: show })
+  }, [persist])
+
+  const setMetadataField = useCallback((field: keyof MetadataFieldVisibility, show: boolean) => {
+    setMetadataFieldsState(prev => {
+      const next = { ...prev, [field]: show }
+      persist({ metadataFields: next })
+      return next
+    })
+  }, [persist])
+
   return {
     layout,
     cardSize,
     hideEmptyCollections,
     viewMode,
     sidePanelOpen,
+    showTags,
+    metadataFields,
     setLayout,
     setCardSize,
     setHideEmptyCollections,
     setViewMode,
     setSidePanelOpen,
+    setShowTags,
+    setMetadataField,
   }
 }

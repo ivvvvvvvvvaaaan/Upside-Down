@@ -72,6 +72,10 @@ export interface AssetCardProps {
   onRequestAccess?: (asset: Asset) => void
   /** Show "Shared" tag — asset originates from outside the user's department */
   shared?: boolean
+  /** Show tags row (type, version, status, release). Default: true */
+  showTags?: boolean
+  /** Per-field metadata visibility */
+  metadataFields?: import('@/hooks/useViewPreferences').MetadataFieldVisibility
 }
 
 // Placeholder image for assets without thumbnails
@@ -90,6 +94,8 @@ export function AssetCard({
   restricted = false,
   shared,
   onRequestAccess,
+  showTags = true,
+  metadataFields,
 }: AssetCardProps) {
   const router = useRouter()
   // Primary implies selected
@@ -208,20 +214,22 @@ export function AssetCard({
     return <Tag>{tagLabel}</Tag>
   }
 
-  // Render metadata line (SHOT type only) - label-0-regular (10px/15px/400)
-  const renderMetadata = () => {
-    if (asset.type !== 'shot' || !asset.shotMeta) return null
+  // Render per-field metadata chips (controlled by metadataFields)
+  const renderMetadataChips = () => {
+    const chips: React.ReactNode[] = []
 
-    const { scene, take, camera } = asset.shotMeta
-    const parts = [scene, take, camera].filter(Boolean)
+    if (asset.type === 'shot' && asset.shotMeta) {
+      const { scene, take, camera } = asset.shotMeta
+      if (metadataFields?.scene !== false && scene) chips.push(<Tag key="scene" type="neutral" variant="border">Scene: {scene}</Tag>)
+      if (metadataFields?.take !== false && take) chips.push(<Tag key="take" type="neutral" variant="border">Take: {take}</Tag>)
+      if (metadataFields?.camera !== false && camera) chips.push(<Tag key="camera" type="neutral" variant="border">Camera: {camera}</Tag>)
+    }
 
-    if (parts.length === 0) return null
+    if (metadataFields?.episode !== false && asset.episode) {
+      chips.push(<Tag key="episode" type="neutral" variant="border">{asset.episode}</Tag>)
+    }
 
-    return (
-      <div className="text-label-0-regular text-foreground-subtle truncate">
-        {parts.join(' • ')}
-      </div>
-    )
+    return chips.length > 0 ? chips : null
   }
 
   // Render thumbnail based on type
@@ -342,48 +350,55 @@ export function AssetCard({
           </Button>
         </div>
 
-        {/* Tags + Metadata row */}
+        {/* Tags + Metadata chips */}
         <div className="flex items-center gap-1 flex-wrap">
-          {(() => {
-            if (asset.tags?.length) {
-              const statusLabels = new Set(['Key Art', 'Final'])
-              const typeTag = asset.tags.find(t => t.source === 'system' && !statusLabels.has(t.label))
-              const statusTag = asset.tags.find(t => statusLabels.has(t.label))
-              const rest = asset.tags.filter(t => t.source === 'system' && t !== typeTag && !statusLabels.has(t.label))
-              return (
-                <>
-                  {typeTag && <Tag>{typeTag.label}</Tag>}
-                  {asset.version != null && <Tag type="neutral" variant="border">V{asset.version}</Tag>}
-                  {statusTag && <Tag type={statusTag.label === 'Final' ? 'positive' : 'announcement'}>{statusTag.label}</Tag>}
-                  {rest.map(t => {
-                    const tag = (
-                      <Tag
-                        key={t.label}
-                        type={t.label === 'ALL' ? 'positive' : t.label.startsWith('+') ? 'neutral' : 'notice'}
-                        variant={t.label.startsWith('+') ? 'border' : 'fill'}
-                      >
-                        {t.label}
-                      </Tag>
-                    )
-                    return t.description ? (
-                      <Tooltip key={t.label} label={t.description}>{tag}</Tooltip>
-                    ) : tag
-                  })}
-                </>
-              )
-            }
-            return (
-              <>
-                {renderTypeTag()}
-                {asset.version != null && <Tag type="neutral" variant="border">V{asset.version}</Tag>}
-                {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
-              </>
-            )
-          })()}
-          {isShared && asset.department && (
-            <Tag type="neutral">{DEPARTMENT_NAMES[asset.department] ?? asset.department}</Tag>
+          {/* Tags: type, version, status, release, department */}
+          {showTags && (
+            <>
+              {(() => {
+                if (asset.tags?.length) {
+                  const statusLabels = new Set(['Key Art', 'Final'])
+                  const typeTag = asset.tags.find(t => t.source === 'system' && !statusLabels.has(t.label))
+                  const statusTag = asset.tags.find(t => statusLabels.has(t.label))
+                  const rest = asset.tags.filter(t => t.source === 'system' && t !== typeTag && !statusLabels.has(t.label))
+                  return (
+                    <>
+                      {typeTag && <Tag>{typeTag.label}</Tag>}
+                      {asset.version != null && <Tag type="neutral" variant="border">V{asset.version}</Tag>}
+                      {statusTag && <Tag type={statusTag.label === 'Final' ? 'positive' : 'announcement'}>{statusTag.label}</Tag>}
+                      {rest.map(t => {
+                        const tag = (
+                          <Tag
+                            key={t.label}
+                            type={t.label === 'ALL' ? 'positive' : t.label.startsWith('+') ? 'neutral' : 'notice'}
+                            variant={t.label.startsWith('+') ? 'border' : 'fill'}
+                          >
+                            {t.label}
+                          </Tag>
+                        )
+                        return t.description ? (
+                          <Tooltip key={t.label} label={t.description}>{tag}</Tooltip>
+                        ) : tag
+                      })}
+                    </>
+                  )
+                }
+                return (
+                  <>
+                    {renderTypeTag()}
+                    {asset.version != null && <Tag type="neutral" variant="border">V{asset.version}</Tag>}
+                    {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
+                  </>
+                )
+              })()}
+              {isShared && asset.department && (
+                <Tag type="neutral">{DEPARTMENT_NAMES[asset.department] ?? asset.department}</Tag>
+              )}
+            </>
           )}
-          {renderMetadata()}
+
+          {/* Metadata: per-field toggleable */}
+          {renderMetadataChips()}
         </div>
       </div>
     </div>

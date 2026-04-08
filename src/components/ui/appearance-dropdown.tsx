@@ -5,6 +5,7 @@ import { Card } from './card'
 import { Dropdown } from './dropdown'
 import { ToggleButtonGroup } from './toggle-button-group'
 import type { ToggleButtonOption } from './toggle-button-group'
+import { Toggle } from './switch'
 
 export type LayoutType = 'grid' | 'list' | 'gallery'
 export type CardSize = 'sm' | 'md' | 'lg'
@@ -27,6 +28,12 @@ export interface AppearanceDropdownProps {
   viewMode?: string
   /** Callback when view mode changes (used with viewModeOptions) */
   onViewModeChange?: (mode: string) => void
+  /** Show/hide tags row on asset cards */
+  showTags?: boolean
+  onShowTagsChange?: (show: boolean) => void
+  /** Per-field metadata visibility */
+  metadataFields?: import('@/hooks/useViewPreferences').MetadataFieldVisibility
+  onMetadataFieldChange?: (field: keyof import('@/hooks/useViewPreferences').MetadataFieldVisibility, show: boolean) => void
 }
 
 export function AppearanceDropdown({
@@ -42,6 +49,10 @@ export function AppearanceDropdown({
   viewModeOptions,
   viewMode,
   onViewModeChange,
+  showTags,
+  onShowTagsChange,
+  metadataFields,
+  onMetadataFieldChange,
 }: AppearanceDropdownProps) {
   return (
     <Dropdown
@@ -105,6 +116,31 @@ export function AppearanceDropdown({
                 compact
               />
             </div>
+          )}
+
+          {onShowTagsChange && (
+            <div className="flex items-center justify-between">
+              <span className="text-body-0-regular text-foreground">Tags</span>
+              <Toggle checked={showTags ?? true} onChange={onShowTagsChange} aria-label="Tags" />
+            </div>
+          )}
+
+          {onMetadataFieldChange && metadataFields && (
+            <>
+              <div className="pt-1 border-t border-border-dim">
+                <span className="text-label-0-bold text-foreground-dim uppercase">Metadata</span>
+              </div>
+              {(['scene', 'take', 'camera', 'sequence', 'shot', 'episode'] as const).map(field => (
+                <div key={field} className="flex items-center justify-between">
+                  <span className="text-body-0-regular text-foreground capitalize">{field}</span>
+                  <Toggle
+                    checked={metadataFields[field]}
+                    onChange={(v) => onMetadataFieldChange(field, v)}
+                    aria-label={field}
+                  />
+                </div>
+              ))}
+            </>
           )}
 
         </div>

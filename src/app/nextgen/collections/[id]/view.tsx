@@ -37,7 +37,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const { getCollection, deleteCollection } = useUserCollections()
   const { getRelatedCollectionsForAssets, scopedAssets, ensureAssetsLoaded } = useSmartCollections()
   const { selectedIds, primaryId, handleAssetClick, selectOnly, clearSelection } = useAssetSelection()
-  const { cardSize, sidePanelOpen, setSidePanelOpen } = useViewPreferences()
+  const { cardSize, sidePanelOpen, setSidePanelOpen, showTags, metadataFields } = useViewPreferences()
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
 
@@ -251,6 +251,8 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         onMenuClick={handleMenuClick}
                         showDepartment
                         shared={sharedBy ? false : undefined}
+                        showTags={showTags}
+                        metadataFields={metadataFields}
                       />
                     ))}
                   </CardGrid>

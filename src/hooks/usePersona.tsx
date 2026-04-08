@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import type { User } from '@/lib/personas'
-import { PERSONAS } from '@/lib/personas'
+import { PERSONAS, DIRECTORY_UPDATED_EVENT } from '@/lib/personas'
 
 // Keep backward compat: Persona = User
 type Persona = User
@@ -24,6 +24,7 @@ const STORAGE_KEY = 'active-persona-id'
 export function PersonaProvider({ children }: { children: ReactNode }) {
   const [activePersona, setActivePersonaState] = useState<Persona | null>(null)
   const [hydrated, setHydrated] = useState(false)
+  const [directoryVersion, setDirectoryVersion] = useState(0)
 
   // Hydrate from localStorage after mount to avoid SSR mismatch
   useEffect(() => {
@@ -50,6 +51,19 @@ export function PersonaProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
+  useEffect(() => {
+    function handleDirectoryUpdate() {
+      setDirectoryVersion((prev) => prev + 1)
+      setActivePersonaState((current) => {
+        if (!current) return current
+        return PERSONAS.find((persona) => persona.id === current.id) ?? current
+      })
+    }
+
+    window.addEventListener(DIRECTORY_UPDATED_EVENT, handleDirectoryUpdate)
+    return () => window.removeEventListener(DIRECTORY_UPDATED_EVENT, handleDirectoryUpdate)
+  }, [])
+
   const setActivePersona = useCallback((persona: Persona | null) => {
     setActivePersonaState(persona)
     try {
@@ -62,14 +76,18 @@ export function PersonaProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const isAdmin = !activePersona
+  const allPersonas = useMemo(() => {
+    void directoryVersion
+    return [...PERSONAS]
+  }, [directoryVersion])
 
   const contextValue = useMemo(() => ({
     activePersona,
     setActivePersona,
-    allPersonas: PERSONAS,
+    allPersonas,
     hydrated,
     isAdmin,
-  }), [activePersona, setActivePersona, hydrated, isAdmin])
+  }), [activePersona, setActivePersona, allPersonas, hydrated, isAdmin])
 
   return (
     <PersonaContext.Provider value={contextValue}>

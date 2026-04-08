@@ -15,7 +15,7 @@ interface SmartCollectionSidePanelProps {
   collection: SmartCollection
   open: boolean
   onClose: () => void
-  onUpdate: (updates: { name?: string; filter?: AssetFilter }) => void
+  onUpdate?: (updates: { name?: string; filter?: AssetFilter }) => void
   onDelete?: () => void
   matchingCount?: number
   relationships?: RelatedCollections
@@ -68,6 +68,7 @@ export function SmartCollectionSidePanel({
   }
 
   const handleSave = () => {
+    if (!onUpdate) return
     const updates: { name?: string; filter?: AssetFilter } = {}
     if (draftName !== collection.name) updates.name = draftName
     if (!filtersEqual(draftFilter, collection.filter)) updates.filter = draftFilter
@@ -154,7 +155,7 @@ export function SmartCollectionSidePanel({
                   <span className="text-foreground">{collection.createdAt.toLocaleDateString()}</span>
                 </div>
               </section>
-              {!isRelationshipMode && (
+              {!isRelationshipMode && onUpdate && (
                 <Button
                   variant="secondary"
                   icon={<Pencil className="w-3.5 h-3.5" />}

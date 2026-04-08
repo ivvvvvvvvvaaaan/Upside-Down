@@ -176,7 +176,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   const { canAccess, sharesReceivedByMe, getInheritedGrants } = useAccess()
   const { activePersona } = usePersona()
   const { scopedAssets, ensureAssetsLoaded } = useSmartCollections()
-  const { layout, setLayout, cardSize, setCardSize, viewMode, setViewMode, sidePanelOpen: showPanel, setSidePanelOpen: setShowPanel } = useViewPreferences()
+  const { layout, setLayout, cardSize, setCardSize, viewMode, setViewMode, sidePanelOpen: showPanel, setSidePanelOpen: setShowPanel, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(showPanel, setShowPanel)
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
   const isMobile = useIsMobile()
@@ -695,6 +695,10 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                     cardSize={cardSize}
                     onCardSizeChange={setCardSize}
                     showLayoutOptions={false}
+                    showTags={showTags}
+                    onShowTagsChange={setShowTags}
+                    metadataFields={metadataFields}
+                    onMetadataFieldChange={setMetadataField}
                   />
                 </div>
 
@@ -719,6 +723,10 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                         viewMode={viewMode}
                         onViewModeChange={setViewMode}
                         iconOnly={showPanel}
+                        showTags={showTags}
+                        onShowTagsChange={setShowTags}
+                        metadataFields={metadataFields}
+                        onMetadataFieldChange={setMetadataField}
                       />
                       <Button
                         variant="icon"
@@ -822,6 +830,8 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                               asset={workspaceAsset}
                               selected={selectedIds.has(workspaceAsset.id)}
                               primary={primaryId === workspaceAsset.id}
+                              showTags={showTags}
+                              metadataFields={metadataFields}
                               onClick={(_, e) => {
                                 const selectionEntry = selectionEntryById.get(workspaceAsset.id)
                                 if (selectionEntry) {

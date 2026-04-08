@@ -11,10 +11,10 @@ import { Avatar } from './avatar'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import { useAccess } from '@/hooks'
 import { cn } from '@/lib/utils'
-import { PERSONAS } from '@/lib/personas'
+import { PERSONAS, DIRECTORY_UPDATED_EVENT } from '@/lib/personas'
 import type { User } from '@/lib/personas'
 import { TEAMS } from '@/lib/teams'
-import { PROJECT_RESOURCE, profileLabel } from '@/lib/grants'
+import { PROJECT_RESOURCE, profileLabel, isGrantActive } from '@/lib/grants'
 import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef, ResourceRef } from '@/lib/grants'
 import type { DepartmentId } from '@/components/department/types'
 import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
@@ -69,109 +69,254 @@ function roleGroupOptions(roleGroups: RoleGroup[]) {
     .map((rg) => ({ value: rg.id, label: rg.name }))
 }
 
+function toDisplayNameFromEmail(email: string): string {
+  return email
+    .split('@')[0]
+    .replace(/[._-]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function toPersonaId(departmentId: DepartmentId, email: string): string {
+  const localPart = email.split('@')[0].replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase()
+  const base = `${departmentId}-${localPart || 'member'}`
+  let nextId = base
+  let index = 2
+  while (PERSONAS.some((persona) => persona.id === nextId)) {
+    nextId = `${base}-${index++}`
+  }
+  return nextId
+}
+
+function addOrMoveDepartmentMember(departmentId: DepartmentId, teamId: string, email: string): User | null {
+  const normalizedEmail = email.trim().toLowerCase()
+  if (!normalizedEmail) return null
+
+  const departmentTeamIds = new Set(
+    TEAMS.filter((team) => team.departmentId).map((team) => team.id),
+  )
+
+  let persona = PERSONAS.find((candidate) => candidate.email.toLowerCase() === normalizedEmail)
+
+  if (!persona) {
+    persona = {
+      id: toPersonaId(departmentId, normalizedEmail),
+      name: toDisplayNameFromEmail(normalizedEmail),
+      email: normalizedEmail,
+      role: 'artist',
+      title: `${DEPARTMENT_FOLDER_MAP[departmentId].name} Artist`,
+      departmentId,
+      teamIds: [teamId],
+    }
+    PERSONAS.push(persona)
+  } else {
+    persona.departmentId = departmentId
+    if (persona.role !== 'manager' && persona.role !== 'artist') {
+      persona.role = 'artist'
+    }
+    persona.teamIds = Array.from(new Set([
+      ...persona.teamIds.filter((id) => !departmentTeamIds.has(id)),
+      teamId,
+    ]))
+  }
+
+  for (const team of TEAMS) {
+    if (!team.departmentId) continue
+    if (team.id === teamId) {
+      if (!team.memberUserIds.includes(persona.id)) {
+        team.memberUserIds.push(persona.id)
+      }
+      continue
+    }
+    team.memberUserIds = team.memberUserIds.filter((memberId) => memberId !== persona.id)
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(DIRECTORY_UPDATED_EVENT))
+  }
+
+  return persona
+}
+
+function DiscoverySection({
+  title,
+  description,
+  enabled,
+  onToggleEnabled,
+  disabledDepartments,
+  onToggleDepartment,
+  disabled,
+}: {
+  title: string
+  description: string
+  enabled: boolean
+  onToggleEnabled: () => void
+  disabledDepartments: Set<DepartmentId>
+  onToggleDepartment: (deptId: DepartmentId) => void
+  disabled: boolean
+}) {
+  return (
+    <div className="space-y-3 rounded-lg border border-border-dim p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-body-0-bold text-foreground">{title}</p>
+          <p className="text-body-0-regular text-foreground-dim">
+            {description}
+          </p>
+        </div>
+        <button
+          onClick={onToggleEnabled}
+          disabled={disabled}
+          className={cn(
+            'relative w-10 h-6 rounded-full transition-colors flex-shrink-0',
+            enabled ? 'bg-indigo-500' : 'bg-surface-3',
+            disabled && 'opacity-40 cursor-not-allowed',
+          )}
+        >
+          <div
+            className={cn(
+              'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
+              enabled ? 'left-5' : 'left-1',
+            )}
+          />
+        </button>
+      </div>
+
+      {enabled && (
+        <div className="space-y-1">
+          <p className="text-label-1-bold text-foreground-dim">Department overrides</p>
+          {(Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[]).map((deptId) => {
+            const deptDisabled = disabledDepartments.has(deptId)
+            return (
+              <div key={deptId} className="flex items-center justify-between py-1">
+                <span className="text-body-0-regular text-foreground">{DEPARTMENT_FOLDER_MAP[deptId].name}</span>
+                <button
+                  onClick={() => onToggleDepartment(deptId)}
+                  disabled={disabled}
+                  className={cn(
+                    'relative w-10 h-6 rounded-full transition-colors flex-shrink-0',
+                    !deptDisabled ? 'bg-indigo-500' : 'bg-surface-3',
+                    disabled && 'opacity-40 cursor-not-allowed',
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
+                      !deptDisabled ? 'left-5' : 'left-1',
+                    )}
+                  />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // --- People tab ---
 
 function PeopleTab({
   grants,
-  roleGroups,
-  onRoleChange,
-  onRemove,
-  onAdd,
-  canAdd,
-  canManage,
-  availablePeople,
+  directoryVersion,
 }: {
   grants: Grant[]
-  roleGroups: RoleGroup[]
-  onRoleChange: (grantId: string, profileId: AccessProfileId) => void
-  onRemove: (grantId: string) => void
-  onAdd: (principal: PrincipalRef, profileId: AccessProfileId) => void
-  canAdd: boolean
-  canManage: boolean
-  availablePeople: User[]
+  directoryVersion: number
 }) {
-  const [newEmail, setNewEmail] = useState('')
+  const policyResourceIds = useMemo(
+    () => new Set(['project', ...Object.values(DEPARTMENT_FOLDER_MAP).map((folder) => folder.id)]),
+    [],
+  )
 
-  const handleAdd = () => {
-    if (!canAdd) return
-    const email = newEmail.trim().toLowerCase()
-    if (!email) return
-    const persona = availablePeople.find((p) => p.email === email)
-    if (!persona) return
-    if (grants.some((g) => g.principal.type === 'user' && g.principal.userId === persona.id)) return
-    onAdd({ type: 'user', userId: persona.id }, 'viewer')
-    setNewEmail('')
-  }
+  const participants = useMemo(() => {
+    void directoryVersion
+    const stats = new Map<string, { received: number; shared: number }>()
 
-  const options = useMemo(() => roleGroupOptions(roleGroups), [roleGroups])
+    const touch = (userId: string, field: 'received' | 'shared') => {
+      const current = stats.get(userId) ?? { received: 0, shared: 0 }
+      current[field] += 1
+      stats.set(userId, current)
+    }
+
+    for (const grant of grants) {
+      if (!isGrantActive(grant)) continue
+      if (policyResourceIds.has(grant.resource.id)) continue
+
+      touch(grant.grantedByUserId, 'shared')
+
+      if (grant.principal.type === 'user') {
+        touch(grant.principal.userId, 'received')
+        continue
+      }
+
+      const teamId = grant.principal.teamId
+      const team = TEAMS.find((candidate) => candidate.id === teamId)
+      for (const memberId of team?.memberUserIds ?? []) {
+        touch(memberId, 'received')
+      }
+    }
+
+    return PERSONAS
+      .filter((persona) => persona.departmentId || stats.has(persona.id))
+      .map((persona) => {
+        const involvement = stats.get(persona.id) ?? { received: 0, shared: 0 }
+        const primaryLabel = persona.departmentId
+          ? `${DEPARTMENT_FOLDER_MAP[persona.departmentId].name} member`
+          : persona.role === 'vendor'
+          ? 'External participant'
+          : 'Shared participant'
+        const activityParts = [
+          involvement.received > 0 ? `${involvement.received} received` : null,
+          involvement.shared > 0 ? `${involvement.shared} shared` : null,
+        ].filter(Boolean)
+
+        return {
+          ...persona,
+          primaryLabel,
+          activityLabel: activityParts.length > 0 ? activityParts.join(' · ') : 'No active shares',
+        }
+      })
+      .sort((a, b) => {
+        const aDept = a.departmentId ? 0 : 1
+        const bDept = b.departmentId ? 0 : 1
+        if (aDept !== bDept) return aDept - bDept
+        return a.name.localeCompare(b.name)
+      })
+  }, [grants, policyResourceIds, directoryVersion])
 
   return (
     <div className="space-y-3">
       <p className="text-body-0-regular text-foreground-dim">
-        Add people who need project access outside the department structure.
+        People appear here because they belong to a department or are involved through explicit shares. Add new working users from the Departments tab, and use share controls on assets or collections for ad hoc access.
       </p>
 
-      {canAdd && (
-        <div className="flex gap-2">
-          <Input
-            icon={<Search />}
-            iconPosition="left"
-            type="email"
-            value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            placeholder="Add by email..."
-          />
-          <Button variant="secondary" onClick={handleAdd} disabled={!newEmail.trim()}>
-            <Plus className="w-3 h-3 mr-1" />
-            Add
-          </Button>
-        </div>
-      )}
-
-      {grants.length === 0 ? (
-        <p className="text-body-0-regular text-foreground-dim py-4 text-center">No people added yet.</p>
+      {participants.length === 0 ? (
+        <p className="text-body-0-regular text-foreground-dim py-4 text-center">No participants yet.</p>
       ) : (
         <div className="space-y-1">
-          {grants.map((grant) => {
-            const principal = grant.principal
-            if (principal.type !== 'user') return null
-            const persona = PERSONAS.find((p) => p.id === principal.userId)
-            if (!persona) return null
-
-            return (
-              <div key={grant.id} className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-surface-3/40 transition-colors">
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <Avatar name={persona.name} size="sm" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-body-0-regular text-foreground truncate">{persona.name}</span>
-                      {persona.title && (
-                        <span className="text-label-0-regular text-foreground-dim truncate hidden sm:inline">{persona.title}</span>
-                      )}
-                    </div>
-                    <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
+          {participants.map((persona) => (
+            <div key={persona.id} className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-surface-3/40 transition-colors">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <Avatar name={persona.name} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-body-0-regular text-foreground truncate">{persona.name}</span>
+                    {persona.title && (
+                      <span className="text-label-0-regular text-foreground-dim truncate hidden sm:inline">{persona.title}</span>
+                    )}
                   </div>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <Select
-                    options={options}
-                    value={grant.templateId ?? 'viewer'}
-                    onChange={(v) => onRoleChange(grant.id, v as AccessProfileId)}
-                    size="compact"
-                    borderless
-                    className="w-auto flex-shrink-0"
-                    disabled={!canManage}
-                  />
-                  {canManage && (
-                    <Button variant="icon" size="compact-icon" onClick={() => onRemove(grant.id)}>
-                      <X className="w-3 h-3" />
-                    </Button>
-                  )}
+                  <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
                 </div>
               </div>
-            )
-          })}
+              <div className="text-right flex-shrink-0">
+                <div className="text-label-0-regular text-foreground">{persona.primaryLabel}</div>
+                <div className="text-label-0-regular text-foreground-dim">{persona.activityLabel}</div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -188,6 +333,7 @@ function DepartmentsTab({
   onRemoveGrant,
   canShareResource,
   canEditResource,
+  onDirectoryChange,
   readOnly = false,
 }: {
   roleGroups: RoleGroup[]
@@ -197,10 +343,12 @@ function DepartmentsTab({
   onRemoveGrant: (grantId: string) => void
   canShareResource: (resource: ResourceRef) => boolean
   canEditResource: (resource: ResourceRef) => boolean
+  onDirectoryChange: () => void
   readOnly?: boolean
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [editingOverrides, setEditingOverrides] = useState<Set<string>>(new Set())
+  const [inviteEmails, setInviteEmails] = useState<Partial<Record<DepartmentId, string>>>({})
 
   const toggle = (id: string) => {
     setExpanded(prev => {
@@ -398,6 +546,45 @@ function DepartmentsTab({
                   {members.length === 0 && (
                     <p className="text-label-0-regular text-foreground-dim py-2 px-2 text-center">No members yet</p>
                   )}
+                  {!readOnly && canShareDepartment && team && (
+                    <div className="px-2 pt-3 mt-2 border-t border-border-dim space-y-2">
+                      <p className="text-label-0-regular text-foreground-dim">
+                        Add someone to {folder.name}. They&apos;ll inherit this department&apos;s default workspace access.
+                      </p>
+                      <div className="flex gap-2">
+                        <Input
+                          icon={<Search />}
+                          iconPosition="left"
+                          type="email"
+                          value={inviteEmails[departmentId] ?? ''}
+                          onChange={(e) => setInviteEmails((prev) => ({ ...prev, [departmentId]: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key !== 'Enter') return
+                            const email = inviteEmails[departmentId]?.trim()
+                            if (!email) return
+                            addOrMoveDepartmentMember(departmentId, team.id, email)
+                            setInviteEmails((prev) => ({ ...prev, [departmentId]: '' }))
+                            onDirectoryChange()
+                          }}
+                          placeholder={`Add to ${folder.name} by email...`}
+                        />
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            const email = inviteEmails[departmentId]?.trim()
+                            if (!email) return
+                            addOrMoveDepartmentMember(departmentId, team.id, email)
+                            setInviteEmails((prev) => ({ ...prev, [departmentId]: '' }))
+                            onDirectoryChange()
+                          }}
+                          disabled={!inviteEmails[departmentId]?.trim()}
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -508,41 +695,36 @@ interface SettingsModalProps {
 
 export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const {
+    grants,
     roleGroups,
     updateRoleGroup,
     renameRoleGroup,
     addRoleGroup,
     removeRoleGroup,
     getResourceGrants,
-    projectUserGrants,
-    createProjectGrant,
     createGrant,
     updateGrantProfile,
     revokeGrant,
     canShare,
     canEditAcl,
-    discoveryEnabled,
-    setDiscoveryEnabled,
-    discoveryDisabledDepartments,
-    toggleDepartmentDiscovery,
+    discoverySettings,
+    setDiscoveryEnabledForType,
+    toggleDepartmentDiscoveryForType,
   } = useAccess()
-  const canShareProject = canShare(PROJECT_RESOURCE)
   const canManageProject = canEditAcl(PROJECT_RESOURCE)
-  const isReadOnly = !canShareProject && !canManageProject
-  const departmentMemberIds = useMemo(
-    () => new Set(PERSONAS.filter((persona) => persona.departmentId).map((persona) => persona.id)),
-    [],
+  const [directoryVersion, setDirectoryVersion] = useState(0)
+  const canManageDepartments = useMemo(
+    () => (Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[]).some((departmentId) => {
+      const resourceRef: ResourceRef = {
+        id: DEPARTMENT_FOLDER_MAP[departmentId].id,
+        type: 'folder',
+        departmentId,
+      }
+      return canShare(resourceRef) || canEditAcl(resourceRef)
+    }),
+    [canShare, canEditAcl],
   )
-  const adHocPeople = useMemo(
-    () => PERSONAS.filter((persona) => !persona.departmentId),
-    [],
-  )
-  const adHocProjectUserGrants = useMemo(
-    () => projectUserGrants.filter(
-      (grant) => grant.principal.type === 'user' && !departmentMemberIds.has(grant.principal.userId),
-    ),
-    [projectUserGrants, departmentMemberIds],
-  )
+  const canManageAnything = canManageDepartments || canManageProject
 
   return (
     <Modal open={open} onOpenChange={onOpenChange} size="md">
@@ -551,17 +733,19 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           <Modal.Header
             title="Access Control"
             subtitle={
-              isReadOnly
+              !canManageAnything
                 ? 'View who can access content and what actions they can take.'
                 : 'Manage who can access content and what actions they can take.'
             }
           />
 
-          {isReadOnly && (
+          {!canManageProject && (
             <div className="mx-6 mt-4 flex items-start gap-2 rounded border border-border-dim bg-surface-low px-3 py-2">
               <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-foreground-dim" />
               <p className="text-body-0-regular text-foreground-dim">
-                View only. Only project admins can change project-wide access.
+                {canManageDepartments
+                  ? 'Project-wide settings are view only. You can still manage department membership and department access where you have rights.'
+                  : 'Project-wide settings are managed by project admins.'}
               </p>
             </div>
           )}
@@ -570,21 +754,15 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             <TabsList>
               <Tab value="departments">Departments</Tab>
               <Tab value="people">People</Tab>
-              <Tab value="role-groups">Role Groups</Tab>
-              <Tab value="settings">Settings</Tab>
+              {canManageProject && <Tab value="role-groups">Role Groups</Tab>}
+              {canManageProject && <Tab value="settings">Settings</Tab>}
             </TabsList>
 
             <div className="flex-1 overflow-y-auto max-h-[50vh] px-1 pb-4">
               <TabsContent value="people">
                 <PeopleTab
-                  grants={adHocProjectUserGrants}
-                  roleGroups={roleGroups}
-                  onRoleChange={updateGrantProfile}
-                  onRemove={revokeGrant}
-                  onAdd={createProjectGrant}
-                  canAdd={canShareProject}
-                  canManage={canManageProject}
-                  availablePeople={adHocPeople}
+                  grants={grants}
+                  directoryVersion={directoryVersion}
                 />
               </TabsContent>
               <TabsContent value="departments">
@@ -596,72 +774,46 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   onRemoveGrant={revokeGrant}
                   canShareResource={canShare}
                   canEditResource={canEditAcl}
-                  readOnly={isReadOnly}
+                  onDirectoryChange={() => setDirectoryVersion((prev) => prev + 1)}
+                  readOnly={!canManageDepartments && !canManageProject}
                 />
               </TabsContent>
-              <TabsContent value="role-groups">
-                <RoleGroupsTab
-                  roleGroups={roleGroups}
-                  onUpdate={updateRoleGroup}
-                  onRename={renameRoleGroup}
-                  onAdd={addRoleGroup}
-                  onRemove={removeRoleGroup}
-                  readOnly={!canManageProject}
-                />
-              </TabsContent>
-              <TabsContent value="settings">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-body-0-bold text-foreground">Asset Discovery</p>
-                      <p className="text-body-0-regular text-foreground-dim">
-                        Allow users to see restricted assets as blurred tiles and request access
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setDiscoveryEnabled(!discoveryEnabled)}
-                      disabled={!canManageProject}
-                      className={cn(
-                        'relative w-10 h-6 rounded-full transition-colors flex-shrink-0',
-                        discoveryEnabled ? 'bg-indigo-500' : 'bg-surface-3',
-                        !canManageProject && 'opacity-40 cursor-not-allowed'
-                      )}
-                    >
-                      <div className={cn(
-                        'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
-                        discoveryEnabled ? 'left-5' : 'left-1'
-                      )} />
-                    </button>
+              {canManageProject && (
+                <TabsContent value="role-groups">
+                  <RoleGroupsTab
+                    roleGroups={roleGroups}
+                    onUpdate={updateRoleGroup}
+                    onRename={renameRoleGroup}
+                    onAdd={addRoleGroup}
+                    onRemove={removeRoleGroup}
+                    readOnly={false}
+                  />
+                </TabsContent>
+              )}
+              {canManageProject && (
+                <TabsContent value="settings">
+                  <div className="space-y-3">
+                    <DiscoverySection
+                      title="Asset Discovery"
+                      description="Allow users to see restricted assets as blurred tiles and request access."
+                      enabled={discoverySettings.asset.enabled}
+                      onToggleEnabled={() => setDiscoveryEnabledForType('asset', !discoverySettings.asset.enabled)}
+                      disabledDepartments={discoverySettings.asset.disabledDepartments}
+                      onToggleDepartment={(deptId) => toggleDepartmentDiscoveryForType('asset', deptId)}
+                      disabled={false}
+                    />
+                    <DiscoverySection
+                      title="Cut Discovery"
+                      description="Allow users to know a cut exists before it is shared, without giving playback access."
+                      enabled={discoverySettings.cut.enabled}
+                      onToggleEnabled={() => setDiscoveryEnabledForType('cut', !discoverySettings.cut.enabled)}
+                      disabledDepartments={discoverySettings.cut.disabledDepartments}
+                      onToggleDepartment={(deptId) => toggleDepartmentDiscoveryForType('cut', deptId)}
+                      disabled={false}
+                    />
                   </div>
-                  {discoveryEnabled && (
-                    <div className="space-y-1">
-                      <p className="text-label-1-bold text-foreground-dim">Department overrides</p>
-                      {(Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[]).map((deptId) => {
-                        const disabled = discoveryDisabledDepartments.has(deptId)
-                        return (
-                          <div key={deptId} className="flex items-center justify-between py-1">
-                            <span className="text-body-0-regular text-foreground">{DEPARTMENT_FOLDER_MAP[deptId].name}</span>
-                            <button
-                              onClick={() => toggleDepartmentDiscovery(deptId)}
-                              disabled={!canManageProject}
-                              className={cn(
-                                'relative w-10 h-6 rounded-full transition-colors flex-shrink-0',
-                                !disabled ? 'bg-indigo-500' : 'bg-surface-3',
-                                !canManageProject && 'opacity-40 cursor-not-allowed'
-                              )}
-                            >
-                              <div className={cn(
-                                'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
-                                !disabled ? 'left-5' : 'left-1'
-                              )} />
-                            </button>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
+                </TabsContent>
+              )}
             </div>
           </Tabs>
         </div>

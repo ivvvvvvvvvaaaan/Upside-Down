@@ -19,21 +19,21 @@ import { profileLabel } from '@/lib/grants'
 interface SharedSidePanelProps {
   entry: GrantView
   onClose: () => void
-  isCreator?: boolean
-  onRevokeShare?: (resourceId: string) => void
+  onRevokeGrant?: (grantId: string) => void
+  canRevokeGrant?: boolean
   /** Additional className for the ResponsivePanel */
   panelClassName?: string
 }
 
 export interface SharedDetailContentProps {
   entry: GrantView
-  isCreator?: boolean
-  onRevokeShare?: (resourceId: string) => void
+  onRevokeGrant?: (grantId: string) => void
+  canRevokeGrant?: boolean
   showAccess?: boolean
 }
 
-export function SharedDetailContent({ entry, isCreator = false, onRevokeShare, showAccess = true }: SharedDetailContentProps) {
-  const { canEditAcl, getInheritedGrants } = useAccess()
+export function SharedDetailContent({ entry, onRevokeGrant, canRevokeGrant = false, showAccess = true }: SharedDetailContentProps) {
+  const { getInheritedGrants } = useAccess()
   const { collections } = useUserCollections()
   const kind = entry.resourceType as AccessEntryKind
   const grantor = PERSONAS.find((p) => p.id === entry.grantedByUserId)
@@ -44,7 +44,6 @@ export function SharedDetailContent({ entry, isCreator = false, onRevokeShare, s
     type: entry.resourceType,
     departmentId: entry.departmentId,
   }
-  const canRevokeShare = Boolean(isCreator && onRevokeShare && canEditAcl(resourceRef))
   const resolvedHref = getSharedResourceHref({
     resourceId: entry.resourceId,
     resourceType: kind,
@@ -125,12 +124,12 @@ export function SharedDetailContent({ entry, isCreator = false, onRevokeShare, s
           />
         )}
 
-        {/* Revoke button — creator only */}
-        {canRevokeShare && onRevokeShare && (
+        {/* Revoke button */}
+        {canRevokeGrant && onRevokeGrant && (
           <div className="pt-2">
             <Button
               variant="secondary"
-              onClick={() => onRevokeShare(entry.resourceId)}
+              onClick={() => onRevokeGrant(entry.id)}
               className="w-full text-foreground-negative hover:opacity-80"
             >
               Revoke Share
@@ -142,13 +141,13 @@ export function SharedDetailContent({ entry, isCreator = false, onRevokeShare, s
   )
 }
 
-export function SharedSidePanel({ entry, onClose, isCreator = false, onRevokeShare, panelClassName }: SharedSidePanelProps) {
+export function SharedSidePanel({ entry, onClose, onRevokeGrant, canRevokeGrant = false, panelClassName }: SharedSidePanelProps) {
   return (
     <ResponsivePanel open={true} onClose={onClose} className={panelClassName}>
       <SharedDetailContent
         entry={entry}
-        isCreator={isCreator}
-        onRevokeShare={onRevokeShare}
+        onRevokeGrant={onRevokeGrant}
+        canRevokeGrant={canRevokeGrant}
       />
     </ResponsivePanel>
   )
