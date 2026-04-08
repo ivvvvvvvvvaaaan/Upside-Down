@@ -20,6 +20,7 @@ export type User = {
   isAdmin?: boolean
 }
 
+export const DIRECTORY_UPDATED_EVENT = 'prototype-directory-updated'
 export const PERSONAS: User[] = buildPersonas()
 
 const DESKTOP_ELIGIBLE_PERSONA_IDS = [

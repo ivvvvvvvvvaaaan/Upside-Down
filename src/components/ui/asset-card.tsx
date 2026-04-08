@@ -72,6 +72,8 @@ export interface AssetCardProps {
   onRequestAccess?: (asset: Asset) => void
   /** Show "Shared" tag — asset originates from outside the user's department */
   shared?: boolean
+  /** Show structured metadata chips (scene, take, camera, episode). Default: true */
+  showMetadata?: boolean
 }
 
 // Placeholder image for assets without thumbnails
@@ -90,6 +92,7 @@ export function AssetCard({
   restricted = false,
   shared,
   onRequestAccess,
+  showMetadata = true,
 }: AssetCardProps) {
   const router = useRouter()
   // Primary implies selected
@@ -199,29 +202,7 @@ export function AssetCard({
   // Render type tag
   const renderTypeTag = () => {
     const tagLabel = getTypeTag()
-
-    // "Final" type tag should be green (positive) for consistency
-    if (tagLabel === 'Final') {
-      return <Tag type="positive">{tagLabel}</Tag>
-    }
-
-    return <Tag>{tagLabel}</Tag>
-  }
-
-  // Render metadata line (SHOT type only) - label-0-regular (10px/15px/400)
-  const renderMetadata = () => {
-    if (asset.type !== 'shot' || !asset.shotMeta) return null
-
-    const { scene, take, camera } = asset.shotMeta
-    const parts = [scene, take, camera].filter(Boolean)
-
-    if (parts.length === 0) return null
-
-    return (
-      <div className="text-label-0-regular text-foreground-subtle truncate">
-        {parts.join(' • ')}
-      </div>
-    )
+    return <Tag variant="glass">{tagLabel}</Tag>
   }
 
   // Render thumbnail based on type
@@ -342,48 +323,77 @@ export function AssetCard({
           </Button>
         </div>
 
-        {/* Tags + Metadata row */}
+        {/* Tags + Metadata chips */}
         <div className="flex items-center gap-1 flex-wrap">
+          {/* Type tag */}
           {(() => {
             if (asset.tags?.length) {
               const statusLabels = new Set(['Key Art', 'Final'])
               const typeTag = asset.tags.find(t => t.source === 'system' && !statusLabels.has(t.label))
-              const statusTag = asset.tags.find(t => statusLabels.has(t.label))
-              const rest = asset.tags.filter(t => t.source === 'system' && t !== typeTag && !statusLabels.has(t.label))
-              return (
-                <>
-                  {typeTag && <Tag>{typeTag.label}</Tag>}
-                  {asset.version != null && <Tag type="neutral" variant="border">V{asset.version}</Tag>}
-                  {statusTag && <Tag type={statusTag.label === 'Final' ? 'positive' : 'announcement'}>{statusTag.label}</Tag>}
-                  {rest.map(t => {
-                    const tag = (
-                      <Tag
-                        key={t.label}
-                        type={t.label === 'ALL' ? 'positive' : t.label.startsWith('+') ? 'neutral' : 'notice'}
-                        variant={t.label.startsWith('+') ? 'border' : 'fill'}
-                      >
-                        {t.label}
-                      </Tag>
-                    )
-                    return t.description ? (
-                      <Tooltip key={t.label} label={t.description}>{tag}</Tooltip>
-                    ) : tag
-                  })}
-                </>
-              )
+              return typeTag ? <Tag variant="glass">{typeTag.label}</Tag> : renderTypeTag()
             }
-            return (
-              <>
-                {renderTypeTag()}
-                {asset.version != null && <Tag type="neutral" variant="border">V{asset.version}</Tag>}
-                {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
-              </>
-            )
+            return renderTypeTag()
           })()}
+
+          {/* Version */}
+          {asset.version != null && <Tag variant="border">{`V${asset.version}`}</Tag>}
+
+          {/* Status (Final, Key Art) */}
+          {(() => {
+            if (asset.tags?.length) {
+              const statusTag = asset.tags.find(t => t.label === 'Final' || t.label === 'Key Art')
+              if (statusTag) return (
+                <Tag type={statusTag.label === 'Final' ? 'positive' : 'announcement'} variant="fill">
+                  {statusTag.label}
+                </Tag>
+              )
+            } else if (asset.isKeyArt) {
+              return <Tag type="announcement" variant="fill">Key Art</Tag>
+            }
+            return null
+          })()}
+
+          {/* Release tags (cuts: SC, CI, ALL, +N) */}
+          {asset.tags?.filter(t => t.source === 'system' && !['Key Art', 'Final'].includes(t.label))
+            .filter(t => {
+              // Exclude the type tag (already shown above)
+              const statusLabels = new Set(['Key Art', 'Final'])
+              const typeTag = asset.tags?.find(tag => tag.source === 'system' && !statusLabels.has(tag.label))
+              return t !== typeTag
+            })
+            .map(t => {
+              const tag = (
+                <Tag key={t.label} type={t.label === 'ALL' ? 'positive' : 'notice'} variant="fill">
+                  {t.label}
+                </Tag>
+              )
+              return t.description ? <Tooltip key={t.label} label={t.description}>{tag}</Tooltip> : tag
+            })}
+
+          {/* Department (when shared) */}
           {isShared && asset.department && (
-            <Tag type="neutral">{DEPARTMENT_NAMES[asset.department] ?? asset.department}</Tag>
+            <Tag variant="glass">{DEPARTMENT_NAMES[asset.department] ?? asset.department}</Tag>
           )}
-          {renderMetadata()}
+
+          {/* Structured metadata chips */}
+          {showMetadata && (
+            <>
+              {asset.shotMeta && (
+                <>
+                  {asset.shotMeta.scene && <Tag variant="glass">Scene: {asset.shotMeta.scene}</Tag>}
+                  {asset.shotMeta.take && <Tag variant="glass">Take: {asset.shotMeta.take}</Tag>}
+                  {asset.shotMeta.camera && <Tag variant="glass">Camera: {asset.shotMeta.camera}</Tag>}
+                </>
+              )}
+              {asset.sequenceMeta && (
+                <>
+                  {asset.sequenceMeta.sequence && <Tag variant="glass">{asset.sequenceMeta.sequence}</Tag>}
+                  {asset.sequenceMeta.shot && <Tag variant="glass">{asset.sequenceMeta.shot}</Tag>}
+                </>
+              )}
+              {asset.episode && <Tag variant="glass">{asset.episode}</Tag>}
+            </>
+          )}
         </div>
       </div>
     </div>

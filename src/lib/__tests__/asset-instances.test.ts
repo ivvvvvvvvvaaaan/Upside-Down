@@ -41,7 +41,7 @@ describe('generateAssetInstances', () => {
 
     expect(instances).toHaveLength(2)
     expect(instances[0]).toMatchObject({
-      id: 'inst-f1',
+      id: 'f1',
       name: 'hero',
       sourceFileId: 'f1',
       sourceFileName: 'hero.psd',
@@ -52,7 +52,7 @@ describe('generateAssetInstances', () => {
       size: 1000,
     })
     expect(instances[1]).toMatchObject({
-      id: 'inst-f2',
+      id: 'f2',
       name: 'clip',
       type: 'video',
     })
@@ -133,7 +133,7 @@ describe('generateAssetInstances', () => {
 
 describe('promotedInstanceToAsset', () => {
   const base: AssetInstance = {
-    id: 'inst-1',
+    id: '1',
     name: 'Hero Concept',
     sourceFileId: 'file-with-tags',
     sourceFileName: 'hero.psd',

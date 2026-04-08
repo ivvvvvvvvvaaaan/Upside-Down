@@ -108,7 +108,7 @@ export function AppLayout({ children, hideNav = false }: AppLayoutProps) {
         onCreateSmartCollection={(name: string, filter: AssetFilter) => {
           const collection = createSmartCollection(name, 'filter', filter)
           setShowNewCollectionModal(false)
-          router.push(`/nextgen/smart-collections/${collection.id}`)
+          router.push(`/nextgen/collections/${collection.id}`)
         }}
       />
     </div>

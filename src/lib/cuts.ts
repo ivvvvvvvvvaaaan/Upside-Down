@@ -4,14 +4,12 @@ import type { SeedCut } from '@/lib/scenario'
 
 const CUT_STAGE_LABELS: Record<CutStage, string> = {
   'locked-cut': 'Locked Cut',
-  'netflix-cut': 'Netflix Cut',
   'final-cut': 'Final Cut',
   'emf': 'EMF',
 }
 
 const CUT_STAGE_ORDER: CutStage[] = [
   'locked-cut',
-  'netflix-cut',
   'final-cut',
   'emf',
 ]

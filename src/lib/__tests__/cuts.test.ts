@@ -6,7 +6,7 @@ const BASE_CUT: SeedCut = {
   id: 'cut-1',
   name: 'Episode 101 Cut',
   episode: '101',
-  stage: 'netflix-cut',
+  stage: 'locked-cut',
   version: 0,
   assetVersion: 'v1',
   constituents: ['asset-1'],
@@ -24,7 +24,7 @@ describe('cut utilities', () => {
     })
 
     expect(asset.tags?.map((tag) => tag.label)).toEqual([
-      'Netflix Cut',
+      'Locked Cut',
       'SP',
       '+1',
     ])

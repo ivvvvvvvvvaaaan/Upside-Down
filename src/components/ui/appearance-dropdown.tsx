@@ -27,6 +27,9 @@ export interface AppearanceDropdownProps {
   viewMode?: string
   /** Callback when view mode changes (used with viewModeOptions) */
   onViewModeChange?: (mode: string) => void
+  /** Show/hide structured metadata chips on asset cards */
+  showMetadata?: boolean
+  onShowMetadataChange?: (show: boolean) => void
 }
 
 export function AppearanceDropdown({
@@ -42,6 +45,8 @@ export function AppearanceDropdown({
   viewModeOptions,
   viewMode,
   onViewModeChange,
+  showMetadata,
+  onShowMetadataChange,
 }: AppearanceDropdownProps) {
   return (
     <Dropdown
@@ -51,6 +56,7 @@ export function AppearanceDropdown({
       align="end"
       width="auto"
       iconOnly={iconOnly}
+      ghost={!iconOnly}
     >
       <Card.Body padding="lg">
         <div className="space-y-3 min-w-56">
@@ -102,6 +108,21 @@ export function AppearanceDropdown({
                 ]}
                 value={hideEmptyCollections ? 'hide' : 'show'}
                 onChange={(val) => onHideEmptyCollectionsChange(val === 'hide')}
+                compact
+              />
+            </div>
+          )}
+
+          {onShowMetadataChange && (
+            <div className="flex items-center justify-between">
+              <span className="text-body-0-regular text-foreground">Metadata</span>
+              <ToggleButtonGroup
+                options={[
+                  { value: 'show' as const, label: 'Show' },
+                  { value: 'hide' as const, label: 'Hide' },
+                ]}
+                value={showMetadata ? 'show' : 'hide'}
+                onChange={(val) => onShowMetadataChange(val === 'show')}
                 compact
               />
             </div>

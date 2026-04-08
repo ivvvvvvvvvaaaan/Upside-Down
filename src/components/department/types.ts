@@ -11,4 +11,6 @@ export interface DepartmentConfig {
   description: string
   smartCollectionTypes: SmartCollectionType[]
   userCollectionType: Collection['type']
+  /** Tailwind bg class for department avatar */
+  color: string
 }

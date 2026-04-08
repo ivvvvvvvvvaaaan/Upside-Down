@@ -120,12 +120,12 @@ export function ReleaseModal({ open, onClose, cut }: ReleaseModalProps) {
                       ) : isSelected ? (
                         <button
                           onClick={() => setRevokeConfirm(domain.id)}
-                          className="text-label-0-regular text-foreground-dim hover:text-foreground-negative transition-colors flex-shrink-0"
+                          className="text-label-0-regular text-foreground-dim hover:text-foreground-system-error transition-colors flex-shrink-0"
                         >
                           Revoke
                         </button>
                       ) : (
-                        <span className="text-label-0-bold text-foreground-negative flex-shrink-0">Revoking</span>
+                        <span className="text-label-0-bold text-foreground-system-error flex-shrink-0">Revoking</span>
                       )}
                     </div>
                   )

@@ -7,23 +7,37 @@ import { Input } from './input'
 import { Select } from './select'
 import { Button } from './button'
 import { RoleSelect } from './role-select'
+import { MenuSelect } from './menu-select'
 import { Avatar } from './avatar'
+import { DepartmentAvatar } from './department-avatar'
 import { Toggle } from './switch'
 import { useAccess, usePersona } from '@/hooks'
 import type { Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
 import { getRoleGroup } from '@/lib/grants'
-import type { RoleGroup } from '@/lib/grants'
+import type { RoleGroup, ShareMode } from '@/lib/grants'
 import { buildAccessDisplayEntries } from './access-display'
 import type { AccessDisplayEntry } from './access-display'
 import { buildShareSearchResults } from '@/lib/share-search'
 import type { GuestLinkSeed } from '@/lib/scenario'
+import { resolveCollectionAssetIds, getAssetIdVariants } from '@/lib/data'
+import { isGrantActive } from '@/lib/grants'
+import { useUserCollections } from '@/hooks/useUserCollections'
+import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
+import { TEAMS } from '@/lib/teams'
+import { PERSONAS } from '@/lib/personas'
+import { profileLabel } from '@/lib/grants'
+import type { DepartmentId } from '@/components/department/types'
 
 interface AccessPanelProps {
   resourceId: string
   resourceRef?: ResourceRef
+  /** Batch mode: share to multiple resources at once */
+  batchResourceRefs?: ResourceRef[]
   readOnly?: boolean
   emptyLabel?: string
   inheritedGrants?: { grant: Grant; fromResourceName: string }[]
+  /** Called when dirty state changes — lets parent render Save/Cancel */
+  onDirtyChange?: (dirty: boolean, handlers: { save: () => void; cancel: () => void }) => void
 }
 
 function roleGroupOptions(roleGroups: RoleGroup[]) {
@@ -32,7 +46,7 @@ function roleGroupOptions(roleGroups: RoleGroup[]) {
     .map((rg) => ({ value: rg.id, label: rg.name }))
 }
 
-function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name, subtitle, roleLabel, members }: {
+function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name, subtitle, roleLabel, members, departmentId }: {
   grant: Grant
   readOnly: boolean
   roleGroups: RoleGroup[]
@@ -42,6 +56,7 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name
   subtitle?: string
   roleLabel: string
   members?: AccessDisplayEntry['members']
+  departmentId?: DepartmentId
 }) {
   const isOwner = grant.templateId === 'owner'
   const principal = grant.principal
@@ -53,9 +68,7 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name
           {principal.type === 'user' ? (
             <Avatar name={name} size="sm" />
           ) : (
-            <span className="w-6 h-6 rounded-full flex items-center justify-center bg-surface-3 text-foreground-dim flex-shrink-0">
-              <Users className="w-3 h-3" />
-            </span>
+            <DepartmentAvatar departmentId={departmentId} size="sm" />
           )}
           <div className="min-w-0">
             <span className="text-body-0-regular text-foreground truncate block">{name}</span>
@@ -65,29 +78,32 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
-          {!readOnly && onUpdateProfile ? (
-            <>
-              {isOwner ? (
-                <span className="text-body-0-regular text-foreground-dim px-2 py-1">
-                  {getRoleGroup(roleGroups, grant.templateId ?? 'owner')?.name ?? 'Owner'}
-                </span>
-              ) : (
-                <RoleSelect
-                  options={roleGroupOptions(roleGroups)}
-                  value={grant.templateId ?? 'view'}
-                  onChange={(value) => onUpdateProfile(grant.id, value as AccessProfileId)}
-                />
-              )}
-              {!isOwner && onRemove && (
-                <Button variant="icon" size="compact-icon" onClick={() => onRemove(grant.id)}>
-                  <X className="w-3 h-3" />
-                </Button>
-              )}
-            </>
-          ) : (
-            <span className="inline-flex items-center h-8 px-2 rounded border border-border-dim text-label-0-regular text-foreground-dim">
-              {roleLabel}
+          {isOwner ? (
+            <span className="text-body-0-regular text-foreground-dim px-2 py-1">
+              {getRoleGroup(roleGroups, grant.templateId ?? 'owner')?.name ?? 'Owner'}
             </span>
+          ) : !readOnly && onUpdateProfile ? (
+            <RoleSelect
+              options={[
+                ...roleGroupOptions(roleGroups),
+                ...(onRemove ? [{ value: '__remove__', label: 'Revoke Access', destructive: true }] : []),
+              ]}
+              value={grant.templateId ?? 'view'}
+              onChange={(value) => {
+                if (value === '__remove__' && onRemove) {
+                  onRemove(grant.id)
+                } else {
+                  onUpdateProfile(grant.id, value as AccessProfileId)
+                }
+              }}
+            />
+          ) : (
+            <RoleSelect
+              options={roleGroupOptions(roleGroups)}
+              value={grant.templateId ?? 'view'}
+              onChange={() => {}}
+              disabled
+            />
           )}
         </div>
       </div>
@@ -115,20 +131,27 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
                 {!readOnly && member.grantId && onUpdateProfile ? (
-                  <>
-                    <RoleSelect
-                      options={roleGroupOptions(roleGroups)}
-                      value={member.roleValue ?? 'view'}
-                      onChange={(value) => onUpdateProfile(member.grantId!, value as AccessProfileId)}
-                    />
-                    {onRemove && (
-                      <Button variant="icon" size="compact-icon" onClick={() => onRemove(member.grantId!)}>
-                        <X className="w-3 h-3" />
-                      </Button>
-                    )}
-                  </>
-                ) : member.roleLabel ? (
-                  <span className="inline-flex items-center h-8 px-2 rounded border border-border-dim text-label-0-regular text-foreground-dim flex-shrink-0">{member.roleLabel}</span>
+                  <RoleSelect
+                    options={[
+                      ...roleGroupOptions(roleGroups),
+                      ...(onRemove ? [{ value: '__remove__', label: 'Revoke Access', destructive: true }] : []),
+                    ]}
+                    value={member.roleValue ?? 'view'}
+                    onChange={(value) => {
+                      if (value === '__remove__' && onRemove) {
+                        onRemove(member.grantId!)
+                      } else {
+                        onUpdateProfile(member.grantId!, value as AccessProfileId)
+                      }
+                    }}
+                  />
+                ) : member.roleValue ? (
+                  <RoleSelect
+                    options={roleGroupOptions(roleGroups)}
+                    value={member.roleValue}
+                    onChange={() => {}}
+                    disabled
+                  />
                 ) : null}
               </div>
             </div>
@@ -144,64 +167,116 @@ function GuestLinksSection({
   resourceRef,
   readOnly,
   canAddGrants,
+  canManageGuestLink,
   getResourceGuestLinks,
   createGuestLink,
+  updateGuestLink,
   revokeGuestLink,
 }: {
   resourceId: string
   resourceRef?: ResourceRef
   readOnly: boolean
   canAddGrants: boolean
+  canManageGuestLink: (link: GuestLinkSeed) => boolean
   getResourceGuestLinks: (id: string) => GuestLinkSeed[]
   createGuestLink: (resource: ResourceRef, options: { allowDownload: boolean; passcode: boolean; expiresInDays: number }) => void
+  updateGuestLink: (linkId: string, updates: Partial<Pick<GuestLinkSeed, 'allowDownload' | 'passcode' | 'expiresAt'>>) => void
   revokeGuestLink: (linkId: string) => void
 }) {
   const links = getResourceGuestLinks(resourceId)
 
   if (links.length > 0) {
     return (
-      <>
-        {links.map(link => (
-          <div key={link.id} className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <Link2 className="w-4 h-4 text-foreground-dim flex-shrink-0" />
-                <span className="text-body-0-regular text-foreground truncate">Link</span>
-              </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <Button
-                  variant="secondary"
-                  compact
-                  onClick={() => navigator.clipboard.writeText(`https://share.example.com/${link.id}`)}
-                >
-                  Copy link
-                </Button>
-                {!readOnly && canAddGrants && (
+      <div className="rounded-lg bg-surface-mid p-3 space-y-3">
+        {links.map(link => {
+          const canEdit = !readOnly && canManageGuestLink(link)
+          const expiresDate = new Date(link.expiresAt)
+          const now = new Date()
+          const diffDays = Math.max(1, Math.round((expiresDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+          const closestOption = [1, 7, 14, 30, 90].reduce((prev, curr) =>
+            Math.abs(curr - diffDays) < Math.abs(prev - diffDays) ? curr : prev
+          )
+
+          return (
+            <div key={link.id} className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Link2 className="w-4 h-4 text-foreground-dim flex-shrink-0" />
+                  <span className="text-body-0-regular text-foreground truncate">Link</span>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
                   <Button
                     variant="secondary"
                     compact
-                    onClick={() => revokeGuestLink(link.id)}
-                    className="text-foreground-negative"
+                    onClick={() => navigator.clipboard.writeText(`https://share.example.com/${link.id}`)}
                   >
-                    Revoke
+                    Copy link
                   </Button>
-                )}
+                  {canEdit && (
+                    <Button
+                      variant="secondary-destructive"
+                      compact
+                      onClick={() => revokeGuestLink(link.id)}
+                    >
+                      Revoke
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between h-8">
+                  <span className="text-body-0-regular text-foreground">Allow download</span>
+                  {canEdit ? (
+                    <Toggle
+                      checked={link.allowDownload}
+                      onChange={(v) => updateGuestLink(link.id, { allowDownload: v })}
+                      aria-label="Allow download"
+                    />
+                  ) : (
+                    <span className="text-body-0-regular text-foreground-dim">{link.allowDownload ? 'Yes' : 'No'}</span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between h-8">
+                  <span className="text-body-0-regular text-foreground">Passcode</span>
+                  {canEdit ? (
+                    <Toggle
+                      checked={link.passcode}
+                      onChange={(v) => updateGuestLink(link.id, { passcode: v })}
+                      aria-label="Passcode"
+                    />
+                  ) : (
+                    <span className="text-body-0-regular text-foreground-dim">{link.passcode ? 'Required' : 'No'}</span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between h-8">
+                  <span className="text-body-0-regular text-foreground">Expires</span>
+                  {canEdit ? (
+                    <MenuSelect
+                      value={String(closestOption)}
+                      options={[
+                        { value: '1', label: '1 day' },
+                        { value: '7', label: '7 days' },
+                        { value: '14', label: '14 days' },
+                        { value: '30', label: '30 days' },
+                        { value: '90', label: '90 days' },
+                      ]}
+                      onChange={v => {
+                        const d = new Date()
+                        d.setDate(d.getDate() + Number(v))
+                        updateGuestLink(link.id, { expiresAt: d.toISOString().slice(0, 10) })
+                      }}
+                      size="compact"
+                      width="sm"
+                    />
+                  ) : (
+                    <span className="text-body-0-regular text-foreground-dim">{link.expiresAt}</span>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-3 pl-6">
-              <span className="text-body-0-regular text-foreground-dim">
-                {link.allowDownload ? 'View + Download' : 'View only'}
-              </span>
-              <span className="text-body-0-regular text-foreground-dim">
-                Expires {link.expiresAt}
-              </span>
-              <span className="text-body-0-regular text-foreground-dim">
-                {link.passcode ? 'Passcode required' : 'No passcode'}
-              </span>
-            </div>
-          </div>
-        ))}
-      </>
+          )
+        })}
+      </div>
     )
   }
 
@@ -221,8 +296,26 @@ function GuestLinksSection({
   return null
 }
 
-export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLabel = 'Not shared', inheritedGrants }: AccessPanelProps) {
-  const { getResourceGrants, createGrant, revokeGrant, updateGrantProfile, roleGroups, canShare, canEditAcl, getGrantableProfiles, getResourceGuestLinks, createGuestLink, revokeGuestLink } = useAccess()
+export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOnly = false, emptyLabel = 'Not shared', inheritedGrants, onDirtyChange }: AccessPanelProps) {
+  const isBatch = Boolean(batchResourceRefs && batchResourceRefs.length > 1)
+  const {
+    getResourceGrants,
+    createGrant,
+    revokeGrant,
+    updateGrantProfile,
+    roleGroups,
+    canShare,
+    canEditAcl,
+    getGrantableProfiles,
+    getResourceGuestLinks,
+    canManageGrant,
+    canManageGuestLink,
+    createGuestLink,
+    updateGuestLink,
+    revokeGuestLink,
+    restoreResourceGrants,
+    restoreResourceGuestLinks,
+  } = useAccess()
   const { activePersona } = usePersona()
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
@@ -232,10 +325,107 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
   const canAddGrants = Boolean(resourceRef) && canShare(resourceRef)
   const canManageAllGrants = Boolean(resourceRef) && canEditAcl(resourceRef)
 
-  // Role + expiration — consistent model at every level
+  // Dirty tracking — snapshot grants on first change, restore on cancel
+  const [dirty, setDirty] = useState(false)
+  const grantsSnapshotRef = useRef<Grant[] | null>(null)
+  const guestLinksSnapshotRef = useRef<GuestLinkSeed[] | null>(null)
+
+  const handleSave = () => {
+    grantsSnapshotRef.current = null
+    guestLinksSnapshotRef.current = null
+    setDirty(false)
+    onDirtyChange?.(false, { save: handleSave, cancel: handleCancel })
+  }
+
+  const handleCancel = () => {
+    if (grantsSnapshotRef.current) {
+      restoreResourceGrants(resourceId, grantsSnapshotRef.current)
+    }
+    if (guestLinksSnapshotRef.current) {
+      restoreResourceGuestLinks(resourceId, guestLinksSnapshotRef.current)
+    }
+    grantsSnapshotRef.current = null
+    guestLinksSnapshotRef.current = null
+    setDirty(false)
+    onDirtyChange?.(false, { save: handleSave, cancel: handleCancel })
+  }
+
+  const markDirty = () => {
+    if (!dirty) {
+      grantsSnapshotRef.current = grants.map(g => ({ ...g }))
+      guestLinksSnapshotRef.current = getResourceGuestLinks(resourceId).map((link) => ({ ...link }))
+      setDirty(true)
+      onDirtyChange?.(true, { save: handleSave, cancel: handleCancel })
+    }
+  }
+
+  // Role + share mode + expiration
   const [addAsRole, setAddAsRole] = useState<AccessProfileId>('view')
+  const [shareMode, setShareMode] = useState<ShareMode>('snapshot')
+  const [allowUpload, setAllowUpload] = useState(false)
   const [expires, setExpires] = useState(false)
   const [expiresInDays, setExpiresInDays] = useState(7)
+  const { getCollection, collections } = useUserCollections()
+  const isCollectionResource = resourceRef?.type === 'collection'
+  const isAssetResource = resourceRef?.type === 'asset' || resourceRef?.type === 'cut'
+
+  // Collection-mediated access for assets — "Shared via" section
+  // Exclude grants whose principals already appear in inherited/department grants
+  const sharedViaCollections = useMemo(() => {
+    if (!isAssetResource) return []
+    const variants = new Set(getAssetIdVariants(resourceId))
+
+    // Build set of principals already covered by department/inherited access
+    const coveredPrincipals = new Set<string>()
+    for (const ig of (inheritedGrants ?? [])) {
+      const p = ig.grant.principal
+      coveredPrincipals.add(p.type === 'user' ? `user:${p.userId}` : `team:${p.teamId}`)
+      // If a team grant covers department members, mark individual members as covered
+      if (p.type === 'team') {
+        const team = TEAMS.find(t => t.id === p.teamId)
+        if (team) {
+          for (const uid of team.memberUserIds) coveredPrincipals.add(`user:${uid}`)
+        }
+      }
+    }
+
+    const results: { collection: { id: string; name: string }; grants: Grant[] }[] = []
+    for (const collection of collections) {
+      const collectionAssetIds = new Set(resolveCollectionAssetIds(collection))
+      const hasAsset = Array.from(variants).some(v => collectionAssetIds.has(v))
+      if (!hasAsset) continue
+      const collGrants = getResourceGrants(collection.id)
+        .filter(g => isGrantActive(g))
+        .filter(g => {
+          const key = g.principal.type === 'user' ? `user:${g.principal.userId}` : `team:${g.principal.teamId}`
+          return !coveredPrincipals.has(key)
+        })
+      if (collGrants.length === 0) continue
+      results.push({ collection: { id: collection.id, name: collection.name }, grants: collGrants })
+    }
+    return results
+  }, [isAssetResource, resourceId, collections, getResourceGrants, inheritedGrants])
+
+  // Department access context for workspace-bound collections
+  const departmentContext = useMemo(() => {
+    if (!isCollectionResource || !resourceRef) return null
+    const collection = getCollection(resourceRef.id)
+    if (!collection?.boundDepartmentId) return null
+    const deptId = collection.boundDepartmentId as DepartmentId
+    const deptFolder = DEPARTMENT_FOLDER_MAP[deptId]
+    if (!deptFolder) return null
+    const deptRootGrants = getResourceGrants(deptFolder.id)
+    if (deptRootGrants.length === 0) return null
+    const team = TEAMS.find(t => t.departmentId === deptId)
+    const teamGrant = deptRootGrants.find(g => g.principal.type === 'team' && team && g.principal.teamId === team.id)
+    if (!teamGrant) return null
+    return {
+      teamName: team?.name ?? deptFolder.name,
+      roleLabel: profileLabel(teamGrant.templateId, roleGroups),
+      deptName: deptFolder.name,
+      deptId,
+    }
+  }, [isCollectionResource, resourceRef, getCollection, getResourceGrants, roleGroups])
 
   const addRoleOptions = useMemo(() => {
     if (!resourceRef) return roleGroupOptions(roleGroups)
@@ -243,13 +433,6 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
     return roleGroupOptions(roleGroups).filter((option) => allowedProfiles.has(option.value as AccessProfileId))
   }, [resourceRef, roleGroups, getGrantableProfiles])
 
-  // Users with 'share' can modify grants they created; 'edit-acl' can modify any grant
-  const canManageGrant = (grant: Grant): boolean => {
-    if (readOnly) return false
-    if (canManageAllGrants) return true
-    if (canAddGrants && activePersona && grant.grantedByUserId === activePersona.id) return true
-    return false
-  }
   // Close dropdown on click outside
   useEffect(() => {
     if (!showDropdown) return
@@ -285,16 +468,41 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
   const hasResults = results.length > 0
 
   const handleAddPrincipal = (principal: PrincipalRef) => {
-    if (!resourceRef || !canAddGrants) return
     if (principal.type === 'user' && principal.userId === activePersona?.id) return
-    if (principal.type === 'user' && grants.some((grant) => grant.principal.type === 'user' && grant.principal.userId === principal.userId)) return
-    if (principal.type === 'team' && grants.some((grant) => grant.principal.type === 'team' && grant.principal.teamId === principal.teamId)) return
 
-    createGrant(resourceRef, principal, addAsRole, {
-      expiresInDays: expires ? expiresInDays : undefined,
-    })
+    const targets = isBatch && batchResourceRefs ? batchResourceRefs : (resourceRef ? [resourceRef] : [])
+    if (targets.length === 0) return
+
+    markDirty()
+    for (const target of targets) {
+      const targetGrants = getResourceGrants(target.id)
+      if (principal.type === 'user' && targetGrants.some(g => g.principal.type === 'user' && g.principal.userId === principal.userId)) continue
+      if (principal.type === 'team' && targetGrants.some(g => g.principal.type === 'team' && g.principal.teamId === principal.teamId)) continue
+
+      const isCollection = target.type === 'collection'
+      const collection = isCollection ? getCollection(target.id) : undefined
+      const snapshotAssetIds = shareMode === 'snapshot' && collection
+        ? resolveCollectionAssetIds(collection)
+        : undefined
+      createGrant(target, principal, addAsRole, {
+        expiresInDays: expires ? expiresInDays : undefined,
+        shareMode: isCollection ? shareMode : undefined,
+        snapshotAssetIds,
+        allowUpload: isCollection ? allowUpload : undefined,
+      })
+    }
     setQuery('')
     setShowDropdown(false)
+  }
+
+  const handleRevokeGrant = (grantId: string) => {
+    markDirty()
+    revokeGrant(grantId)
+  }
+
+  const handleUpdateProfile = (grantId: string, profileId: AccessProfileId) => {
+    markDirty()
+    updateGrantProfile(grantId, profileId)
   }
 
   const allEntries = useMemo(() => {
@@ -317,8 +525,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
       roleGroups,
       activePersona?.id,
     )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grants, canManageAllGrants, canAddGrants, readOnly, activePersona?.id, inheritedGrants, roleGroups, activePersona])
+  }, [grants, canManageGrant, inheritedGrants, roleGroups, activePersona?.id])
 
   const directEntries = useMemo(() => allEntries.filter(e => !e.sourceName), [allEntries])
   const inheritedEntries = useMemo(() => allEntries.filter(e => !!e.sourceName), [allEntries])
@@ -347,7 +554,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
 
       {/* Search + role dropdown + expiration */}
       {!readOnly && resourceRef && canAddGrants && addRoleOptions.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex items-start gap-2">
             <div ref={dropdownRef} className="relative flex-1">
               <Input
@@ -370,9 +577,7 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
                       {result.kind === 'user' ? (
                         <Avatar name={result.name} size="sm" />
                       ) : (
-                        <span className="w-6 h-6 rounded-full flex items-center justify-center bg-surface-3 text-foreground-dim flex-shrink-0">
-                          <Users className="w-3 h-3" />
-                        </span>
+                        <DepartmentAvatar size="sm" />
                       )}
                       <div className="min-w-0">
                         <span className="text-body-0-regular text-foreground truncate block">{result.name}</span>
@@ -393,25 +598,46 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
               size="standard"
             />
           </div>
-          <div className="flex items-center justify-between py-1">
-            <div className="flex items-center gap-3">
-              <span className="text-body-0-regular text-foreground">Expires</span>
-              {expires && (
-                <select
-                  value={expiresInDays}
-                  onChange={e => setExpiresInDays(Number(e.target.value))}
-                  className="text-body-0-regular text-foreground bg-surface-flat border border-border-dim rounded px-2 py-0.5"
-                >
-                  <option value={1}>1 day</option>
-                  <option value={7}>7 days</option>
-                  <option value={14}>14 days</option>
-                  <option value={30}>30 days</option>
-                  <option value={90}>90 days</option>
-                </select>
-              )}
+          {isCollectionResource && (
+            <>
+              <div className="flex items-center justify-between gap-4 py-1">
+                <div>
+                  <span className="text-body-0-regular text-foreground">Auto-update</span>
+                  <p className="text-label-0-regular text-foreground-dim">Collection stays current as contents change</p>
+                </div>
+                <Toggle
+                  checked={shareMode === 'live'}
+                  onChange={(v) => setShareMode(v ? 'live' : 'snapshot')}
+                  aria-label="Auto-update"
+                />
+              </div>
+              <div className="flex items-center justify-between gap-4 py-1">
+                <div>
+                  <span className="text-body-0-regular text-foreground">Allow uploads</span>
+                  <p className="text-label-0-regular text-foreground-dim">Recipients can upload files to this collection</p>
+                </div>
+                <Toggle
+                  checked={allowUpload}
+                  onChange={setAllowUpload}
+                  aria-label="Allow uploads"
+                />
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Department access context for workspace-bound collections */}
+      {departmentContext && (
+        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-surface-mid">
+          <div className="flex items-center gap-2 min-w-0">
+            <DepartmentAvatar departmentId={departmentContext.deptId} size="sm" />
+            <div className="min-w-0">
+              <span className="text-body-0-regular text-foreground truncate block">{departmentContext.teamName}</span>
+              <span className="text-label-0-regular text-foreground-dim block">Department access</span>
             </div>
-            <Toggle checked={expires} onChange={setExpires} aria-label="Expires" />
           </div>
+          <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{departmentContext.roleLabel}</span>
         </div>
       )}
 
@@ -430,8 +656,9 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
                 subtitle={entry.subtitle}
                 roleLabel={entry.roleLabel}
                 members={entry.members}
-                onRemove={!entry.sourceName ? revokeGrant : undefined}
-                onUpdateProfile={!entry.sourceName ? updateGrantProfile : undefined}
+                departmentId={entry.departmentId}
+                onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
+                onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
               />
             ))}
           </div>
@@ -453,8 +680,9 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
                 subtitle={entry.subtitle}
                 roleLabel={entry.roleLabel}
                 members={entry.members}
-                onRemove={!entry.sourceName ? revokeGrant : undefined}
-                onUpdateProfile={!entry.sourceName ? updateGrantProfile : undefined}
+                departmentId={entry.departmentId}
+                onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
+                onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
               />
             ))}
           </div>
@@ -467,14 +695,54 @@ export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLa
         resourceRef={resourceRef}
         readOnly={readOnly}
         canAddGrants={canAddGrants}
+        canManageGuestLink={canManageGuestLink}
         getResourceGuestLinks={getResourceGuestLinks}
-        createGuestLink={createGuestLink}
-        revokeGuestLink={revokeGuestLink}
+        createGuestLink={(...args) => { markDirty(); return createGuestLink(...args) }}
+        updateGuestLink={(...args) => { markDirty(); updateGuestLink(...args) }}
+        revokeGuestLink={(...args) => { markDirty(); revokeGuestLink(...args) }}
       />
 
-      {userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && (
+      {/* Shared via collections (for assets — shows which collections carry this asset to recipients) */}
+      {sharedViaCollections.map(({ collection, grants: collGrants }) => {
+        const collRef: ResourceRef = { id: collection.id, type: 'collection' }
+        const canManageCollection = canEditAcl(collRef)
+        const canShareCollection = canShare(collRef)
+        return (
+          <div key={collection.id} className="space-y-1">
+            <h3 className="text-label-1-bold text-foreground-dim">Via <a href={`/nextgen/collections/${collection.id}`} className="hover:text-foreground transition-colors underline">{collection.name}</a></h3>
+            <div className="space-y-0">
+              {collGrants.map(grant => {
+                const principal = grant.principal
+                const name = principal.type === 'user'
+                  ? PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
+                  : TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
+                const deptId = principal.type === 'team'
+                  ? TEAMS.find(t => t.id === principal.teamId)?.departmentId
+                  : PERSONAS.find(p => p.id === (principal as { userId: string }).userId)?.departmentId
+                const canRevoke = canManageCollection || (canShareCollection && activePersona && grant.grantedByUserId === activePersona.id)
+                return (
+                  <GrantRow
+                    key={grant.id}
+                    grant={grant}
+                    readOnly={!canRevoke}
+                    roleGroups={roleGroups}
+                    name={name}
+                    roleLabel={profileLabel(grant.templateId, roleGroups)}
+                    departmentId={deptId}
+                    onRemove={canRevoke ? (id) => { markDirty(); revokeGrant(id) } : undefined}
+                    onUpdateProfile={canRevoke ? (id, profileId) => { markDirty(); updateGrantProfile(id, profileId) } : undefined}
+                  />
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+
+      {userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && sharedViaCollections.length === 0 && !departmentContext && (
         <p className="text-body-0-regular text-foreground-dim">{emptyLabel}</p>
       )}
+
     </div>
   )
 }

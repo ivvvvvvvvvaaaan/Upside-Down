@@ -21,7 +21,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
   const [searchQuery, setSearchQuery] = useState('')
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const { cardSize } = useViewPreferences()
-  const { filterByAccess, canAccess, canDiscover, requestAccess } = useAccess()
+  const { filterByAccess, canAccess, getVisibilityState, requestAccess } = useAccess()
   const { allAssets, assetsLoaded, assetsLoading, ensureAssetsLoaded } = useSmartCollections()
 
   useEffect(() => {
@@ -33,24 +33,25 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     return assetsLoaded ? allAssets : []
   }, [allAssets, assetsLoaded])
 
-  const accessibleSearchAssets = useMemo(() => {
-    return filterByAccess(allSearchableAssets)
-  }, [allSearchableAssets, filterByAccess])
-
-  // IDs of assets the user can fully access (for determining restricted state)
-  const accessibleIds = useMemo(() => {
-    const ids = new Set<string>()
-    for (const a of accessibleSearchAssets) ids.add(a.id)
-    return ids
-  }, [accessibleSearchAssets])
-
   const accessibleRecentAssets = useMemo(() => {
     return filterByAccess(recentAssets)
   }, [recentAssets, filterByAccess])
 
+  const visibilityByAssetId = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof getVisibilityState>>()
+    for (const asset of allSearchableAssets) {
+      map.set(asset.id, getVisibilityState({
+        id: asset.id,
+        type: 'asset',
+        departmentId: asset.department,
+      }))
+    }
+    return map
+  }, [allSearchableAssets, getVisibilityState])
+
   const isRestricted = useCallback((asset: Asset) => {
-    return !canAccess(asset.id) && canDiscover(asset.id, asset.department)
-  }, [canAccess, canDiscover])
+    return visibilityByAssetId.get(asset.id) === 'discoverable'
+  }, [visibilityByAssetId])
 
   const handleRequestAccess = useCallback((asset: Asset) => {
     requestAccess(asset.id, { id: asset.id, type: 'asset', departmentId: asset.department })
@@ -62,8 +63,11 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     if (!assetsLoaded) return null
     return allSearchableAssets
       .filter((asset) => matchesFilter(asset, { query: searchQuery }))
-      .filter((asset) => accessibleIds.has(asset.id) || canDiscover(asset.id, asset.department))
-  }, [searchQuery, allSearchableAssets, accessibleIds, canDiscover, assetsLoaded])
+      .filter((asset) => {
+        const visibility = visibilityByAssetId.get(asset.id)
+        return visibility === 'accessible' || visibility === 'discoverable'
+      })
+  }, [searchQuery, allSearchableAssets, assetsLoaded, visibilityByAssetId])
 
   const curatedResults = useMemo(() => searchResults?.filter(a => !a.isAutoPromoted) ?? [], [searchResults])
   const workspaceResults = useMemo(() => searchResults?.filter(a => a.isAutoPromoted) ?? [], [searchResults])

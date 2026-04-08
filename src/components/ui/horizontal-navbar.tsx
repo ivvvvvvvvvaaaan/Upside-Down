@@ -178,17 +178,17 @@ export function HorizontalNavbar({
 
         {/* User Controls */}
         <div className="flex items-center gap-1 shrink-0">
-          <button className="p-2 rounded hover:bg-surface-2 transition-colors text-foreground-dim hover:text-foreground">
+          <Button variant="icon">
             <Newspaper className="w-5 h-5" />
-          </button>
-          <button className="p-2 rounded hover:bg-surface-2 transition-colors text-foreground-dim hover:text-foreground">
+          </Button>
+          <Button variant="icon">
             <HelpCircle className="w-5 h-5" />
-          </button>
-          <button className="p-2 rounded hover:bg-surface-2 transition-colors text-foreground-dim hover:text-foreground relative">
+          </Button>
+          <Button variant="icon" className="relative">
             <Bell className="w-5 h-5" />
             {/* Notification badge */}
             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-          </button>
+          </Button>
           {/* Avatar */}
           <button className="flex items-center gap-1 p-1 rounded hover:bg-surface-2 transition-colors">
             <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white text-body-0-bold">

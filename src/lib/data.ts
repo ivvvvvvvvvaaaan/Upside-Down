@@ -2,8 +2,11 @@ import { mergePrototypeAssets } from '@/lib/prototype-assets'
 import {
   MOCK_COLLECTIONS,
   getAssetIdsForFolder,
+  getAssetIdsForFolderRecursive,
 } from '@/lib/data-client'
-import type { Asset, Collection, DepartmentId } from '@/lib/data-client'
+import { getDepartmentWorkspaceFiles } from '@/lib/workspace-data'
+import type { DepartmentId } from '@/components/department/types'
+import type { Asset, Collection } from '@/lib/data-client'
 import { seedCutToAsset } from '@/lib/cuts'
 import { buildCuts } from '@/lib/scenario'
 import type { UserCollection } from '@/hooks/useUserCollections'
@@ -33,10 +36,7 @@ export type {
 const MOCK_ASSETS: Asset[] = []
 
 export function getAssetIdVariants(id: string): string[] {
-  if (id.startsWith('inst-')) {
-    return [id, id.slice(5)]
-  }
-  return [id, `inst-${id}`]
+  return [id]
 }
 
 function getAssetResolutionScore(asset: Asset): number {
@@ -114,6 +114,10 @@ export function getAssetsByIds(ids: string[]): Asset[] {
  */
 export function resolveCollectionAssetIds(collection: UserCollection): string[] {
   if (collection.boundFolderId) {
+    if (collection.boundDepartmentId) {
+      const tree = getDepartmentWorkspaceFiles(collection.boundDepartmentId as DepartmentId)
+      return getAssetIdsForFolderRecursive(collection.boundFolderId, tree)
+    }
     return getAssetIdsForFolder(collection.boundFolderId)
   }
   return collection.assetIds

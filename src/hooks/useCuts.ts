@@ -12,34 +12,50 @@ export interface AccessibleCutEntry {
   isOwn: boolean
 }
 
+export interface VisibleCutEntry extends AccessibleCutEntry {
+  visibility: 'accessible' | 'discoverable'
+}
+
 export function useCuts() {
-  const { sharesReceivedByMe, allProjectShares, grants } = useAccess()
+  const { grants, getVisibilityState } = useAccess()
   const { isAdmin, activePersona } = usePersona()
   const allSeedCuts = useMemo(() => buildCuts(), [])
-  const allCutAssets = useMemo(() => allSeedCuts.map((cut) => seedCutToAsset(cut)), [allSeedCuts])
-  const allEntries = useMemo(() => {
-    return isAdmin ? allProjectShares : sharesReceivedByMe
-  }, [isAdmin, allProjectShares, sharesReceivedByMe])
-  const grantedCutIds = useMemo(() => {
-    return new Set(allEntries.filter((entry) => entry.resourceType === 'cut').map((entry) => entry.resourceId))
-  }, [allEntries])
   const isEditorialMember = activePersona?.departmentId === 'editorial'
 
-  const accessibleCuts = useMemo((): AccessibleCutEntry[] => {
+  const visibleCuts = useMemo((): VisibleCutEntry[] => {
     return allSeedCuts.flatMap((cut) => {
       const isOwn = isEditorialMember || false
-      const hasGrant = grantedCutIds.has(cut.id)
-      if (!isOwn && !hasGrant && !isAdmin) {
+      const visibility = isOwn || isAdmin
+        ? 'accessible'
+        : getVisibilityState({
+            id: cut.id,
+            type: 'cut',
+            departmentId: 'editorial',
+          })
+
+      if (visibility === 'hidden') {
         return []
       }
 
       return [{
-        asset: seedCutToAsset(cut, deriveReleaseTagInfo(cut.id, grants)),
+        asset: seedCutToAsset(
+          cut,
+          visibility === 'accessible' ? deriveReleaseTagInfo(cut.id, grants) : undefined,
+        ),
         seed: cut,
         isOwn,
+        visibility,
       }]
     })
-  }, [allSeedCuts, grantedCutIds, grants, isAdmin, isEditorialMember])
+  }, [allSeedCuts, grants, isAdmin, isEditorialMember, getVisibilityState])
+
+  const accessibleCuts = useMemo((): AccessibleCutEntry[] => {
+    return visibleCuts.filter((entry): entry is AccessibleCutEntry & { visibility: 'accessible' } => (
+      entry.visibility === 'accessible'
+    ))
+  }, [visibleCuts])
+
+  const allCutAssets = useMemo(() => visibleCuts.map((entry) => entry.asset), [visibleCuts])
   const accessibleCutAssets = useMemo(() => {
     return accessibleCuts.map((entry) => entry.asset)
   }, [accessibleCuts])
@@ -70,10 +86,23 @@ export function useCuts() {
     return seed?.constituents ?? []
   }, [allSeedCuts])
 
+  /** Asset IDs that are constituents of accessible cuts — for cascade access */
+  const constituentAccessIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const entry of accessibleCuts) {
+      for (const cid of entry.seed.constituents) {
+        ids.add(cid)
+      }
+    }
+    return ids
+  }, [accessibleCuts])
+
   return {
     allCutAssets,
+    visibleCuts,
     accessibleCuts,
     accessibleCutAssets,
+    constituentAccessIds,
     getCutsForAsset,
     getConstituentsForCut,
   }

@@ -21,7 +21,10 @@ import { useIsMobile } from '@/hooks/useMediaQuery'
 
 // Route to display name mapping
 const routeLabels: Record<string, string> = {
-  '/nextgen': 'Media Library',
+  '/nextgen': 'Search',
+  '/nextgen/inbox': 'Inbox',
+  '/nextgen/library': 'Cuts',
+  '/nextgen/shared': 'Shared',
   '/nextgen/workspace': 'Workspace',
   '/nextgen/departments/art-design': 'Art & Design',
   '/nextgen/departments/camera': 'Camera',
@@ -37,8 +40,7 @@ const routeLabels: Record<string, string> = {
 // Section groupings for breadcrumb hierarchy
 const sectionPrefixes: { prefix: string; label: string }[] = [
   { prefix: '/nextgen/departments/', label: 'Departments' },
-  { prefix: '/nextgen/smart-collections/', label: 'Collections' },
-  { prefix: '/nextgen/collections/', label: 'My Collections' },
+  { prefix: '/nextgen/collections/', label: 'Collections' },
   { prefix: '/nextgen/sharing/', label: 'Sharing' },
 ]
 
@@ -105,7 +107,7 @@ function getBreadcrumbs(pathname: string): BreadcrumbItem[] {
 
   // Add the current page (with href so it becomes a link when extras are appended)
   const pageLabel = routeLabels[pathname]
-  if (pageLabel && pageLabel !== 'Media Library') {
+  if (pageLabel && pathname !== '/nextgen') {
     // Don't duplicate if section label matches page label
     const lastCrumb = crumbs[crumbs.length - 1]
     if (lastCrumb.label !== pageLabel) {

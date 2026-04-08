@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Search, Users } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { Modal } from './modal'
 import { Card } from './card'
 import { Input } from './input'
 import { Button } from './button'
 import { Select } from './select'
 import { Avatar } from './avatar'
+import { DepartmentAvatar } from './department-avatar'
 import { useAccess, usePersona } from '@/hooks'
 import type { AccessProfileId, PrincipalRef } from '@/hooks/useAccess'
 import { getRoleGroup } from '@/lib/grants'
@@ -171,9 +172,7 @@ export function BatchShareModal({
                       {result.kind === 'user' ? (
                         <Avatar name={result.name} size="sm" />
                       ) : (
-                        <span className="w-6 h-6 rounded-full flex items-center justify-center bg-surface-3 text-foreground-dim flex-shrink-0">
-                          <Users className="w-3 h-3" />
-                        </span>
+                        <DepartmentAvatar size="sm" />
                       )}
                       <div className="min-w-0">
                         <span className="text-body-0-regular text-foreground truncate block">{result.name}</span>

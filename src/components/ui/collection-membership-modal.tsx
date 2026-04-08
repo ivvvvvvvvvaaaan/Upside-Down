@@ -72,41 +72,39 @@ export function CollectionMembershipModal({
       <Modal.Header title="Add to Collection" />
       <Modal.Body>
         <div className="space-y-4">
-          <div className="flex gap-2">
-            <Button
-              variant={mode === 'existing' ? 'primary' : 'secondary'}
-              onClick={() => setMode('existing')}
-              disabled={editableCollections.length === 0}
-            >
-              Add to existing
-            </Button>
-            <Button
-              variant={mode === 'new' ? 'primary' : 'secondary'}
-              onClick={() => setMode('new')}
-            >
-              New collection
-            </Button>
-          </div>
+          {editableCollections.length > 0 && (
+            <div className="flex gap-2">
+              <Button
+                variant={mode === 'existing' ? 'primary' : 'secondary'}
+                compact
+                onClick={() => setMode('existing')}
+              >
+                Add to existing
+              </Button>
+              <Button
+                variant={mode === 'new' ? 'primary' : 'secondary'}
+                compact
+                onClick={() => setMode('new')}
+              >
+                New collection
+              </Button>
+            </div>
+          )}
 
           {mode === 'existing' ? (
-            editableCollections.length > 0 ? (
-              <Select
-                label="Collection"
-                options={collectionOptions}
-                value={collectionId}
-                onChange={(value) => setCollectionId(value)}
-              />
-            ) : (
-              <p className="text-body-0-regular text-foreground-dim">
-                You don&apos;t have any editable collections yet. Create a new one instead.
-              </p>
-            )
+            <Select
+              label="Collection"
+              options={collectionOptions}
+              value={collectionId}
+              onChange={(value) => setCollectionId(value)}
+            />
           ) : (
             <Input
               label="Name"
               placeholder="Enter collection name"
               value={name}
               onChange={(event) => setName(event.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && name.trim() && handleSubmit()}
               autoComplete="off"
               data-1p-ignore
             />

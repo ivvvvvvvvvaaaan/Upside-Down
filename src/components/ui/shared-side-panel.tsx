@@ -7,7 +7,6 @@ import { ResponsivePanel } from './responsive-panel'
 import { AccessKindIcon } from './access-kind-icon'
 import { AccessSummary } from './access-summary'
 import { useAccess, useUserCollections } from '@/hooks'
-import { kindLabel } from '@/lib/access'
 import type { AccessEntryKind } from '@/lib/access'
 import { getSharePreviewImages } from '@/lib/data-client'
 import { getSharedResourceHref } from '@/lib/shared-resources'
@@ -19,21 +18,17 @@ import { profileLabel } from '@/lib/grants'
 interface SharedSidePanelProps {
   entry: GrantView
   onClose: () => void
-  isCreator?: boolean
-  onRevokeShare?: (resourceId: string) => void
   /** Additional className for the ResponsivePanel */
   panelClassName?: string
 }
 
 export interface SharedDetailContentProps {
   entry: GrantView
-  isCreator?: boolean
-  onRevokeShare?: (resourceId: string) => void
   showAccess?: boolean
 }
 
-export function SharedDetailContent({ entry, isCreator = false, onRevokeShare, showAccess = true }: SharedDetailContentProps) {
-  const { canEditAcl, getInheritedGrants } = useAccess()
+export function SharedDetailContent({ entry, showAccess = true }: SharedDetailContentProps) {
+  const { getInheritedGrants } = useAccess()
   const { collections } = useUserCollections()
   const kind = entry.resourceType as AccessEntryKind
   const grantor = PERSONAS.find((p) => p.id === entry.grantedByUserId)
@@ -44,7 +39,6 @@ export function SharedDetailContent({ entry, isCreator = false, onRevokeShare, s
     type: entry.resourceType,
     departmentId: entry.departmentId,
   }
-  const canRevokeShare = Boolean(isCreator && onRevokeShare && canEditAcl(resourceRef))
   const resolvedHref = getSharedResourceHref({
     resourceId: entry.resourceId,
     resourceType: kind,
@@ -65,20 +59,31 @@ export function SharedDetailContent({ entry, isCreator = false, onRevokeShare, s
         const visible = resolvedPreviewImages.slice(0, 3)
         const remaining = resolvedPreviewImages.length - 3
         const cols = visible.length === 1 ? 'grid-cols-1' : visible.length === 2 ? 'grid-cols-2' : 'grid-cols-3'
+        const previewGrid = (
+          <div className={`grid ${cols} gap-1`}>
+            {visible.map((src, i) => (
+              <div key={i} className="relative aspect-video bg-surface-2 group-hover:opacity-60 transition-opacity">
+                <Image src={src} alt="" fill className="object-cover" sizes={visible.length === 1 ? '600px' : '200px'} />
+                {i === visible.length - 1 && remaining > 0 && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <span className="text-body-2-bold text-white">+{remaining}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )
         return (
           <div className="px-4 pt-2">
-            <div className={`grid ${cols} gap-1 rounded overflow-hidden`}>
-              {visible.map((src, i) => (
-                <div key={i} className="relative aspect-video bg-surface-2">
-                  <Image src={src} alt="" fill className="object-cover" sizes={visible.length === 1 ? '600px' : '200px'} />
-                  {i === visible.length - 1 && remaining > 0 && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <span className="text-body-2-bold text-white">+{remaining}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+            {resolvedHref ? (
+              <Link href={resolvedHref} className="block rounded overflow-hidden cursor-pointer group">
+                {previewGrid}
+              </Link>
+            ) : (
+              <div className="rounded overflow-hidden">
+                {previewGrid}
+              </div>
+            )}
           </div>
         )
       })()}
@@ -86,9 +91,9 @@ export function SharedDetailContent({ entry, isCreator = false, onRevokeShare, s
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {resolvedHref && (
-          <Button variant="secondary" asChild className="w-full">
+          <Button variant="secondary" asChild>
             <Link href={resolvedHref}>
-              Open {kindLabel(kind).toLowerCase()}
+              Open {entry.label}
             </Link>
           </Button>
         )}
@@ -112,7 +117,7 @@ export function SharedDetailContent({ entry, isCreator = false, onRevokeShare, s
           </div>
         </section>
 
-        {/* Access section */}
+        {/* Access section — manage/revoke individual grants via the Share modal */}
         {showAccess && (
           <AccessSummary
             resourceId={entry.resourceId}
@@ -124,32 +129,15 @@ export function SharedDetailContent({ entry, isCreator = false, onRevokeShare, s
             resourceName={entry.label}
           />
         )}
-
-        {/* Revoke button — creator only */}
-        {canRevokeShare && onRevokeShare && (
-          <div className="pt-2">
-            <Button
-              variant="secondary"
-              onClick={() => onRevokeShare(entry.resourceId)}
-              className="w-full text-foreground-negative hover:opacity-80"
-            >
-              Revoke Share
-            </Button>
-          </div>
-        )}
       </div>
     </>
   )
 }
 
-export function SharedSidePanel({ entry, onClose, isCreator = false, onRevokeShare, panelClassName }: SharedSidePanelProps) {
+export function SharedSidePanel({ entry, onClose, panelClassName }: SharedSidePanelProps) {
   return (
     <ResponsivePanel open={true} onClose={onClose} className={panelClassName}>
-      <SharedDetailContent
-        entry={entry}
-        isCreator={isCreator}
-        onRevokeShare={onRevokeShare}
-      />
+      <SharedDetailContent entry={entry} />
     </ResponsivePanel>
   )
 }

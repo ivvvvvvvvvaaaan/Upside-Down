@@ -5,8 +5,9 @@ import { DesktopWindow } from './desktop-window'
 import { cn, formatDate } from '@/lib/utils'
 import type { WindowState, SyncStatus } from '../view'
 import type { UnifiedFileNode } from '@/lib/workspace-data'
-import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
-import { useAccess, useFileTree, usePersona } from '@/hooks'
+import { DEPARTMENT_FOLDER_MAP, isReferenceFolder } from '@/lib/workspace-data'
+import { useAccess, useCollections, useFileTree, usePersona } from '@/hooks'
+import { materializeReferenceFolders } from '@/lib/reference-folder-utils'
 import {
   ChevronLeft,
   ChevronRight,
@@ -367,8 +368,9 @@ export function FinderWindow({
   const [folderPathIds, setFolderPathIds] = useState<string[]>([])
 
   // Shared file tree from context
-  const { tree: workspaceFiles, createFolder: contextCreateFolder, renameNode: contextRenameNode, deleteNode: contextDeleteNode } = useFileTree()
-  const { canAccess, sharesReceivedByMe } = useAccess()
+  const { tree: workspaceFiles, createFolder: contextCreateFolder, createFile: contextCreateFile, renameNode: contextRenameNode, deleteNode: contextDeleteNode } = useFileTree()
+  const { canAccess, sharesReceivedByMe, filterByAccess } = useAccess()
+  const { getCollection, filterAssets, scopedAssets } = useCollections()
   const { activePersona } = usePersona()
 
   // Rename state
@@ -456,6 +458,14 @@ export function FinderWindow({
       return
     }
 
+    if (parentId) {
+      const parentFolder = findNodeById(workspaceFiles, parentId)
+      if (isReferenceFolder(parentFolder)) {
+        setContextMenu(null)
+        return
+      }
+    }
+
     const newId = contextCreateFolder(parentId, 'untitled folder')
     if (parentId) {
       setExpandedFolders((prev) => {
@@ -465,43 +475,20 @@ export function FinderWindow({
       })
     }
     setContextMenu(null)
-    // Start renaming the new folder immediately
     setTimeout(() => {
       setRenamingId(newId)
       setRenameValue('untitled folder')
     }, 50)
-  }, [contextCreateFolder, selectedSidebar])
+  }, [contextCreateFolder, selectedSidebar, workspaceFiles])
 
-  // Start renaming an item
-  const handleStartRename = useCallback((item: FileNode) => {
-    setRenamingId(item.id)
-    setRenameValue(item.name)
-    setContextMenu(null)
-  }, [])
-
-  // Finish renaming (save)
-  const handleFinishRename = useCallback(() => {
-    if (renamingId && renameValue.trim()) {
-      contextRenameNode(renamingId, renameValue.trim())
-    }
-    setRenamingId(null)
-    setRenameValue('')
-  }, [renamingId, renameValue, contextRenameNode])
-
-  // Cancel renaming
-  const handleCancelRename = useCallback(() => {
-    setRenamingId(null)
-    setRenameValue('')
-  }, [])
-
-  // Delete an item
-  const handleDeleteItem = useCallback((itemId: string) => {
-    contextDeleteNode(itemId)
-    setContextMenu(null)
-    if (selectedFile === itemId) {
-      setSelectedFile(null)
-    }
-  }, [selectedFile, contextDeleteNode])
+  const resolvedWorkspaceFiles = useMemo(() => {
+    return materializeReferenceFolders(workspaceFiles, {
+      getCollection,
+      filterAssets,
+      filterByAccess,
+      scopedAssets,
+    })
+  }, [workspaceFiles, getCollection, filterAssets, filterByAccess, scopedAssets])
 
   const visibleSharedWorkspaceFiles = useMemo(() => {
     return sharesReceivedByMe
@@ -512,7 +499,7 @@ export function FinderWindow({
         return true
       })
       .map((entry) => {
-        const sourceNode = findNodeById(workspaceFiles, entry.resourceId)
+        const sourceNode = findNodeById(resolvedWorkspaceFiles, entry.resourceId)
         const sharedNode = sourceNode?.type === 'folder'
           ? sourceNode
           : {
@@ -526,10 +513,10 @@ export function FinderWindow({
         return filterWorkspaceNodeByAccess(sharedNode, canAccess, canSeeRestrictedFolders)
       })
       .filter((node): node is FileNode => node !== null)
-  }, [sharesReceivedByMe, activePersona, workspaceFiles, canAccess, canSeeRestrictedFolders])
+  }, [sharesReceivedByMe, activePersona, resolvedWorkspaceFiles, canAccess, canSeeRestrictedFolders])
 
   const visibleWorkspaceFiles = useMemo(() => {
-    const roots = workspaceFiles
+    const roots = resolvedWorkspaceFiles
       .map((node) => {
         if (DEPARTMENT_ROOT_IDS.has(node.id) && !canAccess(node.id)) {
           return null
@@ -545,13 +532,59 @@ export function FinderWindow({
     }
 
     return roots
-  }, [workspaceFiles, canAccess, canSeeRestrictedFolders, visibleSharedWorkspaceFiles])
+  }, [resolvedWorkspaceFiles, canAccess, canSeeRestrictedFolders, visibleSharedWorkspaceFiles])
 
   // Get root files based on selected sidebar location.
   const rootFiles = selectedSidebar === 'workspace' ? visibleWorkspaceFiles : mockFiles
 
   // Build folder path from IDs (to get fresh references from current state)
   const folderPath = folderPathIds.map(id => findNodeById(rootFiles, id)).filter((n): n is FileNode => n !== null)
+
+  // Start renaming an item
+  const handleStartRename = useCallback((item: FileNode) => {
+    if (isReferenceFolder(item)) {
+      setContextMenu(null)
+      return
+    }
+    setRenamingId(item.id)
+    setRenameValue(item.name)
+    setContextMenu(null)
+  }, [])
+
+  // Finish renaming (save)
+  const handleFinishRename = useCallback(() => {
+    if (renamingId && renameValue.trim()) {
+      const item = findNodeById(rootFiles, renamingId)
+      if (isReferenceFolder(item)) {
+        setRenamingId(null)
+        setRenameValue('')
+        return
+      }
+      contextRenameNode(renamingId, renameValue.trim())
+    }
+    setRenamingId(null)
+    setRenameValue('')
+  }, [renamingId, renameValue, contextRenameNode, rootFiles])
+
+  // Cancel renaming
+  const handleCancelRename = useCallback(() => {
+    setRenamingId(null)
+    setRenameValue('')
+  }, [])
+
+  // Delete an item
+  const handleDeleteItem = useCallback((itemId: string) => {
+    const item = findNodeById(rootFiles, itemId)
+    if (isReferenceFolder(item)) {
+      setContextMenu(null)
+      return
+    }
+    contextDeleteNode(itemId)
+    setContextMenu(null)
+    if (selectedFile === itemId) {
+      setSelectedFile(null)
+    }
+  }, [selectedFile, contextDeleteNode, rootFiles])
 
   // Get current files based on folder path (for icons view navigation)
   const currentFiles = folderPath.length > 0
@@ -1026,6 +1059,10 @@ export function FinderWindow({
             </>
           ) : (
             <>
+              {isReferenceFolder(contextMenu.item) ? (
+                <ContextMenuItem label="Open" shortcut="⌘O" onClick={() => setContextMenu(null)} />
+              ) : (
+                <>
               <ContextMenuItem label="Open" shortcut="⌘O" onClick={() => setContextMenu(null)} />
               <ContextMenuItem label="Open With" hasSubmenu />
               <ContextMenuDivider />
@@ -1051,6 +1088,14 @@ export function FinderWindow({
                     disabled={selectedSidebar !== 'workspace'}
                     onClick={() => handleCreateFolder(contextMenu.item.id)}
                   />
+                  <ContextMenuItem
+                    label="New File"
+                    disabled={selectedSidebar !== 'workspace'}
+                    onClick={() => {
+                      const names = ['SEQ010_SH040_comp_v1.exr', 'hero_closeup_final.dpx', 'ambience_pit_lane.wav', 'grade_pass_02.mov', 'concept_sketch_v3.psd', 'lens_calibration_data.csv']
+                      contextCreateFile(contextMenu.item.id, names[Math.floor(Math.random() * names.length)])
+                    }}
+                  />
                   <ContextMenuDivider />
                 </>
               )}
@@ -1059,6 +1104,8 @@ export function FinderWindow({
                 shortcut="⌘⌫"
                 onClick={() => handleDeleteItem(contextMenu.item.id)}
               />
+                </>
+              )}
             </>
           )}
         </div>

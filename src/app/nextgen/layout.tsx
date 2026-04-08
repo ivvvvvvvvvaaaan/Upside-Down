@@ -5,6 +5,7 @@ import { FileTreeProvider } from '@/hooks/useFileTree'
 import { PersonaProvider } from '@/hooks/usePersona'
 import { AccessProvider } from '@/hooks/useAccess'
 import { NextgenShell } from './_components/nextgen-shell'
+import { ToastProvider } from '@/components/ui/toast'
 
 /**
  * Nextgen Layout
@@ -27,9 +28,11 @@ export default function NextgenLayout({
         <FileTreeProvider>
           <AccessProvider>
             <SmartCollectionsProvider>
-              <Suspense fallback={children}>
-                <NextgenShell>{children}</NextgenShell>
-              </Suspense>
+              <ToastProvider>
+                <Suspense fallback={children}>
+                  <NextgenShell>{children}</NextgenShell>
+                </Suspense>
+              </ToastProvider>
             </SmartCollectionsProvider>
           </AccessProvider>
         </FileTreeProvider>

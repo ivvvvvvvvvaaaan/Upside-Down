@@ -15,7 +15,7 @@ import { profileLabel } from '@/lib/grants'
 import { PERSONAS } from '@/lib/personas'
 import { cn, formatDate } from '@/lib/utils'
 
-type ShareTab = 'mine' | 'all'
+type ShareTab = 'mine' | 'project' | 'all'
 
 
 function ShareTable({
@@ -102,7 +102,7 @@ function ShareTable({
   )
 }
 
-function GuestLinksSection({ links, selectedId, onRowClick }: { links: GuestLinkSeed[]; selectedId: string | null; onRowClick: (link: GuestLinkSeed) => void }) {
+function GuestLinksSection({ links, selectedId, onRowClick, activeUserId }: { links: GuestLinkSeed[]; selectedId: string | null; onRowClick: (link: GuestLinkSeed) => void; activeUserId?: string }) {
   if (links.length === 0) return null
 
   return (
@@ -132,7 +132,7 @@ function GuestLinksSection({ links, selectedId, onRowClick }: { links: GuestLink
                 <Tag size="compact" type="neutral">{link.allowDownload ? 'View + DL' : 'View only'}</Tag>
               </span>
               <span className="text-body-0-regular text-foreground-subtle truncate flex items-center">
-                {(() => {
+                {link.createdByUserId === activeUserId ? 'You' : (() => {
                   const p = PERSONAS.find(persona => persona.id === link.createdByUserId)
                   return p?.name ?? link.createdByUserId
                 })()}
@@ -148,7 +148,17 @@ function GuestLinksSection({ links, selectedId, onRowClick }: { links: GuestLink
   )
 }
 
-function GuestLinkDetailPanel({ link, onClose, onRevoke }: { link: GuestLinkSeed; onClose: () => void; onRevoke: (id: string) => void }) {
+function GuestLinkDetailPanel({
+  link,
+  onClose,
+  onRevoke,
+  canRevoke,
+}: {
+  link: GuestLinkSeed
+  onClose: () => void
+  onRevoke: (id: string) => void
+  canRevoke: boolean
+}) {
   const creator = PERSONAS.find(p => p.id === link.createdByUserId)
   const [copied, setCopied] = useState(false)
 
@@ -203,38 +213,47 @@ function GuestLinkDetailPanel({ link, onClose, onRevoke }: { link: GuestLinkSeed
             <Link2 className="w-3 h-3 mr-1" />
             {copied ? 'Copied!' : 'Copy Link'}
           </Button>
-          <Button variant="secondary" compact onClick={() => onRevoke(link.id)}>
-            <X className="w-3 h-3 mr-1" />
-            Revoke
-          </Button>
+          {canRevoke && (
+            <Button variant="secondary" compact onClick={() => onRevoke(link.id)}>
+              <X className="w-3 h-3 mr-1" />
+              Revoke
+            </Button>
+          )}
         </div>
       </div>
     </div>
   )
 }
 
-const TAB_OPTIONS: { value: ShareTab; label: string }[] = [
-  { value: 'mine', label: 'Mine' },
+const USER_TAB_OPTIONS: { value: ShareTab; label: string }[] = [
+  { value: 'mine', label: 'By me' },
+  { value: 'project', label: 'On project' },
+]
+
+const ADMIN_TAB_OPTIONS: { value: ShareTab; label: string }[] = [
+  ...USER_TAB_OPTIONS,
   { value: 'all', label: 'All' },
 ]
 
 export function SharedView({ initialSelectedId = null }: { initialSelectedId?: string | null }) {
-  const { visibleShares, allProjectShares, revokeShare, guestLinks, revokeGuestLink } = useAccess()
+  const { sharesCreatedByMe, visibleShares, allProjectShares, guestLinks, revokeGuestLink, canManageGuestLink, canAccess } = useAccess()
   const { activePersona, isAdmin, hydrated } = usePersona()
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId)
-  const [activeTab, setActiveTab] = useState<ShareTab>(!activePersona ? 'all' : 'mine')
+  const [activeTab, setActiveTab] = useState<ShareTab>('mine')
 
-  const displayEntries = activeTab === 'all' && isAdmin ? allProjectShares : visibleShares
-  const displayLinks = activeTab === 'all' && isAdmin
+  const displayEntries = activeTab === 'all' ? allProjectShares
+    : activeTab === 'project' ? visibleShares
+    : sharesCreatedByMe
+  const displayLinks = activeTab === 'all'
     ? guestLinks
+    : activeTab === 'project'
+    ? guestLinks.filter((link) => canAccess(link.resource.id) || canManageGuestLink(link))
     : guestLinks.filter(l => l.createdByUserId === activePersona?.id)
 
   const [selectedType, setSelectedType] = useState<'grant' | 'link'>('grant')
 
   const selectedEntry = selectedType === 'grant' ? (displayEntries.find(e => e.id === selectedId) ?? null) : null
   const selectedLink = selectedType === 'link' ? (displayLinks.find(l => l.id === selectedId) ?? null) : null
-  const isCreatorOfSelected = selectedEntry?.grantedByUserId === activePersona?.id
-
   const handleRowClick = useCallback((entry: GrantView) => {
     setSelectedId(prev => prev === entry.id ? null : entry.id)
     setSelectedType('grant')
@@ -248,11 +267,6 @@ export function SharedView({ initialSelectedId = null }: { initialSelectedId?: s
   const handleClosePanel = useCallback(() => {
     setSelectedId(null)
   }, [])
-
-  const handleRevokeShare = useCallback((resourceId: string) => {
-    revokeShare(resourceId)
-    setSelectedId(null)
-  }, [revokeShare])
 
   const handleRevokeLink = useCallback((linkId: string) => {
     revokeGuestLink(linkId)
@@ -273,9 +287,9 @@ export function SharedView({ initialSelectedId = null }: { initialSelectedId?: s
               description={`${totalCount} shared item${totalCount !== 1 ? 's' : ''}`}
               hideTitleOnMobile
             />
-            {isAdmin && (
+            {activePersona && (
               <ToggleButtonGroup<ShareTab>
-                options={TAB_OPTIONS}
+                options={isAdmin ? ADMIN_TAB_OPTIONS : USER_TAB_OPTIONS}
                 value={activeTab}
                 onChange={(v) => setActiveTab(v)}
                 compact
@@ -305,7 +319,7 @@ export function SharedView({ initialSelectedId = null }: { initialSelectedId?: s
               onRowClick={handleRowClick}
               activeUserId={activePersona?.id}
             />
-            <GuestLinksSection links={displayLinks} selectedId={selectedType === 'link' ? selectedId : null} onRowClick={handleLinkClick} />
+            <GuestLinksSection links={displayLinks} selectedId={selectedType === 'link' ? selectedId : null} onRowClick={handleLinkClick} activeUserId={activePersona?.id} />
           </div>
         )}
       </div>
@@ -315,8 +329,6 @@ export function SharedView({ initialSelectedId = null }: { initialSelectedId?: s
         <SharedSidePanel
           entry={selectedEntry}
           onClose={handleClosePanel}
-          isCreator={isCreatorOfSelected}
-          onRevokeShare={handleRevokeShare}
         />
       )}
       {selectedLink && (
@@ -324,6 +336,7 @@ export function SharedView({ initialSelectedId = null }: { initialSelectedId?: s
           link={selectedLink}
           onClose={handleClosePanel}
           onRevoke={handleRevokeLink}
+          canRevoke={canManageGuestLink(selectedLink)}
         />
       )}
     </div>

@@ -11,15 +11,16 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
   manage: 'Full control',
 }
 
-export function RoleSelect({ value, options, onChange, size = 'compact' }: {
+export function RoleSelect({ value, options, onChange, size = 'compact', disabled }: {
   value: string
-  options: { value: string; label: string }[]
+  options: MenuSelectOption[]
   onChange: (value: string) => void
   size?: 'compact' | 'standard'
+  disabled?: boolean
 }) {
   const enrichedOptions: MenuSelectOption[] = options.map(o => ({
     ...o,
-    description: ROLE_DESCRIPTIONS[o.value],
+    description: o.description ?? ROLE_DESCRIPTIONS[o.value],
   }))
 
   return (
@@ -28,6 +29,7 @@ export function RoleSelect({ value, options, onChange, size = 'compact' }: {
       options={enrichedOptions}
       onChange={onChange}
       size={size}
+      disabled={disabled}
     />
   )
 }

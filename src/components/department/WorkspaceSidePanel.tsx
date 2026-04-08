@@ -1,8 +1,11 @@
 'use client'
 
-import { useMemo } from 'react'
-import { X, Folder, FolderSymlink, FolderLock, File } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { X, Folder, FolderSymlink, FolderLock, File, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Dropdown, DropdownMenuItem, DropdownMenuDivider } from '@/components/ui/dropdown'
+import { Modal } from '@/components/ui/modal'
+import { Card } from '@/components/ui/card'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
 import { AccessSummary } from '@/components/ui/access-summary'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
@@ -20,6 +23,10 @@ interface WorkspaceSidePanelProps {
   departmentId?: DepartmentId
   /** Folder variant: 'shared' | 'restricted' — changes the folder icon */
   folderVariant?: 'shared' | 'restricted'
+  /** Called when user deletes this folder */
+  onDelete?: (nodeId: string) => void
+  /** Called when user renames this folder */
+  onRename?: (nodeId: string, newName: string) => void
 }
 
 function formatFileSize(bytes?: number): string {
@@ -63,7 +70,11 @@ export function WorkspaceSidePanel({
   onClose,
   departmentId,
   folderVariant,
+  onDelete,
+  onRename,
 }: WorkspaceSidePanelProps) {
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [draftName, setDraftName] = useState('')
   const isFolder = node?.type === 'folder'
   const FolderIcon = folderVariant === 'shared' ? FolderSymlink
     : folderVariant === 'restricted' ? FolderLock
@@ -137,9 +148,27 @@ export function WorkspaceSidePanel({
         ) : (
           <span className="text-body-0-bold text-foreground">Info</span>
         )}
-        <Button variant="icon" compact onClick={onClose} className="flex-shrink-0">
-          <X className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {isFolder && node && (onRename || onDelete) && (
+            <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
+              <div className="py-1">
+                {onRename && (
+                  <DropdownMenuItem icon={<Pencil className="w-4 h-4" />} label="Edit" onClick={() => {
+                    setDraftName(node.name)
+                    setEditModalOpen(true)
+                  }} />
+                )}
+                {onRename && onDelete && <DropdownMenuDivider />}
+                {onDelete && (
+                  <DropdownMenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete" onClick={() => onDelete(node.id)} destructive />
+                )}
+              </div>
+            </Dropdown>
+          )}
+          <Button variant="icon" compact onClick={onClose}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {!node ? (
@@ -188,6 +217,30 @@ export function WorkspaceSidePanel({
           resourceName={node.name}
         />
       </div>
+      )}
+      {/* Edit modal */}
+      {node && onRename && (
+        <Modal open={editModalOpen} onOpenChange={setEditModalOpen} size="sm">
+          <Modal.Header title="Edit Folder" />
+          <Modal.Body>
+            <div>
+              <label className="text-label-1-bold text-foreground-dim block mb-1">Name</label>
+              <input
+                type="text"
+                value={draftName}
+                onChange={e => setDraftName(e.target.value)}
+                className="w-full h-10 px-3 rounded border border-border-dim bg-surface-highlight text-body-0-regular text-foreground focus:border-border-subtle outline-none transition-colors"
+              />
+            </div>
+          </Modal.Body>
+          <Card.Footer>
+            <Button variant="secondary" onClick={() => setEditModalOpen(false)}>Cancel</Button>
+            <Button variant="primary" onClick={() => {
+              if (draftName && draftName !== node.name) onRename(node.id, draftName)
+              setEditModalOpen(false)
+            }}>Save</Button>
+          </Card.Footer>
+        </Modal>
       )}
     </ResponsivePanel>
   )

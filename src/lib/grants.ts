@@ -48,8 +48,6 @@ export type RoleGroup = {
   builtIn: boolean
 }
 
-export type RipplePolicy = 'view-only' | 'match-grant' | 'custom'
-
 export type ShareMode = 'live' | 'snapshot'
 
 export type Grant = {
@@ -62,8 +60,6 @@ export type Grant = {
   grantedAt: string
   revokedAt?: string
   expiresAt?: string
-  ripplePolicy?: RipplePolicy
-  ripplePermissions?: Permission[]
   /** Live = recipient sees evolving contents. Snapshot = frozen at share time. */
   shareMode?: ShareMode
   /** Frozen asset IDs for snapshot mode — overrides collection.assetIds for this recipient */
@@ -105,6 +101,7 @@ const ALL_PERMISSIONS: Permission[] = [
   'comment',
   'share',
   'edit-acl',
+  'upload',
 ]
 
 const POLICY_RESOURCE_IDS = new Set(
@@ -152,6 +149,7 @@ function getGrantPermissions(
   grant: Pick<Grant, 'permissions' | 'templateId'>,
   roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
 ): Permission[] {
+  if (grant.permissions.length > 0) return [...grant.permissions]
   if (grant.templateId) return getPermissionsForProfile(grant.templateId, roleGroups)
   return [...grant.permissions]
 }
@@ -404,7 +402,7 @@ function grantToView(grant: Grant): GrantView {
     label: getResourceLabel(grant.resource.id),
     departmentId: grant.resource.departmentId,
     templateId: grant.templateId,
-    permissions: [...grant.permissions],
+    permissions: getGrantPermissions(grant),
     grantedByUserId: grant.grantedByUserId,
     grantedAt: grant.grantedAt,
     principalLabel: principalLabel(grant.principal),
@@ -433,45 +431,20 @@ function getAllActiveGrants(grants: Grant[]): Grant[] {
 }
 
 export function buildSharesCreatedByMe(userId: string, grants: Grant[]): GrantView[] {
-  const myGrants = getGrantsByGrantor(userId, grants).filter((grant) => !isPolicyResource(grant.resource))
-  const seen = new Set<string>()
-  const views: GrantView[] = []
-
-  for (const grant of myGrants) {
-    if (seen.has(grant.resource.id)) continue
-    seen.add(grant.resource.id)
-    views.push(grantToView(grant))
-  }
-
-  return views
+  return getGrantsByGrantor(userId, grants)
+    .filter((grant) => !isPolicyResource(grant.resource))
+    .map(grantToView)
 }
 
 export function buildSharesReceivedByMe(userId: string, grants: Grant[]): GrantView[] {
-  const received = getGrantsForUser(userId, grants).filter((grant) =>
+  return getGrantsForUser(userId, grants).filter((grant) =>
     !isPolicyResource(grant.resource) && grant.grantedByUserId !== userId
   )
-  const seen = new Set<string>()
-  const views: GrantView[] = []
-
-  for (const grant of received) {
-    if (seen.has(grant.resource.id)) continue
-    seen.add(grant.resource.id)
-    views.push(grantToView(grant))
-  }
-
-  return views
+    .map(grantToView)
 }
 
 export function buildAllProjectShares(grants: Grant[]): GrantView[] {
-  const active = getAllActiveGrants(grants).filter((grant) => !isPolicyResource(grant.resource))
-  const seen = new Set<string>()
-  const views: GrantView[] = []
-
-  for (const grant of active) {
-    if (seen.has(grant.resource.id)) continue
-    seen.add(grant.resource.id)
-    views.push(grantToView(grant))
-  }
-
-  return views
+  return getAllActiveGrants(grants)
+    .filter((grant) => !isPolicyResource(grant.resource))
+    .map(grantToView)
 }

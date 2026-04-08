@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Users } from 'lucide-react'
 import { Button } from './button'
 import { Avatar } from './avatar'
+import { DepartmentAvatar } from './department-avatar'
 import { AccessModal } from './access-modal'
 import { useAccess, usePersona } from '@/hooks'
+import { useShareAsCollection } from '@/hooks/useShareAsCollection'
 import type { ResourceRef, Grant } from '@/lib/grants'
 import { buildAccessDisplayEntries } from './access-display'
 
@@ -23,10 +24,23 @@ export function AccessSummary({
   resourceName,
 }: AccessSummaryProps) {
   const [modalOpen, setModalOpen] = useState(false)
+  const [modalTarget, setModalTarget] = useState<{ resourceId: string; resourceRef?: ResourceRef; title?: string } | null>(null)
   const { activePersona, isAdmin } = usePersona()
   const { getResourceGrants, roleGroups, canShare } = useAccess()
+  const { resolveShareTarget } = useShareAsCollection()
 
   const grants = getResourceGrants(resourceId)
+
+  const openModal = () => {
+    // Resolve folder → collection only when the user clicks, not on render
+    if (resourceRef?.type === 'folder' && resourceName) {
+      const resolved = resolveShareTarget(resourceRef, resourceName)
+      setModalTarget({ resourceId: resolved.resourceRef.id, resourceRef: resolved.resourceRef as ResourceRef, title: resolved.name })
+    } else {
+      setModalTarget({ resourceId, resourceRef, title: resourceName })
+    }
+    setModalOpen(true)
+  }
 
   const effectiveRows = buildAccessDisplayEntries(
     [
@@ -55,10 +69,7 @@ export function AccessSummary({
             <div key={row.key} className="flex items-center justify-between gap-2 py-0.5">
               <div className="flex items-center gap-2 min-w-0">
                 {row.principalType === 'team' ? (
-                  <div className="relative flex-shrink-0">
-                    <Avatar name={row.name} size="compact" />
-                    <Users className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 text-foreground-dim bg-surface-flat rounded-full" />
-                  </div>
+                  <DepartmentAvatar departmentId={row.departmentId} size="compact" />
                 ) : (
                   <Avatar name={row.name} size="compact" />
                 )}
@@ -73,24 +84,27 @@ export function AccessSummary({
             </div>
           ))}
         </div>
-        {(isAdmin || (resourceRef && resourceRef.type !== 'folder' && canShare(resourceRef))) && (
+        {(isAdmin || (resourceRef && canShare(resourceRef))) && (
           <Button
             variant="secondary"
-            onClick={() => setModalOpen(true)}
+            compact
+            onClick={openModal}
           >
             Manage Access
           </Button>
         )}
       </section>
 
-      <AccessModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        resourceId={resourceId}
-        resourceRef={resourceRef}
-        inheritedGrants={inheritedGrants}
-        title={resourceName}
-      />
+      {modalTarget && (
+        <AccessModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          resourceId={modalTarget.resourceId}
+          resourceRef={modalTarget.resourceRef}
+          inheritedGrants={resourceRef?.type === 'folder' ? undefined : inheritedGrants}
+          title={modalTarget.title}
+        />
+      )}
     </>
   )
 }

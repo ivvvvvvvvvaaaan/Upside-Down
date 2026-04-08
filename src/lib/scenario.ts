@@ -105,6 +105,14 @@ type ScenarioDepartmentAccess = {
   defaultProfile: AccessProfileId
 }
 
+type DiscoveryResourceType = 'asset' | 'cut'
+
+type ScenarioDiscoveryRule = {
+  enabled: boolean
+  allowedRoles: UserRole[]
+  disabledDepartments: DepartmentId[]
+}
+
 type ReleaseDomainGroup = 'Studio' | 'Wide' | 'Other'
 
 type ScenarioReleaseDomain = {
@@ -123,10 +131,8 @@ type ScenarioReleaseDomain = {
 
 type Scenario = {
   projectName: string
-  /** Project-level: allow users to see restricted assets as blurred tiles */
-  discoveryEnabled: boolean
-  /** Departments that opt out of discovery even when project has it enabled */
-  discoveryDisabledDepartments: DepartmentId[]
+  /** Project-level discovery policy for sensitive media */
+  discovery: Record<DiscoveryResourceType, ScenarioDiscoveryRule>
   /** System-level release domains configured for this project */
   releaseDomains: ScenarioReleaseDomain[]
   roleGroups: ScenarioRoleGroup[]
@@ -147,8 +153,18 @@ type Scenario = {
 
 export const SCENARIO: Scenario = {
   projectName: 'Apex S1',
-  discoveryEnabled: true,
-  discoveryDisabledDepartments: ['audio-sound'],
+  discovery: {
+    asset: {
+      enabled: true,
+      allowedRoles: ['studio-exec', 'creative', 'manager', 'artist'],
+      disabledDepartments: ['audio-sound'],
+    },
+    cut: {
+      enabled: true,
+      allowedRoles: ['studio-exec', 'creative', 'manager', 'artist'],
+      disabledDepartments: [],
+    },
+  },
 
   // Release domains — system-level config, maps real Content Hub release targets
   // Each domain defines WHO gets grants when content is released to that domain
@@ -170,12 +186,12 @@ export const SCENARIO: Scenario = {
 
   roleGroups: [
     { id: 'owner',       name: 'Owner',           permissions: ['open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl', 'upload'] },
-    { id: 'manage',      name: 'Can manage',      permissions: ['open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl', 'upload'] },
-    { id: 'edit',        name: 'Can edit',         permissions: ['open', 'download', 'write', 'comment', 'share'] },
-    { id: 'contribute',  name: 'Can contribute',   permissions: ['open', 'download', 'write', 'comment'] },
-    { id: 'comment',     name: 'Can comment',      permissions: ['open', 'download', 'comment'] },
-    { id: 'view',        name: 'Can view',         permissions: ['open', 'download'] },
-    { id: 'link-viewer', name: 'Link viewer',      permissions: ['open', 'download'] },
+    { id: 'manage',      name: 'Can Manage',      permissions: ['open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl', 'upload'] },
+    { id: 'edit',        name: 'Can Edit',         permissions: ['open', 'download', 'write', 'comment', 'share'] },
+    { id: 'contribute',  name: 'Can Contribute',   permissions: ['open', 'download', 'write', 'comment'] },
+    { id: 'comment',     name: 'Can Comment',      permissions: ['open', 'download', 'comment'] },
+    { id: 'view',        name: 'Can View',         permissions: ['open', 'download'] },
+    { id: 'link-viewer', name: 'Link Viewer',      permissions: ['open', 'download'] },
   ],
 
   people: [
@@ -295,21 +311,6 @@ export const SCENARIO: Scenario = {
         { toTeam: 'netflix-post', as: 'view' },
         { toTeam: 'studio-leadership', as: 'view' },
         { toTeam: 'vfx-core', as: 'view' },
-      ],
-    },
-    // Netflix Cut: shared to Netflix Studio for formal Netflix review
-    {
-      resource: { id: 'cut-ep301-nc', type: 'cut', dept: 'editorial' },
-      label: 'EP301 Netflix Cut',
-      by: 'editorial-coordinator',
-      date: '2026-02-22',
-      context: 'Lisa promotes to the Netflix Cut — near-final VFX with full 5.1 temp mix. This is the formal Netflix internal review. Alex reviews on behalf of studio.',
-      grants: [
-        { toTeam: 'netflix-studio', as: 'view' },
-        { toTeam: 'netflix-post', as: 'view' },
-        { toTeam: 'studio-leadership', as: 'view' },
-        { toTeam: 'vfx-core', as: 'view' },
-        { to: 'creative-david', as: 'comment' },
       ],
     },
     // Final Cut: shared to Super Prod for delivery approval
@@ -529,7 +530,7 @@ export const SCENARIO: Scenario = {
       createdBy: 'editorial-coordinator',
       date: '2026-02-19',
       expiresAt: '2026-02-21',
-      context: 'Lisa creates a watermarked review link for an external executive producer who needs to sign off on the latest lock before the Netflix Cut gets promoted. 48-hour window with passcode — no download, no resharing.',
+      context: 'Lisa creates a watermarked review link for an external executive producer who needs to sign off on the latest lock before the Final Cut gets promoted. 48-hour window with passcode — no download, no resharing.',
       allowDownload: false,
       passcode: true,
     },
@@ -548,27 +549,27 @@ export const SCENARIO: Scenario = {
 
   collections: [
     // Shared collections (referenced by grants)
-    { id: 'ws-vfx-coll-for-editorial', name: 'EP301 VFX Pulls - Edit Review',  createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-020-010'] },
-    { id: 'ws-vfx-coll-for-vendor',    name: 'Framestore Handoff - EP301',     createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-030', 'ws-vfx-020-020', 'ws-vfx-ref-brief'] },
-    { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', assetIds: ['ws-edit-cut-1', 'ws-edit-cut-2', 'ws-edit-cut-3'] },
+    { id: 'ws-vfx-coll-for-editorial', name: 'EP301 VFX Pulls - Edit Review',  createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-020-010'], boundDepartmentId: 'vfx' },
+    { id: 'ws-vfx-coll-for-vendor',    name: 'Framestore Handoff - EP301',     createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-030', 'ws-vfx-020-020', 'ws-vfx-ref-brief'], boundDepartmentId: 'vfx' },
+    { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', assetIds: ['ws-edit-cut-1', 'ws-edit-cut-2', 'ws-edit-cut-3'], boundDepartmentId: 'editorial' },
     // Camera collections
-    { id: 'ws-cam-coll-broll', name: 'B-Roll Highlights', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-broll-town', 'ws-cam-broll-forest', 'ws-cam-aerial-dawn', 'ws-cam-aerial-quarry'] },
+    { id: 'ws-cam-coll-broll', name: 'B-Roll Highlights', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-broll-town', 'ws-cam-broll-forest', 'ws-cam-aerial-dawn', 'ws-cam-aerial-quarry'], boundDepartmentId: 'camera' },
     // Audio collections
-    { id: 'ws-audio-coll-for-editorial', name: 'Temp Sound Kit', createdBy: 'robi@netflix.com', assetIds: ['ws-audio-sfx-1', 'ws-audio-sfx-2', 'ws-audio-music-1', 'ws-audio-music-2', 'ws-audio-sfx-ambience'] },
+    { id: 'ws-audio-coll-for-editorial', name: 'Temp Sound Kit', createdBy: 'robi@netflix.com', assetIds: ['ws-audio-sfx-1', 'ws-audio-sfx-2', 'ws-audio-music-1', 'ws-audio-music-2', 'ws-audio-sfx-ambience'], boundDepartmentId: 'audio-sound' },
     // Everyday organising collections
-    { id: 'coll-creature-designs',  name: 'Car Designs', createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-demogorgon', 'ws-art-concept-creature', 'ws-art-char-eleven'] },
-    { id: 'coll-key-locations',     name: 'Key Circuits',    createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-ud-env', 'ws-art-concept-lab', 'ws-art-env-byers', 'ws-art-env-starcourt'] },
-    { id: 'coll-hero-shots',        name: 'Hero Shots',       createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-020-010', 'ws-vfx-comp-eleven'] },
+    { id: 'coll-creature-designs',  name: 'Car Designs', createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-demogorgon', 'ws-art-concept-creature', 'ws-art-char-eleven'], boundDepartmentId: 'art-design' },
+    { id: 'coll-key-locations',     name: 'Key Circuits',    createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-ud-env', 'ws-art-concept-lab', 'ws-art-env-byers', 'ws-art-env-starcourt'], boundDepartmentId: 'art-design' },
+    { id: 'coll-hero-shots',        name: 'Hero Shots',       createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-020-010', 'ws-vfx-comp-eleven'], boundDepartmentId: 'vfx' },
     // Workspace collections (folder-bound, live sync) — ongoing cross-department workflows
     { id: 'coll-cam-selects',      name: 'Camera Selects',   createdBy: 'tnakamura@netflix.com', assetIds: [], boundFolderId: 'ws-cam-selects', boundDepartmentId: 'camera' },
     { id: 'coll-cam-lens-data',    name: 'Lens Data',        createdBy: 'tnakamura@netflix.com', assetIds: [], boundFolderId: 'ws-cam-lensmaps', boundDepartmentId: 'camera' },
     // Curated collections (snapshot shares — discrete handoffs)
-    { id: 'coll-cam-dailies',      name: 'Dailies (concept reference)', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'] },
-    { id: 'coll-vfx-vendor-drop',  name: 'Framestore Drop',  createdBy: 'schen@netflix.com', assetIds: [] },
+    { id: 'coll-cam-dailies',      name: 'Dailies (concept reference)', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'], boundDepartmentId: 'camera' },
+    { id: 'coll-vfx-vendor-drop',  name: 'Framestore Drop',  createdBy: 'schen@netflix.com', assetIds: [], boundDepartmentId: 'vfx' },
   ],
 
   cuts: [
-    // EP301 — full progression: Locked Cut 1-3 → Netflix Cut → Final Cut → EMF
+    // EP301 — full progression: Locked Cut 1-3 → Final Cut → EMF
     { id: 'cut-ep301-lc-1', name: 'EP301 Locked Cut 1', episode: 'EP301', stage: 'locked-cut', version: 1, assetVersion: '1.0',
       constituents: ['ws-edit-cut-1', 'ws-audio-sfx-1', 'ws-audio-sfx-2', 'ws-audio-music-1', 'ws-audio-music-theme'],
       createdBy: 'msantos@netflix.com', date: '2026-02-08', duration: '51:20',
@@ -581,10 +582,6 @@ export const SCENARIO: Scenario = {
       constituents: ['ws-edit-cut-1', 'ws-edit-exp-1', 'ws-audio-mix-1', 'ws-audio-sfx-1', 'ws-audio-sfx-2', 'ws-audio-music-1', 'ws-audio-music-2'],
       createdBy: 'msantos@netflix.com', date: '2026-02-18', duration: '50:05',
       note: 'Updated picture & subtitles; temp sound/music/ADR/VFX' },
-    { id: 'cut-ep301-nc', name: 'EP301 Netflix Cut', episode: 'EP301', stage: 'netflix-cut', version: 1, assetVersion: '4.0',
-      constituents: ['ws-edit-cut-1', 'ws-edit-exp-1', 'ws-audio-mix-1', 'ws-audio-sfx-1', 'ws-audio-music-1', 'ws-audio-music-2'],
-      createdBy: 'lkim@netflix.com', date: '2026-02-22', duration: '49:52',
-      note: 'Netflix internal review cut; near-final VFX, full 5.1 temp mix' },
     { id: 'cut-ep301-fc', name: 'EP301 Final Cut', episode: 'EP301', stage: 'final-cut', version: 1, assetVersion: '5.0',
       constituents: ['ws-edit-cut-1', 'ws-edit-exp-final', 'ws-audio-mix-1', 'ws-audio-mix-2'],
       createdBy: 'lkim@netflix.com', date: '2026-02-28', duration: '49:48',
@@ -858,6 +855,7 @@ export function buildCuts(): SeedCut[] {
 
 export function buildSeedCollections(): UserCollection[] {
   return SCENARIO.collections.map((c) => ({
+    flavor: 'collection' as const,
     id: c.id,
     name: c.name,
     assetIds: c.assetIds,

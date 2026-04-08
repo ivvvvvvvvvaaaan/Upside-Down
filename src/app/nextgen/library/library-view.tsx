@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Film, PanelRight, Info, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { PageHeader, EmptyState, SelectionBar, Button, MobileToolbar, CardGrid } from '@/components/ui'
 import { AssetCard } from '@/components/ui/asset-card'
 import { ReleaseModal } from '@/components/ui/release-modal'
-import { useCuts, usePersona, useAssetSelection, useSmartCollections, useViewPreferences, useMobilePanel, type AccessibleCutEntry } from '@/hooks'
+import { useCuts, usePersona, useAssetSelection, useSmartCollections, useViewPreferences, useMobilePanel, useAccess, type VisibleCutEntry } from '@/hooks'
 import type { SeedCut } from '@/lib/scenario'
 import { compareCutsByStageAndVersion } from '@/lib/cuts'
 import { assetToSelectionEntity } from '@/lib/selection-actions'
@@ -16,13 +16,14 @@ import type { Asset } from '@/lib/data'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
 import { AssetDetailPanelContent } from '@/components/ui/asset-detail-panel'
 
-function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, onMenuClick }: {
+function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, onMenuClick, onRequestAccess }: {
   episode: string
-  cuts: AccessibleCutEntry[]
+  cuts: VisibleCutEntry[]
   selectedIds: Set<string>
   primaryId: string | null
   onAssetClick: (asset: Asset, event: React.MouseEvent, allAssets: Asset[]) => void
   onMenuClick?: (asset: Asset) => void
+  onRequestAccess: (asset: Asset) => void
 }) {
   const allAssets = cuts.map(c => c.asset)
   return (
@@ -43,6 +44,8 @@ function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, o
             primary={primaryId === cut.asset.id}
             onClick={(a, e) => onAssetClick(a, e, allAssets)}
             onMenuClick={onMenuClick ? () => onMenuClick(cut.asset) : undefined}
+            restricted={cut.visibility === 'discoverable'}
+            onRequestAccess={onRequestAccess}
           />
         ))}
       </CardGrid>
@@ -52,7 +55,8 @@ function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, o
 
 export function LibraryView() {
   const { hydrated, isAdmin, activePersona } = usePersona()
-  const { accessibleCuts } = useCuts()
+  const { visibleCuts, accessibleCuts } = useCuts()
+  const { requestAccess } = useAccess()
   const { scopedAssets } = useSmartCollections()
   const { sidePanelOpen, setSidePanelOpen } = useViewPreferences()
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
@@ -75,15 +79,15 @@ export function LibraryView() {
   // Deduplicate: keep only the latest version per episode+stage, track older versions
   const { latestCuts, olderVersionsMap } = useMemo(() => {
     // Group by versionGroupId (episode+stage)
-    const groups = new Map<string, AccessibleCutEntry[]>()
-    for (const cut of accessibleCuts) {
+    const groups = new Map<string, VisibleCutEntry[]>()
+    for (const cut of visibleCuts) {
       const key = cut.asset.versionGroupId ?? cut.asset.id
       const existing = groups.get(key) ?? []
       existing.push(cut)
       groups.set(key, existing)
     }
 
-    const latest: AccessibleCutEntry[] = []
+    const latest: VisibleCutEntry[] = []
     const older = new Map<string, Asset[]>()
 
     for (const [, entries] of Array.from(groups)) {
@@ -95,11 +99,11 @@ export function LibraryView() {
     }
 
     return { latestCuts: latest, olderVersionsMap: older }
-  }, [accessibleCuts])
+  }, [visibleCuts])
 
   // Group by episode, sort by stage + version (latest first)
   const episodes = useMemo(() => {
-    const map = new Map<string, AccessibleCutEntry[]>()
+    const map = new Map<string, VisibleCutEntry[]>()
     for (const cut of latestCuts) {
       const ep = cut.asset.episode ?? 'Unknown'
       const existing = map.get(ep) ?? []
@@ -134,6 +138,10 @@ export function LibraryView() {
       .filter(a => selectedIds.has(a.id))
       .map(a => assetToSelectionEntity(a))
   }, [allCutAssets, selectedIds])
+
+  const handleRequestAccess = useCallback((asset: Asset) => {
+    requestAccess(asset.id, { id: asset.id, type: 'cut', departmentId: 'editorial' })
+  }, [requestAccess])
 
   const handleAssetClick = (asset: Asset, event: React.MouseEvent, allAssets: Asset[]) => {
     handleSelectionClick(asset, event, allAssets)
@@ -176,8 +184,8 @@ export function LibraryView() {
               <PageHeader
                 title="Cuts"
                 description={
-                  accessibleCuts.length > 0
-                    ? `${accessibleCuts.length} cuts across ${episodes.length} ${episodes.length === 1 ? 'episode' : 'episodes'}`
+                  visibleCuts.length > 0
+                    ? `${visibleCuts.length} cuts across ${episodes.length} ${episodes.length === 1 ? 'episode' : 'episodes'}`
                     : 'Cuts will appear here as they become available'
                 }
               />
@@ -202,6 +210,7 @@ export function LibraryView() {
                     primaryId={primaryId}
                     onAssetClick={handleAssetClick}
                     onMenuClick={canRelease ? handleMenuClick : undefined}
+                    onRequestAccess={handleRequestAccess}
                   />
                 ))}
               </div>

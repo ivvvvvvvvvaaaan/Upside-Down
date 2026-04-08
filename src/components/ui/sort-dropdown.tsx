@@ -53,6 +53,7 @@ export function SortDropdown({
       open={isOpen}
       onOpenChange={setIsOpen}
       iconOnly={iconOnly}
+      ghost={!iconOnly}
     >
       <SortContent
         fields={fields}

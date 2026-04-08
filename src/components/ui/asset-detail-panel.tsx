@@ -4,23 +4,178 @@ import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
 import { X, Plus } from 'lucide-react'
 import { Button } from './button'
 import { ResponsivePanel } from './responsive-panel'
-import { AccessSummary } from './access-summary'
+import { AccessModal } from './access-modal'
 import { Tag } from './tag'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import { CreativeReviewCard } from './creative-review-card'
 import type { Asset, DepartmentId } from '@/lib/data'
 import { getAssetIdVariants } from '@/lib/data'
-import type { ResourceRef } from '@/lib/grants'
+import type { ResourceRef, Grant } from '@/lib/grants'
+import { isGrantActive, profileLabel } from '@/lib/grants'
 import { useAccess, useFileTree, usePersona, useSmartCollections, useCuts } from '@/hooks'
+import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
+import { useUserCollections } from '@/hooks/useUserCollections'
+import { getReviewNoteSummary } from '@/lib/review-notes'
 import type { ReviewNoteSummary } from '@/lib/review-notes'
 import { PERSONAS } from '@/lib/personas'
+import { TEAMS } from '@/lib/teams'
+import { resolveCollectionAssetIds } from '@/lib/data'
 import { slugify } from '@/lib/smart-collection-filters'
 import { OntologySection } from './ontology-section'
 import type { ContainerItem } from './ontology-section'
 import type { RelatedAssetGroup } from '@/lib/context-relationships'
 
 import { Modal } from './modal'
+import { Avatar } from './avatar'
 import type { AssetTag } from '@/lib/data'
+
+function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName }: {
+  assetId: string
+  inheritedGrants: { grant: Grant; fromResourceName: string }[]
+  resourceRef?: ResourceRef
+  resourceName?: string
+}) {
+  const { getResourceGrants, roleGroups, canShare } = useAccess()
+  const { collections } = useUserCollections()
+  const { activePersona, isAdmin } = usePersona()
+  const [modalOpen, setModalOpen] = useState(false)
+
+  const assetVariants = useMemo(() => new Set(getAssetIdVariants(assetId)), [assetId])
+
+  // Department/inherited access (structural — not revocable from here)
+  const departmentEntries = useMemo(() => {
+    return inheritedGrants.map(({ grant, fromResourceName }) => {
+      const principal = grant.principal
+      const name = principal.type === 'user'
+        ? PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
+        : TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
+      return { grant, name, source: fromResourceName }
+    })
+  }, [inheritedGrants])
+
+  // Direct grants on this asset
+  const directGrants = useMemo(() => {
+    return getResourceGrants(assetId).filter(g => isGrantActive(g))
+  }, [assetId, getResourceGrants])
+
+  // Collection-mediated access — exclude principals already shown in department/inherited section
+  const sharedCollections = useMemo(() => {
+    const coveredPrincipals = new Set<string>()
+    for (const { grant } of inheritedGrants) {
+      const p = grant.principal
+      coveredPrincipals.add(p.type === 'user' ? `user:${p.userId}` : `team:${p.teamId}`)
+      if (p.type === 'team') {
+        const team = TEAMS.find(t => t.id === p.teamId)
+        if (team) {
+          for (const uid of team.memberUserIds) coveredPrincipals.add(`user:${uid}`)
+        }
+      }
+    }
+
+    const results: { collection: { id: string; name: string }; grants: Grant[] }[] = []
+    for (const collection of collections) {
+      const collectionAssetIds = new Set(resolveCollectionAssetIds(collection))
+      const hasAsset = Array.from(assetVariants).some(v => collectionAssetIds.has(v))
+      if (!hasAsset) continue
+      const grants = getResourceGrants(collection.id)
+        .filter(g => isGrantActive(g))
+        .filter(g => {
+          const key = g.principal.type === 'user' ? `user:${g.principal.userId}` : `team:${g.principal.teamId}`
+          return !coveredPrincipals.has(key)
+        })
+      if (grants.length === 0) continue
+      results.push({ collection: { id: collection.id, name: collection.name }, grants })
+    }
+    return results
+  }, [collections, assetVariants, getResourceGrants, inheritedGrants])
+
+  const hasAnything = departmentEntries.length > 0 || directGrants.length > 0 || sharedCollections.length > 0
+
+  return (
+    <section className="space-y-4">
+      {/* Department / inherited access */}
+      {departmentEntries.length > 0 && (
+        <div className="space-y-1">
+          {departmentEntries.map(({ grant, name, source }) => (
+            <div key={grant.id} className="flex items-center justify-between gap-2 py-0.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <Avatar name={name} size="compact" />
+                <div className="min-w-0">
+                  <span className="text-body-0-regular text-foreground truncate block">{name}</span>
+                  <span className="text-label-0-regular text-foreground-dim truncate block">{source}</span>
+                </div>
+              </div>
+              <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{profileLabel(grant.templateId, roleGroups)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Direct grants on this asset */}
+      {directGrants.length > 0 && (
+        <div className="space-y-1">
+          <h3 className="text-label-1-bold text-foreground-dim">Direct access</h3>
+          {directGrants.map(grant => {
+            const principal = grant.principal
+            const name = principal.type === 'user'
+              ? PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
+              : TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
+            return (
+              <div key={grant.id} className="flex items-center justify-between gap-2 py-0.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Avatar name={name} size="compact" />
+                  <span className="text-body-0-regular text-foreground truncate">{name}</span>
+                </div>
+                <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{profileLabel(grant.templateId, roleGroups)}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Collection-mediated access */}
+      {sharedCollections.map(({ collection, grants }) => (
+        <div key={collection.id} className="space-y-1">
+          <h3 className="text-label-1-bold text-foreground-dim">Via <a href={`/nextgen/collections/${collection.id}`} className="hover:text-foreground transition-colors underline">{collection.name}</a></h3>
+          {grants.map(grant => {
+            const principal = grant.principal
+            const name = principal.type === 'user'
+              ? PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
+              : TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
+            return (
+              <div key={grant.id} className="flex items-center justify-between gap-2 py-0.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Avatar name={name} size="compact" />
+                  <span className="text-body-0-regular text-foreground truncate">{name}</span>
+                </div>
+                <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{profileLabel(grant.templateId, roleGroups)}</span>
+              </div>
+            )
+          })}
+        </div>
+      ))}
+
+      {!hasAnything && (
+        <p className="text-body-0-regular text-foreground-dim">Not shared</p>
+      )}
+
+      {(isAdmin || (resourceRef && canShare(resourceRef))) && (
+        <Button variant="secondary" compact onClick={() => setModalOpen(true)}>
+          Manage Access
+        </Button>
+      )}
+
+      <AccessModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        resourceId={assetId}
+        resourceRef={resourceRef}
+        inheritedGrants={inheritedGrants.map(ig => ({ grant: ig.grant, fromResourceName: ig.fromResourceName }))}
+        title={resourceName}
+      />
+    </section>
+  )
+}
 
 function TagManagerModal({
   open,
@@ -51,9 +206,9 @@ function TagManagerModal({
       <div className="p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-body-1-bold text-foreground">Manage Tags</h2>
-          <button onClick={onClose} className="p-1 rounded hover:bg-surface-3 text-foreground-dim hover:text-foreground transition-colors">
+          <Button variant="icon" compact onClick={onClose}>
             <X className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
 
         {systemTags.length > 0 && (
@@ -173,11 +328,20 @@ export function AssetDetailPanelContent({
   olderVersions,
   onVersionSelect,
 }: AssetDetailPanelContentProps) {
-  const { getInheritedGrants, getCollectionRippleGrants, visibleCollections, canEdit } = useAccess()
+  const { getInheritedGrants, getCollectionRippleGrants, visibleCollections, canEdit, canAccess } = useAccess()
   const { activePersona } = usePersona()
   const { getDepartmentFiles } = useFileTree()
   const { getCollection, scopedAssets } = useSmartCollections()
   const { getCutsForAsset } = useCuts()
+
+  // Auto-resolve review note summary if not passed as prop
+  const resolvedReviewNoteSummary = useMemo(() => {
+    if (reviewNoteSummary !== undefined && reviewNoteSummary !== null) return reviewNoteSummary
+    if (!asset) return null
+    // Check by asset ID, then by source file IDs
+    return getReviewNoteSummary(asset.id)
+      ?? (asset.sourceFolderIds?.map(id => getReviewNoteSummary(id)).find(Boolean) ?? null)
+  }, [reviewNoteSummary, asset])
 
   const resourceRef: ResourceRef | undefined = asset ? {
     id: asset.id,
@@ -185,12 +349,17 @@ export function AssetDetailPanelContent({
     departmentId: asset.department,
   } : undefined
 
-  const inheritedGrants = useMemo(() => {
+  const folderInheritedGrants = useMemo(() => {
     if (!asset) return []
-    const folderGrants = getInheritedGrants(asset.id)
+    return getInheritedGrants(asset.id)
+  }, [asset, getInheritedGrants])
+
+  // Combined for the Manage Access modal (needs full picture)
+  const allInheritedGrants = useMemo(() => {
+    if (!asset) return []
     const collectionGrants = getCollectionRippleGrants(asset.id)
-    return [...folderGrants, ...collectionGrants]
-  }, [asset, getInheritedGrants, getCollectionRippleGrants])
+    return [...folderInheritedGrants, ...collectionGrants]
+  }, [asset, folderInheritedGrants, getCollectionRippleGrants])
 
   // User tags from localStorage
   const [userTagsMap, setUserTagsMap] = useState<Record<string, string[]>>({})
@@ -230,14 +399,16 @@ export function AssetDetailPanelContent({
     if (!asset) return null
     if (!asset.department || !asset.workspacePath) return null
 
-    const pathParts = asset.workspacePath.split(' / ').filter(Boolean)
+    const pathParts = asset.workspacePath.split('/').filter(Boolean)
     const folderNames = pathParts.slice(0, -1)
     const fullLabel = `/Apex S1/${DEPARTMENT_NAMES[asset.department]}${folderNames.length > 0 ? `/${folderNames.join('/')}` : ''}`
 
     if (folderNames.length === 0) {
+      const deptRootId = DEPARTMENT_FOLDER_MAP[asset.department]?.id
       return {
         label: fullLabel,
         href: `/nextgen/workspace/${asset.department}`,
+        folderId: deptRootId,
       }
     }
 
@@ -247,7 +418,7 @@ export function AssetDetailPanelContent({
     for (const folderName of folderNames) {
       const match = currentNodes.find((node) => node.type === 'folder' && node.name === folderName)
       if (!match || match.type !== 'folder') {
-        return { label: fullLabel, href: null }
+        return { label: fullLabel, href: null, folderId: undefined }
       }
       folderIds.push(match.id)
       currentNodes = match.children ?? []
@@ -256,6 +427,7 @@ export function AssetDetailPanelContent({
     return {
       label: fullLabel,
       href: `/nextgen/workspace/${asset.department}/${folderIds.join('/')}`,
+      folderId: folderIds[folderIds.length - 1],
     }
   }, [asset, getDepartmentFiles])
 
@@ -284,7 +456,7 @@ export function AssetDetailPanelContent({
   const constituentAssets = useMemo(() => {
     if (!asset || asset.kind !== 'cut' || !asset.constituents) return []
     return asset.constituents
-      .map(cid => scopedAssets.find(a => a.id === cid || a.id === `inst-${cid}`))
+      .map(cid => scopedAssets.find(a => a.id === cid))
       .filter((a): a is Asset => !!a)
   }, [asset, scopedAssets])
 
@@ -362,8 +534,9 @@ export function AssetDetailPanelContent({
       key: `workspace-${workspaceFolderInfo.label}`,
       label: workspaceFolderInfo.label,
       href: workspaceFolderInfo.href,
-      kind: 'Folder',
-      icon: 'folder' as const,
+      kind: 'Collection',
+      icon: 'collection' as const,
+      locked: workspaceFolderInfo.folderId ? !canAccess(workspaceFolderInfo.folderId) : false,
     }] : []),
     ...orderedCollectionItems
       .filter(item => !item.isActive)
@@ -524,11 +697,15 @@ export function AssetDetailPanelContent({
               const allTags = [...assetTags, ...userTags]
               // Get the typeTag (first system tag that isn't a status) to filter duplicate keywords
               const typeTagLabel = assetTags.find(t => t.source === 'system' && t.label !== 'Key Art' && t.label !== 'Final')?.label?.toLowerCase()
+              const seen = new Set<string>()
               const displayTags = allTags.filter(t => {
                 // Remove system tags except Key Art / Final
                 if (t.source === 'system' && t.label !== 'Key Art' && t.label !== 'Final') return false
                 // Remove AI keywords that are part of the typeTag (e.g. "Plate" when typeTag is "VFX Plate")
                 if (t.source === 'ai' && typeTagLabel && typeTagLabel.includes(t.label.toLowerCase())) return false
+                // Deduplicate by label
+                if (seen.has(t.label)) return false
+                seen.add(t.label)
                 return true
               })
               return (
@@ -568,6 +745,10 @@ export function AssetDetailPanelContent({
                 </section>
               )
             })()}
+
+            {resolvedReviewNoteSummary && (
+              <CreativeReviewCard summary={resolvedReviewNoteSummary} />
+            )}
           </TabsContent>
 
           <TabsContent value="connections" className="px-4 pb-4 space-y-4">
@@ -584,16 +765,13 @@ export function AssetDetailPanelContent({
               constituents={constituentAssets.length > 0 ? constituentAssets : undefined}
               containers={containerItems}
             />
-            {reviewNoteSummary && (
-              <CreativeReviewCard summary={reviewNoteSummary} />
-            )}
           </TabsContent>
 
           <TabsContent value="access" className="px-4 pb-4">
-            <AccessSummary
-              resourceId={asset.id}
+            <AssetAccessView
+              assetId={asset.id}
+              inheritedGrants={folderInheritedGrants}
               resourceRef={resourceRef}
-              inheritedGrants={inheritedGrants}
               resourceName={asset.name}
             />
           </TabsContent>

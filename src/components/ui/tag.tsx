@@ -53,7 +53,7 @@ export interface TagProps extends React.HTMLAttributes<HTMLSpanElement> {
   children: React.ReactNode
   size?: 'compact' | 'standard'
   type?: 'neutral' | 'positive' | 'negative' | 'notice' | 'informative' | 'announcement'
-  variant?: 'fill' | 'border'
+  variant?: 'fill' | 'border' | 'glass'
 }
 
 export function Tag({
@@ -64,7 +64,9 @@ export function Tag({
   variant = 'fill',
   ...props
 }: TagProps) {
-  const colorClasses = variant === 'fill' ? FILL_COLORS[type] : BORDER_COLORS[type]
+  const colorClasses = variant === 'glass'
+    ? 'bg-white/15 text-foreground backdrop-blur-sm'
+    : variant === 'fill' ? FILL_COLORS[type] : BORDER_COLORS[type]
 
   return (
     <span

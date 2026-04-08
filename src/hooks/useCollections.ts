@@ -3,61 +3,31 @@
  *
  * Wraps useUserCollections and useSmartCollections behind a single API.
  * Both providers continue to manage their own state — this hook presents
- * a combined view. Consumers that only need the unified view import this;
- * consumers that need flavor-specific operations can still use the
- * underlying hooks directly.
+ * a combined view.
  */
 
 import { useMemo, useCallback } from 'react'
 import { useUserCollections } from './useUserCollections'
-import { useSmartCollections } from './useSmartCollections'
+import type { UserCollection } from './useUserCollections'
+import { useSmartCollections, matchesFilter } from './useSmartCollections'
+import { useAccess } from './useAccess'
 import type { Asset } from '@/lib/data'
-import type {
-  Collection,
-  CuratedCollection,
-  SmartCollectionEntry,
-} from '@/lib/collection-types'
-import {
-  fromUserCollection,
-  fromSmartCollection,
-} from '@/lib/collection-types'
+import type { Collection, SmartCollectionEntry } from '@/lib/collection-types'
 import type { RelatedCollections } from './useSmartCollections'
 
 export interface UseCollectionsValue {
-  /** All collections across all flavors */
   allCollections: Collection[]
-
-  /** Collections visible to the active persona */
   visibleCollections: Collection[]
-
-  /** Look up any collection by ID */
   getCollection: (id: string) => Collection | undefined
-
-  /** Create a curated collection (wraps useUserCollections.createCollection) */
-  createCurated: (name: string, assetIds: string[]) => CuratedCollection
-
-  /** Add assets to a curated collection */
+  createCurated: (name: string, assetIds: string[]) => UserCollection
   addAssetsToCurated: (id: string, assetIds: string[]) => void
-
-  /** Delete a collection (curated or smart) */
   deleteCollection: (id: string) => boolean
-
-  /** Get children of a smart collection (groupBy sub-collections) */
   getChildren: (parentId: string) => SmartCollectionEntry[]
-
-  /** Get related collections for a smart collection */
   getRelatedCollections: (collectionId: string) => RelatedCollections
-
-  /** Get related collections from an arbitrary asset list */
   getRelatedCollectionsForAssets: (assets: Asset[]) => RelatedCollections
-
-  /** Filter assets by a smart collection's rules */
   filterAssets: (assets: Asset[], collectionId: string) => Asset[]
-
-  /** All assets in the system (persona-scoped) */
+  getAssetCount: (collectionId: string) => number
   scopedAssets: Asset[]
-
-  /** Whether assets have been loaded */
   assetsLoaded: boolean
   assetsLoading: boolean
   ensureAssetsLoaded: () => Promise<void>
@@ -66,41 +36,32 @@ export interface UseCollectionsValue {
 export function useCollections(): UseCollectionsValue {
   const userCollections = useUserCollections()
   const smartCollections = useSmartCollections()
-
-  const curatedCollections = useMemo(
-    () => userCollections.collections.map(fromUserCollection),
-    [userCollections.collections],
-  )
+  const {
+    visibleCollections: accessibleUserCollections,
+    getCollectionAssetCount: getCuratedAssetCount,
+  } = useAccess()
 
   const allCollections = useMemo((): Collection[] => {
-    return [...curatedCollections, ...smartCollections.allCollections.map(fromSmartCollection)]
-  }, [curatedCollections, smartCollections.allCollections])
+    return [...userCollections.collections, ...smartCollections.allCollections]
+  }, [userCollections.collections, smartCollections.allCollections])
 
   const visibleCollections = useMemo((): Collection[] => {
-    return [...curatedCollections, ...smartCollections.visibleCollections.map(fromSmartCollection)]
-  }, [curatedCollections, smartCollections.visibleCollections])
+    return [...accessibleUserCollections, ...smartCollections.visibleCollections]
+  }, [accessibleUserCollections, smartCollections.visibleCollections])
 
-  // Unified lookup — check both providers
   const getCollection = useCallback((id: string): Collection | undefined => {
-    const uc = userCollections.getCollection(id)
-    if (uc) return fromUserCollection(uc)
-    const sc = smartCollections.getCollection(id)
-    if (sc) return fromSmartCollection(sc)
-    return undefined
+    return userCollections.getCollection(id)
+      ?? smartCollections.getCollection(id)
   }, [userCollections, smartCollections])
 
-  // Create curated collection (delegates to user collections)
-  const createCurated = useCallback((name: string, assetIds: string[]): CuratedCollection => {
-    const uc = userCollections.createCollection(name, assetIds)
-    return fromUserCollection(uc) as CuratedCollection
+  const createCurated = useCallback((name: string, assetIds: string[]): UserCollection => {
+    return userCollections.createCollection(name, assetIds)
   }, [userCollections])
 
-  // Add assets to curated collection
   const addAssetsToCurated = useCallback((id: string, assetIds: string[]) => {
     userCollections.addAssetsToCollection(id, assetIds)
   }, [userCollections])
 
-  // Delete — try user collection first, then smart
   const deleteCollection = useCallback((id: string): boolean => {
     const uc = userCollections.getCollection(id)
     if (uc) {
@@ -110,9 +71,8 @@ export function useCollections(): UseCollectionsValue {
     return smartCollections.deleteCollection(id)
   }, [userCollections, smartCollections])
 
-  // Smart-collection-specific operations (pass through)
   const getChildren = useCallback((parentId: string): SmartCollectionEntry[] => {
-    return smartCollections.getChildren(parentId).map(fromSmartCollection)
+    return smartCollections.getChildren(parentId)
   }, [smartCollections])
 
   const getRelatedCollections = useCallback((collectionId: string): RelatedCollections => {
@@ -127,6 +87,14 @@ export function useCollections(): UseCollectionsValue {
     return smartCollections.filterAssets(assets, collectionId)
   }, [smartCollections])
 
+  const getAssetCount = useCallback((collectionId: string): number => {
+    const curatedCount = getCuratedAssetCount(collectionId)
+    if (curatedCount > 0) return curatedCount
+    const sc = smartCollections.getCollection(collectionId)
+    if (sc) return smartCollections.scopedAssets.filter(a => matchesFilter(a, sc.filter)).length
+    return 0
+  }, [getCuratedAssetCount, smartCollections])
+
   return {
     allCollections,
     visibleCollections,
@@ -138,6 +106,7 @@ export function useCollections(): UseCollectionsValue {
     getRelatedCollections,
     getRelatedCollectionsForAssets,
     filterAssets,
+    getAssetCount,
     scopedAssets: smartCollections.scopedAssets,
     assetsLoaded: smartCollections.assetsLoaded,
     assetsLoading: smartCollections.assetsLoading,

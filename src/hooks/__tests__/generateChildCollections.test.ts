@@ -4,6 +4,7 @@ import type { Asset, SmartCollection } from '@/lib/data'
 
 function makeParent(overrides: Partial<SmartCollection> = {}): SmartCollection {
   return {
+    flavor: 'smart',
     id: 'parent-1',
     name: 'Parent',
     icon: 'character',

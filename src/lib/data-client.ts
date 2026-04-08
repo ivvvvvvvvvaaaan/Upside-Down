@@ -13,7 +13,6 @@ export type AssetKind = 'file' | 'cut' | 'sequence'
 /** Cut progression stages */
 export type CutStage =
   | 'locked-cut'
-  | 'netflix-cut'
   | 'final-cut'
   | 'emf'
 
@@ -41,6 +40,11 @@ export type TextMetadata = {
 export type AudioMetadata = {
   duration?: string
   typeTag?: string
+}
+
+export type SequenceMetadata = {
+  sequence?: string
+  shot?: string
 }
 
 export type { DepartmentId } from '@/components/department/types'
@@ -71,6 +75,7 @@ export type AssetFilter = {
 export type SmartCollectionGroupBy = 'characters' | 'locations' | 'scenes' | 'takes' | 'cameras'
 
 export type SmartCollection = {
+  flavor: 'smart'
   id: string
   name: string
   icon: SmartCollectionIcon
@@ -124,6 +129,7 @@ export type Asset = {
   imageMeta?: ImageMetadata
   textMeta?: TextMetadata
   audioMeta?: AudioMetadata
+  sequenceMeta?: SequenceMetadata
   collectionIds?: string[]
   department?: DepartmentId
   isKeyArt?: boolean
@@ -336,9 +342,34 @@ for (const asset of PROTOTYPE_ASSETS) {
   }
 }
 
-/** Get asset IDs for assets in a given folder (by sourceFolderIds) */
+/** Get asset IDs for assets in a given folder (by sourceFolderIds) — direct children only */
 export function getAssetIdsForFolder(folderId: string): string[] {
   return (PROTOTYPE_ASSETS_BY_FOLDER.get(folderId) ?? []).map(a => a.id)
+}
+
+/** Get asset IDs for a folder and all its subfolders recursively */
+export function getAssetIdsForFolderRecursive(folderId: string, tree: { id: string; children?: { id: string; children?: unknown[] }[] }[]): string[] {
+  const ids = [...getAssetIdsForFolder(folderId)]
+  const findNode = (nodes: typeof tree, id: string): typeof tree[0] | null => {
+    for (const n of nodes) {
+      if (n.id === id) return n
+      if (n.children) {
+        const found = findNode(n.children as typeof tree, id)
+        if (found) return found
+      }
+    }
+    return null
+  }
+  const node = findNode(tree, folderId)
+  if (!node?.children) return ids
+  const walk = (children: typeof tree) => {
+    for (const child of children) {
+      ids.push(...getAssetIdsForFolder(child.id))
+      if (child.children) walk(child.children as typeof tree)
+    }
+  }
+  walk(node.children as typeof tree)
+  return ids
 }
 
 function uniquePreviewImages(images: Array<string | undefined>, max: number = 6): string[] | undefined {
@@ -347,7 +378,7 @@ function uniquePreviewImages(images: Array<string | undefined>, max: number = 6)
 }
 
 function getPrototypeAsset(assetId: string): Asset | undefined {
-  return PROTOTYPE_ASSET_BY_ID.get(assetId) ?? PROTOTYPE_ASSET_BY_ID.get(`inst-${assetId}`)
+  return PROTOTYPE_ASSET_BY_ID.get(assetId)
 }
 
 function getAssetPreviewImages(assetIds: string[], max: number = 6): string[] | undefined {

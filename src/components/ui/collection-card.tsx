@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils'
 import { Avatar } from './avatar'
 import { Button } from './button'
+import { Dropdown } from './dropdown'
 import { Folder, FolderSymlink, FolderLock, MoreVertical, Zap } from 'lucide-react'
 import Image from 'next/image'
 
@@ -96,6 +97,8 @@ export interface CollectionCardProps extends React.HTMLAttributes<HTMLDivElement
   onDoubleClick?: () => void
   /** Three-dots menu click handler (folders) */
   onMenuClick?: (e: React.MouseEvent) => void
+  /** Dropdown menu content — renders inside a Dropdown anchored to the three-dots button */
+  menuContent?: React.ReactNode
 }
 
 export function CollectionCard({
@@ -114,6 +117,7 @@ export function CollectionCard({
   isSelected: isSelectedProp,
   onDoubleClick,
   onMenuClick,
+  menuContent,
   onClick,
   className,
   ...props
@@ -417,7 +421,13 @@ export function CollectionCard({
               {accessIcon}
             </div>
           )}
-          {onMenuClick && (
+          {menuContent ? (
+            <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+              <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
+                {menuContent}
+              </Dropdown>
+            </div>
+          ) : onMenuClick ? (
             <Button
               variant="icon"
               compact
@@ -429,7 +439,7 @@ export function CollectionCard({
             >
               <MoreVertical className="w-4 h-4" />
             </Button>
-          )}
+          ) : null}
         </div>
       )
     }

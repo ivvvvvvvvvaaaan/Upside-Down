@@ -20,7 +20,7 @@ describe('getSharedResourceHref', () => {
     expect(getSharedResourceHref({
       resourceId: 'smart-finals',
       resourceType: 'smart-collection',
-    })).toBe('/nextgen/smart-collections/smart-finals')
+    })).toBe('/nextgen/collections/smart-finals')
   })
 
   it('routes folders through department workspaces', () => {

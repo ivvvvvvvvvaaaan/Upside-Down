@@ -21,10 +21,11 @@ export { FileTreeProvider, useFileTree } from './useFileTree'
 export { PersonaProvider, usePersona } from './usePersona'
 
 export { AccessProvider, useAccess } from './useAccess'
+export { useAccessCascades } from './useAccessCascades'
 
 export { useMobilePanel } from './useMobilePanel'
 
 export { useCuts } from './useCuts'
-export type { AccessibleCutEntry } from './useCuts'
+export type { AccessibleCutEntry, VisibleCutEntry } from './useCuts'
 
 export { useCollections } from './useCollections'

@@ -225,6 +225,7 @@ export function generateChildCollections(parent: SmartCollection, assets: Asset[
     }
 
     return {
+      flavor: 'smart' as const,
       id: `${parent.id}--${slugify(value)}`,
       name: value,
       icon: parent.icon,

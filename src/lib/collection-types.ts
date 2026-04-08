@@ -1,139 +1,100 @@
 /**
  * Unified Collection Type System
  *
- * Three flavors of collection, one shareable concept:
- * - Curated: manual asset picks (replaces UserCollection)
- * - Smart: filter/AI-based auto-population (replaces SmartCollection)
- * - Workspace: bound to a folder path, resolves assets at query time
+ * Two source types, one union:
+ * - UserCollection (flavor: 'collection') — manual or folder-bound asset collections
+ * - SmartCollection (flavor: 'smart') — filter/AI-based dynamic collections
  *
- * Uses a TypeScript discriminated union so each flavor has only
- * the fields it needs — no optional god-type fields.
+ * No conversion layer. The storage types ARE the display types.
  */
 
-import type { DepartmentId } from '@/components/department/types'
-import type { AssetFilter, SmartCollectionGroupBy, SmartCollectionIcon, SmartCollectionCategory } from '@/lib/data-client'
+import type { UserCollection } from '@/hooks/useUserCollections'
+import type { SmartCollection } from '@/lib/data-client'
 
-// ---------------------------------------------------------------------------
-// Discriminated union
-// ---------------------------------------------------------------------------
+// SmartCollectionEntry is just SmartCollection — kept as alias for backward compat
+export type SmartCollectionEntry = SmartCollection
 
-export type CuratedCollection = {
-  flavor: 'curated'
-  id: string
-  name: string
-  assetIds: string[]
-  createdBy?: string
-  createdAt: Date
-}
-
-export type SmartCollectionEntry = {
-  flavor: 'smart'
-  id: string
-  name: string
-  icon: SmartCollectionIcon
-  filter: AssetFilter
-  visibleToAll?: boolean
-  createdBy?: string
-  createdAt: Date
-  groupBy?: SmartCollectionGroupBy
-  parentId?: string
-  category?: SmartCollectionCategory
-}
-
-export type WorkspaceCollection = {
-  flavor: 'workspace'
-  id: string
-  name: string
-  boundFolderId: string
-  boundDepartmentId: DepartmentId
-  createdBy?: string
-  createdAt: Date
-}
-
-export type Collection = CuratedCollection | SmartCollectionEntry | WorkspaceCollection
+export type Collection = UserCollection | SmartCollectionEntry
 
 // ---------------------------------------------------------------------------
 // Type guards
 // ---------------------------------------------------------------------------
 
-export function isCurated(c: Collection): c is CuratedCollection {
-  return c.flavor === 'curated'
+export function isCollection(c: Collection): c is UserCollection {
+  return c.flavor === 'collection'
 }
 
 export function isSmart(c: Collection): c is SmartCollectionEntry {
   return c.flavor === 'smart'
 }
 
-export function isWorkspace(c: Collection): c is WorkspaceCollection {
-  return c.flavor === 'workspace'
+// ---------------------------------------------------------------------------
+// Capabilities — what operations a collection supports, derived from its data
+// ---------------------------------------------------------------------------
+
+export interface CollectionCapabilities {
+  canRename: boolean
+  canEditFilter: boolean
+  canDelete: boolean
+  canAddAssets: boolean
+  canShare: boolean
+  canMount: boolean
+  showAccessTab: boolean
+  /** Display label for the entity type — "Collection", "Character", "Location", etc. */
+  typeLabel: string
+  /** Icon key for the header */
+  icon: 'collection' | 'character' | 'location' | 'scene' | 'smart' | 'folder'
 }
 
-// ---------------------------------------------------------------------------
-// Conversion helpers (bridge old types to new)
-// ---------------------------------------------------------------------------
+const ONTOLOGY_ICON_TO_LABEL: Record<string, { label: string; icon: CollectionCapabilities['icon'] }> = {
+  character: { label: 'Character', icon: 'character' },
+  location: { label: 'Location', icon: 'location' },
+  scene: { label: 'Scene', icon: 'scene' },
+}
 
-import type { UserCollection } from '@/hooks/useUserCollections'
-import type { SmartCollection } from '@/lib/data-client'
+export function getCollectionCapabilities(c: Collection): CollectionCapabilities {
+  if (isSmart(c)) {
+    const isDerived = !!c.parentId
+    const ontology = ONTOLOGY_ICON_TO_LABEL[c.icon]
 
-export function fromUserCollection(uc: UserCollection): CuratedCollection | WorkspaceCollection {
-  if (uc.boundFolderId && uc.boundDepartmentId) {
+    if (isDerived && ontology) {
+      // Ontology entity — Character, Location, Scene
+      return {
+        canRename: false,
+        canEditFilter: false,
+        canDelete: true,
+        canAddAssets: false,
+        canShare: false,
+        canMount: true,
+        showAccessTab: false,
+        typeLabel: ontology.label,
+        icon: ontology.icon,
+      }
+    }
+
     return {
-      flavor: 'workspace',
-      id: uc.id,
-      name: uc.name,
-      boundFolderId: uc.boundFolderId,
-      boundDepartmentId: uc.boundDepartmentId as DepartmentId,
-      createdBy: uc.createdBy,
-      createdAt: uc.createdAt,
+      canRename: true,
+      canEditFilter: true,
+      canDelete: true,
+      canAddAssets: false,
+      canShare: true,
+      canMount: true,
+      showAccessTab: true,
+      typeLabel: 'Smart Collection',
+      icon: 'smart',
     }
   }
-  return {
-    flavor: 'curated',
-    id: uc.id,
-    name: uc.name,
-    assetIds: uc.assetIds,
-    createdBy: uc.createdBy,
-    createdAt: uc.createdAt,
-  }
-}
 
-export function fromSmartCollection(sc: SmartCollection): SmartCollectionEntry {
+  // User collections — fully mutable
   return {
-    flavor: 'smart',
-    id: sc.id,
-    name: sc.name,
-    icon: sc.icon,
-    filter: sc.filter,
-    visibleToAll: sc.visibleToAll,
-    createdBy: sc.createdBy,
-    createdAt: sc.createdAt,
-    groupBy: sc.groupBy,
-    parentId: sc.parentId,
-    category: sc.category,
-  }
-}
-
-export function toUserCollection(c: CuratedCollection): UserCollection {
-  return {
-    id: c.id,
-    name: c.name,
-    assetIds: c.assetIds,
-    createdBy: c.createdBy,
-    createdAt: c.createdAt,
-  }
-}
-
-export function toSmartCollection(c: SmartCollectionEntry): SmartCollection {
-  return {
-    id: c.id,
-    name: c.name,
-    icon: c.icon,
-    filter: c.filter,
-    visibleToAll: c.visibleToAll,
-    createdBy: c.createdBy,
-    createdAt: c.createdAt,
-    groupBy: c.groupBy,
-    parentId: c.parentId,
-    category: c.category,
+    canRename: true,
+    canEditFilter: false,
+    canDelete: true,
+    canAddAssets: true,
+    canShare: true,
+    canMount: true,
+    showAccessTab: true,
+    typeLabel: c.boundFolderId ? 'Folder' : 'Collection',
+    icon: c.boundFolderId ? 'folder' : 'collection',
   }
 }

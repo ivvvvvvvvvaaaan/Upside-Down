@@ -123,7 +123,7 @@ describe('capability decomposition', () => {
   it('getRoleGroup returns the correct group', () => {
     const editor = getRoleGroup(DEFAULT_ROLE_GROUPS, 'edit')
     expect(editor).toBeDefined()
-    expect(editor!.name).toBe('Can edit')
+    expect(editor!.name).toBe('Can Edit')
     expect(editor!.permissions).toContain('write')
     expect(editor!.permissions).not.toContain('edit-acl')
   })
@@ -147,15 +147,15 @@ describe('capability decomposition', () => {
     expect(profileCanEdit('contribute', customGroups)).toBe(true)
   })
 
-  it('resolveAccess includes explicit grant permissions in the result', () => {
+  it('resolveAccess merges explicit permissions from all active matching grants', () => {
     const result = resolveAccess('vendor-framestore', 'ws-vfx-coll-for-vendor', DEFAULT_GRANTS)
     expect(result.hasAccess).toBe(true)
     expect(result.effectiveProfile).toBe('view')
-    expect(result.permissions).toEqual(['open', 'download'])
+    expect(result.permissions).toEqual(['open', 'download', 'upload'])
     expect(result.canEdit).toBe(false)
   })
 
-  it('resolveAccess respects custom role groups for explicit department-root access', () => {
+  it('resolveAccess preserves snapped grant permissions when role-group templates change', () => {
     const customGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS.map((group) =>
       group.id === 'manage'
         ? { ...group, permissions: ['open'] as Permission[] }
@@ -165,8 +165,10 @@ describe('capability decomposition', () => {
     const result = resolveAccess('vfx-supervisor', 'ws-vfx', DEFAULT_GRANTS, customGroups)
     expect(result.hasAccess).toBe(true)
     expect(result.effectiveProfile).toBe('manage')
-    expect(result.canEdit).toBe(false)
-    expect(result.permissions).toEqual(['open'])
+    expect(result.canEdit).toBe(true)
+    expect(result.permissions).toEqual(
+      DEFAULT_ROLE_GROUPS.find((group) => group.id === 'manage')!.permissions,
+    )
   })
 
   it('userHasAccess requires open permission on matching grants', () => {

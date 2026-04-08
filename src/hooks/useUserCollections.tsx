@@ -1,15 +1,16 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react'
 import { usePersona } from './usePersona'
 import { buildSeedCollections } from '@/lib/scenario'
 import { mergeCollectionAssetIds } from '@/lib/collection-membership'
 
 /**
  * User-created collection (distinct from smart collections)
- * These are prototype-only, not persisted to backend
+ * Persisted to localStorage alongside grants so they survive refresh.
  */
 export type UserCollection = {
+  flavor: 'collection'
   id: string
   name: string
   assetIds: string[]
@@ -18,6 +19,35 @@ export type UserCollection = {
   /** If set, this collection resolves assets from a folder at query time */
   boundFolderId?: string
   boundDepartmentId?: string
+}
+
+const COLLECTIONS_STORAGE_KEY = 'user-collections'
+import { SEED_VERSION } from '@/lib/constants'
+const SEED_VERSION_KEY = 'user-collections-version'
+
+function loadStoredCollections(): UserCollection[] {
+  if (typeof window === 'undefined') return buildSeedCollections()
+  try {
+    const storedVersion = localStorage.getItem(SEED_VERSION_KEY)
+    if (storedVersion === String(SEED_VERSION)) {
+      const stored = localStorage.getItem(COLLECTIONS_STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored) as UserCollection[]
+        return parsed.map(c => ({ ...c, flavor: 'collection' as const, createdAt: new Date(c.createdAt) }))
+      }
+    } else {
+      localStorage.removeItem(COLLECTIONS_STORAGE_KEY)
+      localStorage.setItem(SEED_VERSION_KEY, String(SEED_VERSION))
+    }
+  } catch { /* fall through */ }
+  return buildSeedCollections()
+}
+
+function persistCollections(collections: UserCollection[]) {
+  try {
+    localStorage.setItem(COLLECTIONS_STORAGE_KEY, JSON.stringify(collections))
+    localStorage.setItem(SEED_VERSION_KEY, String(SEED_VERSION))
+  } catch { /* ignore */ }
 }
 
 interface UserCollectionsContextValue {
@@ -33,10 +63,29 @@ const UserCollectionsContext = createContext<UserCollectionsContextValue | null>
 
 export function UserCollectionsProvider({ children }: { children: ReactNode }) {
   const { activePersona } = usePersona()
-  const [collections, setCollections] = useState<UserCollection[]>(buildSeedCollections)
+  const [collections, setCollectionsState] = useState<UserCollection[]>(loadStoredCollections)
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== COLLECTIONS_STORAGE_KEY) return
+      setCollectionsState(loadStoredCollections())
+    }
+
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
+
+  const setCollections = useCallback((action: UserCollection[] | ((prev: UserCollection[]) => UserCollection[])) => {
+    setCollectionsState((prev) => {
+      const next = typeof action === 'function' ? action(prev) : action
+      persistCollections(next)
+      return next
+    })
+  }, [])
 
   const createCollection = useCallback((name: string, assetIds: string[]): UserCollection => {
     const newCollection: UserCollection = {
+      flavor: 'collection',
       id: `user-col-${Date.now()}`,
       name,
       assetIds,
@@ -45,13 +94,17 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
     }
     setCollections(prev => [...prev, newCollection])
     return newCollection
-  }, [activePersona])
+  }, [activePersona, setCollections])
 
   const createWorkspaceCollection = useCallback((name: string, folderId: string, departmentId: string): UserCollection => {
+    const existing = collections.find(c => c.boundFolderId === folderId)
+    if (existing) return existing
+
     const newCollection: UserCollection = {
+      flavor: 'collection',
       id: `ws-col-${Date.now()}`,
       name,
-      assetIds: [], // resolved at query time from boundFolderId
+      assetIds: [],
       createdAt: new Date(),
       createdBy: activePersona?.email,
       boundFolderId: folderId,
@@ -59,7 +112,7 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
     }
     setCollections(prev => [...prev, newCollection])
     return newCollection
-  }, [activePersona])
+  }, [activePersona, setCollections, collections])
 
   const addAssetsToCollection = useCallback((id: string, assetIds: string[]) => {
     if (assetIds.length === 0) return
@@ -70,11 +123,11 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
         assetIds: mergeCollectionAssetIds(collection.assetIds, assetIds),
       }
     }))
-  }, [])
+  }, [setCollections])
 
   const deleteCollection = useCallback((id: string) => {
     setCollections(prev => prev.filter(c => c.id !== id))
-  }, [])
+  }, [setCollections])
 
   const getCollection = useCallback((id: string): UserCollection | undefined => {
     return collections.find(c => c.id === id)

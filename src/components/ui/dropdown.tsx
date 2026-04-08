@@ -34,6 +34,10 @@ export interface DropdownProps {
   onOpenChange?: (open: boolean) => void
   /** Show only icon in trigger (uses Button) */
   iconOnly?: boolean
+  /** Compact sizing for icon-only triggers */
+  compact?: boolean
+  /** Ghost trigger: no border, no background, no chevron */
+  ghost?: boolean
 }
 
 const TRIANGLE = (
@@ -41,6 +45,32 @@ const TRIANGLE = (
     <path d="M2 4.5L6 8.5L10 4.5H2Z" />
   </svg>
 )
+
+export interface DropdownMenuItemProps {
+  icon?: React.ReactNode
+  label: string
+  onClick: () => void
+  destructive?: boolean
+}
+
+export function DropdownMenuItem({ icon, label, onClick, destructive }: DropdownMenuItemProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'w-full flex items-center gap-2 px-3 py-1.5 text-body-0-regular hover:bg-surface-3 transition-colors text-left',
+        destructive ? 'text-foreground-system-error' : 'text-foreground',
+      )}
+    >
+      {icon && <span className="w-4 h-4 flex items-center justify-center flex-shrink-0">{icon}</span>}
+      <span>{label}</span>
+    </button>
+  )
+}
+
+export function DropdownMenuDivider() {
+  return <div className="my-1 border-t border-border-dim" />
+}
 
 export function Dropdown({
   label,
@@ -54,6 +84,8 @@ export function Dropdown({
   open,
   onOpenChange,
   iconOnly = false,
+  compact = false,
+  ghost = false,
 }: DropdownProps) {
   const widthClasses = {
     auto: 'w-auto',
@@ -69,7 +101,7 @@ export function Dropdown({
         {iconOnly ? (
           <Button
             variant="icon"
-            size="icon"
+            compact={compact}
             disabled={disabled}
             className={triggerClassName}
             aria-label={label}
@@ -81,16 +113,20 @@ export function Dropdown({
             type="button"
             disabled={disabled}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded border border-border-dim',
-              'bg-transparent hover:border-border-subtle transition-colors',
+              'inline-flex items-center justify-between gap-1.5 rounded transition-colors',
               'text-foreground disabled:opacity-50',
-              size === 'compact' ? 'h-8 px-2 text-label-0-regular' : 'h-10 px-3 text-body-0-regular',
+              ghost
+                ? 'bg-transparent hover:bg-surface-highlight'
+                : 'border border-border-dim bg-surface-highlight hover:border-border-subtle',
+              ghost
+                ? (size === 'compact' ? 'h-8 px-3 text-label-1-bold' : 'h-10 px-3 text-body-1-bold')
+                : (size === 'compact' ? 'h-8 px-3 text-label-0-regular' : 'h-10 px-3 text-body-0-regular'),
               triggerClassName,
             )}
           >
             {icon}
             <span className="truncate">{label}</span>
-            {TRIANGLE}
+            {!ghost && TRIANGLE}
           </button>
         )}
       </PopoverTrigger>

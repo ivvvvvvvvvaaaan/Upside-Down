@@ -64,7 +64,7 @@ export function ResponsivePanel({ open, onClose, children, className }: Responsi
   return (
     <div
       className={cn(
-        'w-[360px] flex-shrink-0 border-l border-border bg-surface-1 flex flex-col h-full',
+        'w-[360px] flex-shrink-0 border-l border-border-dim bg-surface-1 flex flex-col h-full',
         !open && 'hidden',
         className,
       )}

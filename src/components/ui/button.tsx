@@ -45,7 +45,7 @@ const buttonVariants = cva(
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         secondary: "bg-transparent border border-border-subtle text-foreground dark:border-border-inverse-subtle dark:text-foreground hover:bg-surface-highlight dark:hover:bg-white/10 disabled:bg-transparent disabled:opacity-40 disabled:border-opacity-20",
         "secondary-destructive":
-          "bg-transparent border border-destructive-secondary-border border-opacity-40 text-destructive-secondary-foreground hover:bg-destructive/10",
+          "bg-transparent border border-destructive-secondary-border border-opacity-40 text-foreground-system-error hover:bg-white/10 focus-visible:ring-border-system-error focus-visible:ring-offset-2",
         tertiary: "bg-transparent text-foreground hover:bg-surface-highlight dark:hover:bg-white/10",
         icon: "bg-transparent text-foreground hover:bg-surface-highlight dark:hover:bg-white/10",
       },

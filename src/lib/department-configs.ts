@@ -8,6 +8,7 @@ export const departmentConfigs: Record<DepartmentId, DepartmentConfig> = {
     description: 'Concept art, storyboards, and design assets',
     smartCollectionTypes: ['character', 'location', 'scene'],
     userCollectionType: 'art-type',
+    color: 'bg-purple-500',
   },
   vfx: {
     id: 'vfx',
@@ -16,6 +17,7 @@ export const departmentConfigs: Record<DepartmentId, DepartmentConfig> = {
     description: 'Visual effects, compositing, and 3D assets',
     smartCollectionTypes: ['character', 'location', 'scene'],
     userCollectionType: 'art-type',
+    color: 'bg-blue-500',
   },
   camera: {
     id: 'camera',
@@ -24,6 +26,7 @@ export const departmentConfigs: Record<DepartmentId, DepartmentConfig> = {
     description: 'Dailies, camera tests, and production footage',
     smartCollectionTypes: ['scene'],
     userCollectionType: 'art-type',
+    color: 'bg-green-500',
   },
   editorial: {
     id: 'editorial',
@@ -32,6 +35,7 @@ export const departmentConfigs: Record<DepartmentId, DepartmentConfig> = {
     description: 'Cuts, color passes, and delivery masters',
     smartCollectionTypes: ['scene'],
     userCollectionType: 'art-type',
+    color: 'bg-yellow-500',
   },
   'audio-sound': {
     id: 'audio-sound',
@@ -40,5 +44,6 @@ export const departmentConfigs: Record<DepartmentId, DepartmentConfig> = {
     description: 'Production sound, SFX, foley, and music',
     smartCollectionTypes: ['scene'],
     userCollectionType: 'art-type',
+    color: 'bg-red-500',
   },
 }

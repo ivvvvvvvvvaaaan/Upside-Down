@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useCallback, useMemo, useRef, type
 import type { SmartCollection, SmartCollectionGroupBy, AssetFilter, Asset, SmartCollectionIcon } from '@/lib/data'
 import { mergePrototypeAssets } from '@/lib/prototype-assets'
 import { matchesFilter, slugify, generateChildCollections } from '@/lib/smart-collection-filters'
+import { useAccessCascades } from './useAccessCascades'
 import { useAccess } from './useAccess'
 import { usePersona } from './usePersona'
 
@@ -13,6 +14,7 @@ export { matchesFilter } from '@/lib/smart-collection-filters'
 // System default smart collections — visible to everyone
 const SYSTEM_DEFAULTS: SmartCollection[] = [
   {
+    flavor: 'smart',
     id: 'smart-character',
     name: 'Character',
     icon: 'character',
@@ -22,6 +24,7 @@ const SYSTEM_DEFAULTS: SmartCollection[] = [
     groupBy: 'characters',
   },
   {
+    flavor: 'smart',
     id: 'smart-scene',
     name: 'Scene',
     icon: 'scene',
@@ -31,6 +34,7 @@ const SYSTEM_DEFAULTS: SmartCollection[] = [
     groupBy: 'scenes',
   },
   {
+    flavor: 'smart',
     id: 'smart-location',
     name: 'Location',
     icon: 'location',
@@ -39,29 +43,12 @@ const SYSTEM_DEFAULTS: SmartCollection[] = [
     createdAt: new Date('2026-01-15'),
     groupBy: 'locations',
   },
-  {
-    id: 'smart-take',
-    name: 'Take',
-    icon: 'shot',
-    filter: { types: ['shot'] },
-    visibleToAll: true,
-    createdAt: new Date('2026-01-15'),
-    groupBy: 'takes',
-  },
-  {
-    id: 'smart-camera',
-    name: 'Camera',
-    icon: 'shot',
-    filter: { types: ['shot'] },
-    visibleToAll: true,
-    createdAt: new Date('2026-01-15'),
-    groupBy: 'cameras',
-  },
 ]
 
 // Seed user-created smart collections — each owned by a specific persona
 const SEED_USER_COLLECTIONS: SmartCollection[] = [
   {
+    flavor: 'smart',
     id: 'smart-finals',
     name: 'Finals',
     icon: 'shot',
@@ -70,6 +57,7 @@ const SEED_USER_COLLECTIONS: SmartCollection[] = [
     createdAt: new Date('2026-02-05'),
   },
   {
+    flavor: 'smart',
     id: 'smart-key-art',
     name: 'Key Art',
     icon: 'scene',
@@ -78,6 +66,7 @@ const SEED_USER_COLLECTIONS: SmartCollection[] = [
     createdAt: new Date('2026-02-08'),
   },
   {
+    flavor: 'smart',
     id: 'smart-low-conf',
     name: 'Needs AI Review',
     icon: 'filter',
@@ -93,8 +82,6 @@ export interface RelatedCollections {
   characters: SmartCollection[]
   scenes: SmartCollection[]
   locations: SmartCollection[]
-  takes: SmartCollection[]
-  cameras: SmartCollection[]
 }
 
 interface SmartCollectionsContextValue {
@@ -123,15 +110,20 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
   const [allAssets, setAllAssets] = useState<Asset[]>([])
   const [assetLoadState, setAssetLoadState] = useState<'idle' | 'loading' | 'loaded'>('idle')
   const assetLoadPromiseRef = useRef<Promise<void> | null>(null)
-  const { filterByAccess } = useAccess()
+  const { filterByAccess } = useAccessCascades()
+  const { canAccess, canEdit, canEditAcl } = useAccess()
   const { activePersona } = usePersona()
   const personaEmail = activePersona?.email
 
-  // Collections visible to the active persona: defaults + own creations (admin sees all)
+  // Collections visible to the active persona: defaults, own creations, or explicit shares.
   const visibleCollections = useMemo(() => {
     if (!activePersona) return collections
-    return collections.filter(c => c.visibleToAll || c.createdBy === personaEmail)
-  }, [collections, activePersona, personaEmail])
+    return collections.filter((collection) =>
+      collection.visibleToAll ||
+      collection.createdBy === personaEmail ||
+      canAccess(collection.id),
+    )
+  }, [collections, activePersona, personaEmail, canAccess])
 
   // Scoped assets: filtered by folder access when a persona is active
   const scopedAssets = useMemo(() => {
@@ -180,6 +172,7 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
     filter: AssetFilter
   ): SmartCollection => {
     const newCollection: SmartCollection = {
+      flavor: 'smart',
       id: `smart-${Date.now()}`,
       name,
       icon,
@@ -196,22 +189,31 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
     id: string,
     updates: Partial<Omit<SmartCollection, 'id' | 'visibleToAll' | 'createdAt'>>
   ) => {
-    setCollections(prev => prev.map(c =>
-      c.id === id ? { ...c, ...updates } : c
-    ))
-  }, [])
+    setCollections(prev => prev.map((collection) => {
+      if (collection.id !== id) return collection
+
+      const resourceRef = { id, type: 'smart-collection' as const }
+      const isOwner = !activePersona || collection.createdBy === personaEmail
+      const canManage = isOwner || canEdit(id) || canEditAcl(resourceRef)
+      if (!canManage) return collection
+
+      return { ...collection, ...updates }
+    }))
+  }, [activePersona, personaEmail, canEdit, canEditAcl])
 
   const deleteCollection = useCallback((id: string): boolean => {
     const target = collections.find(c => c.id === id)
     if (!target || target.visibleToAll) return false
-    if (target.createdBy && target.createdBy !== personaEmail) return false
+    const resourceRef = { id, type: 'smart-collection' as const }
+    const isOwner = !activePersona || target.createdBy === personaEmail
+    if (!isOwner && !canEditAcl(resourceRef)) return false
     setCollections(prev => prev.filter(c => c.id !== id))
     return true
-  }, [collections, personaEmail])
+  }, [collections, personaEmail, activePersona, canEditAcl])
 
   const getCollection = useCallback((id: string): SmartCollection | undefined => {
-    return allCollections.find(c => c.id === id)
-  }, [allCollections])
+    return [...visibleCollections, ...childCollections].find(c => c.id === id)
+  }, [visibleCollections, childCollections])
 
   const getChildren = useCallback((parentId: string): SmartCollection[] => {
     return childCollections.filter(c => c.parentId === parentId)
@@ -238,9 +240,6 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
     const characterValues = new Set<string>()
     const sceneValues = new Set<string>()
     const locationValues = new Set<string>()
-    const takeValues = new Set<string>()
-    const cameraValues = new Set<string>()
-
     for (const asset of assets) {
       if (skipDimension !== 'characters' && asset.aiMeta?.characters) {
         asset.aiMeta.characters.forEach(c => characterValues.add(c))
@@ -250,12 +249,6 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
       }
       if (skipDimension !== 'locations' && asset.aiMeta?.location) {
         locationValues.add(asset.aiMeta.location)
-      }
-      if (skipDimension !== 'takes' && asset.shotMeta?.take) {
-        takeValues.add(asset.shotMeta.take)
-      }
-      if (skipDimension !== 'cameras' && asset.shotMeta?.camera) {
-        cameraValues.add(asset.shotMeta.camera)
       }
     }
 
@@ -268,12 +261,6 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
         .filter((c): c is SmartCollection => !!c),
       locations: Array.from(locationValues).sort()
         .map(v => findChildByValue('locations', v))
-        .filter((c): c is SmartCollection => !!c),
-      takes: Array.from(takeValues).sort()
-        .map(v => findChildByValue('takes', v))
-        .filter((c): c is SmartCollection => !!c),
-      cameras: Array.from(cameraValues).sort()
-        .map(v => findChildByValue('cameras', v))
         .filter((c): c is SmartCollection => !!c),
     }
   }, [findChildByValue])
@@ -303,7 +290,7 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
   }, [allCollections, collections, scopedAssets, extractDimensions])
 
   const getRelatedCollections = useCallback((collectionId: string): RelatedCollections => {
-    return relationshipMap.get(collectionId) ?? { characters: [], scenes: [], locations: [], takes: [], cameras: [] }
+    return relationshipMap.get(collectionId) ?? { characters: [], scenes: [], locations: [] }
   }, [relationshipMap])
 
   // Compute relationships from an arbitrary list of assets (for user collections)

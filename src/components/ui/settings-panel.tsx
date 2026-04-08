@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Settings, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from './button'
 
 /*
  * ===========================================
@@ -26,12 +27,9 @@ export function SettingsPanel({ children, defaultOpen = false }: SettingsPanelPr
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <span className="text-body-0-bold text-foreground">Settings</span>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-1 hover:bg-surface-highlight rounded transition-colors"
-            >
-              <X className="w-3 h-3 text-foreground" />
-            </button>
+            <Button variant="icon" compact onClick={() => setIsOpen(false)}>
+              <X className="w-3 h-3" />
+            </Button>
           </div>
 
           {/* Content */}

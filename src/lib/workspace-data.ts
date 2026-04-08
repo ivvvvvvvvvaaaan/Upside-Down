@@ -1,4 +1,13 @@
 import type { DepartmentId } from '@/components/department/types'
+import type { ShareMode } from '@/lib/grants'
+
+export interface ReferenceFolderSource {
+  resourceId: string
+  resourceType: 'collection' | 'smart-collection'
+  departmentId?: DepartmentId
+  shareMode?: ShareMode
+  snapshotAssetIds?: string[]
+}
 
 /** Base file node shared by both Finder and Workspace views */
 export interface UnifiedFileNode {
@@ -9,17 +18,23 @@ export interface UnifiedFileNode {
   size?: number
   modifiedAt?: string
   modifiedBy?: string
+  departmentId?: DepartmentId
+  reference?: ReferenceFolderSource
   children?: UnifiedFileNode[]
 }
 
 export interface WorkspaceFileNode extends UnifiedFileNode {
   children?: WorkspaceFileNode[]
-  /** Provenance: which department tree this node belongs to */
-  departmentId?: DepartmentId
   /** Folder-level: zone designation (default: wip) */
   zone?: 'managed' | 'wip'
   /** Computed: true if this node is inside a managed zone */
   managedZone?: boolean
+}
+
+export function isReferenceFolder(
+  node: Pick<UnifiedFileNode, 'type' | 'reference'> | null | undefined,
+): node is UnifiedFileNode & { type: 'folder'; reference: ReferenceFolderSource } {
+  return !!node && node.type === 'folder' && !!node.reference
 }
 
 // Art Department workspace files
@@ -559,6 +574,9 @@ export const DEPARTMENT_FOLDER_MAP: Record<DepartmentId, { id: string; name: str
  * Build the full Finder workspace tree:
  *   Single project root > [department folders wrapping departmentFileMap arrays]
  */
+/** Well-known folder ID for mounted shared collections */
+export const SHARED_MOUNT_FOLDER_ID = 'ws-shared-mounts'
+
 export function getFinderWorkspaceTree(): UnifiedFileNode[] {
   const departmentFolders: UnifiedFileNode[] = (Object.keys(departmentFileMap) as DepartmentId[]).map((deptId) => {
     const meta = DEPARTMENT_FOLDER_MAP[deptId]
@@ -571,5 +589,14 @@ export function getFinderWorkspaceTree(): UnifiedFileNode[] {
     }
   })
 
-  return departmentFolders
+  // "Shared" folder — mount point for collections added via "Mount to Drive"
+  const sharedFolder: UnifiedFileNode = {
+    id: SHARED_MOUNT_FOLDER_ID,
+    name: 'Shared',
+    type: 'folder',
+    modifiedAt: new Date().toISOString().split('T')[0],
+    children: [],
+  }
+
+  return [...departmentFolders, sharedFolder]
 }

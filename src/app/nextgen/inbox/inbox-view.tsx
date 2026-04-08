@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Folder, LayoutGrid, FileText, Film } from 'lucide-react'
 import { PageHeader, EmptyState, ToggleButtonGroup, Card, Button, MobileToolbar } from '@/components/ui'
-import { FolderDown } from 'lucide-react'
 import { SharedDetailContent } from '@/components/ui/shared-side-panel'
 import { useAccess, usePersona } from '@/hooks'
 import type { GrantView } from '@/lib/grants'
@@ -13,7 +12,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { cn, formatDate } from '@/lib/utils'
 
 export function InboxView() {
-  const { sharesReceivedByMe, readShareIds, markShareRead, addToWorkspace, workspaceReferenceIds } = useAccess()
+  const { sharesReceivedByMe, readShareIds, markShareRead } = useAccess()
   const { hydrated, activePersona } = usePersona()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [filter, setFilter] = useState<'unread' | 'all'>('unread')
@@ -177,25 +176,8 @@ export function InboxView() {
           <Card className="flex-1 overflow-y-auto m-4">
             <SharedDetailContent
               entry={selectedEntry}
-              isCreator={false}
               showAccess={false}
             />
-            {activePersona?.departmentId && !workspaceReferenceIds.has(selectedEntry.id) && (
-              <div className="px-6 pb-4">
-                <Button
-                  variant="secondary"
-                  icon={<FolderDown className="w-4 h-4" />}
-                  onClick={() => addToWorkspace(selectedEntry.id, activePersona.departmentId!)}
-                >
-                  Add to Workspace
-                </Button>
-              </div>
-            )}
-            {workspaceReferenceIds.has(selectedEntry.id) && (
-              <div className="px-6 pb-4">
-                <span className="text-body-0-regular text-foreground-dim">Added to your workspace</span>
-              </div>
-            )}
           </Card>
         ) : (
           <div className="flex-1 flex items-center justify-center">

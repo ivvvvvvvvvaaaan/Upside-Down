@@ -1,6 +1,7 @@
 'use client'
 
-import { Button } from './button'
+import { ExternalLink } from 'lucide-react'
+import { Tag } from './tag'
 import { cn } from '@/lib/utils'
 import type { ReviewNoteSummary } from '@/lib/review-notes'
 
@@ -10,39 +11,43 @@ interface CreativeReviewCardProps {
 
 export function CreativeReviewCard({ summary }: CreativeReviewCardProps) {
   return (
-    <div
-      className="rounded-lg border border-indigo-500/10 p-5 space-y-4"
-      style={{ background: 'linear-gradient(135deg, rgb(var(--indigo-500) / 0.02), rgb(var(--indigo-500) / 0.08))' }}
-    >
-      <div>
-        <span className={cn(
-          'text-label-0-bold',
-          summary.active ? 'text-green-500' : 'text-foreground-dim'
-        )}>
-          {summary.active ? 'Active' : 'Completed'}
-        </span>
-        <p className="text-body-2-bold text-foreground">Review Session</p>
+    <section className="space-y-2">
+      <div className="flex items-center gap-2">
+        <h4 className="text-body-0-bold text-foreground-dim">Creative Review</h4>
+        <Tag
+          size="compact"
+          type={summary.active ? 'positive' : 'neutral'}
+          variant="fill"
+        >
+          {summary.active ? 'Active' : 'Complete'}
+        </Tag>
       </div>
 
-      <p className="text-body-0-regular text-foreground">{summary.latestSummary}</p>
+      <div className="rounded border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-2">
+        <p className="text-body-0-regular text-foreground">{summary.latestSummary}</p>
 
-      <p className="text-label-0-regular">
-        <span className="text-foreground-dim">{summary.totalNotes} notes</span>
-        <span className="text-foreground-dim"> · </span>
-        <span className={summary.unresolvedCount > 0 ? 'text-orange-500' : 'text-foreground-dim'}>
-          {summary.unresolvedCount} unresolved
-        </span>
-        <span className="text-foreground-dim"> · </span>
-        <span className="text-foreground-dim">
-          {new Date(summary.updatedAt).toLocaleDateString()}
-        </span>
-      </p>
+        <div className="flex items-center justify-between">
+          <p className="text-label-0-regular text-foreground-dim">
+            {summary.totalNotes} notes
+            <span className="mx-1">·</span>
+            <span className={cn(summary.unresolvedCount > 0 && 'text-orange-500')}>
+              {summary.unresolvedCount} unresolved
+            </span>
+            <span className="mx-1">·</span>
+            {new Date(summary.updatedAt).toLocaleDateString()}
+          </p>
 
-      <Button variant="secondary" compact asChild>
-        <a href={summary.externalUrl} target="_blank" rel="noreferrer">
-          Open in Creative Review
-        </a>
-      </Button>
-    </div>
+          <a
+            href={summary.externalUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1 text-label-0-bold text-foreground-dim hover:text-foreground-system-link transition-colors"
+          >
+            Open
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+      </div>
+    </section>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { X, ArrowRight, LayoutGrid, FileText, Film, Clock, Link2, Lock } from 'lucide-react'
+import { Button } from './button'
 import { Modal } from './modal'
 import { Tag } from './tag'
 import { Avatar } from './avatar'
@@ -111,9 +112,9 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
             <h2 className="text-body-1-bold text-foreground">Project Sharing Timeline</h2>
             <p className="text-body-0-regular text-foreground-dim">{SCENARIO.projectName} — {events.length} sharing events</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded hover:bg-surface-3 text-foreground-dim hover:text-foreground transition-colors">
+          <Button variant="icon" compact onClick={onClose}>
             <X className="w-5 h-5" />
-          </button>
+          </Button>
         </div>
 
         <div className="p-6">

@@ -6,7 +6,6 @@ import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { AccessModal } from './access-modal'
-import { BatchShareModal } from './batch-share-modal'
 import { CollectionMembershipModal } from './collection-membership-modal'
 import { useAccess } from '@/hooks'
 import { useShareAsCollection } from '@/hooks/useShareAsCollection'
@@ -58,10 +57,10 @@ export function SelectionBar({
   const { canShare, getGrantableProfiles } = useAccess()
   const { resolveShareTarget } = useShareAsCollection()
   const [showCollectionModal, setShowCollectionModal] = useState(false)
-  const [showBatchShareModal, setShowBatchShareModal] = useState(false)
   const [showAccessModal, setShowAccessModal] = useState(false)
   // Resolved share target (may differ from selected entity if folder → collection)
   const [shareTarget, setShareTarget] = useState<ShareTarget | null>(null)
+  const [batchResourceRefs, setBatchResourceRefs] = useState<ResourceRef[]>([])
 
   const evaluation = useMemo(() => evaluateSelectionActions({
     selectedEntities,
@@ -88,14 +87,17 @@ export function SelectionBar({
     if (!evaluation.actions.share.enabled) return
     if (evaluation.shareMode === 'single') {
       const entity = selectedEntities[0]
-      // Resolve folder → collection before opening share modal
       const resolved = resolveShareTarget(entity.resourceRef, entity.label)
       setShareTarget(resolved)
+      setBatchResourceRefs([])
       setShowAccessModal(true)
       return
     }
     if (evaluation.shareMode === 'batch') {
-      setShowBatchShareModal(true)
+      const refs = selectedEntities.map(e => e.resourceRef)
+      setShareTarget(null)
+      setBatchResourceRefs(refs)
+      setShowAccessModal(true)
     }
   }
 
@@ -115,13 +117,15 @@ export function SelectionBar({
               <span className="text-body-1-bold">
                 {selectionLabel}
               </span>
-              <button
+              <Button
+                variant="icon"
+                compact
                 onClick={onClear}
-                className="p-1 rounded hover:bg-white/20 transition-colors"
                 aria-label="Clear selection"
+                className="text-white hover:bg-white/20 hover:text-white"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
 
             <div className="w-px h-6 bg-white/30" />
@@ -163,22 +167,14 @@ export function SelectionBar({
         onComplete={onClear}
       />
 
-      <BatchShareModal
-        open={showBatchShareModal}
-        onClose={() => setShowBatchShareModal(false)}
-        selectedEntities={selectedEntities}
-        allowedProfiles={evaluation.allowedShareProfiles}
+      <AccessModal
+        open={showAccessModal}
+        onClose={() => { setShowAccessModal(false); setShareTarget(null); setBatchResourceRefs([]) }}
+        resourceId={shareTarget?.resourceRef.id ?? batchResourceRefs[0]?.id ?? ''}
+        resourceRef={shareTarget ? shareTarget.resourceRef as ResourceRef : batchResourceRefs[0]}
+        batchResourceRefs={batchResourceRefs.length > 1 ? batchResourceRefs : undefined}
+        title={shareTarget?.name}
       />
-
-      {shareTarget && (
-        <AccessModal
-          open={showAccessModal}
-          onClose={() => { setShowAccessModal(false); setShareTarget(null) }}
-          resourceId={shareTarget.resourceRef.id}
-          resourceRef={shareTarget.resourceRef as ResourceRef}
-          title={shareTarget.name}
-        />
-      )}
     </>
   )
 }

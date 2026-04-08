@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import {
   Stack,
@@ -19,29 +19,33 @@ import {
   NewFolderModal,
   AccessModal,
   MobileToolbar,
+  DropdownMenuItem,
+  DropdownMenuDivider,
 } from '@/components/ui'
+import { useShareAsCollection } from '@/hooks/useShareAsCollection'
+import type { ResourceRef } from '@/lib/grants'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import type { FileNode, FileViewMode } from '@/components/ui/file-explorer'
 import { ContextMenu } from '@/components/ui/context-menu'
 import type { ContextMenuItem } from '@/components/ui/context-menu'
-import { getGridColumns, useViewPreferences, useCompactBar, useWorkspaceState, useResourceSelection, useFileTree, useAccess, usePersona, useMobilePanel } from '@/hooks'
+import { getGridColumns, useViewPreferences, useCompactBar, useWorkspaceState, useResourceSelection, useFileTree, useAccess, usePersona, useMobilePanel, useCollections } from '@/hooks'
 
 import type { DepartmentId } from '@/components/department/types'
-import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
+import { DEPARTMENT_FOLDER_MAP, isReferenceFolder, SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { promotedInstanceToAsset } from '@/lib/asset-instances'
 import type { Asset } from '@/lib/data'
 import { WorkspaceSidePanel } from '@/components/department/WorkspaceSidePanel'
 import { AssetDetailPanel } from '@/components/ui/asset-detail-panel'
 import { getContextAssetGroups } from '@/lib/context-relationships'
-import { useSmartCollections } from '@/hooks'
 import { useIsMobile } from '@/hooks/useMediaQuery'
-import { List, Columns, LayoutGrid, PanelRight, Info, Lock, Users, FolderPlus } from 'lucide-react'
+import { List, Columns, LayoutGrid, PanelRight, Info, Lock, Users, FolderPlus, FolderSymlink, Share2, Settings, RefreshCw, Trash2, FilePlus, Upload } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { departmentConfigs } from '@/lib/department-configs'
 import { assetToSelectionEntity, folderToSelectionEntity } from '@/lib/selection-actions'
 import type { SelectionEntity } from '@/lib/selection-actions'
+import { materializeReferenceFolders } from '@/lib/reference-folder-utils'
 
 interface ContextMenuState {
   x: number
@@ -173,10 +177,10 @@ interface WorkspaceViewProps {
 export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolderId }: WorkspaceViewProps) {
   const router = useRouter()
   const isLanding = !departmentId
-  const { canAccess, sharesReceivedByMe, getInheritedGrants } = useAccess()
+  const { canAccess, sharesReceivedByMe, getInheritedGrants, filterByAccess } = useAccess()
   const { activePersona } = usePersona()
-  const { scopedAssets, ensureAssetsLoaded } = useSmartCollections()
-  const { layout, setLayout, cardSize, setCardSize, viewMode, setViewMode, sidePanelOpen: showPanel, setSidePanelOpen: setShowPanel } = useViewPreferences()
+  const { getCollection, filterAssets: filterCollectionAssets, scopedAssets, ensureAssetsLoaded } = useCollections()
+  const { layout, setLayout, cardSize, setCardSize, viewMode, setViewMode, sidePanelOpen: showPanel, setSidePanelOpen: setShowPanel, showMetadata, setShowMetadata } = useViewPreferences()
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(showPanel, setShowPanel)
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
   const isMobile = useIsMobile()
@@ -199,17 +203,30 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   // Always call hook (React rules); results ignored when isLanding
   } = useWorkspaceState(departmentId ?? 'art-design')
 
+  const { resolveShareTarget } = useShareAsCollection()
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [accessModalNode, setAccessModalNode] = useState<WorkspaceFileNode | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [newFolderModalOpen, setNewFolderModalOpen] = useState(false)
   const [newFolderParentPath, setNewFolderParentPath] = useState<string[]>([])
+  const uploadInputRef = useRef<HTMLInputElement>(null)
+  const [uploadTargetFolderId, setUploadTargetFolderId] = useState<string | null>(null)
   const [landingDrillPath, setLandingDrillPath] = useState<WorkspaceFileNode[]>([])
-  const { createFolder: fileTreeCreateFolder, tree: fileTree, getDepartmentFiles: getFileTreeDeptFiles } = useFileTree()
+  const { createFolder: fileTreeCreateFolder, createFile: fileTreeCreateFile, deleteNode: fileTreeDeleteNode, renameNode: fileTreeRenameNode, tree: fileTree, getDepartmentFiles: getFileTreeDeptFiles } = useFileTree()
+  const resolveReferenceNodes = useCallback((nodes: WorkspaceFileNode[]) => {
+    return materializeReferenceFolders(nodes, {
+      getCollection,
+      filterAssets: filterCollectionAssets,
+      filterByAccess,
+      scopedAssets,
+    }) as WorkspaceFileNode[]
+  }, [getCollection, filterCollectionAssets, filterByAccess, scopedAssets])
   // Workspace-level folders: top-level folders created by user (exclude department folders already rendered via departmentNodes)
   const landingFolders = useMemo(() => {
-    return fileTree.filter((f) => f.type === 'folder' && !DEPT_FOLDER_IDS.has(f.id)) as WorkspaceFileNode[]
-  }, [fileTree])
+    return resolveReferenceNodes(
+      fileTree.filter((f) => f.type === 'folder' && !DEPT_FOLDER_IDS.has(f.id)) as WorkspaceFileNode[],
+    )
+  }, [fileTree, resolveReferenceNodes])
 
   // Shared folder/collection nodes injected into the workspace landing
   const sharedFolderNodes: WorkspaceFileNode[] = useMemo(() => {
@@ -260,6 +277,9 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
     if (isLanding && isDepartmentLandingNode(node.id)) {
       return DEPARTMENT_FOLDER_MAP[node.id].id
     }
+    if (isReferenceFolder(node)) {
+      return node.reference.resourceId
+    }
     return node.id
   }, [isLanding])
 
@@ -288,6 +308,13 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
       createFolder(name, newFolderParentPath)
     }
   }, [isLanding, createFolder, fileTreeCreateFolder, newFolderParentPath])
+
+  const handleUploadFiles = useCallback((files: FileList, folderId: string) => {
+    Array.from(files).forEach(file => {
+      fileTreeCreateFile(folderId, file.name, file.name.split('.').pop())
+    })
+  }, [fileTreeCreateFile])
+
   const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
     { field: 'name', direction: 'asc' },
   ])
@@ -408,8 +435,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   const buildSelectionEntry = useCallback((node: WorkspaceFileNode): WorkspaceSelectionEntry => {
     const nodeDepartmentId = departmentId
       ?? findDepartmentIdForNode(node, getFileTreeDeptFiles)
-      ?? activePersona?.departmentId
-      ?? ALL_DEPARTMENT_IDS[0]
+      ?? (node.type === 'file' ? (activePersona?.departmentId ?? ALL_DEPARTMENT_IDS[0]) : undefined)
 
     if (node.type === 'file') {
       const asset = assetBySourceFileId.get(node.id) ?? folderNodeToAsset(node, nodeDepartmentId)
@@ -531,6 +557,9 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
       }]
     }
     if (contextMenu.node.type === 'folder') {
+      if (isReferenceFolder(contextMenu.node)) {
+        return []
+      }
       return [
         {
           label: 'New Folder',
@@ -539,17 +568,38 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
             setNewFolderParentPath([...urlPath, contextMenu.node.id])
             setNewFolderModalOpen(true)
           },
+        },
+        {
+          label: 'Upload',
+          icon: <Upload className="w-4 h-4" />,
+          onClick: () => {
+            setUploadTargetFolderId(contextMenu.node.id)
+            uploadInputRef.current?.click()
+          },
+        },
+        {
+          label: 'New File',
+          icon: <FilePlus className="w-4 h-4" />,
+          onClick: () => {
+            const names = ['SEQ010_SH040_comp_v1.exr', 'hero_closeup_final.dpx', 'ambience_pit_lane.wav', 'grade_pass_02.mov', 'concept_sketch_v3.psd', 'lens_calibration_data.csv']
+            fileTreeCreateFile(contextMenu.node.id, names[Math.floor(Math.random() * names.length)])
+          },
+        },
+        {
+          label: managedFolderIds.has(contextMenu.node.id) ? 'Disable Sync' : 'Enable Sync',
+          icon: <RefreshCw className="w-4 h-4" />,
+          onClick: () => toggleManagedZone(contextMenu.node.id),
           dividerAfter: true,
         },
         {
-          label: managedFolderIds.has(contextMenu.node.id) ? 'Unmark Managed Zone' : 'Mark as Managed Zone',
-          checked: managedFolderIds.has(contextMenu.node.id),
-          onClick: () => toggleManagedZone(contextMenu.node.id),
+          label: 'Manage Access',
+          icon: <Settings className="w-4 h-4" />,
+          onClick: () => setAccessModalNode(contextMenu.node),
         },
         {
-          label: 'Manage Access',
-          icon: <Users className="w-4 h-4" />,
-          onClick: () => setAccessModalNode(contextMenu.node),
+          label: 'Delete',
+          icon: <Trash2 className="w-4 h-4" />,
+          onClick: () => fileTreeDeleteNode(contextMenu.node.id),
         },
       ]
     }
@@ -563,13 +613,33 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   // Default panel context: show current folder or department when nothing is explicitly selected.
   // On the landing page, department cards use department ids for routing, but ACL lives on the
   // department wrapper folder ids from DEPARTMENT_FOLDER_MAP.
+  const landingDrillFolder = landingDrillPath[landingDrillPath.length - 1] ?? null
+
+  // Context node: what the user selected, or failing that, the folder they're currently in.
+  // One concept, one priority chain: selection > current folder > current location root.
+  const currentLocationNode: WorkspaceFileNode | null = useMemo(() => {
+    // Inside a department subfolder
+    if (currentFolder) return currentFolder
+    // Inside a workspace-level folder (landing drill-down)
+    if (landingDrillFolder) return landingDrillFolder
+    // At a department root
+    if (departmentId) {
+      return {
+        id: DEPARTMENT_FOLDER_MAP[departmentId].id,
+        name: departmentName,
+        type: 'folder' as const,
+        departmentId,
+        children: processedFiles,
+      }
+    }
+    return null
+  }, [currentFolder, landingDrillFolder, departmentId, departmentName, processedFiles])
+
   const effectiveNode: WorkspaceFileNode | null = useMemo(() => {
     if (primarySelectionEntry) {
       const selectedNode = primarySelectionEntry.node
-      if (
-        isLanding &&
-        Object.prototype.hasOwnProperty.call(DEPARTMENT_FOLDER_MAP, selectedNode.id)
-      ) {
+      // Landing department cards represent a department root, not the card node itself
+      if (isLanding && Object.prototype.hasOwnProperty.call(DEPARTMENT_FOLDER_MAP, selectedNode.id)) {
         const selectedDeptId = selectedNode.id as DepartmentId
         return {
           id: DEPARTMENT_FOLDER_MAP[selectedDeptId].id,
@@ -581,21 +651,8 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
       }
       return selectedNode
     }
-
-    if (currentFolder) return currentFolder
-
-    if (departmentId) {
-      return {
-        id: DEPARTMENT_FOLDER_MAP[departmentId].id,
-        name: departmentName,
-        type: 'folder' as const,
-        departmentId,
-        children: processedFiles,
-      }
-    }
-
-    return null
-  }, [primarySelectionEntry, isLanding, currentFolder, departmentId, departmentName, processedFiles, getFileTreeDeptFiles])
+    return currentLocationNode
+  }, [primarySelectionEntry, isLanding, currentLocationNode, getFileTreeDeptFiles])
   const selectedNodeDepartmentId = primarySelectionEntry?.departmentId
   const selectedFileContextGroups = useMemo(() => {
     if (!primarySelectionEntry || primarySelectionEntry.node.type !== 'file' || !primarySelectionEntry.asset) {
@@ -613,7 +670,6 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
       ? departmentId ?? findDepartmentIdForNode(effectiveNode, getFileTreeDeptFiles)
       : undefined
   }, [effectiveNode, departmentId, getFileTreeDeptFiles])
-  const landingDrillFolder = landingDrillPath[landingDrillPath.length - 1] ?? null
   const pageTitle = landingDrillFolder?.name ?? currentFolder?.name ?? departmentName
   const isGridView = viewMode === 'grid'
   const explorerViewMode = (isGridView ? 'list' : viewMode) as FileViewMode
@@ -642,7 +698,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1 min-h-0 flex">
-        <div ref={scrollRef} className={cn('flex-1 min-h-0', isGridView ? 'overflow-auto' : 'flex flex-col')}>
+        <div ref={scrollRef} className={cn('flex-1 min-w-0 min-h-0', isGridView ? 'overflow-auto' : 'flex flex-col overflow-hidden')}>
           <CompactBar
             visible={showCompactBar}
             title={pageTitle}
@@ -695,6 +751,8 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                     cardSize={cardSize}
                     onCardSizeChange={setCardSize}
                     showLayoutOptions={false}
+                    showMetadata={showMetadata}
+                    onShowMetadataChange={setShowMetadata}
                   />
                 </div>
 
@@ -719,6 +777,8 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                         viewMode={viewMode}
                         onViewModeChange={setViewMode}
                         iconOnly={showPanel}
+                        showMetadata={showMetadata}
+                        onShowMetadataChange={setShowMetadata}
                       />
                       <Button
                         variant="icon"
@@ -771,11 +831,14 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                           if (node.type === 'folder') {
                             const fileCount = countAccessibleFiles(node.children ?? [], canAccess)
                             const isSharedFolder = sharedFolderIds.has(node.id)
+                            const isRefFolder = isReferenceFolder(node)
                             const folderAccessible = isLanding && isDepartmentLandingNode(node.id)
                               ? canAccess(DEPARTMENT_FOLDER_MAP[node.id].id)
                               : canAccess(node.id)
-                            const isRestricted = !folderAccessible && !isSharedFolder
-                            const accessIcon = isSharedFolder
+                            const isRestricted = !folderAccessible && !isSharedFolder && !isRefFolder
+                            const accessIcon = isRefFolder
+                              ? <FolderSymlink className="w-3.5 h-3.5" />
+                              : isSharedFolder
                               ? <Users className="w-3.5 h-3.5" />
                               : isRestricted
                               ? <Lock className="w-3.5 h-3.5" />
@@ -803,9 +866,23 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                                       }
                                 }
                                 onDoubleClick={isLocked || isMobile ? undefined : () => handleFolderDrilldown(node)}
-                                onMenuClick={isLocked ? undefined : (e) => {
-                                  setContextMenu({ x: e.clientX, y: e.clientY, node })
-                                }}
+                                menuContent={isLocked || isRefFolder ? undefined : (
+                                  <div className="py-1">
+                                    <DropdownMenuItem icon={<FolderPlus className="w-4 h-4" />} label="New Folder" onClick={() => { setNewFolderParentPath([...urlPath, node.id]); setNewFolderModalOpen(true) }} />
+                                    <DropdownMenuItem icon={<Upload className="w-4 h-4" />} label="Upload" onClick={() => {
+                                      setUploadTargetFolderId(node.id)
+                                      uploadInputRef.current?.click()
+                                    }} />
+                                    <DropdownMenuItem icon={<FilePlus className="w-4 h-4" />} label="New File" onClick={() => {
+                                      const names = ['SEQ010_SH040_comp_v1.exr', 'hero_closeup_final.dpx', 'ambience_pit_lane.wav', 'grade_pass_02.mov', 'concept_sketch_v3.psd', 'lens_calibration_data.csv']
+                                      fileTreeCreateFile(node.id, names[Math.floor(Math.random() * names.length)])
+                                    }} />
+                                    <DropdownMenuItem icon={<RefreshCw className="w-4 h-4" />} label={managedFolderIds.has(node.id) ? 'Disable Sync' : 'Enable Sync'} onClick={() => toggleManagedZone(node.id)} />
+                                    <DropdownMenuDivider />
+                                    <DropdownMenuItem icon={<Settings className="w-4 h-4" />} label="Manage Access" onClick={() => setAccessModalNode(node)} />
+                                    <DropdownMenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete" onClick={() => fileTreeDeleteNode(node.id)} destructive />
+                                  </div>
+                                )}
                               />
                             )
                           }
@@ -822,6 +899,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                               asset={workspaceAsset}
                               selected={selectedIds.has(workspaceAsset.id)}
                               primary={primaryId === workspaceAsset.id}
+                              showMetadata={showMetadata}
                               onClick={(_, e) => {
                                 const selectionEntry = selectionEntryById.get(workspaceAsset.id)
                                 if (selectionEntry) {
@@ -855,7 +933,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
           </div>
           {!isGridView && (
             <FileExplorer
-              className="flex-1"
+              className="flex-1 min-w-0 overflow-hidden"
               files={toFileNodes(currentGridItems)}
               viewMode={explorerViewMode}
               showViewToggle={false}
@@ -886,12 +964,16 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
             onClose={closePanel}
             departmentId={effectiveNodeDepartmentId}
             folderVariant={
-              primarySelectionEntry?.node && sharedFolderIds.has(primarySelectionEntry.node.id)
+              false
+                ? 'shared'
+                : primarySelectionEntry?.node && sharedFolderIds.has(primarySelectionEntry.node.id)
                 ? 'shared'
                 : primarySelectionEntry?.node && !canAccess(getAclResourceId(primarySelectionEntry.node))
                   ? 'restricted'
                   : undefined
             }
+            onDelete={(nodeId) => fileTreeDeleteNode(nodeId)}
+            onRename={(nodeId, newName) => fileTreeRenameNode(nodeId, newName)}
           />
         )}
       </div>
@@ -910,28 +992,52 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
         selectedEntities={selectedEntities}
         onClear={clearSelection}
       />
+      <input
+        ref={uploadInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files && uploadTargetFolderId) {
+            handleUploadFiles(e.target.files, uploadTargetFolderId)
+          }
+          e.target.value = ''
+        }}
+      />
       <NewFolderModal
         open={newFolderModalOpen}
         onOpenChange={setNewFolderModalOpen}
         onCreate={handleCreateFolder}
       />
-      {accessModalNode && (
-        <AccessModal
-          open={!!accessModalNode}
-          onClose={() => setAccessModalNode(null)}
-          resourceId={getAclResourceId(accessModalNode)}
-          resourceRef={{
-            id: getAclResourceId(accessModalNode),
-            type: accessModalNode.type === 'folder' ? 'folder' : 'asset',
-            departmentId,
-          }}
-          inheritedGrants={getInheritedGrants(getAclResourceId(accessModalNode)).map(({ grant, fromResourceName }) => ({
-            grant,
-            fromResourceName,
-          }))}
-          title={accessModalNode.name}
-        />
-      )}
+      {accessModalNode && (() => {
+        const nodeId = getAclResourceId(accessModalNode)
+        const rawRef: ResourceRef = {
+          id: nodeId,
+          type: accessModalNode.type === 'folder' ? 'folder' : 'asset',
+          departmentId,
+        }
+        // Resolve folders to workspace-bound collections — same path as selection bar Share
+        const resolved = accessModalNode.type === 'folder'
+          ? resolveShareTarget(rawRef, accessModalNode.name)
+          : null
+        const modalRef = resolved
+          ? { id: resolved.resourceRef.id, type: resolved.resourceRef.type, departmentId } as ResourceRef
+          : rawRef
+        const modalId = modalRef.id
+        return (
+          <AccessModal
+            open
+            onClose={() => setAccessModalNode(null)}
+            resourceId={modalId}
+            resourceRef={modalRef}
+            inheritedGrants={resolved ? undefined : getInheritedGrants(nodeId).map(({ grant, fromResourceName }) => ({
+              grant,
+              fromResourceName,
+            }))}
+            title={accessModalNode.name}
+          />
+        )
+      })()}
     </div>
   )
 }

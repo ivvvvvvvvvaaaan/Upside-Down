@@ -18,6 +18,8 @@ export interface AssetInstance {
   modifiedBy?: string
   aiTags?: AITagResult
   sourceFolderId?: string
+  shotMeta?: { scene?: string; take?: string; camera?: string }
+  sequenceMeta?: { sequence?: string; shot?: string }
 }
 
 export interface AssetInstanceGroup {
@@ -68,6 +70,39 @@ function mapExtensionToType(ext?: string): AssetType {
   return EXTENSION_TO_ASSET_TYPE[ext.toLowerCase()] ?? 'text'
 }
 
+/** Parse shot metadata from filename patterns like ep01_scene12_take3, chase_scene_steadicam_take2 */
+function parseShotMeta(filename: string): { scene?: string; take?: string; camera?: string } | null {
+  const name = filename.replace(/\.[^.]+$/, '').toLowerCase()
+  const sceneMatch = name.match(/scene[\s_-]?(\w+)/)
+  const takeMatch = name.match(/take[\s_-]?(\w+)/)
+  if (!sceneMatch && !takeMatch) return null
+  const cameraMatch = name.match(/^([a-z])[\s_-]?\d/) // e.g. "A_0305C014..."
+  return {
+    scene: sceneMatch ? sceneMatch[1].toUpperCase() : undefined,
+    take: takeMatch ? `t${takeMatch[1]}` : undefined,
+    camera: cameraMatch ? cameraMatch[1].toUpperCase() : undefined,
+  }
+}
+
+/** Parse sequence metadata from VFX filename patterns like SEQ010_SH010_comp_v12 */
+function parseSequenceMeta(filename: string): { sequence?: string; shot?: string } | null {
+  const name = filename.replace(/\.[^.]+$/, '').toUpperCase()
+  const seqMatch = name.match(/SEQ[\s_-]?(\d+)/)
+  const shotMatch = name.match(/SH[\s_-]?(\d+)/)
+  if (!seqMatch) return null
+  return {
+    sequence: `SEQ${seqMatch[1]}`,
+    shot: shotMatch ? `SH${shotMatch[1]}` : undefined,
+  }
+}
+
+/** Determine asset type — video files with shot patterns become shots */
+function inferAssetType(ext?: string, filename?: string): AssetType {
+  const baseType = mapExtensionToType(ext)
+  if (baseType === 'video' && filename && parseShotMeta(filename)) return 'shot'
+  return baseType
+}
+
 /** Walk managed zones and generate instances for all files within */
 export function generateAssetInstances(
   files: WorkspaceFileNode[],
@@ -79,15 +114,19 @@ export function generateAssetInstances(
     for (const node of nodes) {
       if (node.type === 'file') {
         const name = node.name.replace(/\.[^.]+$/, '')
+        const shotMeta = parseShotMeta(node.name)
+        const sequenceMeta = parseSequenceMeta(node.name)
         instances.push({
-          id: `inst-${node.id}`,
+          id: node.id,
           name,
           sourceFileId: node.id,
           sourceFileName: node.name,
-          sourcePath: [...pathParts, node.name].join(' / '),
+          sourcePath: [...pathParts, node.name].join('/'),
           department: departmentId,
           category,
-          type: mapExtensionToType(node.extension),
+          type: inferAssetType(node.extension, node.name),
+          ...(shotMeta && { shotMeta }),
+          ...(sequenceMeta && { sequenceMeta }),
           size: node.size,
           modifiedAt: node.modifiedAt,
           modifiedBy: node.modifiedBy,
@@ -213,13 +252,18 @@ export function promotedInstanceToAsset(instance: AssetInstance): Asset {
   }
 
   // Set type-specific metadata
-  if (typeTag) {
+  if (instance.type === 'shot' && instance.shotMeta) {
+    base.shotMeta = {
+      ...instance.shotMeta,
+      duration: fakeDuration(instance.id),
+    }
+  } else if (typeTag) {
     if (isSequence) {
-      // Sequences are playable — short shot durations
       base.videoMeta = { typeTag, duration: fakeDuration(instance.id, 'sequence') }
+      if (instance.sequenceMeta) {
+        base.sequenceMeta = instance.sequenceMeta
+      }
     } else {
-      // Only playable formats get durations — project files (nk, mb, hip, prproj) and
-      // static images do not
       const isPlayable = PLAYABLE_EXTENSIONS.has(instance.sourceFileName.split('.').pop()?.toLowerCase() ?? '')
       switch (instance.type) {
         case 'image':
@@ -261,8 +305,7 @@ export function promotedInstanceToAsset(instance: AssetInstance): Asset {
   return base
 }
 
-/** Merge curated API assets with promoted workspace instances.
- *  Simple concatenation — no deduplication since ID namespaces are disjoint. */
+/** Merge curated API assets with promoted workspace instances. */
 export function mergeWorkspaceAssets(
   apiAssets: Asset[],
   instances: AssetInstance[],

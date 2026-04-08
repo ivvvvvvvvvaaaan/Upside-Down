@@ -26,14 +26,16 @@ import {
   Inbox,
   Import,
   Send,
+  Share2,
   type LucideIcon,
 } from 'lucide-react'
 import { useSmartCollections, useFileTree, useAccess, usePersona, useCollections } from '@/hooks'
-import { isSmart, isCurated } from '@/lib/collection-types'
+import { useUserCollections } from '@/hooks/useUserCollections'
+import { isSmart, isCollection } from '@/lib/collection-types'
 import type { SmartCollectionEntry } from '@/lib/collection-types'
 import { matchesFilter } from '@/lib/smart-collection-filters'
 import type { DepartmentId } from '@/components/department/types'
-import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
+import { DEPARTMENT_FOLDER_MAP, SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { cn } from '@/lib/utils'
 import { Tag } from './tag'
@@ -222,10 +224,10 @@ function TreeNavLink({
   const mobile = useNavMobile()
   const isActive = href ? pathname === href : false
   // Check both /parent/ subroutes AND --child smart collection IDs
-  const smartCollectionBase = href ? href.replace(/^\/nextgen\/smart-collections\//, '') : ''
-  const currentPath = pathname.replace(/^\/nextgen\/smart-collections\//, '')
+  const collectionBase = href ? href.replace(/^\/nextgen\/(smart-collections|collections)\//, '') : ''
+  const currentPath = pathname.replace(/^\/nextgen\/(smart-collections|collections)\//, '')
   const isChildActive = href
-    ? pathname.startsWith(href + '/') || (smartCollectionBase && currentPath.startsWith(smartCollectionBase + '--'))
+    ? pathname.startsWith(href + '/') || (collectionBase && currentPath.startsWith(collectionBase + '--'))
     : false
   const shouldAutoExpandOnActiveChild = autoExpandOnActiveChild && isChildActive
   const storageKey = href || `tree:${label}`
@@ -406,7 +408,7 @@ function SectionHeader({ title }: { title: string }) {
 }
 
 /** Recursively render workspace folders as nav tree items, filtering by access */
-function FolderNavTree({ nodes, basePath }: { nodes: WorkspaceFileNode[]; basePath: string }) {
+function FolderNavTree({ nodes, basePath, sharedFolderIds }: { nodes: WorkspaceFileNode[]; basePath: string; sharedFolderIds?: Set<string> }) {
   const { canAccess } = useAccess()
   const { activePersona } = usePersona()
   const folders = nodes.filter((n) => n.type === 'folder')
@@ -416,10 +418,8 @@ function FolderNavTree({ nodes, basePath }: { nodes: WorkspaceFileNode[]; basePa
     <>
       {folders.map((folder) => {
         const accessible = canAccess(folder.id)
-        // Not accessible + persona can't see restricted → hidden
         if (!accessible && activePersona?.role !== 'manager') return null
         const href = `${basePath}/${folder.id}`
-        // Not accessible + persona can see restricted → show with lock (non-navigable)
         if (!accessible) {
           return (
             <div
@@ -431,11 +431,13 @@ function FolderNavTree({ nodes, basePath }: { nodes: WorkspaceFileNode[]; basePa
             </div>
           )
         }
+        const isShared = sharedFolderIds?.has(folder.id)
+        const sharedIcon = isShared ? <Share2 className="w-3 h-3 text-foreground-dim" /> : undefined
         const subfolders = (folder.children ?? []).filter((n) => n.type === 'folder')
         if (subfolders.length > 0) {
           return (
-            <TreeNavLink key={folder.id} href={href} label={folder.name} defaultExpanded={false}>
-              <FolderNavTree nodes={folder.children ?? []} basePath={href} />
+            <TreeNavLink key={folder.id} href={href} label={folder.name} defaultExpanded={false} trailingIcon={sharedIcon}>
+              <FolderNavTree nodes={folder.children ?? []} basePath={href} sharedFolderIds={sharedFolderIds} />
             </TreeNavLink>
           )
         }
@@ -458,8 +460,22 @@ const DEPARTMENT_NAV_ITEMS: { href: string; label: string; id: DepartmentId }[] 
 /** Renders a single department nav item, using files from the shared file tree */
 function DepartmentNavItem({ item }: { item: typeof DEPARTMENT_NAV_ITEMS[number] }) {
   const { getDepartmentFiles } = useFileTree()
+  const { getResourceGrants } = useAccess()
+  const { collections } = useUserCollections()
   const files = getDepartmentFiles(item.id) as WorkspaceFileNode[]
   const hasFolders = files.some((n) => n.type === 'folder')
+
+  // Folders that have a workspace-bound collection with active outgoing grants
+  const sharedFolderIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const c of collections) {
+      if (c.boundFolderId && c.boundDepartmentId === item.id) {
+        const grants = getResourceGrants(c.id)
+        if (grants.length > 0) ids.add(c.boundFolderId)
+      }
+    }
+    return ids
+  }, [collections, getResourceGrants, item.id])
 
   if (hasFolders) {
     return (
@@ -468,7 +484,7 @@ function DepartmentNavItem({ item }: { item: typeof DEPARTMENT_NAV_ITEMS[number]
         label={item.label}
         defaultExpanded={false}
       >
-        <FolderNavTree nodes={files} basePath={item.href} />
+        <FolderNavTree nodes={files} basePath={item.href} sharedFolderIds={sharedFolderIds} />
       </TreeNavLink>
     )
   }
@@ -564,33 +580,6 @@ function SmartCollectionNavItem({ collection, getChildren, indent, badge }: {
   )
 }
 
-/** Shared collections in the nav — all for admin, received-only for regular users */
-function SharedCollectionNavItems() {
-  const { sharesReceivedByMe, allProjectShares, getCollectionAssetCount } = useAccess()
-  const { isAdmin } = usePersona()
-  const entries = isAdmin ? allProjectShares : sharesReceivedByMe
-  const sharedCollections = entries.filter(e => e.resourceType === 'collection' || e.resourceType === 'smart-collection')
-  if (sharedCollections.length === 0) return null
-
-  return (
-    <>
-      {sharedCollections.map((entry) => {
-        const href = `/nextgen/collections/${entry.resourceId}`
-        const count = getCollectionAssetCount(entry.resourceId)
-        return (
-          <TreeNavLink
-            key={entry.id}
-            href={href}
-            label={entry.label}
-            badge={count || undefined}
-            trailingIcon={<Import className="w-3.5 h-3.5 text-foreground-dim" />}
-            indent
-          />
-        )
-      })}
-    </>
-  )
-}
 
 function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
   const { visibleCollections: smartCollections, getChildren, scopedAssets } = useSmartCollections()
@@ -600,7 +589,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
   const { visibleCollections: unifiedCollections } = useCollections()
   // Workspace-level folders: top-level folders created by user (exclude department folders already rendered above)
   const DEPT_FOLDER_IDS = new Set(Object.values(DEPARTMENT_FOLDER_MAP).map(d => d.id))
-  const workspaceFolders = fileTree.filter((f) => f.type === 'folder' && !DEPT_FOLDER_IDS.has(f.id)) as WorkspaceFileNode[]
+  const workspaceFolders = fileTree.filter((f) => f.type === 'folder' && !DEPT_FOLDER_IDS.has(f.id) && f.id !== SHARED_MOUNT_FOLDER_ID) as WorkspaceFileNode[]
   const accessibleDepartments = DEPARTMENT_NAV_ITEMS.filter((item) => canAccess(DEPARTMENT_FOLDER_MAP[item.id].id))
   // In the unified model, shared content appears under Collections, not Workspaces
   const showWorkspaceLink = accessibleDepartments.length > 0 || workspaceFolders.length > 0
@@ -637,11 +626,27 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
               {accessibleDepartments.map((item) => (
                 <DepartmentNavItem key={item.href} item={item} />
               ))}
-              {workspaceFolders.map((folder) => (
-                <TreeNavLink key={folder.id} href={`/nextgen/workspace/${folder.id}`} label={folder.name} defaultExpanded={false}>
-                  <span className="text-label-0-regular text-foreground-dim px-3 py-1">Empty</span>
-                </TreeNavLink>
-              ))}
+              {workspaceFolders.map((folder) => {
+                const href = `/nextgen/workspace/${folder.id}`
+                const childFolders = (folder.children ?? []).filter((node) => node.type === 'folder') as WorkspaceFileNode[]
+
+                if (childFolders.length > 0) {
+                  return (
+                    <TreeNavLink key={folder.id} href={href} label={folder.name} defaultExpanded={false}>
+                      <FolderNavTree nodes={childFolders} basePath={href} />
+                    </TreeNavLink>
+                  )
+                }
+
+                return (
+                  <NavLink
+                    key={folder.id}
+                    href={href}
+                    label={folder.name}
+                    matchSubpaths
+                  />
+                )
+              })}
             </TreeNavLink>
           )}
         </div>
@@ -660,21 +665,42 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
             badge={smartCollectionCounts.get(collection.id) || undefined}
           />
         ))}
-        {/* My collections (curated, owned by me) */}
-        {unifiedCollections.filter(isCurated).filter(c => {
-          if (activePersona) return c.createdBy === activePersona.email
-          return !sharedCollectionIds.has(c.id)
-        }).map((collection) => (
-          <TreeNavLink
-            key={collection.id}
-            href={`/nextgen/collections/${collection.id}`}
-            label={collection.name}
-            badge={getCollectionAssetCount(collection.id) || undefined}
-            indent
-          />
-        ))}
-        {/* Received collections (shared by others) */}
-        <SharedCollectionNavItems />
+        {/* All accessible collections — owned, department, received */}
+        {(() => {
+          const seen = new Set<string>()
+          const items: { id: string; name: string; count: number; isShared: boolean }[] = []
+
+          // Owned + department collections (skip workspace-bound — those show under Workspaces)
+          for (const c of unifiedCollections.filter(isCollection)) {
+            if (seen.has(c.id)) continue
+            if (c.boundFolderId) continue
+            const isOwned = !activePersona || c.createdBy === activePersona.email
+            const isDept = 'boundDepartmentId' in c && c.boundDepartmentId === activePersona?.departmentId
+            if (!isOwned && !isDept && !isAdmin) continue
+            seen.add(c.id)
+            items.push({ id: c.id, name: c.name, count: getCollectionAssetCount(c.id), isShared: false })
+          }
+
+          // Received shares (not already shown)
+          const shares = isAdmin ? allProjectShares : sharesReceivedByMe
+          for (const entry of shares) {
+            if (entry.resourceType !== 'collection' && entry.resourceType !== 'smart-collection') continue
+            if (seen.has(entry.resourceId)) continue
+            seen.add(entry.resourceId)
+            items.push({ id: entry.resourceId, name: entry.label, count: getCollectionAssetCount(entry.resourceId), isShared: true })
+          }
+
+          return items.map(item => (
+            <TreeNavLink
+              key={item.id}
+              href={`/nextgen/collections/${item.id}`}
+              label={item.name}
+              badge={item.count || undefined}
+              trailingIcon={item.isShared ? <Import className="w-3.5 h-3.5 text-foreground-dim" /> : undefined}
+              indent
+            />
+          ))
+        })()}
         <button
           onClick={onNewCollection}
           className="flex items-center gap-2 px-3 py-2 text-body-0-bold text-foreground-dim hover:text-foreground-subtle transition-colors min-w-0"

@@ -2,7 +2,8 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Folder, LayoutGrid, Import, Info } from 'lucide-react'
+import { Folder, Lock, LayoutGrid, Info } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Tag } from './tag'
 import { Tooltip } from './tooltip'
 import { pick, IMAGE_POOL, pickForDimension } from '@/lib/images'
@@ -59,7 +60,7 @@ function CharacterChips({ items, dimension }: { items: SmartCollection[]; dimens
       {items.map(item => {
         const { mainImage } = getCollectionImages(item.id, dimension)
         return (
-          <Link key={item.id} href={`/nextgen/smart-collections/${item.id}`}
+          <Link key={item.id} href={`/nextgen/collections/${item.id}`}
             className="flex flex-col items-center gap-1 shrink-0 group">
             <div className="w-12 h-12 rounded-full overflow-hidden relative bg-surface-2">
               {mainImage && <Image src={mainImage} alt={item.name} fill sizes="48px" className="object-cover" />}
@@ -81,7 +82,7 @@ function EntityCards({ items, dimension }: { items: SmartCollection[]; dimension
       {items.map(item => {
         const { mainImage, thumbnails } = getCollectionImages(item.id, dimension)
         return (
-          <Link key={item.id} href={`/nextgen/smart-collections/${item.id}`}
+          <Link key={item.id} href={`/nextgen/collections/${item.id}`}
             className="shrink-0 w-[140px] rounded overflow-hidden border border-border-dim group hover:border-border-subtle transition-colors relative">
             <div className="flex h-20 gap-px bg-surface-2">
               <div className="flex-[2] relative">
@@ -201,30 +202,32 @@ export interface ContainerItem {
   kind: string
   icon: 'folder' | 'collection'
   isShared?: boolean
+  /** User cannot browse this container (no access to the folder/collection) */
+  locked?: boolean
 }
 
 function ContainerCard({ item }: { item: ContainerItem }) {
   const Icon = item.icon === 'folder' ? Folder : LayoutGrid
-  const cardClasses = 'shrink-0 w-[140px] rounded border border-border-dim group hover:border-border-subtle transition-colors block'
+  const cardClasses = cn(
+    'shrink-0 w-[140px] rounded border border-border-dim group transition-colors block',
+    !item.locked && 'hover:border-border-subtle',
+  )
 
   const content = (
     <>
-      <div className="h-16 bg-surface-2 flex items-center justify-center rounded-t">
-        <Icon className="w-6 h-6 text-foreground-dim" />
+      <div className="h-16 bg-surface-2 flex items-center justify-center rounded-t relative">
+        <Icon className={cn('w-6 h-6', item.locked ? 'text-foreground' : 'text-foreground-dim')} />
+        {item.locked && <Lock className="w-3.5 h-3.5 text-foreground absolute bottom-1.5 right-1.5" />}
       </div>
-      <div className="px-2 py-1 space-y-0.5">
-        <span className="text-label-0-regular text-foreground truncate block group-hover:text-foreground-system-link transition-colors">
+      <div className="px-2 py-1">
+        <span className={cn('text-label-0-regular truncate block', item.locked ? 'text-foreground-dim' : 'text-foreground group-hover:text-foreground-system-link transition-colors')}>
           {item.label}
         </span>
-        <div className="flex items-center gap-1">
-          <span className="text-label-0-regular text-foreground-dim">{item.kind}</span>
-          {item.isShared && <Import className="w-3 h-3 text-foreground-dim" />}
-        </div>
       </div>
     </>
   )
 
-  if (item.href) {
+  if (item.href && !item.locked) {
     return <Link href={item.href} className={cardClasses}>{content}</Link>
   }
   return <div className={cardClasses}>{content}</div>
@@ -249,8 +252,6 @@ export interface OntologySectionProps {
     characters?: SmartCollection[]
     scenes?: SmartCollection[]
     locations?: SmartCollection[]
-    takes?: SmartCollection[]
-    cameras?: SmartCollection[]
   }
   /** Hide a dimension (e.g., hide Characters when viewing from a Character collection) */
   suppressDimension?: SmartCollectionGroupBy
@@ -278,12 +279,9 @@ export function OntologySection({
   const characters = suppressDimension !== 'characters' ? (dimensions?.characters ?? []) : []
   const scenes = suppressDimension !== 'scenes' ? (dimensions?.scenes ?? []) : []
   const locations = suppressDimension !== 'locations' ? (dimensions?.locations ?? []) : []
-  const takes = suppressDimension !== 'takes' ? (dimensions?.takes ?? []) : []
-  const cameras = suppressDimension !== 'cameras' ? (dimensions?.cameras ?? []) : []
-
   const visibleContextGroups = contextGroups ?? []
 
-  const hasDimensions = characters.length > 0 || scenes.length > 0 || locations.length > 0 || takes.length > 0 || cameras.length > 0
+  const hasDimensions = characters.length > 0 || scenes.length > 0 || locations.length > 0
   const hasContextGroups = visibleContextGroups.length > 0
   const hasCuts = (cuts ?? []).length > 0
   const hasConstituents = (constituents ?? []).length > 0
@@ -317,19 +315,6 @@ export function OntologySection({
           <EntityCards items={locations} dimension="locations" />
         </section>
       )}
-      {takes.length > 0 && (
-        <section className="space-y-2">
-          <SectionHeading label="Takes" tip={SECTION_TIPS.takes} />
-          <EntityCards items={takes} />
-        </section>
-      )}
-      {cameras.length > 0 && (
-        <section className="space-y-2">
-          <SectionHeading label="Cameras" tip={SECTION_TIPS.cameras} />
-          <CharacterChips items={cameras} />
-        </section>
-      )}
-
       {/* Shot context — asset-to-asset relationships */}
       {visibleContextGroups.map(group => (
         <ShotContextRow key={group.type} group={group} onAssetClick={onAssetClick} />
