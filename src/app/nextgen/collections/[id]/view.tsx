@@ -65,8 +65,12 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const { showToast } = useToast()
   const { getRelatedCollectionsForAssets, scopedAssets, ensureAssetsLoaded } = useSmartCollections()
   const { selectedIds, primaryId, handleAssetClick, selectOnly, clearSelection } = useAssetSelection()
+<<<<<<< HEAD
   const { cardSize, setCardSize, sidePanelOpen, setSidePanelOpen, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const [sortCriteria, setSortCriteria] = useState<import('@/components/ui').SortCriterion[]>([{ field: 'name', direction: 'asc' as const }])
+=======
+  const { cardSize, sidePanelOpen, setSidePanelOpen, showTags, metadataFields } = useViewPreferences()
+>>>>>>> origin/main
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
 
@@ -388,7 +392,12 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         onMenuClick={handleMenuClick}
                         showDepartment
                         shared={sharedBy ? false : undefined}
+<<<<<<< HEAD
                         processing={uploadingAssets.get(asset.id)?.processing}
+=======
+                        showTags={showTags}
+                        metadataFields={metadataFields}
+>>>>>>> origin/main
                       />
                     ))}
                   </CardGrid>

@@ -179,7 +179,11 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   const isLanding = !departmentId
   const { canAccess, sharesReceivedByMe, getInheritedGrants, filterByAccess } = useAccess()
   const { activePersona } = usePersona()
+<<<<<<< HEAD
   const { getCollection, filterAssets: filterCollectionAssets, scopedAssets, ensureAssetsLoaded } = useCollections()
+=======
+  const { scopedAssets, ensureAssetsLoaded } = useSmartCollections()
+>>>>>>> origin/main
   const { layout, setLayout, cardSize, setCardSize, viewMode, setViewMode, sidePanelOpen: showPanel, setSidePanelOpen: setShowPanel, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(showPanel, setShowPanel)
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()

@@ -18,16 +18,30 @@ import { profileLabel } from '@/lib/grants'
 interface SharedSidePanelProps {
   entry: GrantView
   onClose: () => void
+<<<<<<< HEAD
+=======
+  onRevokeGrant?: (grantId: string) => void
+  canRevokeGrant?: boolean
+>>>>>>> origin/main
   /** Additional className for the ResponsivePanel */
   panelClassName?: string
 }
 
 export interface SharedDetailContentProps {
   entry: GrantView
+<<<<<<< HEAD
   showAccess?: boolean
 }
 
 export function SharedDetailContent({ entry, showAccess = true }: SharedDetailContentProps) {
+=======
+  onRevokeGrant?: (grantId: string) => void
+  canRevokeGrant?: boolean
+  showAccess?: boolean
+}
+
+export function SharedDetailContent({ entry, onRevokeGrant, canRevokeGrant = false, showAccess = true }: SharedDetailContentProps) {
+>>>>>>> origin/main
   const { getInheritedGrants } = useAccess()
   const { collections } = useUserCollections()
   const kind = entry.resourceType as AccessEntryKind
@@ -129,15 +143,42 @@ export function SharedDetailContent({ entry, showAccess = true }: SharedDetailCo
             resourceName={entry.label}
           />
         )}
+<<<<<<< HEAD
+=======
+
+        {/* Revoke button */}
+        {canRevokeGrant && onRevokeGrant && (
+          <div className="pt-2">
+            <Button
+              variant="secondary"
+              onClick={() => onRevokeGrant(entry.id)}
+              className="w-full text-foreground-negative hover:opacity-80"
+            >
+              Revoke Share
+            </Button>
+          </div>
+        )}
+>>>>>>> origin/main
       </div>
     </>
   )
 }
 
+<<<<<<< HEAD
 export function SharedSidePanel({ entry, onClose, panelClassName }: SharedSidePanelProps) {
   return (
     <ResponsivePanel open={true} onClose={onClose} className={panelClassName}>
       <SharedDetailContent entry={entry} />
+=======
+export function SharedSidePanel({ entry, onClose, onRevokeGrant, canRevokeGrant = false, panelClassName }: SharedSidePanelProps) {
+  return (
+    <ResponsivePanel open={true} onClose={onClose} className={panelClassName}>
+      <SharedDetailContent
+        entry={entry}
+        onRevokeGrant={onRevokeGrant}
+        canRevokeGrant={canRevokeGrant}
+      />
+>>>>>>> origin/main
     </ResponsivePanel>
   )
 }

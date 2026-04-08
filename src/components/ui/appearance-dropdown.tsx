@@ -6,7 +6,10 @@ import { Dropdown } from './dropdown'
 import { ToggleButtonGroup } from './toggle-button-group'
 import type { ToggleButtonOption } from './toggle-button-group'
 import { Toggle } from './switch'
+<<<<<<< HEAD
 import type { MetadataFieldVisibility } from '@/hooks/useViewPreferences'
+=======
+>>>>>>> origin/main
 
 export type LayoutType = 'grid' | 'list' | 'gallery'
 export type CardSize = 'sm' | 'md' | 'lg'
@@ -33,8 +36,13 @@ export interface AppearanceDropdownProps {
   showTags?: boolean
   onShowTagsChange?: (show: boolean) => void
   /** Per-field metadata visibility */
+<<<<<<< HEAD
   metadataFields?: MetadataFieldVisibility
   onMetadataFieldChange?: (field: keyof MetadataFieldVisibility, show: boolean) => void
+=======
+  metadataFields?: import('@/hooks/useViewPreferences').MetadataFieldVisibility
+  onMetadataFieldChange?: (field: keyof import('@/hooks/useViewPreferences').MetadataFieldVisibility, show: boolean) => void
+>>>>>>> origin/main
 }
 
 export function AppearanceDropdown({

@@ -48,8 +48,11 @@ export type RoleGroup = {
   builtIn: boolean
 }
 
+<<<<<<< HEAD
 export type ShareMode = 'live' | 'snapshot'
 
+=======
+>>>>>>> origin/main
 export type Grant = {
   id: string
   resource: ResourceRef
@@ -60,6 +63,7 @@ export type Grant = {
   grantedAt: string
   revokedAt?: string
   expiresAt?: string
+<<<<<<< HEAD
   /** Live = recipient sees evolving contents. Snapshot = frozen at share time. */
   shareMode?: ShareMode
   /** Frozen asset IDs for snapshot mode — overrides collection.assetIds for this recipient */
@@ -68,6 +72,8 @@ export type Grant = {
   allowUpload?: boolean
   /** Review link ID — when set, this grant is accessible via /nextgen/review/[linkId] */
   reviewLinkId?: string
+=======
+>>>>>>> origin/main
 }
 
 
@@ -394,7 +400,7 @@ function principalLabel(principal: PrincipalRef): string {
   return team.departmentId ? `${team.name} (department)` : `${team.name} (team)`
 }
 
-function grantToView(grant: Grant): GrantView {
+function grantToView(grant: Grant, roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS): GrantView {
   return {
     id: grant.id,
     resourceId: grant.resource.id,
@@ -402,7 +408,11 @@ function grantToView(grant: Grant): GrantView {
     label: getResourceLabel(grant.resource.id),
     departmentId: grant.resource.departmentId,
     templateId: grant.templateId,
+<<<<<<< HEAD
     permissions: getGrantPermissions(grant),
+=======
+    permissions: getGrantPermissions(grant, roleGroups),
+>>>>>>> origin/main
     grantedByUserId: grant.grantedByUserId,
     grantedAt: grant.grantedAt,
     principalLabel: principalLabel(grant.principal),
@@ -419,7 +429,7 @@ function getGrantsByGrantor(userId: string, grants: Grant[]): Grant[] {
 
 function getGrantsForUser(userId: string, grants: Grant[]): Grant[] {
   return grants.filter((grant) => {
-    if (grant.revokedAt) return false
+    if (!isGrantActive(grant)) return false
     if (grant.principal.type === 'user' && grant.principal.userId === userId) return true
     if (grant.principal.type === 'team' && isUserInTeam(userId, grant.principal.teamId)) return true
     return false
@@ -430,6 +440,7 @@ function getAllActiveGrants(grants: Grant[]): Grant[] {
   return grants.filter((grant) => isGrantActive(grant))
 }
 
+<<<<<<< HEAD
 export function buildSharesCreatedByMe(userId: string, grants: Grant[]): GrantView[] {
   return getGrantsByGrantor(userId, grants)
     .filter((grant) => !isPolicyResource(grant.resource))
@@ -447,4 +458,46 @@ export function buildAllProjectShares(grants: Grant[]): GrantView[] {
   return getAllActiveGrants(grants)
     .filter((grant) => !isPolicyResource(grant.resource))
     .map(grantToView)
+=======
+function isSelfBootstrapGrant(grant: Grant): boolean {
+  return (
+    grant.principal.type === 'user' &&
+    grant.principal.userId === grant.grantedByUserId &&
+    grant.templateId === 'manager'
+  )
+}
+
+export function buildSharesCreatedByMe(
+  userId: string,
+  grants: Grant[],
+  roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
+): GrantView[] {
+  const myGrants = getGrantsByGrantor(userId, grants).filter((grant) =>
+    !isPolicyResource(grant.resource) && !isSelfBootstrapGrant(grant),
+  )
+  return myGrants.map((grant) => grantToView(grant, roleGroups))
+}
+
+export function buildSharesReceivedByMe(
+  userId: string,
+  grants: Grant[],
+  roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
+): GrantView[] {
+  const received = getGrantsForUser(userId, grants).filter((grant) =>
+    !isPolicyResource(grant.resource) &&
+    !isSelfBootstrapGrant(grant) &&
+    grant.grantedByUserId !== userId
+  )
+  return received.map((grant) => grantToView(grant, roleGroups))
+}
+
+export function buildAllProjectShares(
+  grants: Grant[],
+  roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
+): GrantView[] {
+  const active = getAllActiveGrants(grants).filter((grant) =>
+    !isPolicyResource(grant.resource) && !isSelfBootstrapGrant(grant),
+  )
+  return active.map((grant) => grantToView(grant, roleGroups))
+>>>>>>> origin/main
 }

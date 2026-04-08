@@ -155,7 +155,11 @@ describe('capability decomposition', () => {
     expect(result.canEdit).toBe(false)
   })
 
+<<<<<<< HEAD
   it('resolveAccess preserves snapped grant permissions when role-group templates change', () => {
+=======
+  it('resolveAccess uses the grant permission snapshot even if role groups change later', () => {
+>>>>>>> origin/main
     const customGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS.map((group) =>
       group.id === 'manage'
         ? { ...group, permissions: ['open'] as Permission[] }
@@ -164,11 +168,17 @@ describe('capability decomposition', () => {
 
     const result = resolveAccess('vfx-supervisor', 'ws-vfx', DEFAULT_GRANTS, customGroups)
     expect(result.hasAccess).toBe(true)
+<<<<<<< HEAD
     expect(result.effectiveProfile).toBe('manage')
     expect(result.canEdit).toBe(true)
     expect(result.permissions).toEqual(
       DEFAULT_ROLE_GROUPS.find((group) => group.id === 'manage')!.permissions,
     )
+=======
+    expect(result.effectiveProfile).toBe('manager')
+    expect(result.canEdit).toBe(true)
+    expect(result.permissions).toEqual(DEFAULT_ROLE_GROUPS.find((group) => group.id === 'manager')!.permissions)
+>>>>>>> origin/main
   })
 
   it('userHasAccess requires open permission on matching grants', () => {
@@ -198,6 +208,23 @@ describe('capability decomposition', () => {
 
     expect(canCreateGrantForResource('vendor-framestore', PROJECT_RESOURCE, DEFAULT_GRANTS)).toBe(false)
     expect(canEditAclForResource('vendor-framestore', PROJECT_RESOURCE, DEFAULT_GRANTS)).toBe(false)
+  })
+
+  it('share views preserve separate grant lineage for the same resource', () => {
+    const created = buildSharesCreatedByMe('editorial-coordinator', DEFAULT_GRANTS)
+    const rowsForLockedCut = created.filter((view) => view.resourceId === 'cut-ep301-lc-2')
+
+    expect(rowsForLockedCut.length).toBeGreaterThan(1)
+    expect(rowsForLockedCut.some((view) => view.principalLabel.includes('Studio Leadership'))).toBe(true)
+  })
+
+  it('share views hide seed self-grants used to bootstrap ownership', () => {
+    const created = buildSharesCreatedByMe('editorial-coordinator', DEFAULT_GRANTS)
+    const selfRows = created.filter((view) =>
+      view.resourceId === 'cut-ep301-lc-2' && view.principalLabel === 'Lisa Kim',
+    )
+
+    expect(selfRows).toHaveLength(0)
   })
 
   it('prevents editors from delegating profiles with permissions they do not have', () => {

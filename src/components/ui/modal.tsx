@@ -70,7 +70,7 @@ function Modal({
       />
       <Card
         variant="outlined"
-        className={cn('relative mx-4 shadow-high max-w-[calc(100vw-2rem)] border-border-elevation', !width && sizes[size])}
+        className={cn('relative mx-4 shadow-high max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] flex flex-col border-border-elevation', !width && sizes[size])}
         style={width ? { width: `${width}px` } : undefined}
       >
         {children}
@@ -91,7 +91,7 @@ interface ModalHeaderProps {
 
 function ModalHeader({ title, subtitle, onClose, backButton }: ModalHeaderProps) {
   return (
-    <div className="flex items-center justify-between px-6 pt-6 pb-0">
+    <div className="flex items-center justify-between px-6 pt-6 pb-0 flex-shrink-0">
       <div className="flex items-center gap-2 min-w-0">
         {backButton}
         <div className="min-w-0">
@@ -116,7 +116,7 @@ interface ModalBodyProps {
 }
 
 function ModalBody({ children, className }: ModalBodyProps) {
-  return <div className={cn('p-6', className)}>{children}</div>
+  return <div className={cn('p-6 overflow-y-auto', className)}>{children}</div>
 }
 
 const ModalNamespace = Object.assign(Modal, {

@@ -26,6 +26,10 @@ export { useAccessCascades } from './useAccessCascades'
 export { useMobilePanel } from './useMobilePanel'
 
 export { useCuts } from './useCuts'
+<<<<<<< HEAD
 export type { AccessibleCutEntry, VisibleCutEntry } from './useCuts'
 
 export { useCollections } from './useCollections'
+=======
+export type { CutEntry } from './useCuts'
+>>>>>>> origin/main

@@ -5,6 +5,24 @@ const STORAGE_KEY = 'collection-view-preferences'
 
 export type CollectionViewType = 'all' | 'character' | 'location' | 'scene'
 
+export type MetadataFieldVisibility = {
+  scene: boolean
+  take: boolean
+  camera: boolean
+  sequence: boolean
+  shot: boolean
+  episode: boolean
+}
+
+const DEFAULT_METADATA_FIELDS: MetadataFieldVisibility = {
+  scene: true,
+  take: true,
+  camera: true,
+  sequence: true,
+  shot: true,
+  episode: true,
+}
+
 interface ViewPreferences {
   layout: LayoutType
   cardSize: CardSize
@@ -13,6 +31,7 @@ interface ViewPreferences {
   sidePanelOpen: boolean
   showTags: boolean
   metadataFields: MetadataFieldVisibility
+<<<<<<< HEAD
 }
 
 export type MetadataFieldVisibility = {
@@ -31,6 +50,8 @@ const DEFAULT_METADATA_FIELDS: MetadataFieldVisibility = {
   sequence: true,
   shot: true,
   episode: true,
+=======
+>>>>>>> origin/main
 }
 
 const DEFAULT_PREFERENCES: ViewPreferences = {
@@ -170,9 +191,17 @@ export function useViewPreferences(): UseViewPreferencesReturn {
   }, [persist])
 
   const setMetadataField = useCallback((field: keyof MetadataFieldVisibility, show: boolean) => {
+<<<<<<< HEAD
     const next = { ...prefsRef.current.metadataFields, [field]: show }
     setMetadataFieldsState(next)
     persist({ metadataFields: next })
+=======
+    setMetadataFieldsState(prev => {
+      const next = { ...prev, [field]: show }
+      persist({ metadataFields: next })
+      return next
+    })
+>>>>>>> origin/main
   }, [persist])
 
   return {

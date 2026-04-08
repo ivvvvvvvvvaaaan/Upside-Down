@@ -580,6 +580,44 @@ function SmartCollectionNavItem({ collection, getChildren, indent, badge }: {
   )
 }
 
+<<<<<<< HEAD
+=======
+/** Shared collections in the nav — all for admin, received-only for regular users */
+function SharedCollectionNavItems() {
+  const { sharesReceivedByMe, allProjectShares, getCollectionAssetCount } = useAccess()
+  const { isAdmin } = usePersona()
+  const entries = isAdmin ? allProjectShares : sharesReceivedByMe
+  const seenResourceIds = new Set<string>()
+  const sharedCollections = entries.filter((entry) => {
+    if (entry.resourceType !== 'collection' && entry.resourceType !== 'smart-collection') return false
+    if (seenResourceIds.has(entry.resourceId)) return false
+    seenResourceIds.add(entry.resourceId)
+    return true
+  })
+  if (sharedCollections.length === 0) return null
+
+  return (
+    <>
+      {sharedCollections.map((entry) => {
+        const href = entry.resourceType === 'smart-collection'
+          ? `/nextgen/smart-collections/${entry.resourceId}`
+          : `/nextgen/collections/${entry.resourceId}`
+        const count = getCollectionAssetCount(entry.resourceId)
+        return (
+          <TreeNavLink
+            key={entry.id}
+            href={href}
+            label={entry.label}
+            badge={count || undefined}
+            trailingIcon={<Import className="w-3.5 h-3.5 text-foreground-dim" />}
+            indent
+          />
+        )
+      })}
+    </>
+  )
+}
+>>>>>>> origin/main
 
 function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
   const { visibleCollections: smartCollections, getChildren, scopedAssets } = useSmartCollections()
@@ -591,8 +629,23 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
   const DEPT_FOLDER_IDS = new Set(Object.values(DEPARTMENT_FOLDER_MAP).map(d => d.id))
   const workspaceFolders = fileTree.filter((f) => f.type === 'folder' && !DEPT_FOLDER_IDS.has(f.id) && f.id !== SHARED_MOUNT_FOLDER_ID) as WorkspaceFileNode[]
   const accessibleDepartments = DEPARTMENT_NAV_ITEMS.filter((item) => canAccess(DEPARTMENT_FOLDER_MAP[item.id].id))
+<<<<<<< HEAD
   // In the unified model, shared content appears under Collections, not Workspaces
   const showWorkspaceLink = accessibleDepartments.length > 0 || workspaceFolders.length > 0
+=======
+  const accessibleDepartmentIds = new Set(accessibleDepartments.map((item) => item.id))
+  const workspaceFolderIds = new Set(workspaceFolders.map((folder) => folder.id))
+  const sharedFolderIds = new Set<string>()
+  const receivedSharedFolders = sharesReceivedByMe.filter((entry) => {
+    if (entry.resourceType !== 'folder') return false
+    if (workspaceFolderIds.has(entry.resourceId)) return false
+    if (entry.departmentId && accessibleDepartmentIds.has(entry.departmentId)) return false
+    if (sharedFolderIds.has(entry.resourceId)) return false
+    sharedFolderIds.add(entry.resourceId)
+    return true
+  })
+  const showWorkspaceLink = accessibleDepartments.length > 0 || workspaceFolders.length > 0 || receivedSharedFolders.length > 0
+>>>>>>> origin/main
   const sharedCollectionIds = new Set(
     (isAdmin ? allProjectShares : sharesReceivedByMe)
       .filter((entry) => entry.resourceType === 'collection')

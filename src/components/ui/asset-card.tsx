@@ -80,7 +80,11 @@ export interface AssetCardProps {
   /** Show tags row (type, version, status, release). Default: true */
   showTags?: boolean
   /** Per-field metadata visibility */
+<<<<<<< HEAD
   metadataFields?: MetadataFieldVisibility
+=======
+  metadataFields?: import('@/hooks/useViewPreferences').MetadataFieldVisibility
+>>>>>>> origin/main
 }
 
 // Placeholder image for assets without thumbnails
@@ -212,11 +216,31 @@ export function AssetCard({
     return <Tag variant="glass">{tagLabel}</Tag>
   }
 
+<<<<<<< HEAD
   // Pre-compute tag classification (avoid recreating inside JSX IIFEs)
   const typeTag = asset.tags?.find(t => t.source === 'system' && !STATUS_LABELS.has(t.label))
   const statusTag = asset.tags?.find(t => STATUS_LABELS.has(t.label)) ?? (asset.isKeyArt ? { label: 'Key Art', source: 'system' as const } : null)
   const releaseTags = asset.tags?.filter(t => t.source === 'system' && !STATUS_LABELS.has(t.label) && t !== typeTag) ?? []
   const showField = (f: keyof MetadataFieldVisibility) => metadataFields?.[f] !== false
+=======
+  // Render per-field metadata chips (controlled by metadataFields)
+  const renderMetadataChips = () => {
+    const chips: React.ReactNode[] = []
+
+    if (asset.type === 'shot' && asset.shotMeta) {
+      const { scene, take, camera } = asset.shotMeta
+      if (metadataFields?.scene !== false && scene) chips.push(<Tag key="scene" type="neutral" variant="border">Scene: {scene}</Tag>)
+      if (metadataFields?.take !== false && take) chips.push(<Tag key="take" type="neutral" variant="border">Take: {take}</Tag>)
+      if (metadataFields?.camera !== false && camera) chips.push(<Tag key="camera" type="neutral" variant="border">Camera: {camera}</Tag>)
+    }
+
+    if (metadataFields?.episode !== false && asset.episode) {
+      chips.push(<Tag key="episode" type="neutral" variant="border">{asset.episode}</Tag>)
+    }
+
+    return chips.length > 0 ? chips : null
+  }
+>>>>>>> origin/main
 
   // Render thumbnail based on type
   const renderThumbnail = () => {
@@ -338,6 +362,7 @@ export function AssetCard({
 
         {/* Tags + Metadata chips */}
         <div className="flex items-center gap-1 flex-wrap">
+<<<<<<< HEAD
           {showTags && (
             <>
               {typeTag ? <Tag variant="glass">{typeTag.label}</Tag> : renderTypeTag()}
@@ -374,6 +399,55 @@ export function AssetCard({
             </>
           )}
           {showField('episode') && asset.episode && <Tag variant="glass">{asset.episode}</Tag>}
+=======
+          {/* Tags: type, version, status, release, department */}
+          {showTags && (
+            <>
+              {(() => {
+                if (asset.tags?.length) {
+                  const statusLabels = new Set(['Key Art', 'Final'])
+                  const typeTag = asset.tags.find(t => t.source === 'system' && !statusLabels.has(t.label))
+                  const statusTag = asset.tags.find(t => statusLabels.has(t.label))
+                  const rest = asset.tags.filter(t => t.source === 'system' && t !== typeTag && !statusLabels.has(t.label))
+                  return (
+                    <>
+                      {typeTag && <Tag>{typeTag.label}</Tag>}
+                      {asset.version != null && <Tag type="neutral" variant="border">V{asset.version}</Tag>}
+                      {statusTag && <Tag type={statusTag.label === 'Final' ? 'positive' : 'announcement'}>{statusTag.label}</Tag>}
+                      {rest.map(t => {
+                        const tag = (
+                          <Tag
+                            key={t.label}
+                            type={t.label === 'ALL' ? 'positive' : t.label.startsWith('+') ? 'neutral' : 'notice'}
+                            variant={t.label.startsWith('+') ? 'border' : 'fill'}
+                          >
+                            {t.label}
+                          </Tag>
+                        )
+                        return t.description ? (
+                          <Tooltip key={t.label} label={t.description}>{tag}</Tooltip>
+                        ) : tag
+                      })}
+                    </>
+                  )
+                }
+                return (
+                  <>
+                    {renderTypeTag()}
+                    {asset.version != null && <Tag type="neutral" variant="border">V{asset.version}</Tag>}
+                    {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
+                  </>
+                )
+              })()}
+              {isShared && asset.department && (
+                <Tag type="neutral">{DEPARTMENT_NAMES[asset.department] ?? asset.department}</Tag>
+              )}
+            </>
+          )}
+
+          {/* Metadata: per-field toggleable */}
+          {renderMetadataChips()}
+>>>>>>> origin/main
         </div>
       </div>
     </div>

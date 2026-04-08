@@ -187,6 +187,7 @@ function GuestLinksSection({
 
   if (links.length > 0) {
     return (
+<<<<<<< HEAD
       <div className="rounded-lg bg-surface-mid p-3 space-y-3">
         {links.map(link => {
           const canEdit = !readOnly && canManageGuestLink(link)
@@ -205,6 +206,25 @@ function GuestLinksSection({
                   <span className="text-body-0-regular text-foreground truncate">Link</span>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
+=======
+      <>
+        {links.map(link => (
+          <div key={link.id} className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Link2 className="w-4 h-4 text-foreground-dim flex-shrink-0" />
+                <span className="text-body-0-regular text-foreground truncate">Link</span>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <Button
+                  variant="secondary"
+                  compact
+                  onClick={() => navigator.clipboard.writeText(`https://share.example.com/${link.id}`)}
+                >
+                  Copy link
+                </Button>
+                {!readOnly && canManageGuestLink(link) && (
+>>>>>>> origin/main
                   <Button
                     variant="secondary"
                     compact
@@ -296,6 +316,7 @@ function GuestLinksSection({
   return null
 }
 
+<<<<<<< HEAD
 export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOnly = false, emptyLabel = 'Not shared', inheritedGrants, onDirtyChange }: AccessPanelProps) {
   const isBatch = Boolean(batchResourceRefs && batchResourceRefs.length > 1)
   const {
@@ -316,6 +337,10 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     restoreResourceGrants,
     restoreResourceGuestLinks,
   } = useAccess()
+=======
+export function AccessPanel({ resourceId, resourceRef, readOnly = false, emptyLabel = 'Not shared', inheritedGrants }: AccessPanelProps) {
+  const { getResourceGrants, createGrant, revokeGrant, updateGrantProfile, roleGroups, canShare, canEditAcl, canManageGrant, getGrantableProfiles, getResourceGuestLinks, canManageGuestLink, createGuestLink, revokeGuestLink } = useAccess()
+>>>>>>> origin/main
   const { activePersona } = usePersona()
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
@@ -325,6 +350,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const canAddGrants = Boolean(resourceRef) && canShare(resourceRef)
   const canManageAllGrants = Boolean(resourceRef) && canEditAcl(resourceRef)
 
+<<<<<<< HEAD
   // Dirty tracking — snapshot grants on first change, restore on cancel
   const [dirty, setDirty] = useState(false)
   const grantsSnapshotRef = useRef<Grant[] | null>(null)
@@ -427,6 +453,9 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     }
   }, [isCollectionResource, resourceRef, getCollection, getResourceGrants, roleGroups])
 
+=======
+  const canManageGrantEntry = (grant: Grant): boolean => !readOnly && canManageGrant(grant.id)
+>>>>>>> origin/main
   const addRoleOptions = useMemo(() => {
     if (!resourceRef) return roleGroupOptions(roleGroups)
     const allowedProfiles = new Set(getGrantableProfiles(resourceRef))
@@ -509,7 +538,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     const directRaw = grants.map((grant) => ({
       key: `direct-${grant.id}`,
       grant,
-      readOnly: !canManageGrant(grant),
+      readOnly: !canManageGrantEntry(grant),
       sourceName: undefined as string | undefined,
     }))
 
@@ -525,7 +554,12 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       roleGroups,
       activePersona?.id,
     )
+<<<<<<< HEAD
   }, [grants, canManageGrant, inheritedGrants, roleGroups, activePersona?.id])
+=======
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grants, canManageGrantEntry, activePersona?.id, inheritedGrants, roleGroups, activePersona])
+>>>>>>> origin/main
 
   const directEntries = useMemo(() => allEntries.filter(e => !e.sourceName), [allEntries])
   const inheritedEntries = useMemo(() => allEntries.filter(e => !!e.sourceName), [allEntries])
@@ -549,7 +583,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         </div>
       )}
       {!readOnly && canAddGrants && !canManageAllGrants && (
-        <p className="text-body-0-regular text-foreground-dim">You can manage shares you created. Only admins can modify shares created by others.</p>
+        <p className="text-body-0-regular text-foreground-dim">You can manage shares you created. Users with full access can modify any share.</p>
       )}
 
       {/* Search + role dropdown + expiration */}

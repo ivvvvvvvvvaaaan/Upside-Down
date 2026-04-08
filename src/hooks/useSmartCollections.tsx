@@ -7,10 +7,12 @@ import { matchesFilter, slugify, generateChildCollections } from '@/lib/smart-co
 import { useAccessCascades } from './useAccessCascades'
 import { useAccess } from './useAccess'
 import { usePersona } from './usePersona'
+import { DEFAULT_SMART_COLLECTIONS } from '@/lib/smart-collection-seeds'
 
 // Re-export for existing consumers
 export { matchesFilter } from '@/lib/smart-collection-filters'
 
+<<<<<<< HEAD
 // System default smart collections — visible to everyone
 const SYSTEM_DEFAULTS: SmartCollection[] = [
   {
@@ -78,6 +80,8 @@ const SEED_USER_COLLECTIONS: SmartCollection[] = [
 
 const DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [...SYSTEM_DEFAULTS, ...SEED_USER_COLLECTIONS]
 
+=======
+>>>>>>> origin/main
 export interface RelatedCollections {
   characters: SmartCollection[]
   scenes: SmartCollection[]
@@ -110,12 +114,27 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
   const [allAssets, setAllAssets] = useState<Asset[]>([])
   const [assetLoadState, setAssetLoadState] = useState<'idle' | 'loading' | 'loaded'>('idle')
   const assetLoadPromiseRef = useRef<Promise<void> | null>(null)
+<<<<<<< HEAD
   const { filterByAccess } = useAccessCascades()
   const { canAccess, canEdit, canEditAcl } = useAccess()
+=======
+  const { filterByAccess, canAccess, createGrant } = useAccess()
+>>>>>>> origin/main
   const { activePersona } = usePersona()
   const personaEmail = activePersona?.email
+  const personaId = activePersona?.id
 
+<<<<<<< HEAD
   // Collections visible to the active persona: defaults, own creations, or explicit shares.
+=======
+  const canManageCollection = useCallback((collection: SmartCollection | undefined): boolean => {
+    if (!collection) return false
+    if (collection.visibleToAll) return false
+    return collection.createdBy === personaEmail
+  }, [personaEmail])
+
+  // Collections visible to the active persona: defaults + own creations + ACL-shared collections
+>>>>>>> origin/main
   const visibleCollections = useMemo(() => {
     if (!activePersona) return collections
     return collections.filter((collection) =>
@@ -163,8 +182,8 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
 
   // All collections = parents + children
   const allCollections = useMemo(() => {
-    return [...collections, ...childCollections]
-  }, [collections, childCollections])
+    return [...visibleCollections, ...childCollections]
+  }, [visibleCollections, childCollections])
 
   const createCollection = useCallback((
     name: string,
@@ -182,8 +201,15 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
       createdAt: new Date(),
     }
     setCollections(prev => [...prev, newCollection])
+    if (personaId) {
+      createGrant(
+        { id: newCollection.id, type: 'smart-collection' },
+        { type: 'user', userId: personaId },
+        'manager',
+      )
+    }
     return newCollection
-  }, [personaEmail])
+  }, [personaEmail, personaId, createGrant])
 
   const updateCollection = useCallback((
     id: string,
@@ -191,6 +217,7 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
   ) => {
     setCollections(prev => prev.map((collection) => {
       if (collection.id !== id) return collection
+<<<<<<< HEAD
 
       const resourceRef = { id, type: 'smart-collection' as const }
       const isOwner = !activePersona || collection.createdBy === personaEmail
@@ -210,6 +237,19 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
     setCollections(prev => prev.filter(c => c.id !== id))
     return true
   }, [collections, personaEmail, activePersona, canEditAcl])
+=======
+      if (!canManageCollection(collection)) return collection
+      return { ...collection, ...updates }
+    }))
+  }, [canManageCollection])
+
+  const deleteCollection = useCallback((id: string): boolean => {
+    const target = collections.find(c => c.id === id)
+    if (!canManageCollection(target)) return false
+    setCollections(prev => prev.filter(c => c.id !== id))
+    return true
+  }, [collections, canManageCollection])
+>>>>>>> origin/main
 
   const getCollection = useCallback((id: string): SmartCollection | undefined => {
     return [...visibleCollections, ...childCollections].find(c => c.id === id)

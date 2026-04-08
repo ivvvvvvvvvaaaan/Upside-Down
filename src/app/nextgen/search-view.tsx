@@ -20,7 +20,11 @@ interface MediaLibrarySearchViewProps {
 export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
+<<<<<<< HEAD
   const { cardSize } = useViewPreferences()
+=======
+  const { cardSize, showTags, metadataFields } = useViewPreferences()
+>>>>>>> origin/main
   const { filterByAccess, canAccess, getVisibilityState, requestAccess } = useAccess()
   const { allAssets, assetsLoaded, assetsLoading, ensureAssetsLoaded } = useSmartCollections()
 
@@ -37,6 +41,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     return filterByAccess(recentAssets)
   }, [recentAssets, filterByAccess])
 
+<<<<<<< HEAD
   const visibilityByAssetId = useMemo(() => {
     const map = new Map<string, ReturnType<typeof getVisibilityState>>()
     for (const asset of allSearchableAssets) {
@@ -52,6 +57,19 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
   const isRestricted = useCallback((asset: Asset) => {
     return visibilityByAssetId.get(asset.id) === 'discoverable'
   }, [visibilityByAssetId])
+=======
+  const getAssetVisibility = useCallback((asset: Asset) => {
+    return getVisibilityState({
+      id: asset.id,
+      type: 'asset',
+      departmentId: asset.department,
+    })
+  }, [getVisibilityState])
+
+  const isRestricted = useCallback((asset: Asset) => {
+    return getAssetVisibility(asset) === 'discoverable'
+  }, [getAssetVisibility])
+>>>>>>> origin/main
 
   const handleRequestAccess = useCallback((asset: Asset) => {
     requestAccess(asset.id, { id: asset.id, type: 'asset', departmentId: asset.department })
@@ -63,11 +81,16 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     if (!assetsLoaded) return null
     return allSearchableAssets
       .filter((asset) => matchesFilter(asset, { query: searchQuery }))
+<<<<<<< HEAD
       .filter((asset) => {
         const visibility = visibilityByAssetId.get(asset.id)
         return visibility === 'accessible' || visibility === 'discoverable'
       })
   }, [searchQuery, allSearchableAssets, assetsLoaded, visibilityByAssetId])
+=======
+      .filter((asset) => getAssetVisibility(asset) !== 'hidden')
+  }, [searchQuery, allSearchableAssets, getAssetVisibility, assetsLoaded])
+>>>>>>> origin/main
 
   const curatedResults = useMemo(() => searchResults?.filter(a => !a.isAutoPromoted) ?? [], [searchResults])
   const workspaceResults = useMemo(() => searchResults?.filter(a => a.isAutoPromoted) ?? [], [searchResults])
@@ -157,6 +180,8 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                             showDepartment
                             restricted={isRestricted(asset)}
                             onRequestAccess={handleRequestAccess}
+                            showTags={showTags}
+                            metadataFields={metadataFields}
                           />
                         ))}
                       </CardGrid>
@@ -177,6 +202,8 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                             showDepartment
                             restricted={isRestricted(asset)}
                             onRequestAccess={handleRequestAccess}
+                            showTags={showTags}
+                            metadataFields={metadataFields}
                           />
                         ))}
                       </CardGrid>
@@ -209,6 +236,8 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                           showDepartment
                           restricted={isRestricted(asset)}
                           onRequestAccess={handleRequestAccess}
+                          showTags={showTags}
+                          metadataFields={metadataFields}
                         />
                       ))}
                     </CardGrid>

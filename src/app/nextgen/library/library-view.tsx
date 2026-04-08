@@ -7,7 +7,11 @@ import { useRouter } from 'next/navigation'
 import { PageHeader, EmptyState, SelectionBar, Button, MobileToolbar, CardGrid } from '@/components/ui'
 import { AssetCard } from '@/components/ui/asset-card'
 import { ReleaseModal } from '@/components/ui/release-modal'
+<<<<<<< HEAD
 import { useCuts, usePersona, useAssetSelection, useSmartCollections, useViewPreferences, useMobilePanel, useAccess, type VisibleCutEntry, type MetadataFieldVisibility } from '@/hooks'
+=======
+import { useCuts, usePersona, useAssetSelection, useSmartCollections, useViewPreferences, useMobilePanel, useAccess, type CutEntry } from '@/hooks'
+>>>>>>> origin/main
 import type { SeedCut } from '@/lib/scenario'
 import { compareCutsByStageAndVersion } from '@/lib/cuts'
 import { assetToSelectionEntity } from '@/lib/selection-actions'
@@ -18,14 +22,24 @@ import { AssetDetailPanelContent } from '@/components/ui/asset-detail-panel'
 
 function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, onMenuClick, onRequestAccess, showTags, metadataFields }: {
   episode: string
+<<<<<<< HEAD
   cuts: VisibleCutEntry[]
+=======
+  cuts: CutEntry[]
+>>>>>>> origin/main
   selectedIds: Set<string>
   primaryId: string | null
   onAssetClick: (asset: Asset, event: React.MouseEvent, allAssets: Asset[]) => void
   onMenuClick?: (asset: Asset) => void
+<<<<<<< HEAD
   onRequestAccess: (asset: Asset) => void
   showTags?: boolean
   metadataFields?: MetadataFieldVisibility
+=======
+  onRequestAccess?: (asset: Asset) => void
+  showTags?: boolean
+  metadataFields?: import('@/hooks/useViewPreferences').MetadataFieldVisibility
+>>>>>>> origin/main
 }) {
   const allAssets = cuts.map(c => c.asset)
   return (
@@ -44,10 +58,16 @@ function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, o
             asset={cut.asset}
             selected={selectedIds.has(cut.asset.id)}
             primary={primaryId === cut.asset.id}
+            restricted={cut.visibilityState === 'discoverable'}
+            onRequestAccess={onRequestAccess}
             onClick={(a, e) => onAssetClick(a, e, allAssets)}
+<<<<<<< HEAD
             onMenuClick={onMenuClick ? () => onMenuClick(cut.asset) : undefined}
             restricted={cut.visibility === 'discoverable'}
             onRequestAccess={onRequestAccess}
+=======
+            onMenuClick={onMenuClick && cut.visibilityState === 'accessible' ? () => onMenuClick(cut.asset) : undefined}
+>>>>>>> origin/main
             showTags={showTags}
             metadataFields={metadataFields}
           />
@@ -76,6 +96,10 @@ export function LibraryView() {
 
   const isEditorialMember = activePersona?.departmentId === 'editorial'
 
+  const handleRequestAccess = (asset: Asset) => {
+    requestAccess(asset.id, { id: asset.id, type: 'cut', departmentId: 'editorial' })
+  }
+
   const canRelease = useMemo(() => {
     return isEditorialMember || isAdmin
   }, [isEditorialMember, isAdmin])
@@ -83,7 +107,11 @@ export function LibraryView() {
   // Deduplicate: keep only the latest version per episode+stage, track older versions
   const { latestCuts, olderVersionsMap } = useMemo(() => {
     // Group by versionGroupId (episode+stage)
+<<<<<<< HEAD
     const groups = new Map<string, VisibleCutEntry[]>()
+=======
+    const groups = new Map<string, CutEntry[]>()
+>>>>>>> origin/main
     for (const cut of visibleCuts) {
       const key = cut.asset.versionGroupId ?? cut.asset.id
       const existing = groups.get(key) ?? []
@@ -91,14 +119,20 @@ export function LibraryView() {
       groups.set(key, existing)
     }
 
+<<<<<<< HEAD
     const latest: VisibleCutEntry[] = []
+=======
+    const latest: CutEntry[] = []
+>>>>>>> origin/main
     const older = new Map<string, Asset[]>()
 
     for (const [, entries] of Array.from(groups)) {
       entries.sort((a, b) => compareCutsByStageAndVersion(a.asset, b.asset))
       latest.push(entries[0]) // highest stage + version first
       if (entries.length > 1) {
-        older.set(entries[0].asset.id, entries.slice(1).map(e => e.asset))
+        older.set(entries[0].asset.id, entries.slice(1)
+          .filter((entry) => entry.visibilityState === 'accessible')
+          .map(e => e.asset))
       }
     }
 
@@ -107,7 +141,11 @@ export function LibraryView() {
 
   // Group by episode, sort by stage + version (latest first)
   const episodes = useMemo(() => {
+<<<<<<< HEAD
     const map = new Map<string, VisibleCutEntry[]>()
+=======
+    const map = new Map<string, CutEntry[]>()
+>>>>>>> origin/main
     for (const cut of latestCuts) {
       const ep = cut.asset.episode ?? 'Unknown'
       const existing = map.get(ep) ?? []
@@ -185,14 +223,20 @@ export function LibraryView() {
               </Button>
             } />
             <div className="hidden md:flex items-start justify-between gap-4">
+<<<<<<< HEAD
               <PageHeader
                 title="Cuts"
                 description={
+=======
+                <PageHeader
+                  title="Cuts"
+                  description={
+>>>>>>> origin/main
                   visibleCuts.length > 0
                     ? `${visibleCuts.length} cuts across ${episodes.length} ${episodes.length === 1 ? 'episode' : 'episodes'}`
                     : 'Cuts will appear here as they become available'
-                }
-              />
+                  }
+                />
               <Button
                 variant="icon"
                 onClick={togglePanel}
@@ -225,7 +269,7 @@ export function LibraryView() {
                 title="No cuts yet"
                 message={isEditorialMember
                   ? 'Upload or assemble cuts in your workspace — they will appear here automatically.'
-                  : 'Cuts shared to you or your teams will appear here.'}
+                  : 'Cuts shared to you, or discoverable to your role, will appear here.'}
               />
             )}
             </div>

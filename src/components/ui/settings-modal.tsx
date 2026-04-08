@@ -143,6 +143,7 @@ function addOrMoveDepartmentMember(departmentId: DepartmentId, teamId: string, e
   return persona
 }
 
+<<<<<<< HEAD
 function removePersonFromDirectory(userId: string): User | null {
   const persona = PERSONAS.find((candidate) => candidate.id === userId)
   if (!persona) return null
@@ -192,6 +193,83 @@ type PendingDepartmentInvite = {
   departmentId: DepartmentId
   teamId: string
   displayName: string
+=======
+function DiscoverySection({
+  title,
+  description,
+  enabled,
+  onToggleEnabled,
+  disabledDepartments,
+  onToggleDepartment,
+  disabled,
+}: {
+  title: string
+  description: string
+  enabled: boolean
+  onToggleEnabled: () => void
+  disabledDepartments: Set<DepartmentId>
+  onToggleDepartment: (deptId: DepartmentId) => void
+  disabled: boolean
+}) {
+  return (
+    <div className="space-y-3 rounded-lg border border-border-dim p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-body-0-bold text-foreground">{title}</p>
+          <p className="text-body-0-regular text-foreground-dim">
+            {description}
+          </p>
+        </div>
+        <button
+          onClick={onToggleEnabled}
+          disabled={disabled}
+          className={cn(
+            'relative w-10 h-6 rounded-full transition-colors flex-shrink-0',
+            enabled ? 'bg-indigo-500' : 'bg-surface-3',
+            disabled && 'opacity-40 cursor-not-allowed',
+          )}
+        >
+          <div
+            className={cn(
+              'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
+              enabled ? 'left-5' : 'left-1',
+            )}
+          />
+        </button>
+      </div>
+
+      {enabled && (
+        <div className="space-y-1">
+          <p className="text-label-1-bold text-foreground-dim">Department overrides</p>
+          {(Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[]).map((deptId) => {
+            const deptDisabled = disabledDepartments.has(deptId)
+            return (
+              <div key={deptId} className="flex items-center justify-between py-1">
+                <span className="text-body-0-regular text-foreground">{DEPARTMENT_FOLDER_MAP[deptId].name}</span>
+                <button
+                  onClick={() => onToggleDepartment(deptId)}
+                  disabled={disabled}
+                  className={cn(
+                    'relative w-10 h-6 rounded-full transition-colors flex-shrink-0',
+                    !deptDisabled ? 'bg-indigo-500' : 'bg-surface-3',
+                    disabled && 'opacity-40 cursor-not-allowed',
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
+                      !deptDisabled ? 'left-5' : 'left-1',
+                    )}
+                  />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+>>>>>>> origin/main
 }
 
 // --- People tab ---
@@ -199,6 +277,7 @@ type PendingDepartmentInvite = {
 function PeopleTab({
   grants,
   directoryVersion,
+<<<<<<< HEAD
   canRemoveParticipants,
   activeUserId,
   onRemoveParticipant,
@@ -208,6 +287,11 @@ function PeopleTab({
   canRemoveParticipants: boolean
   activeUserId?: string
   onRemoveParticipant?: (userId: string) => void
+=======
+}: {
+  grants: Grant[]
+  directoryVersion: number
+>>>>>>> origin/main
 }) {
   const policyResourceIds = useMemo(
     () => new Set(['project', ...Object.values(DEPARTMENT_FOLDER_MAP).map((folder) => folder.id)]),
@@ -216,20 +300,30 @@ function PeopleTab({
 
   const participants = useMemo(() => {
     void directoryVersion
+<<<<<<< HEAD
     const stats = new Map<string, { received: number; shared: number; directGrantCount: number; teamCount: number }>()
 
     const touch = (userId: string, field: 'received' | 'shared') => {
       const current = stats.get(userId) ?? { received: 0, shared: 0, directGrantCount: 0, teamCount: 0 }
+=======
+    const stats = new Map<string, { received: number; shared: number }>()
+
+    const touch = (userId: string, field: 'received' | 'shared') => {
+      const current = stats.get(userId) ?? { received: 0, shared: 0 }
+>>>>>>> origin/main
       current[field] += 1
       stats.set(userId, current)
     }
 
+<<<<<<< HEAD
     const noteDirectGrant = (userId: string) => {
       const current = stats.get(userId) ?? { received: 0, shared: 0, directGrantCount: 0, teamCount: 0 }
       current.directGrantCount += 1
       stats.set(userId, current)
     }
 
+=======
+>>>>>>> origin/main
     for (const grant of grants) {
       if (!isGrantActive(grant)) continue
       if (policyResourceIds.has(grant.resource.id)) continue
@@ -238,7 +332,10 @@ function PeopleTab({
 
       if (grant.principal.type === 'user') {
         touch(grant.principal.userId, 'received')
+<<<<<<< HEAD
         noteDirectGrant(grant.principal.userId)
+=======
+>>>>>>> origin/main
         continue
       }
 
@@ -252,8 +349,12 @@ function PeopleTab({
     return PERSONAS
       .filter((persona) => persona.departmentId || stats.has(persona.id))
       .map((persona) => {
+<<<<<<< HEAD
         const involvement = stats.get(persona.id) ?? { received: 0, shared: 0, directGrantCount: 0, teamCount: 0 }
         const teamCount = TEAMS.filter((team) => team.memberUserIds.includes(persona.id)).length
+=======
+        const involvement = stats.get(persona.id) ?? { received: 0, shared: 0 }
+>>>>>>> origin/main
         const primaryLabel = persona.departmentId
           ? `${DEPARTMENT_FOLDER_MAP[persona.departmentId].name} member`
           : persona.role === 'vendor'
@@ -268,9 +369,12 @@ function PeopleTab({
           ...persona,
           primaryLabel,
           activityLabel: activityParts.length > 0 ? activityParts.join(' · ') : 'No active shares',
+<<<<<<< HEAD
           directGrantCount: involvement.directGrantCount,
           teamCount,
           canRemove: persona.id !== activeUserId && (Boolean(persona.departmentId) || involvement.directGrantCount > 0 || teamCount > 0),
+=======
+>>>>>>> origin/main
         }
       })
       .sort((a, b) => {
@@ -279,18 +383,25 @@ function PeopleTab({
         if (aDept !== bDept) return aDept - bDept
         return a.name.localeCompare(b.name)
       })
+<<<<<<< HEAD
   }, [grants, policyResourceIds, directoryVersion, activeUserId])
+=======
+  }, [grants, policyResourceIds, directoryVersion])
+>>>>>>> origin/main
 
   return (
     <div className="space-y-3">
       <p className="text-body-0-regular text-foreground-dim">
         People appear here because they belong to a department or are involved through explicit shares. Add new working users from the Departments tab, and use share controls on assets or collections for ad hoc access.
       </p>
+<<<<<<< HEAD
       {canRemoveParticipants && (
         <p className="text-label-0-regular text-foreground-dim">
           Project admins can remove a person here to revoke their direct shares and remove them from department and team membership.
         </p>
       )}
+=======
+>>>>>>> origin/main
 
       {participants.length === 0 ? (
         <p className="text-body-0-regular text-foreground-dim py-4 text-center">No participants yet.</p>
@@ -309,6 +420,7 @@ function PeopleTab({
                   </div>
                   <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
                 </div>
+<<<<<<< HEAD
               </div>
               <div className="flex items-center gap-3 flex-shrink-0">
                 <div className="text-right">
@@ -401,9 +513,15 @@ function DiscoverySection({
                     )}
                   />
                 </button>
+=======
+>>>>>>> origin/main
               </div>
-            )
-          })}
+              <div className="text-right flex-shrink-0">
+                <div className="text-label-0-regular text-foreground">{persona.primaryLabel}</div>
+                <div className="text-label-0-regular text-foreground-dim">{persona.activityLabel}</div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -420,6 +538,7 @@ function DepartmentsTab({
   onRemoveGrant,
   canShareResource,
   canEditResource,
+<<<<<<< HEAD
   pendingInvites,
   inviteEmail,
   onInviteEmailChange,
@@ -428,6 +547,9 @@ function DepartmentsTab({
   onStageInvite,
   onRemovePendingInvite,
   onRemoveDepartmentMember,
+=======
+  onDirectoryChange,
+>>>>>>> origin/main
   readOnly = false,
 }: {
   roleGroups: RoleGroup[]
@@ -437,6 +559,7 @@ function DepartmentsTab({
   onRemoveGrant: (grantId: string) => void
   canShareResource: (resource: ResourceRef) => boolean
   canEditResource: (resource: ResourceRef) => boolean
+<<<<<<< HEAD
   pendingInvites: PendingDepartmentInvite[]
   inviteEmail: string
   onInviteEmailChange: (value: string) => void
@@ -445,10 +568,14 @@ function DepartmentsTab({
   onStageInvite: () => boolean
   onRemovePendingInvite: (inviteId: string) => void
   onRemoveDepartmentMember: (departmentId: DepartmentId, teamId: string, userId: string) => void
+=======
+  onDirectoryChange: () => void
+>>>>>>> origin/main
   readOnly?: boolean
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [editingOverrides, setEditingOverrides] = useState<Set<string>>(new Set())
+  const [inviteEmails, setInviteEmails] = useState<Partial<Record<DepartmentId, string>>>({})
 
   const toggle = (id: string) => {
     setExpanded(prev => {
@@ -730,6 +857,45 @@ function DepartmentsTab({
                   {members.length === 0 && (
                     <p className="text-label-0-regular text-foreground-dim py-2 px-2 text-center">No members yet</p>
                   )}
+                  {!readOnly && canShareDepartment && team && (
+                    <div className="px-2 pt-3 mt-2 border-t border-border-dim space-y-2">
+                      <p className="text-label-0-regular text-foreground-dim">
+                        Add someone to {folder.name}. They&apos;ll inherit this department&apos;s default workspace access.
+                      </p>
+                      <div className="flex gap-2">
+                        <Input
+                          icon={<Search />}
+                          iconPosition="left"
+                          type="email"
+                          value={inviteEmails[departmentId] ?? ''}
+                          onChange={(e) => setInviteEmails((prev) => ({ ...prev, [departmentId]: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key !== 'Enter') return
+                            const email = inviteEmails[departmentId]?.trim()
+                            if (!email) return
+                            addOrMoveDepartmentMember(departmentId, team.id, email)
+                            setInviteEmails((prev) => ({ ...prev, [departmentId]: '' }))
+                            onDirectoryChange()
+                          }}
+                          placeholder={`Add to ${folder.name} by email...`}
+                        />
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            const email = inviteEmails[departmentId]?.trim()
+                            if (!email) return
+                            addOrMoveDepartmentMember(departmentId, team.id, email)
+                            setInviteEmails((prev) => ({ ...prev, [departmentId]: '' }))
+                            onDirectoryChange()
+                          }}
+                          disabled={!inviteEmails[departmentId]?.trim()}
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -853,6 +1019,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     revokeUserAccess,
     canShare,
     canEditAcl,
+<<<<<<< HEAD
     getDiscoverySettings,
     setDiscoveryEnabledForType,
     toggleDepartmentDiscoveryForType,
@@ -865,6 +1032,14 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const departmentIds = useMemo(() => Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[], [])
   const [inviteEmail, setInviteEmail] = useState('')
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<DepartmentId>(departmentIds[0] ?? 'vfx')
+=======
+    discoverySettings,
+    setDiscoveryEnabledForType,
+    toggleDepartmentDiscoveryForType,
+  } = useAccess()
+  const canManageProject = canEditAcl(PROJECT_RESOURCE)
+  const [directoryVersion, setDirectoryVersion] = useState(0)
+>>>>>>> origin/main
   const canManageDepartments = useMemo(
     () => (Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[]).some((departmentId) => {
       const resourceRef: ResourceRef = {
@@ -877,6 +1052,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     [canShare, canEditAcl],
   )
   const canManageAnything = canManageDepartments || canManageProject
+<<<<<<< HEAD
   const hasPendingDepartmentInvites = pendingDepartmentInvites.length > 0
   const discoverySections: { resourceType: DiscoveryResourceType; title: string; description: string }[] = [
     {
@@ -944,6 +1120,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     }
     onOpenChange(nextOpen)
   }, [onOpenChange, resetPendingDepartmentInvites])
+=======
+>>>>>>> origin/main
 
   return (
     <Modal open={open} onOpenChange={handleModalOpenChange} size="md">
@@ -987,6 +1165,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 <PeopleTab
                   grants={grants}
                   directoryVersion={directoryVersion}
+<<<<<<< HEAD
                   canRemoveParticipants={canManageProject}
                   activeUserId={activePersona?.id}
                   onRemoveParticipant={(userId) => {
@@ -1000,6 +1179,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     removePersonFromDirectory(userId)
                     setDirectoryVersion((prev) => prev + 1)
                   }}
+=======
+>>>>>>> origin/main
                 />
               </TabsContent>
               <TabsContent value="departments">
@@ -1011,6 +1192,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   onRemoveGrant={revokeGrant}
                   canShareResource={canShare}
                   canEditResource={canEditAcl}
+<<<<<<< HEAD
                   pendingInvites={pendingDepartmentInvites}
                   inviteEmail={inviteEmail}
                   onInviteEmailChange={setInviteEmail}
@@ -1021,6 +1203,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     setPendingDepartmentInvites((prev) => prev.filter((invite) => invite.id !== inviteId))
                   }}
                   onRemoveDepartmentMember={handleRemoveDepartmentMember}
+=======
+                  onDirectoryChange={() => setDirectoryVersion((prev) => prev + 1)}
+>>>>>>> origin/main
                   readOnly={!canManageDepartments && !canManageProject}
                 />
               </TabsContent>
@@ -1039,6 +1224,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               {canManageProject && (
                 <TabsContent value="settings">
                   <div className="space-y-3">
+<<<<<<< HEAD
                     {discoverySections.map(({ resourceType, title, description }) => {
                       const settings = getDiscoverySettings(resourceType)
                       return (
@@ -1054,6 +1240,26 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                         />
                       )
                     })}
+=======
+                    <DiscoverySection
+                      title="Asset Discovery"
+                      description="Allow users to see restricted assets as blurred tiles and request access."
+                      enabled={discoverySettings.asset.enabled}
+                      onToggleEnabled={() => setDiscoveryEnabledForType('asset', !discoverySettings.asset.enabled)}
+                      disabledDepartments={discoverySettings.asset.disabledDepartments}
+                      onToggleDepartment={(deptId) => toggleDepartmentDiscoveryForType('asset', deptId)}
+                      disabled={false}
+                    />
+                    <DiscoverySection
+                      title="Cut Discovery"
+                      description="Allow users to know a cut exists before it is shared, without giving playback access."
+                      enabled={discoverySettings.cut.enabled}
+                      onToggleEnabled={() => setDiscoveryEnabledForType('cut', !discoverySettings.cut.enabled)}
+                      disabledDepartments={discoverySettings.cut.disabledDepartments}
+                      onToggleDepartment={(deptId) => toggleDepartmentDiscoveryForType('cut', deptId)}
+                      disabled={false}
+                    />
+>>>>>>> origin/main
                   </div>
                 </TabsContent>
               )}

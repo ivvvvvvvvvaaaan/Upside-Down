@@ -5,11 +5,13 @@ import { seedCutToAsset, compareCutsByStageAndVersion } from '@/lib/cuts'
 import { deriveReleaseTagInfo } from '@/lib/release'
 import { useAccess } from './useAccess'
 import { usePersona } from './usePersona'
+import type { VisibilityState } from './useAccess'
 
-export interface AccessibleCutEntry {
+export interface CutEntry {
   asset: Asset
   seed: SeedCut
   isOwn: boolean
+  visibilityState: VisibilityState
 }
 
 export interface VisibleCutEntry extends AccessibleCutEntry {
@@ -17,6 +19,7 @@ export interface VisibleCutEntry extends AccessibleCutEntry {
 }
 
 export function useCuts() {
+<<<<<<< HEAD
   const { grants, getVisibilityState } = useAccess()
   const { isAdmin, activePersona } = usePersona()
   const allSeedCuts = useMemo(() => buildCuts(), [])
@@ -34,6 +37,22 @@ export function useCuts() {
           })
 
       if (visibility === 'hidden') {
+=======
+  const { canAccess, getVisibilityState, grants } = useAccess()
+  const { isAdmin, activePersona } = usePersona()
+  const allSeedCuts = useMemo(() => buildCuts(), [])
+  const allCutAssets = useMemo(() => allSeedCuts.map((cut) => seedCutToAsset(cut)), [allSeedCuts])
+  const isEditorialMember = activePersona?.departmentId === 'editorial'
+
+  const visibleCuts = useMemo((): CutEntry[] => {
+    return allSeedCuts.flatMap((cut) => {
+      const isOwn = isEditorialMember || false
+      const visibilityState: VisibilityState = isAdmin || isOwn || canAccess(cut.id)
+        ? 'accessible'
+        : getVisibilityState({ id: cut.id, type: 'cut', departmentId: 'editorial' })
+
+      if (visibilityState === 'hidden') {
+>>>>>>> origin/main
         return []
       }
 
@@ -44,6 +63,7 @@ export function useCuts() {
         ),
         seed: cut,
         isOwn,
+<<<<<<< HEAD
         visibility,
       }]
     })
@@ -56,6 +76,17 @@ export function useCuts() {
   }, [visibleCuts])
 
   const allCutAssets = useMemo(() => visibleCuts.map((entry) => entry.asset), [visibleCuts])
+=======
+        visibilityState,
+      }]
+    })
+  }, [allSeedCuts, grants, isAdmin, isEditorialMember, canAccess, getVisibilityState])
+
+  const accessibleCuts = useMemo(() => {
+    return visibleCuts.filter((entry) => entry.visibilityState === 'accessible')
+  }, [visibleCuts])
+
+>>>>>>> origin/main
   const accessibleCutAssets = useMemo(() => {
     return accessibleCuts.map((entry) => entry.asset)
   }, [accessibleCuts])

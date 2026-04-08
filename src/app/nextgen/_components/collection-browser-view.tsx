@@ -309,6 +309,8 @@ export function CollectionBrowserView({
                         forceEmptyPreview={forceEmptyPreview}
                         processing={showProcessing}
                         showDepartment
+                        showTags={showTags}
+                        metadataFields={metadataFields}
                       />
                     ))}
                   </CardGrid>
