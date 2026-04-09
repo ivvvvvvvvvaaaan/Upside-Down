@@ -539,7 +539,7 @@ export const SCENARIO: Scenario = {
     { id: 'coll-cam-lens-data',    name: 'Lens Data',        createdBy: 'tnakamura@netflix.com', assetIds: [], boundFolderId: 'ws-cam-lensmaps', boundDepartmentId: 'camera' },
     // Curated collections (snapshot shares — discrete handoffs)
     { id: 'coll-cam-dailies',      name: 'Dailies (concept reference)', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'], boundDepartmentId: 'camera' },
-    { id: 'coll-vfx-vendor-drop',  name: 'Framestore Drop',  createdBy: 'schen@netflix.com', assetIds: [], boundDepartmentId: 'vfx' },
+    { id: 'coll-vfx-vendor-drop',  name: 'Framestore Drop',  createdBy: 'schen@netflix.com', assetIds: ['ws-vfx-010-030', 'ws-vfx-ref-brief'], boundDepartmentId: 'vfx' },
   ],
 
   cuts: [
