@@ -685,7 +685,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       }).permissions.includes('open')
     }
 
-    if (!nodeToDepartment.has(id) && !nodeToParent.has(id)) return true
+    // Personal workspace folders (in tree but no department) are accessible to all project members
+    if (nodeById.has(id) && !nodeToDepartment.has(id) && !nodeToParent.has(id)) return true
     return getEffectivePermissionSet({
       id,
       type: collectionById.has(id) ? 'collection' : 'asset',
