@@ -518,7 +518,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     const targets = isBatch && batchResourceRefs ? batchResourceRefs : (resourceRef ? [resourceRef] : [])
     if (targets.length === 0) return
 
-    markDirty()
     for (const pending of pendingGrants) {
       for (const target of targets) {
         const targetGrants = getResourceGrants(target.id)
