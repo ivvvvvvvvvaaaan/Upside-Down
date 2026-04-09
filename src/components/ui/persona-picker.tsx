@@ -169,8 +169,8 @@ export function PersonaPicker({
                   <Map className="w-4 h-4 text-foreground-dim" />
                 </span>
                 <div className="min-w-0">
-                  <div className="text-body-0-bold text-foreground">User Journey</div>
-                  <div className="text-label-0-regular text-foreground-dim">View access & sharing map</div>
+                  <div className="text-body-0-bold text-foreground">Sharing Map</div>
+                  <div className="text-label-0-regular text-foreground-dim">View project sharing timeline</div>
                 </div>
               </button>
             </>

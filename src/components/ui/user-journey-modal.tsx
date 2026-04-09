@@ -109,7 +109,7 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
       <div className="max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-border-dim">
           <div>
-            <h2 className="text-body-1-bold text-foreground">Project Sharing Timeline</h2>
+            <h2 className="text-body-1-bold text-foreground">Sharing Map</h2>
             <p className="text-body-0-regular text-foreground-dim">{SCENARIO.projectName} — {events.length} sharing events</p>
           </div>
           <Button variant="icon" compact onClick={onClose}>
