@@ -134,7 +134,7 @@ export function Tooltip({
           ref={tooltipRef}
           role="tooltip"
           className={cn(
-            'fixed z-50 px-3 py-2 rounded',
+            'fixed z-[100] px-3 py-2 rounded',
             'bg-surface-high',
             'shadow-[0_2px_4px_rgba(0,0,0,0.2),0_4px_8px_rgba(0,0,0,0.15)]',
             'pointer-events-none',

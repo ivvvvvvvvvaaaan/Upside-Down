@@ -12,7 +12,6 @@ export interface AccessModalProps {
   onClose: () => void
   resourceId: string
   resourceRef?: ResourceRef
-  /** Batch mode: share to multiple resources at once */
   batchResourceRefs?: ResourceRef[]
   inheritedGrants?: { grant: Grant; fromResourceName: string }[]
   title?: string
@@ -42,18 +41,27 @@ export function AccessModal({
     ? `Share ${batchResourceRefs.length} items`
     : title ? `Share ${title} ${kindLabel}`.trim() : 'Share'
 
+  // Dirty state: existing grants were modified
   const [dirty, setDirty] = useState(false)
-  const [handlers, setHandlers] = useState<{ save: () => void; cancel: () => void } | null>(null)
+  const [dirtyHandlers, setDirtyHandlers] = useState<{ save: () => void; cancel: () => void } | null>(null)
+
+  // Pending state: new people staged but not yet confirmed
+  const [pending, setPending] = useState(false)
+  const [pendingHandlers, setPendingHandlers] = useState<{ confirm: () => void; cancel: () => void } | null>(null)
 
   const onDirtyChange = useCallback((isDirty: boolean, h: { save: () => void; cancel: () => void }) => {
     setDirty(isDirty)
-    setHandlers(isDirty ? h : null)
+    setDirtyHandlers(isDirty ? h : null)
+  }, [])
+
+  const onPendingChange = useCallback((isPending: boolean, h: { confirm: () => void; cancel: () => void }) => {
+    setPending(isPending)
+    setPendingHandlers(isPending ? h : null)
   }, [])
 
   const handleClose = () => {
-    if (dirty && handlers) {
-      handlers.cancel()
-    }
+    if (pending && pendingHandlers) pendingHandlers.cancel()
+    if (dirty && dirtyHandlers) dirtyHandlers.cancel()
     onClose()
   }
 
@@ -67,13 +75,19 @@ export function AccessModal({
           batchResourceRefs={batchResourceRefs}
           inheritedGrants={inheritedGrants}
           onDirtyChange={onDirtyChange}
+          onPendingChange={onPendingChange}
         />
       </Modal.Body>
       <Card.Footer>
-        {dirty && handlers ? (
+        {pending && pendingHandlers ? (
           <>
-            <Button variant="secondary" onClick={() => { handlers.cancel(); onClose() }}>Cancel</Button>
-            <Button variant="primary" onClick={() => { handlers.save(); onClose() }}>Save</Button>
+            <Button variant="secondary" onClick={() => { pendingHandlers.cancel() }}>Cancel</Button>
+            <Button variant="primary" onClick={() => { pendingHandlers.confirm() }}>Add</Button>
+          </>
+        ) : dirty && dirtyHandlers ? (
+          <>
+            <Button variant="secondary" onClick={() => { dirtyHandlers.cancel(); onClose() }}>Cancel</Button>
+            <Button variant="primary" onClick={() => { dirtyHandlers.save(); onClose() }}>Save</Button>
           </>
         ) : (
           <Button variant="secondary" onClick={onClose}>Close</Button>

@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { X, Users, Search, Info, Link2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Tooltip } from './tooltip'
 import { Input } from './input'
 import { Select } from './select'
 import { Button } from './button'
@@ -38,6 +39,8 @@ interface AccessPanelProps {
   inheritedGrants?: { grant: Grant; fromResourceName: string }[]
   /** Called when dirty state changes — lets parent render Save/Cancel */
   onDirtyChange?: (dirty: boolean, handlers: { save: () => void; cancel: () => void }) => void
+  /** Called when pending state changes — lets parent render Add/Cancel in footer */
+  onPendingChange?: (pending: boolean, handlers: { confirm: () => void; cancel: () => void }) => void
 }
 
 function roleGroupOptions(roleGroups: RoleGroup[]) {
@@ -46,12 +49,13 @@ function roleGroupOptions(roleGroups: RoleGroup[]) {
     .map((rg) => ({ value: rg.id, label: rg.name }))
 }
 
-function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name, subtitle, roleLabel, members, departmentId }: {
+function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, onUpdateShareMode, name, subtitle, roleLabel, members, departmentId }: {
   grant: Grant
   readOnly: boolean
   roleGroups: RoleGroup[]
   onRemove?: (grantId: string) => void
   onUpdateProfile?: (grantId: string, profileId: AccessProfileId) => void
+  onUpdateShareMode?: (grantId: string, mode: ShareMode) => void
   name: string
   subtitle?: string
   roleLabel: string
@@ -78,6 +82,19 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, name
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
+          {grant.shareMode !== undefined && (
+            <Tooltip label="New assets added to this collection will be visible to this person">
+              <label className="flex items-center gap-1.5 mr-1 text-label-0-regular text-foreground-dim cursor-pointer">
+                <span>Include new</span>
+                <Info className="w-3 h-3" />
+                <Toggle
+                  checked={grant.shareMode === 'live'}
+                  onChange={() => { if (onUpdateShareMode) onUpdateShareMode(grant.id, grant.shareMode === 'live' ? 'snapshot' : 'live') }}
+                  aria-label="Include new"
+                />
+              </label>
+            </Tooltip>
+          )}
           {isOwner ? (
             <span className="text-body-0-regular text-foreground-dim px-2 py-1">
               {getRoleGroup(roleGroups, grant.templateId ?? 'owner')?.name ?? 'Owner'}
@@ -296,13 +313,14 @@ function GuestLinksSection({
   return null
 }
 
-export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOnly = false, emptyLabel = 'Not shared', inheritedGrants, onDirtyChange }: AccessPanelProps) {
+export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOnly = false, emptyLabel = 'Not shared', inheritedGrants, onDirtyChange, onPendingChange }: AccessPanelProps) {
   const isBatch = Boolean(batchResourceRefs && batchResourceRefs.length > 1)
   const {
     getResourceGrants,
     createGrant,
     revokeGrant,
     updateGrantProfile,
+    updateGrantShareMode,
     roleGroups,
     canShare,
     canEditAcl,
@@ -319,6 +337,10 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const { activePersona } = usePersona()
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
+  type PendingGrant = { id: string; principal: PrincipalRef; name: string; kind: 'user' | 'team'; role: AccessProfileId; shareMode: ShareMode; expires: boolean; expiresInDays: number }
+  const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
+  const handleConfirmPendingRef = useRef(() => {})
+  const handleCancelPendingRef = useRef(() => {})
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const grants = getResourceGrants(resourceId)
@@ -362,7 +384,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   // Role + share mode + expiration
   const [addAsRole, setAddAsRole] = useState<AccessProfileId>('view')
   const [shareMode, setShareMode] = useState<ShareMode>('snapshot')
-  const [allowUpload, setAllowUpload] = useState(false)
   const [expires, setExpires] = useState(false)
   const [expiresInDays, setExpiresInDays] = useState(7)
   const { getCollection, collections } = useUserCollections()
@@ -467,33 +488,70 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
   const hasResults = results.length > 0
 
-  const handleAddPrincipal = (principal: PrincipalRef) => {
+  const handleSelectPrincipal = (principal: PrincipalRef, name: string, kind: 'user' | 'team') => {
     if (principal.type === 'user' && principal.userId === activePersona?.id) return
+    // Don't add duplicates
+    const key = principal.type === 'user' ? principal.userId : (principal as { teamId: string }).teamId
+    if (pendingGrants.some(p => p.id === key)) return
+    setPendingGrants(prev => [...prev, {
+      id: key,
+      principal,
+      name,
+      kind,
+      role: addAsRole,
+      shareMode,
+      expires,
+      expiresInDays,
+    }])
+    setQuery('')
+    setShowDropdown(false)
+    onPendingChange?.(true, { confirm: () => handleConfirmPendingRef.current(), cancel: () => handleCancelPendingRef.current() })
+  }
+
+  const handleConfirmPending = () => {
+    if (pendingGrants.length === 0) return
 
     const targets = isBatch && batchResourceRefs ? batchResourceRefs : (resourceRef ? [resourceRef] : [])
     if (targets.length === 0) return
 
     markDirty()
-    for (const target of targets) {
-      const targetGrants = getResourceGrants(target.id)
-      if (principal.type === 'user' && targetGrants.some(g => g.principal.type === 'user' && g.principal.userId === principal.userId)) continue
-      if (principal.type === 'team' && targetGrants.some(g => g.principal.type === 'team' && g.principal.teamId === principal.teamId)) continue
+    for (const pending of pendingGrants) {
+      for (const target of targets) {
+        const targetGrants = getResourceGrants(target.id)
+        if (pending.principal.type === 'user' && targetGrants.some(g => g.principal.type === 'user' && g.principal.userId === (pending.principal as { userId: string }).userId)) continue
+        if (pending.principal.type === 'team' && targetGrants.some(g => g.principal.type === 'team' && g.principal.teamId === (pending.principal as { teamId: string }).teamId)) continue
 
-      const isCollection = target.type === 'collection'
-      const collection = isCollection ? getCollection(target.id) : undefined
-      const snapshotAssetIds = shareMode === 'snapshot' && collection
-        ? resolveCollectionAssetIds(collection)
-        : undefined
-      createGrant(target, principal, addAsRole, {
-        expiresInDays: expires ? expiresInDays : undefined,
-        shareMode: isCollection ? shareMode : undefined,
-        snapshotAssetIds,
-        allowUpload: isCollection ? allowUpload : undefined,
-      })
+        const isCollection = target.type === 'collection'
+        const collection = isCollection ? getCollection(target.id) : undefined
+        const snapshotAssetIds = pending.shareMode === 'snapshot' && collection
+          ? resolveCollectionAssetIds(collection)
+          : undefined
+        createGrant(target, pending.principal, pending.role, {
+          expiresInDays: pending.expires ? pending.expiresInDays : undefined,
+          shareMode: isCollection ? pending.shareMode : undefined,
+          snapshotAssetIds,
+        })
+      }
     }
-    setQuery('')
-    setShowDropdown(false)
+    setPendingGrants([])
+    onPendingChange?.(false, { confirm: () => {}, cancel: () => {} })
   }
+
+  const handleCancelPending = () => {
+    setPendingGrants([])
+    onPendingChange?.(false, { confirm: () => {}, cancel: () => {} })
+  }
+
+  const handleRemovePending = (id: string) => {
+    setPendingGrants(prev => {
+      const next = prev.filter(p => p.id !== id)
+      if (next.length === 0) onPendingChange?.(false, { confirm: () => {}, cancel: () => {} })
+      return next
+    })
+  }
+
+  handleConfirmPendingRef.current = handleConfirmPending
+  handleCancelPendingRef.current = handleCancelPending
 
   const handleRevokeGrant = (grantId: string) => {
     markDirty()
@@ -503,6 +561,11 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const handleUpdateProfile = (grantId: string, profileId: AccessProfileId) => {
     markDirty()
     updateGrantProfile(grantId, profileId)
+  }
+
+  const handleUpdateShareMode = (grantId: string, mode: ShareMode) => {
+    markDirty()
+    updateGrantShareMode(grantId, mode)
   }
 
   const allEntries = useMemo(() => {
@@ -552,82 +615,53 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         <p className="text-body-0-regular text-foreground-dim">You can manage shares you created. Only admins can modify shares created by others.</p>
       )}
 
-      {/* Search + role dropdown + expiration */}
+      {/* Search */}
       {!readOnly && resourceRef && canAddGrants && addRoleOptions.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-start gap-2">
-            <div ref={dropdownRef} className="relative flex-1">
-              <Input
-                type="text"
-                value={query}
-                onChange={e => { setQuery(e.target.value); setShowDropdown(true) }}
-                onFocus={() => query.trim() && setShowDropdown(true)}
-                placeholder="Add people or teams..."
-                icon={<Search className="w-4 h-4" />}
-                iconPosition="left"
-              />
-              {showDropdown && query.trim() && (
-                <div className="absolute left-0 right-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 max-h-[240px] overflow-y-auto">
-                  {results.map((result) => (
-                    <button
-                      key={result.key}
-                      onClick={() => handleAddPrincipal(result.principal)}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors"
-                    >
-                      {result.kind === 'user' ? (
-                        <Avatar name={result.name} size="sm" />
-                      ) : (
-                        <DepartmentAvatar size="sm" />
-                      )}
-                      <div className="min-w-0">
-                        <span className="text-body-0-regular text-foreground truncate block">{result.name}</span>
-                        <span className="text-body-0-regular text-foreground-dim truncate block">{result.subtitle}</span>
-                      </div>
-                    </button>
-                  ))}
-                  {!hasResults && (
-                    <div className="px-3 py-2 text-body-0-regular text-foreground-dim">No matches</div>
-                  )}
-                </div>
-              )}
-            </div>
-            <RoleSelect
-              options={addRoleOptions}
-              value={addAsRole}
-              onChange={(value) => setAddAsRole(value as AccessProfileId)}
-              size="standard"
+        <div className="flex items-start gap-2">
+          <div ref={dropdownRef} className="relative flex-1">
+            <Input
+              type="text"
+              value={query}
+              onChange={e => { setQuery(e.target.value); setShowDropdown(true) }}
+              onFocus={() => { if (query.trim()) setShowDropdown(true) }}
+              placeholder="Add people or teams..."
+              icon={<Search className="w-4 h-4" />}
+              iconPosition="left"
             />
+            {showDropdown && query.trim() && (
+              <div className="absolute left-0 right-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 max-h-[240px] overflow-y-auto">
+                {results.map((result) => (
+                  <button
+                    key={result.key}
+                    onClick={() => handleSelectPrincipal(result.principal, result.name, result.kind)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors"
+                  >
+                    {result.kind === 'user' ? (
+                      <Avatar name={result.name} size="sm" />
+                    ) : (
+                      <DepartmentAvatar size="sm" />
+                    )}
+                    <div className="min-w-0">
+                      <span className="text-body-0-regular text-foreground truncate block">{result.name}</span>
+                      <span className="text-body-0-regular text-foreground-dim truncate block">{result.subtitle}</span>
+                    </div>
+                  </button>
+                ))}
+                {!hasResults && (
+                  <div className="px-3 py-2 text-body-0-regular text-foreground-dim">No matches</div>
+                )}
+              </div>
+            )}
           </div>
-          {isCollectionResource && (
-            <>
-              <div className="flex items-center justify-between gap-4 py-1">
-                <div>
-                  <span className="text-body-0-regular text-foreground">Auto-update</span>
-                  <p className="text-label-0-regular text-foreground-dim">Collection stays current as contents change</p>
-                </div>
-                <Toggle
-                  checked={shareMode === 'live'}
-                  onChange={(v) => setShareMode(v ? 'live' : 'snapshot')}
-                  aria-label="Auto-update"
-                />
-              </div>
-              <div className="flex items-center justify-between gap-4 py-1">
-                <div>
-                  <span className="text-body-0-regular text-foreground">Allow uploads</span>
-                  <p className="text-label-0-regular text-foreground-dim">Recipients can upload files to this collection</p>
-                </div>
-                <Toggle
-                  checked={allowUpload}
-                  onChange={setAllowUpload}
-                  aria-label="Allow uploads"
-                />
-              </div>
-            </>
-          )}
         </div>
       )}
 
-      {/* Department access context for workspace-bound collections */}
+      {/* Department access */}
+      {/* Existing access */}
+      {(departmentContext || userEntries.length > 0 || teamEntries.length > 0 || sharedViaCollections.length > 0) && (
+        <h3 className="text-label-1-bold text-foreground-dim">Have access</h3>
+      )}
+
       {departmentContext && (
         <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-surface-mid">
           <div className="flex items-center gap-2 min-w-0">
@@ -640,11 +674,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{departmentContext.roleLabel}</span>
         </div>
       )}
-
-      {/* Users */}
       {userEntries.length > 0 && (
-        <div className="space-y-1">
-          <h3 className="text-label-1-bold text-foreground-dim">Users</h3>
+        <div className="space-y-0">
           <div className="space-y-0">
             {userEntries.map((entry) => (
               <GrantRow
@@ -659,50 +690,35 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                 departmentId={entry.departmentId}
                 onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
                 onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
+                onUpdateShareMode={!entry.readOnly ? handleUpdateShareMode : undefined}
               />
             ))}
           </div>
         </div>
       )}
 
-      {/* Teams */}
       {teamEntries.length > 0 && (
-        <div className="space-y-1">
-          <h3 className="text-label-1-bold text-foreground-dim">Teams</h3>
-          <div className="space-y-0">
-            {teamEntries.map((entry) => (
-              <GrantRow
-                key={entry.key}
-                grant={entry.grant}
-                readOnly={entry.readOnly}
-                roleGroups={roleGroups}
-                name={entry.name}
-                subtitle={entry.subtitle}
-                roleLabel={entry.roleLabel}
-                members={entry.members}
-                departmentId={entry.departmentId}
-                onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
-                onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
-              />
-            ))}
-          </div>
+        <div className="space-y-0">
+          {teamEntries.map((entry) => (
+            <GrantRow
+              key={entry.key}
+              grant={entry.grant}
+              readOnly={entry.readOnly}
+              roleGroups={roleGroups}
+              name={entry.name}
+              subtitle={entry.subtitle}
+              roleLabel={entry.roleLabel}
+              members={entry.members}
+              departmentId={entry.departmentId}
+              onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
+              onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
+                onUpdateShareMode={!entry.readOnly ? handleUpdateShareMode : undefined}
+            />
+          ))}
         </div>
       )}
 
-      {/* Links */}
-      <GuestLinksSection
-        resourceId={resourceId}
-        resourceRef={resourceRef}
-        readOnly={readOnly}
-        canAddGrants={canAddGrants}
-        canManageGuestLink={canManageGuestLink}
-        getResourceGuestLinks={getResourceGuestLinks}
-        createGuestLink={(...args) => { markDirty(); return createGuestLink(...args) }}
-        updateGuestLink={(...args) => { markDirty(); updateGuestLink(...args) }}
-        revokeGuestLink={(...args) => { markDirty(); revokeGuestLink(...args) }}
-      />
-
-      {/* Shared via collections (for assets — shows which collections carry this asset to recipients) */}
+      {/* Shared via collections */}
       {sharedViaCollections.map(({ collection, grants: collGrants }) => {
         const collRef: ResourceRef = { id: collection.id, type: 'collection' }
         const canManageCollection = canEditAcl(collRef)
@@ -730,7 +746,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                     roleLabel={profileLabel(grant.templateId, roleGroups)}
                     departmentId={deptId}
                     onRemove={canRevoke ? (id) => { markDirty(); revokeGrant(id) } : undefined}
-                    onUpdateProfile={canRevoke ? (id, profileId) => { markDirty(); updateGrantProfile(id, profileId) } : undefined}
+                    onUpdateProfile={canRevoke ? (id, pid) => { markDirty(); updateGrantProfile(id, pid) } : undefined}
                   />
                 )
               })}
@@ -739,9 +755,69 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         )
       })}
 
-      {userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && sharedViaCollections.length === 0 && !departmentContext && (
+      {/* Pending additions */}
+      {pendingGrants.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-label-1-bold text-foreground-dim">Adding</h3>
+          {pendingGrants.map(pending => (
+            <div key={pending.id} className="rounded-lg bg-surface-mid p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  {pending.kind === 'user' ? (
+                    <Avatar name={pending.name} size="sm" />
+                  ) : (
+                    <DepartmentAvatar size="sm" />
+                  )}
+                  <span className="text-body-0-regular text-foreground truncate">{pending.name}</span>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {isCollectionResource && (
+                    <label className="flex items-center gap-1.5 mr-2 text-label-0-regular text-foreground-dim cursor-pointer">
+                      <Toggle
+                        checked={pending.shareMode === 'live'}
+                        onChange={(v) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, shareMode: v ? 'live' : 'snapshot' } : p))}
+                        aria-label="Include new"
+                      />
+                      <span>Include new</span>
+                      <Tooltip label="New assets added to this collection will be visible to this person">
+                        <Info className="w-3 h-3 text-foreground-dim" />
+                      </Tooltip>
+                    </label>
+                  )}
+                  <RoleSelect
+                    options={addRoleOptions}
+                    value={pending.role}
+                    onChange={(value) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, role: value as AccessProfileId } : p))}
+                  />
+                  <Button variant="icon" compact onClick={() => handleRemovePending(pending.id)}>
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && sharedViaCollections.length === 0 && !departmentContext && pendingGrants.length === 0 && (
         <p className="text-body-0-regular text-foreground-dim">{emptyLabel}</p>
       )}
+
+      {/* Links — separated with extra gap */}
+      <div className="pt-2">
+        <GuestLinksSection
+          resourceId={resourceId}
+          resourceRef={resourceRef}
+          readOnly={readOnly}
+          canAddGrants={canAddGrants}
+          canManageGuestLink={canManageGuestLink}
+          getResourceGuestLinks={getResourceGuestLinks}
+          createGuestLink={(...args) => { markDirty(); return createGuestLink(...args) }}
+          updateGuestLink={(...args) => { markDirty(); updateGuestLink(...args) }}
+          revokeGuestLink={(...args) => { markDirty(); revokeGuestLink(...args) }}
+        />
+      </div>
 
     </div>
   )

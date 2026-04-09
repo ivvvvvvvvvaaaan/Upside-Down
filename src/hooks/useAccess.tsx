@@ -109,6 +109,7 @@ interface AccessContextValue {
   canManageGrant: (grant: Grant) => boolean
   grants: Grant[]
   updateGrantProfile: (grantId: string, profileId: AccessProfileId) => void
+  updateGrantShareMode: (grantId: string, mode: ShareMode) => void
   // Role group management
   roleGroups: RoleGroup[]
   updateRoleGroup: (id: string, permissions: Permission[]) => void
@@ -1033,6 +1034,10 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     })
   }, [roleGroups, canManageGrantForState, canGrantProfileForResourceFn, setGrants])
 
+  const updateGrantShareMode = useCallback((grantId: string, mode: ShareMode) => {
+    setGrants(prev => prev.map(g => g.id === grantId ? { ...g, shareMode: mode } : g))
+  }, [setGrants])
+
   const restoreResourceGrants = useCallback((resourceId: string, snapshot: Grant[]) => {
     setGrants(prev => {
       const otherGrants = prev.filter(g => g.resource.id !== resourceId)
@@ -1099,6 +1104,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     canManageGrant,
     grants,
     updateGrantProfile,
+    updateGrantShareMode,
     roleGroups,
     updateRoleGroup,
     renameRoleGroup,
@@ -1150,6 +1156,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     canManageGrant,
     grants,
     updateGrantProfile,
+    updateGrantShareMode,
     roleGroups,
     updateRoleGroup,
     renameRoleGroup,
