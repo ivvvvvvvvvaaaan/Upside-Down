@@ -268,7 +268,7 @@ export const SCENARIO: Scenario = {
       label: 'EP301 comp package',
       by: 'vfx-coordinator',
       date: '2026-01-20',
-      expiresAt: '2026-03-15',
+      expiresAt: '2026-06-15',
       context: 'Sarah sends Framestore the approved comp direction for EP301. James needs to see the internal shot breakdown and reference comps before starting his team\'s delivery pass. Time-boxed to the delivery window.',
       grants: [
         { to: 'vendor-framestore', as: 'view' },
