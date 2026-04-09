@@ -39,7 +39,7 @@ export function AccessModal({
   const kindLabel = resourceRef ? KIND_LABELS[resourceRef.type] ?? '' : ''
   const heading = isBatch
     ? `Share ${batchResourceRefs.length} items`
-    : title ? `Share ${title} ${kindLabel}`.trim() : 'Share'
+    : title ? `Share ${title}` : 'Share'
 
   // Dirty state: existing grants were modified
   const [dirty, setDirty] = useState(false)

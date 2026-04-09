@@ -31,3 +31,5 @@ Characters, scenes, and locations are facts about the content; discovered from s
 Smart collections are views into the ontology. The "Character" collection is a lens that groups assets by character tag. You can rename it, change its filters, delete it. The characters don't disappear; they're still tagged on the assets. The ontology persists. Collections are how you browse it.
 
 You can choose which characters, scenes, or locations are worth browsing by; but you can't change what they're called. The names come from the content itself. You organize around the ontology; you don't edit it.
+
+Everyone can see the Character or Scene collection. But you only see assets inside it that you already have access to. Two people looking at the same character collection may see different assets depending on what departments or shares they have access to.

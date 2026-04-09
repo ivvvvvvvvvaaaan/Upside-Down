@@ -12,13 +12,13 @@ Departments give you a home. Collections give you reach.
 
 ---
 
-## Why collections are the sharing unit
+## One way to share
 
-Every sharing action produces a collection. Even when you share a folder, you're really sharing a collection that stays in sync with that folder's contents. We made this choice because:
+You can share a single asset, a selection of assets, or a folder. The experience is the same: same dialog, same role options, same expiration controls.
 
-- **One mental model.** Users don't need to learn the difference between "sharing a folder" and "sharing a collection." They share. The system handles the rest.
-- **Consistent controls.** Every share has the same options: role, expiration, synced/frozen, upload permission. Whether it started as a folder or a hand-picked set of assets.
-- **Easy to take back.** Remove a person from the collection; they lose access to everything in it. Remove an asset from the collection; everyone loses access to that asset. Remove the whole collection; all access gone. Every level works the same way, in the same place.
+A single asset is shared as-is. Multiple assets become a collection. A folder becomes a collection that stays in sync with the folder's contents. The folder stays inside the department; the collection is what crosses the boundary. When new content lands in the folder, it appears in the shared collection automatically. This is how department work reaches people outside the department without giving them access to the whole workspace.
+
+**Easy to take back.** Remove a person from a share; they lose access. Remove an asset from the collection; everyone loses access to that asset. Remove the whole collection; all access gone. The folder and its contents stay in the department. Every level works the same way, in the same place.
 
 ---
 
@@ -128,7 +128,7 @@ This needs to be resolved based on how departments actually want to control thei
 
 ## Summary of beliefs
 
-1. One sharing mechanism. Collections. Always.
+1. Sharing works the same way regardless of what you're sharing.
 2. Access is additive. No deny rules. Remove the share to restrict.
 3. Every permission is explainable and removable.
 4. Department access is structural. Collection access is intentional. Both coexist.
