@@ -793,7 +793,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return grants.some(g =>
       g.resource.id === collectionId &&
       isGrantActive(g) &&
-      g.allowUpload &&
+      g.permissions.includes('upload') &&
       (
         (g.principal.type === 'user' && g.principal.userId === userId) ||
         (g.principal.type === 'team' && isUserInTeam(userId, g.principal.teamId))

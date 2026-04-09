@@ -217,7 +217,7 @@ export function ProjectBreadcrumb() {
           icon={<Map className="w-3.5 h-3.5" />}
           onClick={() => setJourneyOpen(true)}
         >
-          <span className="hidden md:inline">User Journey</span>
+          <span className="hidden md:inline">Sharing Map</span>
         </Button>
         <Button
           variant="icon"
