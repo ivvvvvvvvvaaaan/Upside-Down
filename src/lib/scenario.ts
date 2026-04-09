@@ -405,6 +405,7 @@ export const SCENARIO: Scenario = {
       by: 'vfx-coordinator',
       date: '2026-01-15',
       context: 'Sarah creates a collection for Framestore deliveries. James can see the brief and upload comp deliveries — he cannot browse the rest of the VFX workspace.',
+      allowUpload: true,
       grants: [
         { to: 'vendor-framestore', as: 'contribute' },
       ],

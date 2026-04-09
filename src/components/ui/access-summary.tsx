@@ -80,7 +80,11 @@ export function AccessSummary({
                   )}
                 </div>
               </div>
-              <span className="text-body-0-regular text-foreground-dim flex-shrink-0">{row.roleLabel}</span>
+              <div className="flex flex-wrap gap-x-1.5 justify-end flex-shrink-0 text-body-0-regular text-foreground-dim">
+                <span>{row.roleLabel}</span>
+                {row.grant.allowUpload && <span>Uploads</span>}
+                {row.grant.shareMode === 'live' && <span>Include new</span>}
+              </div>
             </div>
           ))}
         </div>

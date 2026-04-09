@@ -82,6 +82,9 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, onUp
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
+          {grant.allowUpload && (
+            <span className="text-label-0-regular text-foreground-dim mr-1">Uploads</span>
+          )}
           {grant.shareMode !== undefined && (
             <Tooltip label="New assets added to this collection will be visible to this person">
               <label className="flex items-center gap-1.5 mr-1 text-label-0-regular text-foreground-dim cursor-pointer">
@@ -337,7 +340,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const { activePersona } = usePersona()
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
-  type PendingGrant = { id: string; principal: PrincipalRef; name: string; kind: 'user' | 'team'; role: AccessProfileId; shareMode: ShareMode; expires: boolean; expiresInDays: number }
+  type PendingGrant = { id: string; principal: PrincipalRef; name: string; kind: 'user' | 'team'; role: AccessProfileId; shareMode: ShareMode; expires: boolean; expiresInDays: number; allowUpload: boolean }
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
   const handleConfirmPendingRef = useRef(() => {})
   const handleCancelPendingRef = useRef(() => {})
@@ -502,6 +505,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       shareMode,
       expires,
       expiresInDays,
+      allowUpload: false,
     }])
     setQuery('')
     setShowDropdown(false)
@@ -530,6 +534,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           expiresInDays: pending.expires ? pending.expiresInDays : undefined,
           shareMode: isCollection ? pending.shareMode : undefined,
           snapshotAssetIds,
+          allowUpload: pending.allowUpload || undefined,
         })
       }
     }
@@ -772,6 +777,15 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   {isCollectionResource && (
+                    <>
+                    <label className="flex items-center gap-1.5 mr-2 text-label-0-regular text-foreground-dim cursor-pointer">
+                      <Toggle
+                        checked={pending.allowUpload}
+                        onChange={(v) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, allowUpload: v } : p))}
+                        aria-label="Allow uploads"
+                      />
+                      <span>Uploads</span>
+                    </label>
                     <label className="flex items-center gap-1.5 mr-2 text-label-0-regular text-foreground-dim cursor-pointer">
                       <Toggle
                         checked={pending.shareMode === 'live'}
@@ -783,6 +797,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                         <Info className="w-3 h-3 text-foreground-dim" />
                       </Tooltip>
                     </label>
+                    </>
                   )}
                   <RoleSelect
                     options={addRoleOptions}
