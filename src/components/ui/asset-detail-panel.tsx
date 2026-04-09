@@ -10,7 +10,7 @@ import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import { CreativeReviewCard } from './creative-review-card'
 import type { Asset, DepartmentId } from '@/lib/data'
 import { getAssetIdVariants } from '@/lib/data'
-import type { ResourceRef, Grant } from '@/lib/grants'
+import type { ResourceRef, Grant, RoleGroup } from '@/lib/grants'
 import { isGrantActive, profileLabel } from '@/lib/grants'
 import { useAccess, useFileTree, usePersona, useSmartCollections, useCuts } from '@/hooks'
 import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
@@ -28,6 +28,25 @@ import type { RelatedAssetGroup } from '@/lib/context-relationships'
 import { Modal } from './modal'
 import { Avatar } from './avatar'
 import type { AssetTag } from '@/lib/data'
+
+function grantCapabilities(grant: Grant, roleGroups: RoleGroup[]): string[] {
+  const caps: string[] = []
+  caps.push(profileLabel(grant.templateId, roleGroups))
+  if (grant.shareMode === 'live') caps.push('Include new')
+  if (grant.permissions.includes('upload') && grant.templateId !== 'contribute' && grant.templateId !== 'edit' && grant.templateId !== 'manage') caps.push('Upload')
+  return caps
+}
+
+function CapabilityLabels({ grant, roleGroups }: { grant: Grant; roleGroups: RoleGroup[] }) {
+  const caps = grantCapabilities(grant, roleGroups)
+  return (
+    <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 justify-end flex-shrink-0">
+      {caps.map(cap => (
+        <span key={cap} className="text-label-0-regular text-foreground-dim">{cap}</span>
+      ))}
+    </div>
+  )
+}
 
 function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName }: {
   assetId: string
@@ -105,7 +124,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName }
                   <span className="text-label-0-regular text-foreground-dim truncate block">{source}</span>
                 </div>
               </div>
-              <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{profileLabel(grant.templateId, roleGroups)}</span>
+              <CapabilityLabels grant={grant} roleGroups={roleGroups} />
             </div>
           ))}
         </div>
@@ -126,7 +145,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName }
                   <Avatar name={name} size="compact" />
                   <span className="text-body-0-regular text-foreground truncate">{name}</span>
                 </div>
-                <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{profileLabel(grant.templateId, roleGroups)}</span>
+                <CapabilityLabels grant={grant} roleGroups={roleGroups} />
               </div>
             )
           })}
@@ -148,7 +167,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName }
                   <Avatar name={name} size="compact" />
                   <span className="text-body-0-regular text-foreground truncate">{name}</span>
                 </div>
-                <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{profileLabel(grant.templateId, roleGroups)}</span>
+                <CapabilityLabels grant={grant} roleGroups={roleGroups} />
               </div>
             )
           })}
