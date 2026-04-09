@@ -268,7 +268,8 @@ export const SCENARIO: Scenario = {
       label: 'EP301 comp package',
       by: 'vfx-coordinator',
       date: '2026-01-20',
-      context: 'Sarah sends Framestore the approved comp direction for EP301. James needs to see the internal shot breakdown and reference comps before starting his team\'s delivery pass. Viewer access only — vendor cannot reshare or download without watermark.',
+      expiresAt: '2026-03-15',
+      context: 'Sarah sends Framestore the approved comp direction for EP301. James needs to see the internal shot breakdown and reference comps before starting his team\'s delivery pass. Time-boxed to the delivery window.',
       grants: [
         { to: 'vendor-framestore', as: 'view' },
       ],
@@ -462,18 +463,6 @@ export const SCENARIO: Scenario = {
     },
     // (Audio handoff now via cut-ep301-lc-3 share above)
     // --- Expiring grants ---
-    // Framestore gets time-boxed access to VFX reference package (delivery window)
-    {
-      resource: { id: 'ws-vfx-coll-for-vendor', type: 'collection', dept: 'vfx' },
-      label: 'EP301 comp package (delivery window)',
-      by: 'vfx-coordinator',
-      date: '2026-02-15',
-      expiresAt: '2026-03-15',
-      context: 'Sarah extends Framestore\'s comp package access for the EP301 delivery window. James\'s team has four weeks to complete their pass. After the deadline, access auto-revokes to prevent work against stale reference material.',
-      grants: [
-        { to: 'vendor-framestore', as: 'view' },
-      ],
-    },
     // Temporary cross-department access: art gets camera dailies for 2 weeks of concept work
     {
       resource: { id: 'coll-cam-dailies', type: 'collection', dept: 'camera' },
@@ -491,19 +480,6 @@ export const SCENARIO: Scenario = {
 
     // --- Unified Collection Model scenarios ---
 
-    // Snapshot share: Sarah shares VFX delivery package with vendor (frozen contents)
-    {
-      resource: { id: 'ws-vfx-coll-for-vendor', type: 'collection', dept: 'vfx' },
-      label: 'Framestore Week 12 Delivery',
-      by: 'vfx-coordinator',
-      date: '2026-02-16',
-      context: 'Sarah sends Framestore the approved shots for this week. Snapshot mode freezes the 8 shots at share time — next week\'s batch won\'t leak into this delivery. Contribute so James can deliver rendered frames back.',
-      shareMode: 'snapshot',
-      snapshotAssetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-010-030', 'ws-vfx-020-010', 'ws-vfx-020-020'],
-      grants: [
-        { to: 'vendor-framestore', as: 'contribute' },
-      ],
-    },
 
     // Review link: Maria shares assembly with David for review (direct link, expiring)
     {

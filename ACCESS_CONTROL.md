@@ -69,21 +69,13 @@ The important distinction: **Contribute lets you add, not change.** A vendor upl
 
 ---
 
-## Department members can manage their department's collections
+## Departments, groups, and roles
 
-If you have manage-level access on your department, you can manage any collection that belongs to that department; regardless of who created it. Lisa creates "Dailies Review Cuts" in editorial. Maria, also in editorial with manage access, can share it, change permissions, add people. The collection belongs to the department, not to Lisa.
+**Departments** organize content and provide default access. Everyone in VFX sees VFX files. Everyone in Editorial sees editorial files. This is managed at the org level, not per-share. Department members with manage access can manage any collection that belongs to their department; regardless of who created it. The collection belongs to the department, not to one person.
 
-This prevents the "Lisa is on vacation and nobody can share the dailies" problem.
+**Groups** are saved lists of recipients. The dailies review includes the director, the editorial coordinator, and the VFX supervisor; three different departments. Without a group, you'd add all three individually every time a new cut lands. Create a group once ("Dailies Review," "Super Prod," "Localization"), share to the group, and when someone joins or leaves, their access updates automatically.
 
----
-
-## Departments and teams
-
-- **Department**: where the content lives. Organizes the workspace. Provides default access through inheritance.
-- **Team / group**: who gets access. A named list of people. Can span departments (e.g., "Dailies Review" includes editorial + VFX + director).
-- **Role group**: what they can do. View, comment, contribute, edit, manage; each a bundle of permissions.
-
-Departments alone can't express cross-functional groups. Teams alone can't provide the stable content structure that departments give. Both are needed.
+**Roles** define what someone can do with what they received. View, comment, contribute, edit, manage. Each role is a bundle of permissions. Roles are assigned per-share; the same person can have different roles on different collections.
 
 ---
 

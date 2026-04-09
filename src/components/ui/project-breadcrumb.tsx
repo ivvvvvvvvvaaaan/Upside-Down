@@ -3,10 +3,11 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronRight, Settings } from 'lucide-react'
+import { ChevronRight, Settings, Map } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { SettingsModal } from './settings-modal'
+import { UserJourneyModal } from './user-journey-modal'
 import { PersonaPicker } from './persona-picker'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 
@@ -147,6 +148,7 @@ export function ProjectBreadcrumb() {
   const pathname = usePathname()
   const { extras } = useContext(BreadcrumbExtrasContext)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [journeyOpen, setJourneyOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const isMobile = useIsMobile()
 
@@ -210,6 +212,14 @@ export function ProjectBreadcrumb() {
 
       <div className="flex items-center gap-2 flex-shrink-0">
         <Button
+          variant="tertiary"
+          compact
+          icon={<Map className="w-3.5 h-3.5" />}
+          onClick={() => setJourneyOpen(true)}
+        >
+          <span className="hidden md:inline">User Journey</span>
+        </Button>
+        <Button
           variant="icon"
           compact
           onClick={() => setSettingsOpen(true)}
@@ -221,6 +231,7 @@ export function ProjectBreadcrumb() {
       </div>
 
       <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <UserJourneyModal open={journeyOpen} onClose={() => setJourneyOpen(false)} />
     </div>
   )
 }
