@@ -18,6 +18,8 @@ You can share a single asset, a selection of assets, or a folder. The experience
 
 A single asset is shared as-is. Multiple assets become a collection. A folder becomes a collection that stays in sync with the folder's contents. The folder stays inside the department; the collection is what crosses the boundary. When new content lands in the folder, it appears in the shared collection automatically. This is how department work reaches people outside the department without giving them access to the whole workspace.
 
+When sharing a folder that contains subfolders, the recipient currently sees all assets in a flat list. Whether the folder structure should be preserved on the receiving end is an open question; it likely depends on whether the structure carries meaning (scene/shot organization) or is just file management.
+
 **Easy to take back.** Remove a person from a share; they lose access. Remove an asset from the collection; everyone loses access to that asset. Remove the whole collection; all access gone. The folder and its contents stay in the department. Every level works the same way, in the same place.
 
 ---
