@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { X, Users, Search, Info, Link2 } from 'lucide-react'
+import { X, Users, Search, Info, Link2, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip } from './tooltip'
 import { Input } from './input'
@@ -12,6 +12,9 @@ import { MenuSelect } from './menu-select'
 import { Avatar } from './avatar'
 import { DepartmentAvatar } from './department-avatar'
 import { Toggle } from './switch'
+import { Modal } from './modal'
+import { Card } from './card'
+import { departmentConfigs } from '@/lib/department-configs'
 import { useAccess, usePersona } from '@/hooks'
 import type { Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
 import { getRoleGroup } from '@/lib/grants'
@@ -342,6 +345,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const [showDropdown, setShowDropdown] = useState(false)
   type PendingGrant = { id: string; principal: PrincipalRef; name: string; kind: 'user' | 'team'; role: AccessProfileId; shareMode: ShareMode; expires: boolean; expiresInDays: number; allowUpload: boolean }
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
+  const [showCrossDeptWarning, setShowCrossDeptWarning] = useState(false)
+  const [flaggedRecipients, setFlaggedRecipients] = useState<{ name: string; reason: string }[]>([])
   const handleConfirmPendingRef = useRef(() => {})
   const handleCancelPendingRef = useRef(() => {})
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -512,9 +517,19 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     onPendingChange?.(true, { confirm: () => handleConfirmPendingRef.current(), cancel: () => handleCancelPendingRef.current() })
   }
 
-  const handleConfirmPending = () => {
-    if (pendingGrants.length === 0) return
+  // Determine the resource's department for cross-dept checks
+  const resourceDeptId = useMemo(() => {
+    if (resourceRef?.departmentId) return resourceRef.departmentId
+    if (isCollectionResource && resourceRef) {
+      const coll = getCollection(resourceRef.id)
+      return coll?.boundDepartmentId as DepartmentId | undefined
+    }
+    return undefined
+  }, [resourceRef, isCollectionResource, getCollection])
 
+  const resourceDeptName = resourceDeptId ? (departmentConfigs[resourceDeptId]?.name ?? resourceDeptId) : undefined
+
+  const commitPendingGrants = () => {
     const targets = isBatch && batchResourceRefs ? batchResourceRefs : (resourceRef ? [resourceRef] : [])
     if (targets.length === 0) return
 
@@ -539,6 +554,43 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     }
     setPendingGrants([])
     onPendingChange?.(false, { confirm: () => {}, cancel: () => {} })
+  }
+
+  const handleConfirmPending = () => {
+    if (pendingGrants.length === 0) return
+
+    // Check for cross-department or external recipients
+    if (resourceDeptId) {
+      const flagged: { name: string; reason: string }[] = []
+      for (const pending of pendingGrants) {
+        if (pending.principal.type === 'user') {
+          const persona = PERSONAS.find(p => p.id === (pending.principal as { userId: string }).userId)
+          if (persona?.role === 'vendor') {
+            flagged.push({ name: pending.name, reason: `External vendor${persona.title ? ` (${persona.title})` : ''}` })
+          } else if (!persona?.departmentId) {
+            flagged.push({ name: pending.name, reason: persona?.title ?? 'No department' })
+          } else if (persona.departmentId !== resourceDeptId) {
+            const deptName = departmentConfigs[persona.departmentId]?.name ?? persona.departmentId
+            flagged.push({ name: pending.name, reason: deptName })
+          }
+        } else {
+          const team = TEAMS.find(t => t.id === (pending.principal as { teamId: string }).teamId)
+          if (team?.departmentId && team.departmentId !== resourceDeptId) {
+            const deptName = departmentConfigs[team.departmentId]?.name ?? team.departmentId
+            flagged.push({ name: pending.name, reason: deptName })
+          } else if (!team?.departmentId) {
+            flagged.push({ name: pending.name, reason: 'Cross-department group' })
+          }
+        }
+      }
+      if (flagged.length > 0) {
+        setFlaggedRecipients(flagged)
+        setShowCrossDeptWarning(true)
+        return
+      }
+    }
+
+    commitPendingGrants()
   }
 
   const handleCancelPending = () => {
@@ -832,6 +884,31 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           revokeGuestLink={(...args) => { markDirty(); revokeGuestLink(...args) }}
         />
       </div>
+
+      {/* Cross-department warning */}
+      <Modal open={showCrossDeptWarning} onOpenChange={setShowCrossDeptWarning} size="sm">
+        <Modal.Header title={`Sharing outside ${resourceDeptName ?? 'this department'}`} />
+        <Modal.Body>
+          <div className="space-y-3">
+            <p className="text-body-0-regular text-foreground-dim">
+              {flaggedRecipients.length === 1 ? 'This person is' : 'These people are'} not part of {resourceDeptName ?? 'this department'}:
+            </p>
+            <div className="space-y-2">
+              {flaggedRecipients.map(({ name, reason }) => (
+                <div key={name} className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-yellow-500 flex-shrink-0" />
+                  <span className="text-body-0-regular text-foreground">{name}</span>
+                  <span className="text-body-0-regular text-foreground-dim">— {reason}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Modal.Body>
+        <Card.Footer>
+          <Button variant="secondary" onClick={() => setShowCrossDeptWarning(false)}>Cancel</Button>
+          <Button variant="primary" onClick={() => { setShowCrossDeptWarning(false); commitPendingGrants() }}>Share anyway</Button>
+        </Card.Footer>
+      </Modal>
 
     </div>
   )

@@ -3,7 +3,7 @@
 ## The two layers of access
 
 ### Departments: who you are
-You belong to a department. You see your department's files. This is structural; managed at the org level by production coordinators. Editorial sees editorial files. VFX sees VFX files. That's the baseline.
+You belong to a department. You see your department's files. This is structural; managed at the org level by your department's manager. Editorial sees editorial files. VFX sees VFX files. That's the baseline.
 
 ### Collections: what you're working on
 Collections are how work crosses department boundaries. An editor shares a cut with the VFX supervisor. A DIT sends camera selects to editorial. A coordinator packages approved shots for a vendor. These are intentional acts; someone decided you should see this.
@@ -16,11 +16,11 @@ Departments give you a home. Collections give you reach.
 
 You can share a single asset, a selection of assets, or a folder. The experience is the same: same dialog, same role options, same expiration controls.
 
-A single asset is shared as-is. Multiple assets become a collection. A folder becomes a collection that stays in sync with the folder's contents. The folder stays inside the department; the collection is what crosses the boundary. When new content lands in the folder, it appears in the shared collection automatically. This is how department work reaches people outside the department without giving them access to the whole workspace.
+**A single asset** asset is shared as-is. Multiple assets become a collection. **A folder** becomes a collection that stays in sync with the folder's contents. The folder stays inside the department; the collection is what crosses the boundary. When new content lands in the folder, it appears in the shared collection automatically. This is how department work reaches people outside the department without giving them access to the whole workspace.
 
 When sharing a folder that contains subfolders, the recipient currently sees all assets in a flat list. Whether the folder structure should be preserved on the receiving end is an open question; it likely depends on whether the structure carries meaning (scene/shot organization) or is just file management.
 
-**Easy to take back.** Remove a person from a share; they lose access. Remove an asset from the collection; everyone loses access to that asset. Remove the whole collection; all access gone. The folder and its contents stay in the department. Every level works the same way, in the same place.
+**Easy to take back**. Remove a person from a share; they lose access. Remove an asset from the collection; everyone loses access to that asset. Remove the whole collection; all access gone. The folder and its contents stay in the department. Every level works the same way, in the same place.
 
 ---
 
