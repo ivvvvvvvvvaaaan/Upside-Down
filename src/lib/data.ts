@@ -116,7 +116,28 @@ export function resolveCollectionAssetIds(collection: UserCollection): string[] 
   if (collection.boundFolderId) {
     if (collection.boundDepartmentId) {
       const tree = getDepartmentWorkspaceFiles(collection.boundDepartmentId as DepartmentId)
-      return getAssetIdsForFolderRecursive(collection.boundFolderId, tree)
+      // Walk the folder tree to collect all file node IDs
+      const ids: string[] = []
+      const findAndCollect = (nodes: { id: string; type: string; children?: unknown[] }[], targetId: string): boolean => {
+        for (const node of nodes) {
+          if (node.id === targetId) {
+            collectFiles(node as typeof nodes[0])
+            return true
+          }
+          if ((node as { children?: unknown[] }).children) {
+            if (findAndCollect((node as { children: typeof nodes }).children, targetId)) return true
+          }
+        }
+        return false
+      }
+      const collectFiles = (node: { id: string; type: string; children?: unknown[] }) => {
+        if (node.type === 'file') { ids.push(node.id); return }
+        if (node.children) {
+          for (const child of node.children as typeof tree) collectFiles(child)
+        }
+      }
+      findAndCollect(tree, collection.boundFolderId)
+      return ids
     }
     return getAssetIdsForFolder(collection.boundFolderId)
   }
