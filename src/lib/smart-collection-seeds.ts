@@ -2,6 +2,7 @@ import type { SmartCollection } from '@/lib/data'
 
 export const SYSTEM_DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [
   {
+    flavor: 'smart',
     id: 'smart-character',
     name: 'Character',
     icon: 'character',
@@ -11,6 +12,7 @@ export const SYSTEM_DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [
     groupBy: 'characters',
   },
   {
+    flavor: 'smart',
     id: 'smart-scene',
     name: 'Scene',
     icon: 'scene',
@@ -20,6 +22,7 @@ export const SYSTEM_DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [
     groupBy: 'scenes',
   },
   {
+    flavor: 'smart',
     id: 'smart-location',
     name: 'Location',
     icon: 'location',
@@ -29,6 +32,7 @@ export const SYSTEM_DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [
     groupBy: 'locations',
   },
   {
+    flavor: 'smart',
     id: 'smart-take',
     name: 'Take',
     icon: 'shot',
@@ -38,6 +42,7 @@ export const SYSTEM_DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [
     groupBy: 'takes',
   },
   {
+    flavor: 'smart',
     id: 'smart-camera',
     name: 'Camera',
     icon: 'shot',
@@ -50,6 +55,7 @@ export const SYSTEM_DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [
 
 export const SEED_USER_SMART_COLLECTIONS: SmartCollection[] = [
   {
+    flavor: 'smart',
     id: 'smart-finals',
     name: 'Finals',
     icon: 'shot',
@@ -58,6 +64,7 @@ export const SEED_USER_SMART_COLLECTIONS: SmartCollection[] = [
     createdAt: new Date('2026-02-05'),
   },
   {
+    flavor: 'smart',
     id: 'smart-key-art',
     name: 'Key Art',
     icon: 'scene',
@@ -66,6 +73,7 @@ export const SEED_USER_SMART_COLLECTIONS: SmartCollection[] = [
     createdAt: new Date('2026-02-08'),
   },
   {
+    flavor: 'smart',
     id: 'smart-low-conf',
     name: 'Needs AI Review',
     icon: 'filter',

@@ -404,9 +404,8 @@ export const SCENARIO: Scenario = {
       by: 'vfx-coordinator',
       date: '2026-01-15',
       context: 'Sarah creates a collection for Framestore deliveries. James can see the brief and upload comp deliveries — he cannot browse the rest of the VFX workspace.',
-      allowUpload: true,
       grants: [
-        { to: 'vendor-framestore', as: 'view' },
+        { to: 'vendor-framestore', as: 'contribute' },
       ],
     },
     // (Stale cut shares removed — VFX timing now via cut-ep301-lc-1 share)
@@ -498,12 +497,11 @@ export const SCENARIO: Scenario = {
       label: 'Framestore Week 12 Delivery',
       by: 'vfx-coordinator',
       date: '2026-02-16',
-      context: 'Sarah sends Framestore the approved shots for this week. Snapshot mode freezes the 8 shots at share time — next week\'s batch won\'t leak into this delivery. Upload enabled so James can deliver rendered frames back.',
+      context: 'Sarah sends Framestore the approved shots for this week. Snapshot mode freezes the 8 shots at share time — next week\'s batch won\'t leak into this delivery. Contribute so James can deliver rendered frames back.',
       shareMode: 'snapshot',
       snapshotAssetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-010-030', 'ws-vfx-020-010', 'ws-vfx-020-020'],
-      allowUpload: true,
       grants: [
-        { to: 'vendor-framestore', as: 'view' },
+        { to: 'vendor-framestore', as: 'contribute' },
       ],
     },
 
