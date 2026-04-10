@@ -93,7 +93,7 @@ export const RELEASE_DOMAINS: ReleaseDomain[] = buildReleaseDomains()
 
 const SEED_LABELS = buildLabels()
 
-const TEMPLATE_RANK: Record<AccessProfileId, number> = {
+export const TEMPLATE_RANK: Record<AccessProfileId, number> = {
   owner: 7,
   manage: 6,
   edit: 5,

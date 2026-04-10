@@ -80,9 +80,9 @@ For collections and folders: People tab only. Release applies to individual asse
 
 ### How sharing works
 
-- **Single asset**: direct grant on the asset.
-- **Collection**: grant on the collection; recipients see everything in it.
-- **Folder**: creates a collection behind the scenes; grant on that.
+- **Single asset**: direct grant on the asset. The sharer picks the permission level.
+- **Collection**: the sharer picks a permission level for the collection. This is the *intent* -- what the recipient should be able to do. But the actual permission per asset is capped by what the sharer has. If the sharer picks "Comment" but only has "View" on some assets, those assets are limited to "View" for the recipient. The share dialog shows this honestly: "David can comment on 8 of 12 assets. 4 assets limited to View." No invisible downgrades.
+- **Folder**: creates a collection behind the scenes; same rules apply.
 
 Shares are app-specific -- Creative Review doesn't automatically see them. Releases are CAM-backed -- any app that reads domain grants can honor them.
 

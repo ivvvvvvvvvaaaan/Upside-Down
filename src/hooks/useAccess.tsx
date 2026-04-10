@@ -20,6 +20,7 @@ import {
   getPermissionsForProfile,
   canAssignProfile,
   isGrantActive,
+  TEMPLATE_RANK,
 } from '@/lib/grants'
 import type {
   Grant,
@@ -101,6 +102,7 @@ interface AccessContextValue {
   visibleCollections: UserCollection[]
   getVisibleCollection: (id: string) => UserCollection | undefined
   getCollectionAssetCount: (id: string) => { total: number; accessible: number }
+  getCollectionShareCeiling: (collectionId: string, intendedProfile: AccessProfileId) => { total: number; atLevel: number; capped: number }
   getCurrentUserGrant: (resourceId: string) => Grant | undefined
   createGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId, options?: { permissions?: Permission[]; shareMode?: ShareMode; snapshotAssetIds?: string[]; allowUpload?: boolean; expiresInDays?: number }) => void
   getGrantableProfiles: (resource: ResourceRef) => AccessProfileId[]
@@ -779,6 +781,26 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
   }, [collectionAssetCounts])
 
+  /** For a collection share: how many assets can the sharer grant at the chosen level vs how many are capped below it */
+  const getCollectionShareCeiling = useCallback((collectionId: string, intendedProfile: AccessProfileId): { total: number; atLevel: number; capped: number } => {
+    const collection = collections.find(c => c.id === collectionId)
+    if (!collection || !userId) return { total: 0, atLevel: 0, capped: 0 }
+    const assetIds = resolveCollectionAssetIds(collection)
+    const intendedRank = TEMPLATE_RANK[intendedProfile] ?? 0
+    let atLevel = 0
+    let capped = 0
+    for (const assetId of assetIds) {
+      const access = resolveAccess(userId, assetId, grants, roleGroups)
+      const sharerRank = access.effectiveProfile ? (TEMPLATE_RANK[access.effectiveProfile] ?? 0) : 0
+      if (sharerRank >= intendedRank) {
+        atLevel++
+      } else if (access.hasAccess) {
+        capped++
+      }
+    }
+    return { total: assetIds.length, atLevel, capped }
+  }, [collections, userId, grants, roleGroups])
+
   // Resolve share labels: collection IDs → real collection names
   const collectionNameById = useMemo(() => {
     const map = new Map<string, string>()
@@ -1145,6 +1167,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     visibleCollections,
     getVisibleCollection,
     getCollectionAssetCount,
+    getCollectionShareCeiling,
     getCurrentUserGrant,
     createGrant,
     getGrantableProfiles,
@@ -1200,6 +1223,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     visibleCollections,
     getVisibleCollection,
     getCollectionAssetCount,
+    getCollectionShareCeiling,
     getCurrentUserGrant,
     createGrant,
     getGrantableProfiles,

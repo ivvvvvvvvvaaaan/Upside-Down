@@ -346,6 +346,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     revokeGuestLink,
     restoreResourceGrants,
     restoreResourceGuestLinks,
+    getCollectionShareCeiling,
   } = useAccess()
   const { activePersona } = usePersona()
   const [shareTab, setShareTab] = useState<'people' | 'release'>('people')
@@ -920,6 +921,16 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               </Button>
             </div>
           </div>
+          {isCollectionResource && resourceRef && (() => {
+            const ceiling = getCollectionShareCeiling(resourceRef.id, pending.role)
+            if (ceiling.total === 0 || ceiling.capped === 0) return null
+            const roleName = roleGroups.find(r => r.id === pending.role)?.name?.replace('Can ', '') ?? pending.role
+            return (
+              <p className="text-label-0-regular text-foreground-subtle px-1">
+                {ceiling.atLevel} of {ceiling.total} assets at {roleName}. {ceiling.capped} limited to lower access.
+              </p>
+            )
+          })()}
         </div>
       ))}
     </div>
