@@ -35,6 +35,47 @@ If an asset is in a shared collection and the department decides it shouldn't be
 
 The system can answer "who has access?" but not "who HAD access at this specific point in time?" Revoked grants disappear from the access panel. Investigation needs historical access records.
 
+## The model
+
+### Additive access with full visibility
+
+Access is additive. A user's effective access is the union of all grants. This is the industry standard and the right default for production workflows where people wear multiple hats.
+
+**But additive requires transparency.** The system must show ALL access paths so that revoking is informed, not blind.
+
+### Per-asset access summary
+
+For any asset, the access panel shows every path through which each person has access:
+
+```
+Who can see "SEQ010_SH010_comp_v12":
+├── VFX department (workspace) — Mike, Sarah [Manage]
+├── Collection "EP301 VFX Pulls" — Lisa, Maria [View]
+├── Collection "Framestore Handoff" — James [View + Upload]
+└── Released to Studio Creative — Alex, David [View]
+```
+
+When you revoke one path (remove Lisa from "EP301 VFX Pulls"), the system shows: "Lisa still has access to this asset through 0 other paths. Access fully revoked." OR "Lisa still has access through 1 other path: Department membership."
+
+This is the key: **revocation feedback tells you whether the revocation was complete.**
+
+### Per-user access summary
+
+For any user, the admin can see everything they can access and why:
+
+```
+David Park has access to:
+├── 3 assets via direct shares
+├── 12 assets via "EP301 VFX Pulls" collection
+├── 47 assets via release to Studio Creative
+└── 0 assets via department (no department membership)
+Total: 62 unique assets
+```
+
+One view. Complete picture. The "revoke all" button removes everything.
+
+---
+
 ## What the industry does
 
 - **Additive is standard** (ShotGrid, Iconik, Frame.io, PIX). Most restrictive is rare in media DAM.
