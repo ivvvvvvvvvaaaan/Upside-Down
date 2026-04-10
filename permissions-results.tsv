@@ -4,3 +4,4 @@ cc266c1	3.3	kept	Per-asset and per-user access summaries. Revocation feedback: "
 436e96a	4.1	kept	Revoke-all per user and per asset. One-click kill switch. Logged.
 b7f2971	4.6	kept	Project lockdown (freeze all external access). Audit log with historical queries. Revoked grants retained.
 b00c2f2	4.7	kept	Explicit block: per-user per-asset override. Rare, visible, logged, reversible. The one exception to additive.
+n/a	4.7	reverted	Deny-by-default experiment. Realized additive already IS deny-by-default (no access without a grant). The real issue was multi-path revocation, already solved.
