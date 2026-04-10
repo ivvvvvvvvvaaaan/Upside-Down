@@ -119,12 +119,9 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onBlock, onUpdateProf
             />
           )}
           {!readOnly && !isOwner && onRemove && (
-            <button
-              onClick={() => onRemove(grant.id)}
-              className="text-label-0-regular text-foreground-dim hover:text-red-400 transition-colors flex-shrink-0"
-            >
+            <Button variant="secondary" compact onClick={() => onRemove(grant.id)}>
               Remove
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -1160,12 +1157,9 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                 disabled={entry.readOnly}
               />
               {!entry.readOnly && (
-                <button
-                  onClick={() => handleRevokeGrant(entry.grant.id)}
-                  className="text-label-0-regular text-foreground-dim hover:text-red-400 transition-colors flex-shrink-0"
-                >
+                <Button variant="secondary" compact onClick={() => handleRevokeGrant(entry.grant.id)} className="h-8">
                   Remove
-                </button>
+                </Button>
               )}
             </div>
           </div>

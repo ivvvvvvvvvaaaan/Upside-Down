@@ -53,7 +53,7 @@ const buttonVariants = cva(
         // Hawkins: body-1-bold (14px/21px/600)
         default: "h-10 px-3 py-[10px] text-body-1-bold",
         // Hawkins: label-1-bold (12px/18px/600)
-        compact: "py-1 px-2 text-label-1-bold",
+        compact: "h-8 px-2 text-label-1-bold",
         icon: "h-10 w-10",
         "compact-icon": "h-7 w-7",
       },
