@@ -88,7 +88,7 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onBlock, onUpdateProf
             <span className="text-label-0-regular text-foreground-dim mr-1">Uploads</span>
           )}
           {grant.shareMode !== undefined && (
-            <Tooltip label="New assets added to this collection will be visible to this person">
+            <Tooltip label="Show new assets as they're added">
               <label className="flex items-center gap-1.5 mr-1 text-label-0-regular text-foreground-dim cursor-pointer">
                 <span>Include new</span>
                 <Info className="w-3 h-3" />
@@ -160,7 +160,7 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onBlock, onUpdateProf
                   <RoleSelect
                     options={[
                       ...roleGroupOptions(roleGroups),
-                      ...(onRemove ? [{ value: '__remove__', label: 'Revoke Access', destructive: true }] : []),
+                      ...(onRemove ? [{ value: '__remove__', label: 'Remove', destructive: true }] : []),
                     ]}
                     value={member.roleValue ?? 'view'}
                     onChange={(value) => {
@@ -244,7 +244,7 @@ function GuestLinksSection({
                       compact
                       onClick={() => revokeGuestLink(link.id)}
                     >
-                      Revoke
+                      Remove
                     </Button>
                   )}
                 </div>
@@ -314,7 +314,7 @@ function GuestLinksSection({
         onClick={() => createGuestLink(resourceRef, { allowDownload: false, passcode: false, expiresInDays: 7 })}
         icon={<Link2 className="w-3.5 h-3.5" />}
       >
-        Create link
+        Create guest link
       </Button>
     )
   }
@@ -701,7 +701,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       if (checkUserId) {
         const remaining = getRemainingAccessPaths(checkUserId, resourceId, [grantId])
         if (remaining.length === 0) {
-          showToast(`Access fully revoked for ${principalName}.`)
+          showToast(`Access fully removed for ${principalName}.`)
         } else {
           const pathCount = remaining.length
           showToast(
@@ -1001,7 +1001,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                     aria-label="Include new"
                   />
                   <span>Include new</span>
-                  <Tooltip label="New assets added to this collection will be visible to this person">
+                  <Tooltip label="Show new assets as they're added">
                     <Info className="w-3 h-3 text-foreground-dim" />
                   </Tooltip>
                 </label>
@@ -1262,11 +1262,11 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
       {/* Cross-domain warning (modal — outside tabs) */}
       <Modal open={showCrossDomainWarning} onOpenChange={setShowCrossDomainWarning} size="sm">
-        <Modal.Header title={`Sharing outside ${resourceDomainName ?? 'this domain'}`} />
+        <Modal.Header title={`Sharing outside ${resourceDomainName ?? 'this department'}`} />
         <Modal.Body>
           <div className="space-y-3">
             <p className="text-body-0-regular text-foreground-dim">
-              {flaggedRecipients.length === 1 ? 'This person is' : 'These people are'} not part of {resourceDomainName ?? 'this domain'}:
+              {flaggedRecipients.length === 1 ? 'This person is' : 'These people are'} not part of {resourceDomainName ?? 'this department'}:
             </p>
             <div className="space-y-2">
               {flaggedRecipients.map(({ name, reason }) => (

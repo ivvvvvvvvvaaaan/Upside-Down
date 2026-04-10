@@ -144,7 +144,7 @@ export function BatchShareModal({
       <Modal.Body>
         <div className="space-y-4">
           <p className="text-body-0-regular text-foreground-dim">
-            Add the same people or access groups to all selected items.
+            Add the same people or teams to all selected items.
           </p>
 
           <div className="flex items-start gap-2">
@@ -157,7 +157,7 @@ export function BatchShareModal({
                   setShowDropdown(true)
                 }}
                 onFocus={() => query.trim() && setShowDropdown(true)}
-                placeholder="Add people or access groups..."
+                placeholder="Add people or teams..."
                 icon={<Search className="w-4 h-4" />}
                 iconPosition="left"
               />

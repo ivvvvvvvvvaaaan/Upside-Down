@@ -216,7 +216,7 @@ function GuestLinkDetailPanel({
           {canRevoke && (
             <Button variant="secondary" compact onClick={() => onRevoke(link.id)}>
               <X className="w-3 h-3 mr-1" />
-              Revoke
+              Remove
             </Button>
           )}
         </div>

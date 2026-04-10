@@ -245,7 +245,7 @@ function PersonAccessDetail({
 
       {summary.domainReleases.length > 0 && (
         <div>
-          <p className="text-label-0-bold text-foreground-dim uppercase mb-1">Domain releases</p>
+          <p className="text-label-0-bold text-foreground-dim uppercase mb-1">Releases</p>
           {summary.domainReleases.map((r) => (
             <p key={r.domainId} className="text-body-0-regular text-foreground">
               {r.domainName} — {r.assetCount} assets
@@ -365,12 +365,12 @@ function PeopleTab({
       </p>
       {canRemoveParticipants && (
         <p className="text-label-0-regular text-foreground-dim">
-          Project admins can remove a person here to revoke their direct shares and remove them from department and team membership.
+          Project admins can remove a person here to remove their direct shares and remove them from department and team membership.
         </p>
       )}
 
       {participants.length === 0 ? (
-        <p className="text-body-0-regular text-foreground-dim py-4 text-center">No participants yet.</p>
+        <p className="text-body-0-regular text-foreground-dim py-4 text-center">No people with access yet.</p>
       ) : (
         <div className="space-y-1">
           {participants.map((persona) => {
@@ -564,7 +564,7 @@ function ExternalCollectionsSection({
                 compact
                 onClick={() => onPullAssets(col.collectionName)}
               >
-                Pull assets
+                Remove assets
               </Button>
             </div>
           ))}
@@ -896,7 +896,7 @@ function DomainsTab({
                     })()
                   ))}
                   {members.length === 0 && (
-                    <p className="text-label-0-regular text-foreground-dim py-2 px-2 text-center">No members yet</p>
+                    <p className="text-label-0-regular text-foreground-dim py-2 px-2 text-center">No members yet.</p>
                   )}
                   <ExternalCollectionsSection
                     domainId={domainId}
@@ -1055,7 +1055,7 @@ function SecurityTab({
                 {projectLocked ? 'Project is locked' : 'Lock project'}
               </p>
               <p className="text-body-0-regular text-foreground-dim">
-                Freeze all external access. Vendors and external reviewers will lose access immediately. Internal department access continues.
+                Pause all external access. Vendors and reviewers lose access immediately. Department members can keep working.
               </p>
             </div>
           </div>
@@ -1518,7 +1518,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     const persona = PERSONAS.find((candidate) => candidate.id === userId)
                     const name = persona?.name ?? 'this person'
                     const confirmed = window.confirm(
-                      `Remove ${name} from the project? This revokes direct shares and removes domain and team membership.`,
+                      `Remove ${name} from the project? This removes direct shares and removes domain and team membership.`,
                     )
                     if (!confirmed) return
                     revokeUserAccess(userId)
