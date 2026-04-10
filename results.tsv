@@ -1,24 +1,2 @@
 commit	score	concepts	coverage	contradictions	status	description
-baseline	2.1	12	70	1	kept	Initial prototype model: 12 concepts, no domain release, department/domain split unresolved
-6b694d9	2.5	12	70	0	kept	Replace department with domain. Eliminates contradiction (no in-app domain mgmt). Vocabulary aligned.
-b63d120	2.8	9	70	0	kept	Collapse 3 collection flavors into 1 concept. Fold cut into asset. 12->9 concepts.
-76ae25a	3.4	9	80	0	kept	Integrate domain release into share dialog. Domains as recipients alongside people/groups. +10% coverage.
-d08215e	3.8	5	80	0	kept	Demote group, review link, inbox, role group to features. 9->5 core concepts. Hit target.
-cfb056f	4.1	5	90	0	kept	Add collection versioning. Re-turnovers = re-share creating version. Covers F8/F13.
-ec7feb4	4.1	5	93	0	kept	Add sensitive media as CAM capability flag. Orthogonal to permissions. Covers Q7.
-504d483	4.6	5	96	0	kept	Define cross-app: domain shares travel (CAM-backed), person shares are app-specific. Push to CR = release to CR domain.
-5ed7926	4.7	5	100	0	kept	Resolve F3 (different results) via transparency: show filter + personalized counts. 100% coverage.
-fc8f08b	4.6	5	100	0	reverted	Auto-release as shared filtered collection. Elegant but degradation risk: fragile if tagging inconsistent.
-db61baa	4.7	5	100	0	kept	Auto-release as project-level admin setting. Matches existing Content Hub feature. No tagging dependency.
-9f6f3ab	4.4	4	100	0	reverted	Merge workspace into domain (4 concepts). Overloads domain -- distribution domains don't have file spaces.
-cfc0d08	4.8	5	100	0	kept	Clarify: production domains have workspaces, distribution domains don't. Explicit, not edge case.
-06edd34	4.6	5	100	0	reverted	Simplify permissions 5->3 tiers. Loses comment-only for directors/reviewers. Real use case.
-9ccad2f	4.8	5	100	0	kept	Rename permission levels: contribute->add. Clearer names, resolves meeting friction point #10.
-ceda72f	4.9	5	100	0	kept	File-move-is-access-decision warning. Prevents F1 (hundreds of hours lost to access triaging).
-7ca2946	4.9	5	100	0	kept	Resolve Q3: cut sharing = playback access, not constituent access. Preserves domain source control.
-28f904d	4.9	5	100	0	kept	Cross-domain sharing warning + blast radius for domain releases. Safety net for intentional sharing.
-fff29d3	4.6	5	100	0	reverted	Always-collection sharing. Collection sprawl from wrapping every single-asset share.
-08d2a36	4.9	5	100	0	kept	Leave action for shared collections. Recipient can opt out without affecting others.
-61a0c02	4.9	5	100	0	kept	Define distribution-domain experience: released content + shared collections, no workspace.
-07eba5c	4.9	5	100	0	kept	Vocabulary alignment: 0 system conflicts, 1 branding choice (collection vs playlist in CR UI).
-2e0e271	5.0	5	100	0	kept	Smart defaults: common shares = 2 steps. Vendor defaults to snapshot+upload. Domain defaults to view. ALL DIMENSIONS AT 5.
+baseline-v2	3.5	6	90	1	kept	Corrected baseline: department+domain as separate concepts. 6 concepts (dept, workspace, collection, asset, permission, domain-as-infrastructure). Contradiction: release UI shows own domain.
