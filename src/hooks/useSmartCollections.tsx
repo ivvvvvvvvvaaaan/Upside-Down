@@ -115,15 +115,15 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
   const { activePersona } = usePersona()
   const personaEmail = activePersona?.email
 
-  // Collections visible to the active persona: system defaults + own creations.
-  // Shared collections are handled separately via SharedCollectionNavItems in the nav.
+  // Collections visible to the active persona: system defaults + own creations + shared with me.
   const visibleCollections = useMemo(() => {
     if (!activePersona) return collections
     return collections.filter((collection) =>
       collection.visibleToAll ||
-      collection.createdBy === personaEmail,
+      collection.createdBy === personaEmail ||
+      canAccess(collection.id),
     )
-  }, [collections, activePersona, personaEmail])
+  }, [collections, activePersona, personaEmail, canAccess])
 
   // Scoped assets: filtered by folder access when a persona is active
   const scopedAssets = useMemo(() => {
