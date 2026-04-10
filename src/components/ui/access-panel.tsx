@@ -865,7 +865,11 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
             <span className="text-body-0-regular text-foreground truncate block">{domainContext.teamName}</span>
             <span className="text-body-0-regular text-foreground-dim truncate">
               {domainContext.members.length > 0
-                ? `${domainContext.members.length} member${domainContext.members.length !== 1 ? 's' : ''}`
+                ? activePersona && domainContext.members.some(m => m.id === activePersona.id)
+                  ? domainContext.members.length > 1
+                    ? `You + ${domainContext.members.length - 1} other${domainContext.members.length - 1 !== 1 ? 's' : ''}`
+                    : 'You'
+                  : `${domainContext.members.length} member${domainContext.members.length !== 1 ? 's' : ''}`
                 : 'Department access'}
               {domainContext.members.length > 0 && (
                 <>
