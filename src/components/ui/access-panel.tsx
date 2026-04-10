@@ -852,7 +852,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   )
 
   const haveAccessHeader = (domainContext || userEntries.length > 0 || teamEntries.length > 0 || sharedViaCollections.length > 0) && (
-    <h3 className="text-body-0-bold text-foreground-dim">Have access</h3>
+    <h3 className="text-body-0-bold text-foreground-dim -mb-2">Have access</h3>
   )
 
   const domainContextExpanded = expandedGroups.has('domain-context')
