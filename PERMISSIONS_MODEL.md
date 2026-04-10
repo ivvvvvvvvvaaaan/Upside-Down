@@ -177,6 +177,15 @@ This means: David shares a collection containing VFX comps with his agent. Sarah
 
 The coordinator doesn't own David's collection. But they retain control over their department's assets regardless of which collections they appear in.
 
+#### 2. Collection ownership transfer on creator departure
+
+When a user is removed from the project (via "Revoke all access" or department removal):
+- **Department collections** (bound to a workspace folder) transfer to the department. Any coordinator with Manage can manage them. No gap.
+- **Personal collections** are flagged for review. The admin who removed the user sees: "Sarah had 3 personal collections shared with others. Transfer ownership or delete?" They can transfer each to a specific person or to the department.
+- **If no action taken within 30 days**, personal collections are frozen (no new shares) but existing shares remain active. They appear in a "orphaned collections" view in project settings.
+
+This prevents Scenario B: Sarah leaves, nobody can manage Framestore Handoff. The admin is prompted to transfer it at removal time.
+
 ---
 
 ## Evaluation criteria
