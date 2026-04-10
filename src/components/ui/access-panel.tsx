@@ -777,7 +777,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         <DepartmentAvatar domainId={domainContext.domId} size="sm" />
         <div className="min-w-0">
           <span className="text-body-0-regular text-foreground truncate block">{domainContext.teamName}</span>
-          <span className="text-label-0-regular text-foreground-dim block">Domain access</span>
+          <span className="text-label-0-regular text-foreground-dim block">Department access</span>
         </div>
       </div>
       <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{domainContext.roleLabel}</span>
@@ -956,15 +956,30 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     const groups = ['Studio', 'Wide', 'Other'] as const
     const domainsByGroup = groups.map(group => ({
       group,
-      domains: RELEASE_DOMAINS.filter(d => d.group === group),
+      domains: RELEASE_DOMAINS.filter(d => d.group === group && d.originDepartmentId !== resourceDomainId),
     })).filter(g => g.domains.length > 0)
 
     return (
       <div className="space-y-2">
         <div className="space-y-1.5">
-          {domainsByGroup.map(({ group, domains }) => (
+          {domainsByGroup.map(({ group, domains }) => {
+            const unreleased = domains.filter(d => !releasedDomainIds.has(d.id) && !pendingDomainIds.has(d.id))
+            const hasUnreleased = unreleased.length > 0
+            return (
             <div key={group} className="flex flex-wrap items-center gap-1">
               <span className="text-label-0-regular text-foreground-subtle w-10 flex-shrink-0">{group}</span>
+              {hasUnreleased && (
+                <button
+                  onClick={() => {
+                    for (const d of unreleased) {
+                      handleSelectPrincipal({ type: 'domain', domainId: d.id }, d.name, 'domain')
+                    }
+                  }}
+                  className="text-label-0-regular text-foreground-subtle hover:text-foreground transition-colors mr-1"
+                >
+                  all
+                </button>
+              )}
               {domains.map(domain => {
                 const isReleased = releasedDomainIds.has(domain.id)
                 const isPending = pendingDomainIds.has(domain.id)
@@ -994,7 +1009,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                 )
               })}
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     )

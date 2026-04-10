@@ -748,7 +748,7 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
             <div className="max-w-7xl mx-auto">
               <EmptyState
                 title="No Workspace"
-                message="Your domain receives content via releases and shares. Browse released content in your library."
+                message="Your team receives content via releases and shares. Browse released content in your library."
               />
               <div className="flex justify-center mt-4">
                 <Button variant="primary" onClick={() => router.push('/nextgen')}>
@@ -787,7 +787,7 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
             visible={showCompactBar}
             title={pageTitle}
             count={isLanding ? domainNodes.length : filteredFileCount}
-            countLabel={isLanding ? 'domain' : 'file'}
+            countLabel={isLanding ? 'department' : 'file'}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             filterOptions={filterOptions}

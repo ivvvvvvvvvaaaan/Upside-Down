@@ -128,6 +128,8 @@ type ScenarioReleaseDomain = {
   group: ReleaseDomainGroup
   /** Which asset types can be released to this domain */
   assetTypes: string[]
+  /** The production department this release domain maps to (filtered from release pills for own-department assets) */
+  originDepartmentId?: string
   /** Teams that receive grants when content is released to this domain */
   granteeTeamIds: string[]
   /** Individual users that receive grants */
@@ -179,10 +181,10 @@ export const SCENARIO: Scenario = {
   // Each domain defines WHO gets grants when content is released to that domain
   releaseDomains: [
     // Studio tier — internal Netflix studio teams
-    { id: 'studio-creative',    name: 'Studio Creative',    group: 'Studio', assetTypes: ['cut', 'asset'], granteeTeamIds: ['studio-leadership'],  defaultProfile: 'view' },
-    { id: 'studio-post',        name: 'Studio Post',        group: 'Studio', assetTypes: ['cut', 'asset'], granteeTeamIds: ['netflix-post'],       defaultProfile: 'view' },
-    { id: 'studio-production',  name: 'Studio Production',  group: 'Studio', assetTypes: ['cut', 'asset'], granteeTeamIds: ['super-prod'],         defaultProfile: 'view' },
-    { id: 'studio-vfx',         name: 'Studio VFX',         group: 'Studio', assetTypes: ['cut'],          granteeTeamIds: ['vfx-core'],           defaultProfile: 'view' },
+    { id: 'studio-creative',    name: 'Studio Creative',    group: 'Studio', assetTypes: ['cut', 'asset'], originDepartmentId: 'art-design',  granteeTeamIds: ['studio-leadership'],  defaultProfile: 'view' },
+    { id: 'studio-post',        name: 'Studio Post',        group: 'Studio', assetTypes: ['cut', 'asset'], originDepartmentId: 'editorial',   granteeTeamIds: ['netflix-post'],       defaultProfile: 'view' },
+    { id: 'studio-production',  name: 'Studio Production',  group: 'Studio', assetTypes: ['cut', 'asset'],                                    granteeTeamIds: ['super-prod'],         defaultProfile: 'view' },
+    { id: 'studio-vfx',         name: 'Studio VFX',         group: 'Studio', assetTypes: ['cut'],          originDepartmentId: 'vfx',         granteeTeamIds: ['vfx-core'],           defaultProfile: 'view' },
     // Wide tier — broader Netflix org
     { id: 'globalization',      name: 'Globalization',       group: 'Wide',   assetTypes: ['cut'],          granteeTeamIds: ['team-globalization'],      defaultProfile: 'view' },
     { id: 'marketing',          name: 'Marketing',           group: 'Wide',   assetTypes: ['cut', 'asset'], granteeTeamIds: ['team-marketing'],          defaultProfile: 'view' },
@@ -860,6 +862,8 @@ export type ReleaseDomain = {
   name: string
   group: 'Studio' | 'Wide' | 'Other'
   assetTypes: string[]
+  /** The production department this release domain maps to (for filtering own-domain releases) */
+  originDepartmentId?: string
   granteeTeamIds: string[]
   granteeUserIds?: string[]
   defaultProfile: AccessProfileId

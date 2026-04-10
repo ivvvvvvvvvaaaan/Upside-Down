@@ -285,11 +285,11 @@ function PeopleTab({
   return (
     <div className="space-y-3">
       <p className="text-body-0-regular text-foreground-dim">
-        People appear here because they belong to a domain or are involved through explicit shares. Add new working users from the Domains tab, and use share controls on assets or collections for ad hoc access.
+        People appear here because they belong to a department or are involved through explicit shares. Add new working users from the Departments tab, and use share controls on assets or collections for ad hoc access.
       </p>
       {canRemoveParticipants && (
         <p className="text-label-0-regular text-foreground-dim">
-          Project admins can remove a person here to revoke their direct shares and remove them from domain and team membership.
+          Project admins can remove a person here to revoke their direct shares and remove them from department and team membership.
         </p>
       )}
 
@@ -380,7 +380,7 @@ function DiscoverySection({
 
       {enabled && (
         <div className="space-y-1">
-          <p className="text-label-1-bold text-foreground-dim">Domain overrides</p>
+          <p className="text-label-1-bold text-foreground-dim">Department overrides</p>
           {(Object.keys(DOMAIN_FOLDER_MAP) as ProductionDomainId[]).map((domId) => {
             const domainDisabled = disabledDomains.has(domId)
             return (
@@ -487,12 +487,12 @@ function DomainsTab({
   return (
     <div className="space-y-3">
       <p className="text-body-0-regular text-foreground-dim">
-        Domains own content. Members get workspace access automatically based on the role set here.
+        Departments own content. Members get workspace access automatically based on the role set here.
       </p>
       {!readOnly && (
         <div className="space-y-2">
           <p className="text-body-0-regular text-foreground-dim">
-            Queue someone into a domain, then confirm with Update Access in the footer.
+            Queue someone into a department, then confirm with Update Access in the footer.
           </p>
           <div className="flex items-start gap-2">
             <Input
@@ -860,7 +860,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   } = useAccess()
   const { activePersona } = usePersona()
   const canManageProject = canEditAcl(PROJECT_RESOURCE)
-  const [activeTab, setActiveTab] = useState('domains')
+  const [activeTab, setActiveTab] = useState('departments')
   const [directoryVersion, setDirectoryVersion] = useState(0)
   const [pendingDomainInvites, setPendingDomainInvites] = useState<PendingDomainInvite[]>([])
   const domainIds = useMemo(() => Object.keys(DOMAIN_FOLDER_MAP) as DomainId[], [])
@@ -971,13 +971,13 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           )}
 
           <Tabs
-            defaultValue="domains"
+            defaultValue="departments"
             value={activeTab}
             onValueChange={setActiveTab}
             className="px-6 pt-4"
           >
             <TabsList>
-              <Tab value="domains">Domains</Tab>
+              <Tab value="departments">Departments</Tab>
               <Tab value="people">People</Tab>
               {canManageProject && <Tab value="role-groups">Role Groups</Tab>}
               {canManageProject && <Tab value="settings">Settings</Tab>}
@@ -1003,7 +1003,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   }}
                 />
               </TabsContent>
-              <TabsContent value="domains">
+              <TabsContent value="departments">
                 <DomainsTab
                   roleGroups={roleGroups}
                   getResourceGrants={getResourceGrants}

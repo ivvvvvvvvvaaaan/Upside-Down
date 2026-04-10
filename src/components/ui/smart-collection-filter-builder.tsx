@@ -28,7 +28,7 @@ type FilterType =
 const FILTER_LABELS: Record<FilterType, string> = {
   query: 'Name contains',
   types: 'Asset type',
-  department: 'Domain',
+  department: 'Department',
   typeTags: 'Type tag',
   isKeyArt: 'Key art only',
   isFinal: 'Finals only',

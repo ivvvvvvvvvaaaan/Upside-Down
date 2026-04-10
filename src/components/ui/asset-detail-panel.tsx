@@ -631,7 +631,7 @@ export function AssetDetailPanelContent({
                 )}
                 {asset.department && (
                   <div>
-                    <p className="text-body-0-regular text-foreground-dim">Domain</p>
+                    <p className="text-body-0-regular text-foreground-dim">Department</p>
                     <p className="text-body-0-regular text-foreground">
                       {DOMAIN_NAMES[asset.department]}
                     </p>
