@@ -5,3 +5,4 @@ b63d120	2.8	9	70	0	kept	Collapse 3 collection flavors into 1 concept. Fold cut i
 76ae25a	3.4	9	80	0	kept	Integrate domain release into share dialog. Domains as recipients alongside people/groups. +10% coverage.
 d08215e	3.8	5	80	0	kept	Demote group, review link, inbox, role group to features. 9->5 core concepts. Hit target.
 cfb056f	4.1	5	90	0	kept	Add collection versioning. Re-turnovers = re-share creating version. Covers F8/F13.
+ec7feb4	4.1	5	93	0	kept	Add sensitive media as CAM capability flag. Orthogonal to permissions. Covers Q7.

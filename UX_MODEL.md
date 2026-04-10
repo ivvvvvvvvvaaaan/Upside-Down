@@ -65,7 +65,9 @@ A turnover is a collection pattern, not a separate entity.
 
 ## Sensitive media
 
-Not yet modeled. Needed for content with nudity/explicit material that only specific people should see.
+An asset-level flag, set by the creating domain. Even if you have access to a collection containing a sensitive asset, you only see it if you hold the "sensitive media" CAM capability. This is orthogonal to permission levels -- you can have edit access to a collection and still not see sensitive assets within it.
+
+Collections containing sensitive assets show a badge: "3 of 12 assets are restricted based on your capabilities." No new concept for the user to learn -- it works like content ratings. The flag is set by people who create the content (editorial), not by people who share it.
 
 ## Cross-app behavior
 
