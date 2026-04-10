@@ -26,7 +26,7 @@ export type AccessProfileId =
   | 'owner'
   | 'manage'
   | 'edit'
-  | 'contribute'
+  | 'add'
   | 'comment'
   | 'view'
   | 'link-viewer'
@@ -87,7 +87,7 @@ const TEMPLATE_RANK: Record<AccessProfileId, number> = {
   owner: 7,
   manage: 6,
   edit: 5,
-  contribute: 4,
+  add: 4,
   comment: 3,
   view: 2,
   'link-viewer': 1,

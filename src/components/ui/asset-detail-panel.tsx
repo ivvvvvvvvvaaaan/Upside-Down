@@ -33,7 +33,7 @@ function grantCapabilities(grant: Grant, roleGroups: RoleGroup[]): string[] {
   const caps: string[] = []
   caps.push(profileLabel(grant.templateId, roleGroups))
   if (grant.shareMode === 'live') caps.push('Include new')
-  if (grant.permissions.includes('upload') && grant.templateId !== 'contribute' && grant.templateId !== 'edit' && grant.templateId !== 'manage') caps.push('Upload')
+  if (grant.permissions.includes('upload') && grant.templateId !== 'add' && grant.templateId !== 'edit' && grant.templateId !== 'manage') caps.push('Upload')
   return caps
 }
 

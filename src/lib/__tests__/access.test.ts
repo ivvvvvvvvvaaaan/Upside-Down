@@ -131,7 +131,7 @@ describe('capability decomposition', () => {
   it('profileCanEdit uses template write permission', () => {
     expect(profileCanEdit('edit')).toBe(true)
     expect(profileCanEdit('view')).toBe(false)
-    expect(profileCanEdit('contribute')).toBe(true)
+    expect(profileCanEdit('add')).toBe(true)
     expect(profileCanEdit('comment')).toBe(false)
   })
 
@@ -144,7 +144,7 @@ describe('capability decomposition', () => {
 
     expect(profileCanEdit('edit', customGroups)).toBe(false)
     expect(roleGroupHasPermission(customGroups, 'edit', 'write')).toBe(false)
-    expect(profileCanEdit('contribute', customGroups)).toBe(true)
+    expect(profileCanEdit('add', customGroups)).toBe(true)
   })
 
   it('resolveAccess merges explicit permissions from all active matching grants', () => {
@@ -204,7 +204,7 @@ describe('capability decomposition', () => {
     const editorPermissions = DEFAULT_ROLE_GROUPS.find((group) => group.id === 'edit')!.permissions
 
     expect(canAssignProfile(editorPermissions, 'view', DEFAULT_ROLE_GROUPS)).toBe(true)
-    expect(canAssignProfile(editorPermissions, 'contribute', DEFAULT_ROLE_GROUPS)).toBe(true)
+    expect(canAssignProfile(editorPermissions, 'add', DEFAULT_ROLE_GROUPS)).toBe(true)
     expect(canAssignProfile(editorPermissions, 'manage', DEFAULT_ROLE_GROUPS)).toBe(false)
   })
 })
