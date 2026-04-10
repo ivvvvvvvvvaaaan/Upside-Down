@@ -52,8 +52,8 @@ Two mechanisms for content to cross department boundaries:
 - Release to one or more domains (Studio Creative, Marketing, Legal, etc.).
 - CAM-backed grant. Travels across apps. CR can honor domain releases.
 - View or Comment only. No upload, no live/snapshot toggle.
-- **Release is always outward.** You release FROM your department TO other domains. You never release to your own domain -- it's a no-op (you already have workspace access). The release UI filters out the asset's origin department.
-- Release capability is CAM-gated: you can only release to domains you hold the capability for.
+- **Release is always outward.** You release FROM your department TO other domains. You never release to your own domain -- it's a no-op (you already have workspace access). The release UI filters out domains that map to the asset's origin department. If the asset is from VFX, "Studio VFX" doesn't appear in the pills.
+- Release capability is CAM-gated: you can only release to domains you hold the capability for. The intersection of "domains you CAN release to" and "domains that aren't your own" determines what appears.
 
 ---
 
