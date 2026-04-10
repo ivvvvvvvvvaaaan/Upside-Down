@@ -93,6 +93,17 @@ For collections and folders: People tab only (no Release tab -- domain release a
 - Cross-department sharing warning: "Sarah Chen is not in your domain. This share will give her access to [N] assets."
 - Release blast radius: "Release to Wide makes this visible to Marketing, Legal, Globalization... (~N people)."
 
+## What distribution audiences see
+
+Users whose primary CAM domain is a distribution domain (Marketing, Legal, Globalization, etc.) don't belong to a production department and don't have workspaces. Their experience:
+
+- **Released content** fills their library. Assets released to their domain appear organized by smart collections (characters, scenes) and release date. This is their primary content surface.
+- **Shared collections** received via person/team shares appear in their inbox and collections list.
+- **They can comment and respond** (if given Comment permission on release or share) but they don't create content or organize files.
+- **They can request access** to content they discover through search but don't have access to.
+
+The same 5 concepts apply: they understand they're in a "team" (Marketing), they browse a "library" (released content instead of a workspace), they open "collections" and "assets," they have "permission levels." The workspace concept simply doesn't appear for them.
+
 ## Ownership
 
 - Department collections are owned by the department (any department member with manage access can manage).
