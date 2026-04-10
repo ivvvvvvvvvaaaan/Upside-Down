@@ -835,7 +835,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   )
 
   const haveAccessHeader = (domainContext || userEntries.length > 0 || teamEntries.length > 0 || sharedViaCollections.length > 0) && (
-    <h3 className="text-label-1-bold text-foreground-dim">Have access</h3>
+    <h3 className="text-body-0-bold text-foreground-dim">Have access</h3>
   )
 
   const domainContextRow = domainContext && (
@@ -905,7 +905,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
   const blockedSection = resourceBlocks.length > 0 && (
     <div className="space-y-1">
-      <h3 className="text-label-1-bold text-red-400">Blocked</h3>
+      <h3 className="text-body-0-bold text-red-400">Blocked</h3>
       <div className="space-y-1">
         {resourceBlocks.map((block) => {
           const blockedUser = PERSONAS.find(p => p.id === block.userId)
@@ -964,7 +964,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     const canShareCollection = canShare(collRef)
     return (
       <div key={collection.id} className="space-y-1">
-        <h3 className="text-label-1-bold text-foreground-dim">Via <a href={`/nextgen/collections/${collection.id}`} className="hover:text-foreground transition-colors underline">{collection.name}</a></h3>
+        <h3 className="text-body-0-bold text-foreground-dim">Via <a href={`/nextgen/collections/${collection.id}`} className="hover:text-foreground transition-colors underline">{collection.name}</a></h3>
         <div className="space-y-0">
           {collGrants.map(grant => {
             const principal = grant.principal
@@ -1000,7 +1000,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
   const pendingPeopleSection = pendingGrants.filter(p => p.kind !== 'domain').length > 0 && (
     <div className="space-y-2">
-      <h3 className="text-label-1-bold text-foreground-dim">Adding</h3>
+      <h3 className="text-body-0-bold text-foreground-dim">Adding</h3>
       {pendingGrants.filter(p => p.kind !== 'domain').map(pending => (
         <div key={pending.id} className="rounded-lg bg-surface-mid p-3 space-y-2">
           <div className="flex items-center justify-between gap-2">
