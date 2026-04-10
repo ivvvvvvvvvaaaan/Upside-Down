@@ -145,7 +145,7 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
         </div>
       )}
       {principal.type === 'team' && members && members.length > 0 && expanded && (
-        <div className="relative ml-1 pt-1">
+        <div className="relative ml-1">
           {members.map((member, i) => (
             <div key={member.id} className="relative flex items-center justify-between gap-2 py-1 pl-4">
               {/* Vertical trunk: top half always, bottom half except last */}
@@ -881,7 +881,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{domainContext.roleLabel}</span>
       </div>
       {domainContextExpanded && domainContext.members.length > 0 && (
-        <div className="relative ml-1 pt-1">
+        <div className="relative ml-1">
           {domainContext.members.map((member, i) => (
             <div key={member.id} className="relative flex items-center gap-2 py-1 pl-4">
               <div className="absolute left-1.5 top-0 h-1/2 border-l border-border-dim" />
