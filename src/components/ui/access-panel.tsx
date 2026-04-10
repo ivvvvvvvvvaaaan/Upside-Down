@@ -1258,8 +1258,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           {canSeeFullAccessList && searchSection}
           {domainContextRow}
           {canSeeFullAccessList ? (
-            <div className="pt-2">
-              {haveAccessHeader}
+            <div>
+              <div className="pb-2">{haveAccessHeader}</div>
               {userEntriesSection}
               {blockedSection}
               {teamEntriesSection}
