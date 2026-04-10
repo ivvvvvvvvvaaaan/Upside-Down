@@ -13,6 +13,7 @@ import { Avatar } from './avatar'
 import { DepartmentAvatar } from './department-avatar'
 import { Toggle } from './switch'
 import { Modal } from './modal'
+import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import { Card } from './card'
 import { domainConfigs } from '@/lib/domain-configs'
 import { useAccess, usePersona } from '@/hooks'
@@ -1186,58 +1187,31 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       )}
 
       {showTabs ? (
-        <>
-          {/* Tabs */}
-          <div className="flex gap-0 border-b border-border-dim">
-            <button
-              onClick={() => setShareTab('people')}
-              className={cn(
-                'px-3 py-2 text-label-1-bold border-b-2 -mb-px transition-colors',
-                shareTab === 'people'
-                  ? 'border-foreground text-foreground'
-                  : 'border-transparent text-foreground-dim hover:text-foreground',
-              )}
-            >
-              People {peopleCount > 0 && <span className="text-foreground-subtle ml-1">{peopleCount}</span>}
-            </button>
-            <button
-              onClick={() => setShareTab('release')}
-              className={cn(
-                'px-3 py-2 text-label-1-bold border-b-2 -mb-px transition-colors',
-                shareTab === 'release'
-                  ? 'border-foreground text-foreground'
-                  : 'border-transparent text-foreground-dim hover:text-foreground',
-              )}
-            >
-              Release {domainCount > 0 && <span className="text-foreground-subtle ml-1">{domainCount}</span>}
-            </button>
-          </div>
+        <Tabs defaultValue="people" value={shareTab} onValueChange={(v) => setShareTab(v as 'people' | 'release')}>
+          <TabsList>
+            <Tab value="people">People {peopleCount > 0 && <span className="text-foreground-subtle ml-2">{peopleCount}</span>}</Tab>
+            <Tab value="release">Release {domainCount > 0 && <span className="text-foreground-subtle ml-2">{domainCount}</span>}</Tab>
+          </TabsList>
 
-          {/* People tab */}
-          {shareTab === 'people' && (
-            <div className="space-y-4">
-              {searchSection}
-              {haveAccessHeader}
-              {domainContextRow}
-              {userEntriesSection}
-              {blockedSection}
-              {teamEntriesSection}
-              {sharedViaCollectionsSection}
-              {pendingPeopleSection}
-              {peopleEmptyState}
-              {guestLinksSection}
-            </div>
-          )}
+          <TabsContent value="people" className="space-y-4">
+            {searchSection}
+            {haveAccessHeader}
+            {domainContextRow}
+            {userEntriesSection}
+            {blockedSection}
+            {teamEntriesSection}
+            {sharedViaCollectionsSection}
+            {pendingPeopleSection}
+            {peopleEmptyState}
+            {guestLinksSection}
+          </TabsContent>
 
-          {/* Release tab */}
-          {shareTab === 'release' && (
-            <div className="space-y-4">
-              {domainReleasePills}
-              {domainEntriesSection}
-              {releaseEmptyState}
-            </div>
-          )}
-        </>
+          <TabsContent value="release" className="space-y-4">
+            {domainReleasePills}
+            {domainEntriesSection}
+            {releaseEmptyState}
+          </TabsContent>
+        </Tabs>
       ) : (
         /* No tabs — collections/folders: people content only */
         <>

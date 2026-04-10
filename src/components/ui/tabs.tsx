@@ -99,13 +99,13 @@ function Tab({ value, children, className, disabled = false }: TabProps) {
       onClick={() => !disabled && onChange(value)}
       className={cn(
         // Base styles
-        'relative px-4 py-3 text-label-1-bold transition-colors',
+        'relative px-4 pt-3 pb-2 text-label-1-bold transition-colors',
         // Bottom border indicator positioning
         '-mb-px',
         // All tabs get a 2px bottom border to prevent layout shift
         'border-b-2',
-        // Active state: foreground text + blue underline
-        isActive && 'text-foreground border-border-selected',
+        // Active state: foreground text + white underline
+        isActive && 'text-foreground border-foreground',
         // Inactive state: dim text, transparent border
         !isActive && 'text-foreground-dim hover:text-foreground border-transparent',
         // Disabled state

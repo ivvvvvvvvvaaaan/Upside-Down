@@ -606,7 +606,7 @@ export function AssetDetailPanelContent({
       <Tabs defaultValue="details" className="flex-1 min-h-0 flex flex-col">
         <TabsList className="px-4 shrink-0">
           <Tab value="details">Details</Tab>
-          <Tab value="connections"><span className="flex items-center gap-1.5">Connections{connectionsCount > 0 && <Tag size="compact" type="neutral" variant="border">{connectionsCount}</Tag>}</span></Tab>
+          <Tab value="connections">Connections{connectionsCount > 0 && <span className="text-foreground-subtle ml-2">{connectionsCount}</span>}</Tab>
           <Tab value="access">Access</Tab>
         </TabsList>
 
