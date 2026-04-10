@@ -80,7 +80,7 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
           ) : (
             <DepartmentAvatar domainId={domainId} size="sm" />
           )}
-          <div className="min-w-0 leading-snug">
+          <div className="min-w-0 [&>*]:leading-tight">
             <span className="text-body-0-regular text-foreground truncate block">{name}</span>
             {subtitle && (
               <span className="text-body-0-regular text-foreground-dim truncate">
