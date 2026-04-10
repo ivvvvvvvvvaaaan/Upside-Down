@@ -18,7 +18,7 @@ import { domainConfigs } from '@/lib/domain-configs'
 import { useAccess, usePersona } from '@/hooks'
 import type { Block, Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
 import { useToast } from './toast'
-import { getRoleGroup } from '@/lib/grants'
+import { getRoleGroup, roleGroupOptions } from '@/lib/grants'
 import type { RoleGroup, ShareMode } from '@/lib/grants'
 import { buildAccessDisplayEntries } from './access-display'
 import type { AccessDisplayEntry } from './access-display'
@@ -48,11 +48,6 @@ interface AccessPanelProps {
   onPendingChange?: (pending: boolean, handlers: { confirm: () => void; cancel: () => void }) => void
 }
 
-function roleGroupOptions(roleGroups: RoleGroup[]) {
-  return roleGroups
-    .filter((rg) => rg.id !== 'owner' && rg.id !== 'link-viewer')
-    .map((rg) => ({ value: rg.id, label: rg.name }))
-}
 
 function GrantRow({ grant, readOnly, roleGroups, onRemove, onBlock, onUpdateProfile, onUpdateShareMode, name, subtitle, roleLabel, members, domainId, versionLabel }: {
   grant: Grant

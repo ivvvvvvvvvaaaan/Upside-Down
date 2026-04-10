@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
 import { PERSONAS, DIRECTORY_UPDATED_EVENT } from '@/lib/personas'
 import type { User } from '@/lib/personas'
 import { TEAMS } from '@/lib/teams'
-import { PROJECT_RESOURCE, profileLabel, isGrantActive } from '@/lib/grants'
+import { PROJECT_RESOURCE, profileLabel, isGrantActive, roleGroupOptions } from '@/lib/grants'
 import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef, ResourceRef } from '@/lib/grants'
 import type { DomainId, ProductionDomainId } from '@/components/department/types'
 import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
@@ -69,11 +69,6 @@ function PermissionCheckbox({
   )
 }
 
-function roleGroupOptions(roleGroups: RoleGroup[]) {
-  return roleGroups
-    .filter((rg) => rg.id !== 'owner' && rg.id !== 'link-viewer')
-    .map((rg) => ({ value: rg.id, label: rg.name }))
-}
 
 function toDisplayNameFromEmail(email: string): string {
   return email

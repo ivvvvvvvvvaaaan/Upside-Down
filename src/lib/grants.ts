@@ -142,6 +142,12 @@ export function getPermissionsForProfile(
   return group ? [...group.permissions] : []
 }
 
+export function roleGroupOptions(roleGroups: RoleGroup[]) {
+  return roleGroups
+    .filter((rg) => rg.id !== 'owner' && rg.id !== 'link-viewer')
+    .map((rg) => ({ value: rg.id, label: rg.name }))
+}
+
 export function roleGroupHasPermission(
   roleGroups: RoleGroup[],
   templateId: AccessProfileId,
