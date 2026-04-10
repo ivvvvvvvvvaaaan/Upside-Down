@@ -21,6 +21,7 @@ import {
   MobileToolbar,
   DropdownMenuItem,
   DropdownMenuDivider,
+  MoveWarningModal,
 } from '@/components/ui'
 import { useShareAsCollection } from '@/hooks/useShareAsCollection'
 import type { ResourceRef } from '@/lib/grants'
@@ -40,7 +41,7 @@ import { WorkspaceSidePanel } from '@/components/department/WorkspaceSidePanel'
 import { AssetDetailPanel } from '@/components/ui/asset-detail-panel'
 import { getContextAssetGroups } from '@/lib/context-relationships'
 import { useIsMobile } from '@/hooks/useMediaQuery'
-import { List, Columns, LayoutGrid, PanelRight, Info, Lock, Users, FolderPlus, FolderSymlink, Share2, Settings, RefreshCw, Trash2, FilePlus, Upload } from 'lucide-react'
+import { List, Columns, LayoutGrid, PanelRight, Info, Lock, Users, FolderPlus, FolderSymlink, Share2, Settings, RefreshCw, Trash2, FilePlus, Upload, FolderInput } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { domainConfigs } from '@/lib/domain-configs'
 import { assetToSelectionEntity, folderToSelectionEntity } from '@/lib/selection-actions'
@@ -177,9 +178,9 @@ interface WorkspaceViewProps {
 export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }: WorkspaceViewProps) {
   const router = useRouter()
   const isLanding = !domainId
-  const { canAccess, sharesReceivedByMe, getInheritedGrants, filterByAccess } = useAccess()
+  const { canAccess, sharesReceivedByMe, getInheritedGrants, filterByAccess, getResourceGrants } = useAccess()
   const { activePersona } = usePersona()
-  const { getCollection, filterAssets: filterCollectionAssets, scopedAssets, ensureAssetsLoaded } = useCollections()
+  const { getCollection, filterAssets: filterCollectionAssets, scopedAssets, ensureAssetsLoaded, allCollections: allCollectionsUnified } = useCollections()
   const { layout, setLayout, cardSize, setCardSize, viewMode, setViewMode, sidePanelOpen: showPanel, setSidePanelOpen: setShowPanel, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(showPanel, setShowPanel)
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
@@ -212,7 +213,14 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const [uploadTargetFolderId, setUploadTargetFolderId] = useState<string | null>(null)
   const [landingDrillPath, setLandingDrillPath] = useState<WorkspaceFileNode[]>([])
-  const { createFolder: fileTreeCreateFolder, createFile: fileTreeCreateFile, deleteNode: fileTreeDeleteNode, renameNode: fileTreeRenameNode, tree: fileTree, getDomainFiles: getFileTreeDomainFiles } = useFileTree()
+  const [moveWarningState, setMoveWarningState] = useState<{
+    open: boolean
+    nodeId: string
+    fileName: string
+    targetParentId: string
+    impactedCollections: { id: string; name: string; grantCount: number }[]
+  } | null>(null)
+  const { createFolder: fileTreeCreateFolder, createFile: fileTreeCreateFile, deleteNode: fileTreeDeleteNode, renameNode: fileTreeRenameNode, tree: fileTree, getDomainFiles: getFileTreeDomainFiles, getMoveImpact, confirmMove } = useFileTree()
   const resolveReferenceNodes = useCallback((nodes: WorkspaceFileNode[]) => {
     return materializeReferenceFolders(nodes, {
       getCollection,
@@ -543,6 +551,42 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
     router.push(`/nextgen/assets/${nextAsset.id}`)
   }, [selectionEntryById, selectOnly, setShowPanel, router])
 
+  const handleMoveFile = useCallback((node: WorkspaceFileNode) => {
+    // For the prototype, pick a simple destination: the workspace root (null parent is not valid for files, use first available folder)
+    // Use the first top-level workspace folder as destination, or create one
+    const rootFolders = fileTree.filter(f => f.type === 'folder' && !DOMAIN_FOLDER_IDS.has(f.id))
+    const targetParentId = rootFolders.length > 0 ? rootFolders[0].id : 'ws-vfx' // fallback
+
+    // Build collection data for impact check
+    const collsForImpact = allCollectionsUnified
+      .filter(c => 'boundFolderId' in c)
+      .map(c => ({ id: c.id, name: c.name, boundFolderId: (c as unknown as { boundFolderId?: string }).boundFolderId }))
+
+    const getGrantCount = (collectionId: string) => getResourceGrants(collectionId).length
+
+    const impact = getMoveImpact(node.id, collsForImpact, getGrantCount)
+
+    if (impact.impactedCollections.length > 0) {
+      setMoveWarningState({
+        open: true,
+        nodeId: node.id,
+        fileName: node.name,
+        targetParentId,
+        impactedCollections: impact.impactedCollections,
+      })
+    } else {
+      // No impact, move directly
+      confirmMove(node.id, targetParentId)
+    }
+  }, [fileTree, allCollectionsUnified, getResourceGrants, getMoveImpact, confirmMove])
+
+  const handleConfirmMove = useCallback(() => {
+    if (moveWarningState) {
+      confirmMove(moveWarningState.nodeId, moveWarningState.targetParentId)
+      setMoveWarningState(null)
+    }
+  }, [moveWarningState, confirmMove])
+
   const contextMenuItems: ContextMenuItem[] = (() => {
     if (!contextMenu) return []
     // Background right-click — only "New Folder" at current level
@@ -603,7 +647,20 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
         },
       ]
     }
-    return []
+    // File context menu
+    return [
+      {
+        label: 'Move to...',
+        icon: <FolderInput className="w-4 h-4" />,
+        onClick: () => handleMoveFile(contextMenu.node),
+        dividerAfter: true,
+      },
+      {
+        label: 'Delete',
+        icon: <Trash2 className="w-4 h-4" />,
+        onClick: () => fileTreeDeleteNode(contextMenu.node.id),
+      },
+    ]
   })()
 
   const isInsideFolder = resolvedFolderPath.length > 0
@@ -1014,6 +1071,15 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
         onOpenChange={setNewFolderModalOpen}
         onCreate={handleCreateFolder}
       />
+      {moveWarningState && (
+        <MoveWarningModal
+          open={moveWarningState.open}
+          onClose={() => setMoveWarningState(null)}
+          onConfirm={handleConfirmMove}
+          fileName={moveWarningState.fileName}
+          impactedCollections={moveWarningState.impactedCollections}
+        />
+      )}
       {accessModalNode && (() => {
         const nodeId = getAclResourceId(accessModalNode)
         const rawRef: ResourceRef = {

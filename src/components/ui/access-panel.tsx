@@ -52,7 +52,7 @@ function roleGroupOptions(roleGroups: RoleGroup[]) {
     .map((rg) => ({ value: rg.id, label: rg.name }))
 }
 
-function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, onUpdateShareMode, name, subtitle, roleLabel, members, domainId }: {
+function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, onUpdateShareMode, name, subtitle, roleLabel, members, domainId, versionLabel }: {
   grant: Grant
   readOnly: boolean
   roleGroups: RoleGroup[]
@@ -64,6 +64,7 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, onUp
   roleLabel: string
   members?: AccessDisplayEntry['members']
   domainId?: DomainId
+  versionLabel?: string
 }) {
   const isOwner = grant.templateId === 'owner'
   const principal = grant.principal
@@ -130,6 +131,11 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, onUp
           )}
         </div>
       </div>
+      {versionLabel && (
+        <div className="pl-9">
+          <span className="text-label-0-regular text-foreground-subtle">{versionLabel}</span>
+        </div>
+      )}
       {principal.type === 'team' && members && members.length > 0 && (
         <div className="relative ml-1 pt-1">
           {members.map((member, i) => (
@@ -793,6 +799,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                 onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
                 onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
                 onUpdateShareMode={!entry.readOnly ? handleUpdateShareMode : undefined}
+                versionLabel={entry.grant.version ? `v${entry.grant.version}${entry.grant.versionNote ? ` \u2014 ${entry.grant.versionNote}` : ''}` : undefined}
               />
             ))}
           </div>
@@ -814,7 +821,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               domainId={entry.domainId}
               onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
               onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
-                onUpdateShareMode={!entry.readOnly ? handleUpdateShareMode : undefined}
+              onUpdateShareMode={!entry.readOnly ? handleUpdateShareMode : undefined}
+              versionLabel={entry.grant.version ? `v${entry.grant.version}${entry.grant.versionNote ? ` \u2014 ${entry.grant.versionNote}` : ''}` : undefined}
             />
           ))}
         </div>

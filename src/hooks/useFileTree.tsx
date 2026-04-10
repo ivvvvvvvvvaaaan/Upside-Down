@@ -126,6 +126,40 @@ function deleteNodeFromTree(
     })
 }
 
+function findNodeInUnifiedTree(nodes: UnifiedFileNode[], id: string): UnifiedFileNode | null {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    if (node.children) {
+      const found = findNodeInUnifiedTree(node.children, id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+/** Check if a node (by id) is a descendant of a folder (by id) in a tree */
+function isDescendantOf(nodes: UnifiedFileNode[], nodeId: string, ancestorId: string): boolean {
+  const ancestor = findNodeInUnifiedTree(nodes, ancestorId)
+  if (!ancestor || !ancestor.children) return false
+  return findNodeInUnifiedTree(ancestor.children, nodeId) !== null
+}
+
+function moveNodeInTree(
+  nodes: UnifiedFileNode[],
+  nodeId: string,
+  targetParentId: string,
+): UnifiedFileNode[] {
+  // First, extract the node
+  const node = findNodeInUnifiedTree(nodes, nodeId)
+  if (!node) return nodes
+
+  // Remove from current location
+  const treeWithout = deleteNodeFromTree(nodes, nodeId)
+
+  // Add to target
+  return addNodeToTree(treeWithout, targetParentId, { ...node, modifiedAt: new Date().toISOString().split('T')[0] })
+}
+
 function findSubtree(nodes: UnifiedFileNode[], id: string): UnifiedFileNode[] | null {
   for (const node of nodes) {
     if (node.id === id) return node.children ?? []
@@ -166,6 +200,12 @@ function findReferenceFolder(
 
 // --- Context ---
 
+export type MoveImpactCollection = { id: string; name: string; grantCount: number }
+
+export type MoveImpact = {
+  impactedCollections: MoveImpactCollection[]
+}
+
 interface FileTreeContextValue {
   tree: UnifiedFileNode[]
   getDomainFiles: (id: DomainId) => WorkspaceFileNode[]
@@ -174,6 +214,10 @@ interface FileTreeContextValue {
   createReferenceFolder: (parentId: string | null, name: string, reference: ReferenceFolderSource) => string
   renameNode: (nodeId: string, newName: string) => void
   deleteNode: (nodeId: string) => void
+  /** Analyze impact of moving a node — which shared collections would be affected */
+  getMoveImpact: (nodeId: string, collections: { id: string; name: string; boundFolderId?: string }[], getGrantCount: (collectionId: string) => number) => MoveImpact
+  /** Execute a move operation */
+  confirmMove: (nodeId: string, targetParentId: string) => void
 }
 
 const FileTreeContext = createContext<FileTreeContextValue | null>(null)
@@ -269,6 +313,33 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     updateTree((prev) => deleteNodeFromTree(prev, nodeId))
   }, [updateTree])
 
+  const getMoveImpact = useCallback((
+    nodeId: string,
+    collections: { id: string; name: string; boundFolderId?: string }[],
+    getGrantCount: (collectionId: string) => number,
+  ): MoveImpact => {
+    const impactedCollections: MoveImpactCollection[] = []
+    for (const collection of collections) {
+      if (!collection.boundFolderId) continue
+      // Check if the node lives inside this collection's bound folder
+      if (isDescendantOf(tree, nodeId, collection.boundFolderId)) {
+        const grantCount = getGrantCount(collection.id)
+        if (grantCount > 0) {
+          impactedCollections.push({
+            id: collection.id,
+            name: collection.name,
+            grantCount,
+          })
+        }
+      }
+    }
+    return { impactedCollections }
+  }, [tree])
+
+  const confirmMove = useCallback((nodeId: string, targetParentId: string) => {
+    updateTree((prev) => moveNodeInTree(prev, nodeId, targetParentId))
+  }, [updateTree])
+
   const value = useMemo<FileTreeContextValue>(() => ({
     tree,
     getDomainFiles,
@@ -277,7 +348,9 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     createReferenceFolder,
     renameNode,
     deleteNode,
-  }), [tree, getDomainFiles, createFolder, createFile, createReferenceFolder, renameNode, deleteNode])
+    getMoveImpact,
+    confirmMove,
+  }), [tree, getDomainFiles, createFolder, createFile, createReferenceFolder, renameNode, deleteNode, getMoveImpact, confirmMove])
 
   return (
     <FileTreeContext.Provider value={value}>

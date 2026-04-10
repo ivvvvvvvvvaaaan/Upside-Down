@@ -61,6 +61,10 @@ type ScenarioShare = {
   allowUpload?: boolean
   /** Review link ID for direct review access */
   reviewLinkId?: string
+  /** Version number for versioned re-shares (turnovers) */
+  version?: number
+  /** Note describing what changed in this version */
+  versionNote?: string
 }
 
 type ScenarioGuestLink = {
@@ -411,6 +415,23 @@ export const SCENARIO: Scenario = {
       date: '2026-01-15',
       context: 'Sarah creates a collection for Framestore deliveries. James can see the brief and upload comp deliveries — he cannot browse the rest of the VFX workspace.',
       allowUpload: true,
+      shareMode: 'snapshot',
+      version: 1,
+      grants: [
+        { to: 'vendor-framestore', as: 'add' },
+      ],
+    },
+    // Vendor drop v2: re-turnover after locked cut 2
+    {
+      resource: { id: 'coll-vfx-vendor-drop', type: 'collection', domain: 'vfx' },
+      label: 'Framestore Drop',
+      by: 'vfx-coordinator',
+      date: '2026-02-15',
+      context: 'Sarah re-shares after locked cut 2. Three new shots added from the updated edit, one dropped (client approved alternate take).',
+      allowUpload: true,
+      shareMode: 'snapshot',
+      version: 2,
+      versionNote: 're-turnover: +3 shots from LC2, dropped SQ03_SH0020',
       grants: [
         { to: 'vendor-framestore', as: 'add' },
       ],
@@ -668,6 +689,8 @@ export function buildGrants(): Grant[] {
 
   // Resource-level shares
   const sharerGrantsSeen = new Set<string>()
+  // Track grants by resource+principal key for version linking
+  const grantsByResourcePrincipal = new Map<string, string>()
   for (const share of SCENARIO.shares) {
     const resource = {
       id: share.resource.id,
@@ -724,6 +747,25 @@ export function buildGrants(): Grant[] {
       if (share.reviewLinkId) {
         grant.reviewLinkId = share.reviewLinkId
       }
+      // Version tracking for turnovers
+      if (share.version !== undefined) {
+        grant.version = share.version
+      }
+      if (share.versionNote) {
+        grant.versionNote = share.versionNote
+      }
+      // Link to previous version grant on same resource+principal
+      const principalKey = principal.type === 'user'
+        ? `user:${principal.userId}`
+        : principal.type === 'team'
+          ? `team:${principal.teamId}`
+          : `domain:${principal.domainId}`
+      const versionKey = `${share.resource.id}:${principalKey}`
+      const previousId = grantsByResourcePrincipal.get(versionKey)
+      if (previousId && share.version && share.version > 1) {
+        grant.previousVersionId = previousId
+      }
+      grantsByResourcePrincipal.set(versionKey, grant.id)
       grants.push(grant)
     }
   }

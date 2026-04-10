@@ -157,6 +157,9 @@ interface AccessContextValue {
   createReviewLink: (resource: ResourceRef, principal: PrincipalRef, expiresInDays?: number) => string | undefined
   getGrantByReviewLinkId: (linkId: string) => Grant | undefined
 
+  // Version history for turnover tracking
+  getVersionHistory: (resourceId: string, principalKey?: string) => { version: number; note: string; date: string; grantId: string }[]
+
   // Restore grants for a resource to a previous snapshot (for cancel flows)
   restoreResourceGrants: (resourceId: string, snapshot: Grant[]) => void
   restoreResourceGuestLinks: (resourceId: string, snapshot: GuestLinkSeed[]) => void
@@ -1105,6 +1108,28 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return rippled
   }, [collections, grants])
 
+  const getVersionHistory = useCallback((resourceId: string, principalKey?: string): { version: number; note: string; date: string; grantId: string }[] => {
+    return grants
+      .filter(g => g.resource.id === resourceId && g.version !== undefined)
+      .filter(g => {
+        if (!principalKey) return true
+        const p = g.principal
+        const key = p.type === 'user'
+          ? `user:${p.userId}`
+          : p.type === 'team'
+            ? `team:${p.teamId}`
+            : `domain:${p.domainId}`
+        return key === principalKey
+      })
+      .map(g => ({
+        version: g.version!,
+        note: g.versionNote ?? '',
+        date: g.grantedAt,
+        grantId: g.id,
+      }))
+      .sort((a, b) => b.version - a.version)
+  }, [grants])
+
   const contextValue = useMemo(() => ({
     canAccess,
     filterByAccess,
@@ -1135,6 +1160,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     resetRoleGroups,
     getInheritedGrants,
     getCollectionRippleGrants,
+    getVersionHistory,
     canShare: canShareFn,
     canEditAcl: canEditAclFn,
     getDiscoverySettings,
@@ -1189,6 +1215,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     resetRoleGroups,
     getInheritedGrants,
     getCollectionRippleGrants,
+    getVersionHistory,
     canShareFn,
     canEditAclFn,
     getDiscoverySettings,

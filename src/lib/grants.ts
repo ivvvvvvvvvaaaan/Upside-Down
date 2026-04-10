@@ -71,6 +71,12 @@ export type Grant = {
   allowUpload?: boolean
   /** Review link ID — when set, this grant is accessible via /nextgen/review/[linkId] */
   reviewLinkId?: string
+  /** Version number for snapshot re-shares (1, 2, 3...) */
+  version?: number
+  /** Note attached to this version (e.g., "re-turnover: 3 new shots from locked cut 2") */
+  versionNote?: string
+  /** Grant ID of the previous version */
+  previousVersionId?: string
 }
 
 
