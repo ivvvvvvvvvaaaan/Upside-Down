@@ -48,10 +48,14 @@ export function buildShareSearchResults({
       kind: 'user' as const,
     }))
 
+  // Hide teams that back a release domain (they show as domain results instead)
+  const domainBackingTeamIds = new Set(RELEASE_DOMAINS.flatMap(d => d.granteeTeamIds))
+
   const teamResults: ShareSearchResult[] = TEAMS
     .filter((team) =>
       !existingTeamIds?.has(team.id) &&
       !team.domainId &&
+      !domainBackingTeamIds.has(team.id) &&
       team.name.toLowerCase().includes(trimmed),
     )
     .map((team) => ({
