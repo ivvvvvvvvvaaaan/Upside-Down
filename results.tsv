@@ -2,3 +2,4 @@ commit	score	concepts	coverage	contradictions	status	description
 baseline	2.1	12	70	1	kept	Initial prototype model: 12 concepts, no domain release, department/domain split unresolved
 6b694d9	2.5	12	70	0	kept	Replace department with domain. Eliminates contradiction (no in-app domain mgmt). Vocabulary aligned.
 b63d120	2.8	9	70	0	kept	Collapse 3 collection flavors into 1 concept. Fold cut into asset. 12->9 concepts.
+76ae25a	3.4	9	80	0	kept	Integrate domain release into share dialog. Domains as recipients alongside people/groups. +10% coverage.

@@ -18,14 +18,19 @@ This is the mutable artifact. Each iteration proposes one change to this file.
 
 ## Sharing model
 
-Three paths depending on what you're sharing:
+One dialog. One action. You share something with a recipient. The recipient can be:
+- **A person** -- direct, targeted share.
+- **A group** -- address book shortcut; expands to individual grants at share time.
+- **A domain** -- broadcast release; everyone in that domain gets access. Labeled "Release to [domain]" for familiarity with existing Content Hub language.
+
+What you can share:
 - **Single asset**: direct grant on the asset itself.
 - **Collection**: grant on the collection; recipients see everything in it.
-- **Folder**: creates a workspace-bound collection behind the scenes; grant on that.
+- **Folder**: creates a collection behind the scenes; grant on that.
 
 Per-recipient settings: live (synced) or snapshot (frozen), upload enabled, expiration.
 
-**Domain release** is NOT modeled. It exists in the current Content Hub as a separate workflow (select assets, pick domains from Studio/Wide/Other tiers, submit). The next-gen prototype does not handle this yet.
+Domain recipients appear in a grouped list: Studio tier first, Wide tier second, Other third. The user sees the blast radius ("Release to Wide makes this visible to Marketing, Legal, Globalization..."). Only domains the user has release capability for appear in autocomplete.
 
 ## Access control
 
@@ -59,7 +64,7 @@ Undefined. "Manual push workflow" mentioned but no mechanism designed.
 
 Domain replaces "department" as the boundary concept. This aligns with real Content Hub infrastructure where all access control runs through domains. The relationship is now direct: domain = boundary = workspace owner. CAM manages who belongs to which domain.
 
-Domain release (making content visible to everyone in a domain) still exists as a separate workflow in the current Content Hub. Not yet integrated into this model's sharing flow.
+Domain release is integrated into the share flow. "Release to MARKETING" = share with the MARKETING domain. Same grant mechanism as sharing with a person. The word "release" is preserved as a label for domain shares because it carries meaning and history in the Content Hub ecosystem. The newer Content Hub already unifies People and Domains in one share dialog (two tabs); this model takes it further with a single unified recipient field.
 
 ## Vocabulary
 
