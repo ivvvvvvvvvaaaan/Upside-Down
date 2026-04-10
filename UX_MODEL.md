@@ -11,7 +11,7 @@
 5. Releasing is a broadcast. You toggle audience groups on/off. Released content travels across apps.
 6. What someone can do depends on their **permission level**: view, comment, add, edit, or manage.
 7. Content stays in your department until you share or release it. Every permission is traceable and revocable.
-8. Release goes outward. You never release to your own audience -- that's what the workspace is for.
+8. Release is the formal publication step. Releasing to "Studio VFX" makes the asset visible to the Studio VFX audience -- which is broader than the VFX workspace. Department membership and release audience membership overlap but are not the same.
 
 ---
 
@@ -73,7 +73,7 @@ For assets and cuts, the share dialog has two tabs:
 - Audience groups organized by tier: Studio, Wide, Other.
 - Toggle groups on/off. One-click presets: "Release to all Studio," "Release to all Wide."
 - View or Comment only. No upload, no live/snapshot.
-- Your own audience is filtered out -- release goes outward.
+- All release audiences available based on your CAM capabilities.
 - Released content is CAM-backed. It travels across apps.
 
 For collections and folders: People tab only. Release applies to individual assets and cuts.

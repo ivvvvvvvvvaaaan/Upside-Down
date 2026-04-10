@@ -956,7 +956,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     const groups = ['Studio', 'Wide', 'Other'] as const
     const domainsByGroup = groups.map(group => ({
       group,
-      domains: RELEASE_DOMAINS.filter(d => d.group === group && d.originDepartmentId !== resourceDomainId),
+      domains: RELEASE_DOMAINS.filter(d => d.group === group),
     })).filter(g => g.domains.length > 0)
 
     return (

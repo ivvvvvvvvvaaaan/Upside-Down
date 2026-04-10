@@ -240,19 +240,19 @@ The access model has two layers. Both must work independently:
 
 **Layer 2: Release + Share (cross-department).** Two outward mechanisms:
 - **Share** = targeted, person/team. "Send this collection to Lisa." App-specific grant.
-- **Release** = broadcast, domain-targeted. "Make this cut visible to everyone in Marketing." CAM-backed grant. Release is always outward -- you release FROM your department TO other domains. You never release to your own domain (it's a no-op; you already have workspace access).
+- **Release** = broadcast, domain-targeted. "Make this cut visible to everyone in Marketing." CAM-backed grant. Release is the formal publication step. Releasing to "Studio VFX" is NOT a no-op even for VFX department members -- the release audience is broader than the workspace (includes supervisors from other departments, studio leadership, etc.). Department membership and release audience membership overlap but are not the same.
 
-Evaluate: does the model keep these layers clean? Does sharing leak inward (give workspace access to outsiders)? Does release leak the wrong direction (release to own domain)?
+Evaluate: does the model keep these layers clean? Does sharing leak inward (give workspace access to outsiders)?
 
-### 5c. Release directionality (outward only)
+### 5c. Release as formal publication
 
-Release in the real Content Hub is capability-gated and unidirectional:
+Release in the real Content Hub is capability-gated:
 - `releaseFromDomains` controls WHO can release (must hold the capability)
-- Release target domains are always OTHER domains, never your own
-- The release UI should filter out the asset's origin domain
-- Auto-release fires to configured target domains, not back to origin
+- Release audiences and department workspaces have overlapping but different membership
+- Releasing to "Studio VFX" is the formal publication step -- it makes the asset visible to the Studio VFX audience, which is broader than the VFX workspace
+- All release audiences appear in the UI based on the user's capabilities
 
-Evaluate: can a user accidentally release content to their own domain? Does the UI make the outward direction clear?
+Evaluate: does the release UI make the audience scope clear? Does the blast radius warning help users understand who will see the content?
 
 ### 5d. Contradiction check (zero contradictions required)
 
@@ -263,7 +263,7 @@ Does the model contradict any fixed constraint in section 1? Common failure mode
 - Leaks content across department boundaries without intentional share
 - Auto-grants access when someone joins a group (violates no-retroactive-inheritance)
 - Conflates domain (CAM tool access) with department (workspace boundary)
-- Allows release to own domain (no-op that confuses the model)
+- Conflates release audience membership with department workspace membership
 
 ### 5e. Explainability (every permission answerable)
 
