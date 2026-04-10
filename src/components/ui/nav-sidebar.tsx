@@ -672,7 +672,8 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
         ))}
         {/* All accessible collections — owned, domain, received */}
         {(() => {
-          const seen = new Set<string>()
+          // Start with smart collection IDs already shown above
+          const seen = new Set<string>(unifiedCollections.filter(isSmart).map(c => c.id))
           const items: { id: string; name: string; count: number; isShared: boolean }[] = []
 
           // Owned + domain collections (skip workspace-bound — those show under Workspaces)

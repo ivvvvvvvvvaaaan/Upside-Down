@@ -3,6 +3,7 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
 import { X, Plus, Lock } from 'lucide-react'
 import { Button } from './button'
+import { Dropdown, DropdownMenuItem } from './dropdown'
 import { ResponsivePanel } from './responsive-panel'
 import { AccessModal } from './access-modal'
 import { Tag } from './tag'
@@ -10,7 +11,7 @@ import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import { CreativeReviewCard } from './creative-review-card'
 import type { Asset, DomainId } from '@/lib/data'
 import { getAssetIdVariants } from '@/lib/data'
-import type { ResourceRef, Grant, RoleGroup } from '@/lib/grants'
+import type { ResourceRef, Grant, RoleGroup, PrincipalRef } from '@/lib/grants'
 import { isGrantActive, profileLabel, RELEASE_DOMAINS } from '@/lib/grants'
 import { useAccess, useFileTree, usePersona, useSmartCollections, useCuts } from '@/hooks'
 import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
@@ -27,6 +28,7 @@ import type { RelatedAssetGroup } from '@/lib/context-relationships'
 
 import { Modal } from './modal'
 import { Avatar } from './avatar'
+import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
 import type { AssetTag } from '@/lib/data'
 
 function resolvePrincipalName(principal: Grant['principal']): string {
@@ -54,25 +56,35 @@ function grantCapabilities(grant: Grant, roleGroups: RoleGroup[]): string[] {
   return caps
 }
 
+function PrincipalAvatar({ principal, name }: { principal: PrincipalRef; name: string }) {
+  if (principal.type === 'team') {
+    const team = TEAMS.find(t => t.id === principal.teamId)
+    return <DepartmentAvatar domainId={team?.domainId} size="compact" />
+  }
+  if (principal.type === 'domain') return <ReleaseDomainAvatar size="compact" />
+  return <Avatar name={name} size="compact" />
+}
+
 function CapabilityLabels({ grant, roleGroups }: { grant: Grant; roleGroups: RoleGroup[] }) {
   const caps = grantCapabilities(grant, roleGroups)
   return (
     <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 justify-end flex-shrink-0">
       {caps.map(cap => (
-        <span key={cap} className="text-label-0-regular text-foreground-dim">{cap}</span>
+        <span key={cap} className="text-body-0-regular text-foreground-dim">{cap}</span>
       ))}
     </div>
   )
 }
 
-function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName }: {
+function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, currentCollectionId }: {
   assetId: string
   inheritedGrants: { grant: Grant; fromResourceName: string }[]
   resourceRef?: ResourceRef
   resourceName?: string
+  currentCollectionId?: string
 }) {
-  const { getResourceGrants, roleGroups, canShare } = useAccess()
-  const { collections } = useUserCollections()
+  const { getResourceGrants, roleGroups, canShare, revokeGrant } = useAccess()
+  const { collections, removeAssetFromCollection } = useUserCollections()
   const { activePersona, isAdmin } = usePersona()
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -123,73 +135,104 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName }
   }, [collections, assetVariants, getResourceGrants, inheritedGrants])
 
   const hasAnything = domainEntries.length > 0 || directGrants.length > 0 || sharedCollections.length > 0
+  const canManageAccess = isAdmin || (resourceRef && canShare(resourceRef))
 
   return (
-    <section className="space-y-4">
-      {/* Domain / inherited access */}
+    <section className="space-y-3">
+      {/* Department access */}
       {domainEntries.length > 0 && (
-        <div className="space-y-1">
-          {domainEntries.map(({ grant, name, source }) => (
-            <div key={grant.id} className="flex items-center justify-between gap-2 py-0.5">
+        <div className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-2">
+          <span className="text-body-0-regular text-foreground-dim">Department</span>
+          {domainEntries.map(({ grant, name }) => (
+            <div key={grant.id} className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                <Avatar name={name} size="compact" />
-                <div className="min-w-0">
-                  <span className="text-body-0-regular text-foreground truncate block">{name}</span>
-                  <span className="text-label-0-regular text-foreground-dim truncate block">{source}</span>
-                </div>
+                <PrincipalAvatar principal={grant.principal} name={name} />
+                <span className="text-body-0-regular text-foreground truncate">{name}</span>
               </div>
-              <CapabilityLabels grant={grant} roleGroups={roleGroups} />
+              {canManageAccess && <CapabilityLabels grant={grant} roleGroups={roleGroups} />}
             </div>
           ))}
         </div>
       )}
 
-      {/* Direct grants on this asset */}
-      {directGrants.length > 0 && (
-        <div className="space-y-1">
-          <h3 className="text-label-1-bold text-foreground-dim">Direct access</h3>
-          {directGrants.map(grant => {
-            const name = resolvePrincipalName(grant.principal)
-            return (
-              <div key={grant.id} className="flex items-center justify-between gap-2 py-0.5">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Avatar name={name} size="compact" />
-                  <span className="text-body-0-regular text-foreground truncate">{name}</span>
-                </div>
-                <CapabilityLabels grant={grant} roleGroups={roleGroups} />
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Collection-mediated access */}
+      {/* Collection-mediated access — each in its own card */}
       {sharedCollections.map(({ collection, grants }) => (
-        <div key={collection.id} className="space-y-1">
-          <h3 className="text-label-1-bold text-foreground-dim">Via <a href={`/nextgen/collections/${collection.id}`} className="hover:text-foreground transition-colors underline">{collection.name}</a></h3>
+        <div key={collection.id} className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-body-0-regular text-foreground">
+              {collection.id === currentCollectionId
+                ? <span className="text-foreground-dim">This collection</span>
+                : <a href={`/nextgen/collections/${collection.id}`} className="text-foreground-dim hover:text-foreground transition-colors">{collection.name}</a>
+              }
+            </span>
+            {collection.id === currentCollectionId ? null : canManageAccess ? (
+              <button
+                onClick={() => removeAssetFromCollection(collection.id, assetId)}
+                className="text-body-0-regular text-foreground-dim hover:text-foreground transition-colors"
+              >
+                Remove
+              </button>
+            ) : null}
+          </div>
           {grants.map(grant => {
             const name = resolvePrincipalName(grant.principal)
             return (
-              <div key={grant.id} className="flex items-center justify-between gap-2 py-0.5">
+              <div key={grant.id} className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Avatar name={name} size="compact" />
+                  <PrincipalAvatar principal={grant.principal} name={name} />
                   <span className="text-body-0-regular text-foreground truncate">{name}</span>
                 </div>
-                <CapabilityLabels grant={grant} roleGroups={roleGroups} />
+                {canManageAccess && <CapabilityLabels grant={grant} roleGroups={roleGroups} />}
               </div>
             )
           })}
         </div>
       ))}
 
+      {/* Direct grants on this asset */}
+      {directGrants.length > 0 && (
+        <div className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-2">
+          <span className="text-body-0-regular text-foreground-dim">Shared directly</span>
+          {directGrants.map(grant => {
+            const name = resolvePrincipalName(grant.principal)
+            return (
+              <div key={grant.id} className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <PrincipalAvatar principal={grant.principal} name={name} />
+                  <span className="text-body-0-regular text-foreground truncate">{name}</span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {canManageAccess && <CapabilityLabels grant={grant} roleGroups={roleGroups} />}
+                  {canManageAccess && (
+                    <button
+                      onClick={() => revokeGrant(grant.id)}
+                      className="text-body-0-regular text-foreground-system-error hover:opacity-80 transition-colors"
+                    >
+                      Revoke
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {!hasAnything && (
         <p className="text-body-0-regular text-foreground-dim">Not shared</p>
       )}
 
       {(isAdmin || (resourceRef && canShare(resourceRef))) && (
-        <Button variant="secondary" compact onClick={() => setModalOpen(true)}>
-          Manage Access
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" compact onClick={() => setModalOpen(true)}>
+            Share
+          </Button>
+          {currentCollectionId && (
+            <Button variant="secondary" compact onClick={() => removeAssetFromCollection(currentCollectionId, assetId)}>
+              Remove from this collection
+            </Button>
+          )}
+        </div>
       )}
 
       <AccessModal
@@ -596,7 +639,7 @@ export function AssetDetailPanelContent({
     <>
       {/* Header */}
       <div className="flex items-center justify-between p-4">
-        <span className="text-body-0-bold text-foreground">Asset Info</span>
+        <span className="text-body-0-bold text-foreground truncate">{asset.name}</span>
         <Button variant="icon" compact onClick={onClose}>
           <X className="w-4 h-4" />
         </Button>
@@ -803,12 +846,13 @@ export function AssetDetailPanelContent({
             />
           </TabsContent>
 
-          <TabsContent value="access" className="px-4 pb-4">
+          <TabsContent value="access" className="p-4">
             <AssetAccessView
               assetId={asset.id}
               inheritedGrants={folderInheritedGrants}
               resourceRef={resourceRef}
               resourceName={asset.name}
+              currentCollectionId={activeCollectionId}
             />
           </TabsContent>
         </div>

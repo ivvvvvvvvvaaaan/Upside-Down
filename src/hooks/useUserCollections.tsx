@@ -56,6 +56,7 @@ interface UserCollectionsContextValue {
   createCollection: (name: string, assetIds: string[]) => UserCollection
   createWorkspaceCollection: (name: string, folderId: string, domainId: string) => UserCollection
   addAssetsToCollection: (id: string, assetIds: string[]) => void
+  removeAssetFromCollection: (collectionId: string, assetId: string) => void
   deleteCollection: (id: string) => void
   getCollection: (id: string) => UserCollection | undefined
   transferCollectionOwnership: (collectionId: string, newOwnerEmail: string) => void
@@ -128,6 +129,16 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
     }))
   }, [setCollections])
 
+  const removeAssetFromCollection = useCallback((collectionId: string, assetId: string) => {
+    setCollections((prev) => prev.map((collection) => {
+      if (collection.id !== collectionId) return collection
+      return {
+        ...collection,
+        assetIds: collection.assetIds.filter(id => id !== assetId),
+      }
+    }))
+  }, [setCollections])
+
   const deleteCollection = useCallback((id: string) => {
     setCollections(prev => prev.filter(c => c.id !== id))
   }, [setCollections])
@@ -158,11 +169,12 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
       createCollection,
       createWorkspaceCollection,
       addAssetsToCollection,
+      removeAssetFromCollection,
       deleteCollection,
       getCollection,
       transferCollectionOwnership,
       orphanedCollections,
-    }), [collections, createCollection, createWorkspaceCollection, addAssetsToCollection, deleteCollection, getCollection, transferCollectionOwnership, orphanedCollections])}>
+    }), [collections, createCollection, createWorkspaceCollection, addAssetsToCollection, removeAssetFromCollection, deleteCollection, getCollection, transferCollectionOwnership, orphanedCollections])}>
       {children}
     </UserCollectionsContext.Provider>
   )

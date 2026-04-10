@@ -367,17 +367,7 @@ export const SCENARIO: Scenario = {
         { to: 'creative-david', as: 'view' },
       ],
     },
-    {
-      resource: { id: 'ws-cam-sel-1', type: 'asset', domain: 'camera' },
-      label: 'Scene 12 Take B Selected',
-      by: 'editorial-artist',
-      date: '2026-02-10',
-      context: 'Maria pulls the selected camera take from the grid start sequence and shares it with David and Alex. This is the hero angle for the opening — David chose Take B for the tighter framing on Vitale\'s helmet. Needs studio confirmation before the edit locks.',
-      grants: [
-        { to: 'studio-alex',    as: 'view' },
-        { to: 'creative-david', as: 'view' },
-      ],
-    },
+    // (Camera selects shared via collection, not per-asset — Alex and David added to Camera Selects collection instead)
     // Smart collection share: Sarah Chen shares "Finals" with editorial team
     {
       resource: { id: 'smart-finals', type: 'smart-collection' },
@@ -451,9 +441,11 @@ export const SCENARIO: Scenario = {
       by: 'camera-dit',
       date: '2026-02-05',
       shareMode: 'live',
-      context: 'Tom shares camera selects as a live collection with editorial — Maria and Lisa see new selects as Tom adds them. They pull camera-original takes into the timeline as they cut.',
+      context: 'Tom shares camera selects as a live collection with editorial, plus David and Alex for review. New selects appear automatically as Tom adds them.',
       grants: [
         { toTeam: 'editorial', as: 'view' },
+        { to: 'creative-david', as: 'view' },
+        { to: 'studio-alex', as: 'view' },
       ],
     },
     // Camera DIT shares lens distortion data with VFX for comp accuracy

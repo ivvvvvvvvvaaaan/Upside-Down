@@ -29,6 +29,7 @@ import type { GuestLinkSeed } from '@/lib/scenario'
 import { resolveCollectionAssetIds, getAssetIdVariants } from '@/lib/data'
 import { isGrantActive } from '@/lib/grants'
 import { useUserCollections } from '@/hooks/useUserCollections'
+import { useSmartCollections } from '@/hooks'
 import { useShareAsCollection } from '@/hooks/useShareAsCollection'
 import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
 import { TEAMS } from '@/lib/teams'
@@ -423,7 +424,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const [shareMode, setShareMode] = useState<ShareMode>('snapshot')
   const [expires, setExpires] = useState(false)
   const [expiresInDays, setExpiresInDays] = useState(7)
-  const { getCollection, collections } = useUserCollections()
+  const { getCollection, collections, createCollection } = useUserCollections()
+  const { getCollection: getSmartCollection, filterAssets, scopedAssets } = useSmartCollections()
   const { resolveShareTarget } = useShareAsCollection()
   const isCollectionResource = resourceRef?.type === 'collection'
   const isAssetResource = resourceRef?.type === 'asset' || resourceRef?.type === 'cut'
@@ -638,11 +640,24 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
     for (const pending of pendingGrants) {
       for (const rawTarget of rawTargets) {
+        let target = rawTarget
+
         // Folders get converted to workspace collections before granting
-        const resolved = rawTarget.type === 'folder'
-          ? resolveShareTarget(rawTarget, rawTarget.id)
-          : null
-        const target = resolved?.resourceRef ?? rawTarget
+        if (rawTarget.type === 'folder') {
+          const resolved = resolveShareTarget(rawTarget, rawTarget.id)
+          target = resolved.resourceRef as ResourceRef
+        }
+
+        // Smart collections get snapshotted into curated collections
+        if (rawTarget.type === 'smart-collection') {
+          const smartColl = getSmartCollection(rawTarget.id)
+          if (smartColl) {
+            const assets = filterAssets(scopedAssets, smartColl.id)
+            const assetIds = assets.map(a => a.id)
+            const curated = createCollection(`${smartColl.name} (shared)`, assetIds)
+            target = { id: curated.id, type: 'collection' }
+          }
+        }
 
         const targetGrants = getResourceGrants(target.id)
         if (pending.principal.type === 'user' && targetGrants.some(g => g.principal.type === 'user' && g.principal.userId === (pending.principal as { userId: string }).userId)) continue
@@ -813,7 +828,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       sourceName: undefined as string | undefined,
     }))
 
-    const inheritedRaw = (inheritedGrants ?? []).map(({ grant, fromResourceName }) => ({
+    // For assets: inherited grants only feed the status card, not the access list
+    const inheritedRaw = isAssetResource ? [] : (inheritedGrants ?? []).map(({ grant, fromResourceName }) => ({
       key: `inherited-${grant.id}-${fromResourceName}`,
       grant,
       readOnly: true,

@@ -68,7 +68,7 @@ export function AccessModal({
   return (
     <Modal open={open} onOpenChange={(v) => !v && handleClose()} size="sm">
       <Modal.Header title={heading} />
-      <Modal.Body className="max-h-[60vh] overflow-y-auto">
+      <Modal.Body>
         <AccessPanel
           resourceId={resourceId}
           resourceRef={resourceRef}

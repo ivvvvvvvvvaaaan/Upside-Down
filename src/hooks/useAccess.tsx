@@ -1020,6 +1020,32 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     setGrants((prev) => {
       if (!canShareFn(resource, prev)) return prev
 
+      // Duplicate detection: check for existing active grant on same resource + principal
+      const principalKey = principal.type === 'user' ? `user:${principal.userId}`
+        : principal.type === 'team' ? `team:${principal.teamId}`
+        : `domain:${principal.domainId}`
+      const existingGrant = prev.find(g =>
+        g.resource.id === resource.id &&
+        isGrantActive(g) &&
+        (g.principal.type === 'user' ? `user:${g.principal.userId}`
+          : g.principal.type === 'team' ? `team:${g.principal.teamId}`
+          : `domain:${g.principal.domainId}`) === principalKey
+      )
+
+      if (existingGrant) {
+        const existingRank = existingGrant.templateId ? (TEMPLATE_RANK[existingGrant.templateId] ?? 0) : 0
+        const newRank = TEMPLATE_RANK[profileId] ?? 0
+        if (newRank <= existingRank) {
+          // Same or lower level — absorb, no new grant needed
+          return prev
+        }
+        // Higher level — upgrade the existing grant
+        return prev.map(g => g.id === existingGrant.id
+          ? { ...g, templateId: profileId, permissions: getPermissionsForProfile(profileId, roleGroups), grantedByUserId: grantorUserId, grantedAt: new Date().toISOString().slice(0, 10) }
+          : g
+        )
+      }
+
       // Use explicit permissions if provided (toggle-based), otherwise resolve from profile
       const grantPermissions = options?.permissions ?? getPermissionsForProfile(profileId, roleGroups)
 
