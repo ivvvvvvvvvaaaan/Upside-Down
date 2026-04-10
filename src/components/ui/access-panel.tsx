@@ -347,6 +347,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     restoreResourceGuestLinks,
   } = useAccess()
   const { activePersona } = usePersona()
+  const [shareTab, setShareTab] = useState<'people' | 'release'>('people')
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
   type PendingGrant = { id: string; principal: PrincipalRef; name: string; kind: 'user' | 'team' | 'domain'; role: AccessProfileId; shareMode: ShareMode; expires: boolean; expiresInDays: number; allowUpload: boolean }
@@ -710,6 +711,327 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     [directEntries, inheritedEntries],
   )
 
+  const showTabs = resourceRef?.type === 'asset' || resourceRef?.type === 'cut'
+  const peopleCount = userEntries.length + teamEntries.length
+  const domainCount = domainEntries.length
+  const pendingDomainCount = pendingGrants.filter(p => p.kind === 'domain').length
+  const pendingPeopleCount = pendingGrants.filter(p => p.kind !== 'domain').length
+
+  /* ---- Shared sub-sections ---- */
+
+  const searchSection = !readOnly && resourceRef && canAddGrants && addRoleOptions.length > 0 && (
+    <div className="flex items-start gap-2">
+      <div ref={dropdownRef} className="relative flex-1">
+        <Input
+          type="text"
+          value={query}
+          onChange={e => { setQuery(e.target.value); setShowDropdown(true) }}
+          onFocus={() => { if (query.trim()) setShowDropdown(true) }}
+          placeholder="Add people or teams..."
+          icon={<Search className="w-4 h-4" />}
+          iconPosition="left"
+        />
+        {showDropdown && query.trim() && (
+          <div className="absolute left-0 right-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 max-h-[240px] overflow-y-auto">
+            {results.map((result) => (
+              <button
+                key={result.key}
+                onClick={() => handleSelectPrincipal(result.principal, result.name, result.kind)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors"
+              >
+                {result.kind === 'user' ? (
+                  <Avatar name={result.name} size="sm" />
+                ) : (
+                  <DepartmentAvatar size="sm" />
+                )}
+                <div className="min-w-0">
+                  <span className="text-body-0-regular text-foreground truncate block">{result.name}</span>
+                  <span className="text-body-0-regular text-foreground-dim truncate block">{result.subtitle}</span>
+                </div>
+              </button>
+            ))}
+            {!hasResults && (
+              <div className="px-3 py-2 text-body-0-regular text-foreground-dim">No matches</div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  const haveAccessHeader = (domainContext || userEntries.length > 0 || teamEntries.length > 0 || sharedViaCollections.length > 0) && (
+    <h3 className="text-label-1-bold text-foreground-dim">Have access</h3>
+  )
+
+  const domainContextRow = domainContext && (
+    <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-surface-mid">
+      <div className="flex items-center gap-2 min-w-0">
+        <DepartmentAvatar domainId={domainContext.domId} size="sm" />
+        <div className="min-w-0">
+          <span className="text-body-0-regular text-foreground truncate block">{domainContext.teamName}</span>
+          <span className="text-label-0-regular text-foreground-dim block">Domain access</span>
+        </div>
+      </div>
+      <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{domainContext.roleLabel}</span>
+    </div>
+  )
+
+  const userEntriesSection = userEntries.length > 0 && (
+    <div className="space-y-0">
+      <div className="space-y-0">
+        {userEntries.map((entry) => (
+          <GrantRow
+            key={entry.key}
+            grant={entry.grant}
+            readOnly={entry.readOnly}
+            roleGroups={roleGroups}
+            name={entry.name}
+            subtitle={entry.subtitle}
+            roleLabel={entry.roleLabel}
+            members={entry.members}
+            domainId={entry.domainId}
+            onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
+            onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
+            onUpdateShareMode={!entry.readOnly ? handleUpdateShareMode : undefined}
+            versionLabel={entry.grant.version ? `v${entry.grant.version}${entry.grant.versionNote ? ` \u2014 ${entry.grant.versionNote}` : ''}` : undefined}
+          />
+        ))}
+      </div>
+    </div>
+  )
+
+  const teamEntriesSection = teamEntries.length > 0 && (
+    <div className="space-y-0">
+      {teamEntries.map((entry) => (
+        <GrantRow
+          key={entry.key}
+          grant={entry.grant}
+          readOnly={entry.readOnly}
+          roleGroups={roleGroups}
+          name={entry.name}
+          subtitle={entry.subtitle}
+          roleLabel={entry.roleLabel}
+          members={entry.members}
+          domainId={entry.domainId}
+          onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
+          onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
+          onUpdateShareMode={!entry.readOnly ? handleUpdateShareMode : undefined}
+          versionLabel={entry.grant.version ? `v${entry.grant.version}${entry.grant.versionNote ? ` \u2014 ${entry.grant.versionNote}` : ''}` : undefined}
+        />
+      ))}
+    </div>
+  )
+
+  const sharedViaCollectionsSection = sharedViaCollections.map(({ collection, grants: collGrants }) => {
+    const collRef: ResourceRef = { id: collection.id, type: 'collection' }
+    const canManageCollection = canEditAcl(collRef)
+    const canShareCollection = canShare(collRef)
+    return (
+      <div key={collection.id} className="space-y-1">
+        <h3 className="text-label-1-bold text-foreground-dim">Via <a href={`/nextgen/collections/${collection.id}`} className="hover:text-foreground transition-colors underline">{collection.name}</a></h3>
+        <div className="space-y-0">
+          {collGrants.map(grant => {
+            const principal = grant.principal
+            const name = principal.type === 'user'
+              ? PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
+              : principal.type === 'team'
+                ? TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
+                : (() => { const d = RELEASE_DOMAINS.find(d => d.id === principal.domainId); return d ? `${d.name} (${d.group})` : principal.domainId })()
+            const domId = principal.type === 'team'
+              ? TEAMS.find(t => t.id === principal.teamId)?.domainId
+              : principal.type === 'user'
+                ? PERSONAS.find(p => p.id === principal.userId)?.domainId
+                : undefined
+            const canRevoke = canManageCollection || (canShareCollection && activePersona && grant.grantedByUserId === activePersona.id)
+            return (
+              <GrantRow
+                key={grant.id}
+                grant={grant}
+                readOnly={!canRevoke}
+                roleGroups={roleGroups}
+                name={name}
+                roleLabel={profileLabel(grant.templateId, roleGroups)}
+                domainId={domId}
+                onRemove={canRevoke ? (id) => { markDirty(); revokeGrant(id) } : undefined}
+                onUpdateProfile={canRevoke ? (id, pid) => { markDirty(); updateGrantProfile(id, pid) } : undefined}
+              />
+            )
+          })}
+        </div>
+      </div>
+    )
+  })
+
+  const pendingPeopleSection = pendingGrants.filter(p => p.kind !== 'domain').length > 0 && (
+    <div className="space-y-2">
+      <h3 className="text-label-1-bold text-foreground-dim">Adding</h3>
+      {pendingGrants.filter(p => p.kind !== 'domain').map(pending => (
+        <div key={pending.id} className="rounded-lg bg-surface-mid p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              {pending.kind === 'user' ? (
+                <Avatar name={pending.name} size="sm" />
+              ) : (
+                <DepartmentAvatar size="sm" />
+              )}
+              <span className="text-body-0-regular text-foreground truncate">{pending.name}</span>
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {isCollectionResource && pending.kind !== 'domain' && (
+                <>
+                <label className="flex items-center gap-1.5 mr-2 text-label-0-regular text-foreground-dim cursor-pointer">
+                  <Toggle
+                    checked={pending.allowUpload}
+                    onChange={(v) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, allowUpload: v } : p))}
+                    aria-label="Allow uploads"
+                  />
+                  <span>Uploads</span>
+                </label>
+                <label className="flex items-center gap-1.5 mr-2 text-label-0-regular text-foreground-dim cursor-pointer">
+                  <Toggle
+                    checked={pending.shareMode === 'live'}
+                    onChange={(v) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, shareMode: v ? 'live' : 'snapshot' } : p))}
+                    aria-label="Include new"
+                  />
+                  <span>Include new</span>
+                  <Tooltip label="New assets added to this collection will be visible to this person">
+                    <Info className="w-3 h-3 text-foreground-dim" />
+                  </Tooltip>
+                </label>
+                </>
+              )}
+              <RoleSelect
+                options={pending.kind === 'domain'
+                  ? addRoleOptions.filter(o => o.value === 'view' || o.value === 'comment')
+                  : addRoleOptions}
+                value={pending.role}
+                onChange={(value) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, role: value as AccessProfileId } : p))}
+              />
+              <Button variant="icon" compact onClick={() => handleRemovePending(pending.id)}>
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+
+  const peopleEmptyState = userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && sharedViaCollections.length === 0 && !domainContext && pendingPeopleCount === 0 && (
+    <p className="text-body-0-regular text-foreground-dim">{emptyLabel}</p>
+  )
+
+  const guestLinksSection = (
+    <div className="pt-2">
+      <GuestLinksSection
+        resourceId={resourceId}
+        resourceRef={resourceRef}
+        readOnly={readOnly}
+        canAddGrants={canAddGrants}
+        canManageGuestLink={canManageGuestLink}
+        getResourceGuestLinks={getResourceGuestLinks}
+        createGuestLink={(...args) => { markDirty(); return createGuestLink(...args) }}
+        updateGuestLink={(...args) => { markDirty(); updateGuestLink(...args) }}
+        revokeGuestLink={(...args) => { markDirty(); revokeGuestLink(...args) }}
+      />
+    </div>
+  )
+
+  /* ---- Release tab sub-sections ---- */
+
+  const domainReleasePills = !readOnly && canAddGrants && resourceRef && (resourceRef.type === 'asset' || resourceRef.type === 'cut') && (() => {
+    const releasedDomainIds = new Set(domainEntries.map(e => {
+      const p = e.grant.principal as { type: 'domain'; domainId: string }
+      return p.domainId
+    }))
+    const pendingDomainIds = new Set(pendingGrants.filter(p => p.kind === 'domain').map(p => p.id))
+    const groups = ['Studio', 'Wide', 'Other'] as const
+    const domainsByGroup = groups.map(group => ({
+      group,
+      domains: RELEASE_DOMAINS.filter(d => d.group === group),
+    })).filter(g => g.domains.length > 0)
+
+    return (
+      <div className="space-y-2">
+        <div className="space-y-1.5">
+          {domainsByGroup.map(({ group, domains }) => (
+            <div key={group} className="flex flex-wrap items-center gap-1">
+              <span className="text-label-0-regular text-foreground-subtle w-10 flex-shrink-0">{group}</span>
+              {domains.map(domain => {
+                const isReleased = releasedDomainIds.has(domain.id)
+                const isPending = pendingDomainIds.has(domain.id)
+                return (
+                  <button
+                    key={domain.id}
+                    disabled={isReleased}
+                    onClick={() => {
+                      if (isReleased) return
+                      if (isPending) {
+                        handleRemovePending(domain.id)
+                      } else {
+                        handleSelectPrincipal({ type: 'domain', domainId: domain.id }, domain.name, 'domain')
+                      }
+                    }}
+                    className={cn(
+                      'px-2 py-0.5 rounded text-label-0-regular transition-colors',
+                      isReleased
+                        ? 'bg-surface-interactive text-foreground-dim cursor-default'
+                        : isPending
+                          ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/40'
+                          : 'bg-surface-mid text-foreground-dim hover:bg-surface-2 hover:text-foreground',
+                    )}
+                  >
+                    {domain.name}
+                  </button>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  })()
+
+  const domainEntriesSection = domainEntries.length > 0 && (
+    <div className="space-y-0">
+      {domainEntries.map((entry) => {
+        const domainPrincipal = entry.grant.principal as { type: 'domain'; domainId: string }
+        const domain = RELEASE_DOMAINS.find(d => d.id === domainPrincipal.domainId)
+        const domainRoleOptions = addRoleOptions.filter(o => o.value === 'view' || o.value === 'comment')
+        return (
+          <div key={entry.key} className="flex items-center gap-2 px-2 py-2 rounded hover:bg-surface-2 transition-colors group">
+            <div className="w-7 h-7 rounded-full bg-surface-mid flex items-center justify-center flex-shrink-0">
+              <Globe className="w-3.5 h-3.5 text-foreground-dim" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-body-0-regular text-foreground truncate block">
+                Released to {domain?.name ?? domainPrincipal.domainId}
+              </span>
+              <span className="text-label-0-regular text-foreground-dim">{domain?.group ?? 'Domain'}</span>
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <RoleSelect
+                options={domainRoleOptions}
+                value={entry.grant.templateId ?? 'view'}
+                onChange={(value) => handleUpdateProfile(entry.grant.id, value as AccessProfileId)}
+                disabled={entry.readOnly}
+              />
+              {!entry.readOnly && (
+                <Button variant="icon" compact onClick={() => handleRevokeGrant(entry.grant.id)} className="opacity-0 group-hover:opacity-100">
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+
+  const releaseEmptyState = domainEntries.length === 0 && pendingDomainCount === 0 && (
+    <p className="text-body-0-regular text-foreground-dim">No domains released yet. Select domains above to release.</p>
+  )
+
   return (
     <div className="space-y-4">
       {/* Permission hints */}
@@ -723,325 +1045,74 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         <p className="text-body-0-regular text-foreground-dim">You can manage shares you created. Only admins can modify shares created by others.</p>
       )}
 
-      {/* Search */}
-      {!readOnly && resourceRef && canAddGrants && addRoleOptions.length > 0 && (
-        <div className="flex items-start gap-2">
-          <div ref={dropdownRef} className="relative flex-1">
-            <Input
-              type="text"
-              value={query}
-              onChange={e => { setQuery(e.target.value); setShowDropdown(true) }}
-              onFocus={() => { if (query.trim()) setShowDropdown(true) }}
-              placeholder="Add people or teams..."
-              icon={<Search className="w-4 h-4" />}
-              iconPosition="left"
-            />
-            {showDropdown && query.trim() && (
-              <div className="absolute left-0 right-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 max-h-[240px] overflow-y-auto">
-                {results.map((result) => (
-                  <button
-                    key={result.key}
-                    onClick={() => handleSelectPrincipal(result.principal, result.name, result.kind)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors"
-                  >
-                    {result.kind === 'user' ? (
-                      <Avatar name={result.name} size="sm" />
-                    ) : (
-                      <DepartmentAvatar size="sm" />
-                    )}
-                    <div className="min-w-0">
-                      <span className="text-body-0-regular text-foreground truncate block">{result.name}</span>
-                      <span className="text-body-0-regular text-foreground-dim truncate block">{result.subtitle}</span>
-                    </div>
-                  </button>
-                ))}
-                {!hasResults && (
-                  <div className="px-3 py-2 text-body-0-regular text-foreground-dim">No matches</div>
-                )}
-              </div>
-            )}
+      {showTabs ? (
+        <>
+          {/* Tabs */}
+          <div className="flex gap-0 border-b border-border-dim">
+            <button
+              onClick={() => setShareTab('people')}
+              className={cn(
+                'px-3 py-2 text-label-1-bold border-b-2 -mb-px transition-colors',
+                shareTab === 'people'
+                  ? 'border-foreground text-foreground'
+                  : 'border-transparent text-foreground-dim hover:text-foreground',
+              )}
+            >
+              People {peopleCount > 0 && <span className="text-foreground-subtle ml-1">{peopleCount}</span>}
+            </button>
+            <button
+              onClick={() => setShareTab('release')}
+              className={cn(
+                'px-3 py-2 text-label-1-bold border-b-2 -mb-px transition-colors',
+                shareTab === 'release'
+                  ? 'border-foreground text-foreground'
+                  : 'border-transparent text-foreground-dim hover:text-foreground',
+              )}
+            >
+              Release {domainCount > 0 && <span className="text-foreground-subtle ml-1">{domainCount}</span>}
+            </button>
           </div>
-        </div>
-      )}
 
-      {/* Domain access */}
-      {/* Existing access */}
-      {(domainContext || userEntries.length > 0 || teamEntries.length > 0 || domainEntries.length > 0 || sharedViaCollections.length > 0) && (
-        <h3 className="text-label-1-bold text-foreground-dim">Have access</h3>
-      )}
-
-      {domainContext && (
-        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-surface-mid">
-          <div className="flex items-center gap-2 min-w-0">
-            <DepartmentAvatar domainId={domainContext.domId} size="sm" />
-            <div className="min-w-0">
-              <span className="text-body-0-regular text-foreground truncate block">{domainContext.teamName}</span>
-              <span className="text-label-0-regular text-foreground-dim block">Domain access</span>
+          {/* People tab */}
+          {shareTab === 'people' && (
+            <div className="space-y-4">
+              {searchSection}
+              {haveAccessHeader}
+              {domainContextRow}
+              {userEntriesSection}
+              {teamEntriesSection}
+              {sharedViaCollectionsSection}
+              {pendingPeopleSection}
+              {peopleEmptyState}
+              {guestLinksSection}
             </div>
-          </div>
-          <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{domainContext.roleLabel}</span>
-        </div>
-      )}
-      {userEntries.length > 0 && (
-        <div className="space-y-0">
-          <div className="space-y-0">
-            {userEntries.map((entry) => (
-              <GrantRow
-                key={entry.key}
-                grant={entry.grant}
-                readOnly={entry.readOnly}
-                roleGroups={roleGroups}
-                name={entry.name}
-                subtitle={entry.subtitle}
-                roleLabel={entry.roleLabel}
-                members={entry.members}
-                domainId={entry.domainId}
-                onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
-                onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
-                onUpdateShareMode={!entry.readOnly ? handleUpdateShareMode : undefined}
-                versionLabel={entry.grant.version ? `v${entry.grant.version}${entry.grant.versionNote ? ` \u2014 ${entry.grant.versionNote}` : ''}` : undefined}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+          )}
 
-      {teamEntries.length > 0 && (
-        <div className="space-y-0">
-          {teamEntries.map((entry) => (
-            <GrantRow
-              key={entry.key}
-              grant={entry.grant}
-              readOnly={entry.readOnly}
-              roleGroups={roleGroups}
-              name={entry.name}
-              subtitle={entry.subtitle}
-              roleLabel={entry.roleLabel}
-              members={entry.members}
-              domainId={entry.domainId}
-              onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
-              onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
-              onUpdateShareMode={!entry.readOnly ? handleUpdateShareMode : undefined}
-              versionLabel={entry.grant.version ? `v${entry.grant.version}${entry.grant.versionNote ? ` \u2014 ${entry.grant.versionNote}` : ''}` : undefined}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Domain releases */}
-      {domainEntries.length > 0 && (
-        <div className="space-y-0">
-          {domainEntries.map((entry) => {
-            const domainPrincipal = entry.grant.principal as { type: 'domain'; domainId: string }
-            const domain = RELEASE_DOMAINS.find(d => d.id === domainPrincipal.domainId)
-            const domainRoleOptions = addRoleOptions.filter(o => o.value === 'view' || o.value === 'comment')
-            return (
-              <div key={entry.key} className="flex items-center gap-2 px-2 py-2 rounded hover:bg-surface-2 transition-colors group">
-                <div className="w-7 h-7 rounded-full bg-surface-mid flex items-center justify-center flex-shrink-0">
-                  <Globe className="w-3.5 h-3.5 text-foreground-dim" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="text-body-0-regular text-foreground truncate block">
-                    Released to {domain?.name ?? domainPrincipal.domainId}
-                  </span>
-                  <span className="text-label-0-regular text-foreground-dim">{domain?.group ?? 'Domain'}</span>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <RoleSelect
-                    options={domainRoleOptions}
-                    value={entry.grant.templateId ?? 'view'}
-                    onChange={(value) => handleUpdateProfile(entry.grant.id, value as AccessProfileId)}
-                    disabled={entry.readOnly}
-                  />
-                  {!entry.readOnly && (
-                    <Button variant="icon" compact onClick={() => handleRevokeGrant(entry.grant.id)} className="opacity-0 group-hover:opacity-100">
-                      <X className="w-3 h-3" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Domain release pills — only for assets and cuts */}
-      {!readOnly && canAddGrants && resourceRef && (resourceRef.type === 'asset' || resourceRef.type === 'cut') && (() => {
-        const releasedDomainIds = new Set(domainEntries.map(e => {
-          const p = e.grant.principal as { type: 'domain'; domainId: string }
-          return p.domainId
-        }))
-        const pendingDomainIds = new Set(pendingGrants.filter(p => p.kind === 'domain').map(p => p.id))
-        const groups = ['Studio', 'Wide', 'Other'] as const
-        const domainsByGroup = groups.map(group => ({
-          group,
-          domains: RELEASE_DOMAINS.filter(d => d.group === group),
-        })).filter(g => g.domains.length > 0)
-
-        return (
-          <div className="space-y-2">
-            <h3 className="text-label-0-bold text-foreground-dim flex items-center gap-1.5">
-              <Globe className="w-3 h-3" />
-              Release
-            </h3>
-            <div className="space-y-1.5">
-              {domainsByGroup.map(({ group, domains }) => (
-                <div key={group} className="flex flex-wrap items-center gap-1">
-                  <span className="text-label-0-regular text-foreground-subtle w-10 flex-shrink-0">{group}</span>
-                  {domains.map(domain => {
-                    const isReleased = releasedDomainIds.has(domain.id)
-                    const isPending = pendingDomainIds.has(domain.id)
-                    const isActive = isReleased || isPending
-                    return (
-                      <button
-                        key={domain.id}
-                        disabled={isReleased}
-                        onClick={() => {
-                          if (isReleased) return
-                          if (isPending) {
-                            handleRemovePending(domain.id)
-                          } else {
-                            handleSelectPrincipal({ type: 'domain', domainId: domain.id }, domain.name, 'domain')
-                          }
-                        }}
-                        className={cn(
-                          'px-2 py-0.5 rounded text-label-0-regular transition-colors',
-                          isReleased
-                            ? 'bg-surface-interactive text-foreground-dim cursor-default'
-                            : isPending
-                              ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/40'
-                              : 'bg-surface-mid text-foreground-dim hover:bg-surface-2 hover:text-foreground',
-                        )}
-                      >
-                        {domain.name}
-                      </button>
-                    )
-                  })}
-                </div>
-              ))}
+          {/* Release tab */}
+          {shareTab === 'release' && (
+            <div className="space-y-4">
+              {domainReleasePills}
+              {domainEntriesSection}
+              {releaseEmptyState}
             </div>
-          </div>
-        )
-      })()}
-
-      {/* Shared via collections */}
-      {sharedViaCollections.map(({ collection, grants: collGrants }) => {
-        const collRef: ResourceRef = { id: collection.id, type: 'collection' }
-        const canManageCollection = canEditAcl(collRef)
-        const canShareCollection = canShare(collRef)
-        return (
-          <div key={collection.id} className="space-y-1">
-            <h3 className="text-label-1-bold text-foreground-dim">Via <a href={`/nextgen/collections/${collection.id}`} className="hover:text-foreground transition-colors underline">{collection.name}</a></h3>
-            <div className="space-y-0">
-              {collGrants.map(grant => {
-                const principal = grant.principal
-                const name = principal.type === 'user'
-                  ? PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
-                  : principal.type === 'team'
-                    ? TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
-                    : (() => { const d = RELEASE_DOMAINS.find(d => d.id === principal.domainId); return d ? `${d.name} (${d.group})` : principal.domainId })()
-                const domId = principal.type === 'team'
-                  ? TEAMS.find(t => t.id === principal.teamId)?.domainId
-                  : principal.type === 'user'
-                    ? PERSONAS.find(p => p.id === principal.userId)?.domainId
-                    : undefined
-                const canRevoke = canManageCollection || (canShareCollection && activePersona && grant.grantedByUserId === activePersona.id)
-                return (
-                  <GrantRow
-                    key={grant.id}
-                    grant={grant}
-                    readOnly={!canRevoke}
-                    roleGroups={roleGroups}
-                    name={name}
-                    roleLabel={profileLabel(grant.templateId, roleGroups)}
-                    domainId={domId}
-                    onRemove={canRevoke ? (id) => { markDirty(); revokeGrant(id) } : undefined}
-                    onUpdateProfile={canRevoke ? (id, pid) => { markDirty(); updateGrantProfile(id, pid) } : undefined}
-                  />
-                )
-              })}
-            </div>
-          </div>
-        )
-      })}
-
-      {/* Pending additions (domain grants handled by the pills above) */}
-      {pendingGrants.filter(p => p.kind !== 'domain').length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-label-1-bold text-foreground-dim">Adding</h3>
-          {pendingGrants.filter(p => p.kind !== 'domain').map(pending => (
-            <div key={pending.id} className="rounded-lg bg-surface-mid p-3 space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  {pending.kind === 'user' ? (
-                    <Avatar name={pending.name} size="sm" />
-                  ) : (
-                    <DepartmentAvatar size="sm" />
-                  )}
-                  <span className="text-body-0-regular text-foreground truncate">{pending.name}</span>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  {isCollectionResource && pending.kind !== 'domain' && (
-                    <>
-                    <label className="flex items-center gap-1.5 mr-2 text-label-0-regular text-foreground-dim cursor-pointer">
-                      <Toggle
-                        checked={pending.allowUpload}
-                        onChange={(v) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, allowUpload: v } : p))}
-                        aria-label="Allow uploads"
-                      />
-                      <span>Uploads</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 mr-2 text-label-0-regular text-foreground-dim cursor-pointer">
-                      <Toggle
-                        checked={pending.shareMode === 'live'}
-                        onChange={(v) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, shareMode: v ? 'live' : 'snapshot' } : p))}
-                        aria-label="Include new"
-                      />
-                      <span>Include new</span>
-                      <Tooltip label="New assets added to this collection will be visible to this person">
-                        <Info className="w-3 h-3 text-foreground-dim" />
-                      </Tooltip>
-                    </label>
-                    </>
-                  )}
-                  <RoleSelect
-                    options={pending.kind === 'domain'
-                      ? addRoleOptions.filter(o => o.value === 'view' || o.value === 'comment')
-                      : addRoleOptions}
-                    value={pending.role}
-                    onChange={(value) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, role: value as AccessProfileId } : p))}
-                  />
-                  <Button variant="icon" compact onClick={() => handleRemovePending(pending.id)}>
-                    <X className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+          )}
+        </>
+      ) : (
+        /* No tabs — collections/folders: people content only */
+        <>
+          {searchSection}
+          {haveAccessHeader}
+          {domainContextRow}
+          {userEntriesSection}
+          {teamEntriesSection}
+          {sharedViaCollectionsSection}
+          {pendingPeopleSection}
+          {peopleEmptyState}
+          {guestLinksSection}
+        </>
       )}
 
-      {/* Empty state */}
-      {userEntries.length === 0 && teamEntries.length === 0 && domainEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && sharedViaCollections.length === 0 && !domainContext && pendingGrants.length === 0 && (
-        <p className="text-body-0-regular text-foreground-dim">{emptyLabel}</p>
-      )}
-
-      {/* Links — separated with extra gap */}
-      <div className="pt-2">
-        <GuestLinksSection
-          resourceId={resourceId}
-          resourceRef={resourceRef}
-          readOnly={readOnly}
-          canAddGrants={canAddGrants}
-          canManageGuestLink={canManageGuestLink}
-          getResourceGuestLinks={getResourceGuestLinks}
-          createGuestLink={(...args) => { markDirty(); return createGuestLink(...args) }}
-          updateGuestLink={(...args) => { markDirty(); updateGuestLink(...args) }}
-          revokeGuestLink={(...args) => { markDirty(); revokeGuestLink(...args) }}
-        />
-      </div>
-
-      {/* Cross-domain warning */}
+      {/* Cross-domain warning (modal — outside tabs) */}
       <Modal open={showCrossDomainWarning} onOpenChange={setShowCrossDomainWarning} size="sm">
         <Modal.Header title={`Sharing outside ${resourceDomainName ?? 'this domain'}`} />
         <Modal.Body>
