@@ -51,10 +51,12 @@ interface AccessPanelProps {
 }
 
 
-function GrantRow({ grant, readOnly, roleGroups, onRemove, onBlock, onUpdateProfile, onUpdateShareMode, name, subtitle, roleLabel, members, domainId, versionLabel }: {
+function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onRemove, onBlock, onUpdateProfile, onUpdateShareMode, name, subtitle, roleLabel, members, domainId, versionLabel }: {
   grant: Grant
   readOnly: boolean
   roleGroups: RoleGroup[]
+  expanded?: boolean
+  onToggleExpanded?: () => void
   onRemove?: (grantId: string) => void
   onBlock?: (grantId: string) => void
   onUpdateProfile?: (grantId: string, profileId: AccessProfileId) => void
@@ -81,7 +83,17 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onBlock, onUpdateProf
           <div className="min-w-0">
             <span className="text-body-0-regular text-foreground truncate block">{name}</span>
             {subtitle && (
-              <span className="text-body-0-regular text-foreground-dim truncate block">{subtitle}</span>
+              <span className="text-body-0-regular text-foreground-dim truncate">
+                {subtitle}
+                {principal.type === 'team' && members && members.length > 0 && onToggleExpanded && (
+                  <>
+                    {' '}
+                    <button onClick={onToggleExpanded} className="text-foreground hover:underline">
+                      {expanded ? 'Collapse' : 'See all'}
+                    </button>
+                  </>
+                )}
+              </span>
             )}
           </div>
         </div>
@@ -132,7 +144,7 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onBlock, onUpdateProf
           <span className="text-label-0-regular text-foreground-subtle">{versionLabel}</span>
         </div>
       )}
-      {principal.type === 'team' && members && members.length > 0 && (
+      {principal.type === 'team' && members && members.length > 0 && expanded && (
         <div className="relative ml-1 pt-1">
           {members.map((member, i) => (
             <div key={member.id} className="relative flex items-center justify-between gap-2 py-1 pl-4">
@@ -352,7 +364,12 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const { showToast } = useToast()
   const { activePersona } = usePersona()
   const [shareTab, setShareTab] = useState<'people' | 'release'>('people')
-  const [domainContextExpanded, setDomainContextExpanded] = useState(false)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  const toggleGroupExpanded = (id: string) => setExpandedGroups(prev => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
   type PendingGrant = { id: string; principal: PrincipalRef; name: string; kind: 'user' | 'team' | 'domain'; role: AccessProfileId; shareMode: ShareMode; expires: boolean; expiresInDays: number; allowUpload: boolean }
@@ -838,25 +855,31 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     <h3 className="text-body-0-bold text-foreground-dim">Have access</h3>
   )
 
+  const domainContextExpanded = expandedGroups.has('domain-context')
   const domainContextRow = domainContext && (
-    <div className="space-y-0">
-      <button
-        onClick={() => setDomainContextExpanded(prev => !prev)}
-        className="w-full flex items-center justify-between gap-2 py-1.5 hover:bg-surface-2 rounded transition-colors"
-      >
+    <div className="py-1.5 space-y-1">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <DepartmentAvatar domainId={domainContext.domId} size="sm" />
           <div className="min-w-0">
             <span className="text-body-0-regular text-foreground truncate block">{domainContext.teamName}</span>
-            <span className="text-label-0-regular text-foreground-dim block">
+            <span className="text-body-0-regular text-foreground-dim truncate">
               {domainContext.members.length > 0
-                ? `You + ${domainContext.members.length - 1} other${domainContext.members.length - 1 !== 1 ? 's' : ''}`
+                ? `${domainContext.members.length} member${domainContext.members.length !== 1 ? 's' : ''}`
                 : 'Department access'}
+              {domainContext.members.length > 0 && (
+                <>
+                  {' '}
+                  <button onClick={() => toggleGroupExpanded('domain-context')} className="text-foreground hover:underline">
+                    {domainContextExpanded ? 'Collapse' : 'See all'}
+                  </button>
+                </>
+              )}
             </span>
           </div>
         </div>
         <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{domainContext.roleLabel}</span>
-      </button>
+      </div>
       {domainContextExpanded && domainContext.members.length > 0 && (
         <div className="relative ml-1 pt-1">
           {domainContext.members.map((member, i) => (
@@ -944,6 +967,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           grant={entry.grant}
           readOnly={entry.readOnly}
           roleGroups={roleGroups}
+          expanded={expandedGroups.has(entry.grant.id)}
+          onToggleExpanded={() => toggleGroupExpanded(entry.grant.id)}
           name={entry.name}
           subtitle={entry.subtitle}
           roleLabel={entry.roleLabel}
