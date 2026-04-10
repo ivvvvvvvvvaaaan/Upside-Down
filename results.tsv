@@ -7,3 +7,4 @@ a9d07d8	4.95	5	97	0	kept	Explicit department-to-domain mapping. Not every dept r
 c0c5bea	4.55	4	100	0	reverted	Merge department into workspace. Overloads workspace with 3 roles (team, files, boundary). Conflicts with LucidLink naming.
 415dc50	4.95	5	100	0	kept	Distribution audience experience: released content as library, no workspace, can comment/request access.
 575800e	5.0	5	100	0	kept	Release presets: one-click "Release to all Studio" / "Release to all Wide." Steps=5. ALL DIMENSIONS AT 5.
+69a778d	5.0	5	100	0	kept	Multi-department membership documented. User sees multiple workspaces. Each independent.

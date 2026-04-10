@@ -40,6 +40,8 @@ You belong to a department. You see your department's files. Everyone in VFX see
 
 This resolves Julie's concern: the app doesn't create CAM users or manage CAM domain capabilities. It manages department workspace access, which is a separate, lower-stakes layer. CAM remains the source of truth for tool access and domain capabilities.
 
+**Multi-department membership.** A user can belong to more than one department. A VFX supervisor who also reviews editorial cuts could be in both VFX and Editorial. They see both workspaces in the sidebar. Each workspace is independent -- access in one doesn't leak to the other. When sharing or releasing, the system uses the asset's origin department to determine which release domains to filter. This is uncommon but the model handles it cleanly.
+
 ### Layer 2: Share + Release (crossing the boundary)
 
 Two mechanisms for content to cross department boundaries:
