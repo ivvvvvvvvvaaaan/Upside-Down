@@ -106,21 +106,9 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onBlock, onUpdateProf
             </span>
           ) : !readOnly && onUpdateProfile ? (
             <RoleSelect
-              options={[
-                ...roleGroupOptions(roleGroups),
-                ...(onRemove ? [{ value: '__remove__', label: 'Revoke Access', destructive: true }] : []),
-                ...(onBlock && grant.principal.type === 'user' ? [{ value: '__block__', label: 'Block User', destructive: true }] : []),
-              ]}
+              options={roleGroupOptions(roleGroups)}
               value={grant.templateId ?? 'view'}
-              onChange={(value) => {
-                if (value === '__remove__' && onRemove) {
-                  onRemove(grant.id)
-                } else if (value === '__block__' && onBlock) {
-                  onBlock(grant.id)
-                } else {
-                  onUpdateProfile(grant.id, value as AccessProfileId)
-                }
-              }}
+              onChange={(value) => onUpdateProfile(grant.id, value as AccessProfileId)}
             />
           ) : (
             <RoleSelect
@@ -129,6 +117,14 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onBlock, onUpdateProf
               onChange={() => {}}
               disabled
             />
+          )}
+          {!readOnly && !isOwner && onRemove && (
+            <button
+              onClick={() => onRemove(grant.id)}
+              className="text-label-0-regular text-foreground-dim hover:text-red-400 transition-colors flex-shrink-0"
+            >
+              Remove
+            </button>
           )}
         </div>
       </div>
@@ -1146,7 +1142,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         const domain = RELEASE_DOMAINS.find(d => d.id === domainPrincipal.domainId)
         const domainRoleOptions = addRoleOptions.filter(o => o.value === 'view' || o.value === 'comment')
         return (
-          <div key={entry.key} className="flex items-center gap-2 px-2 py-2 rounded hover:bg-surface-2 transition-colors group">
+          <div key={entry.key} className="flex items-center gap-2 py-1.5 transition-colors group">
             <div className="w-7 h-7 rounded-full bg-surface-mid flex items-center justify-center flex-shrink-0">
               <Globe className="w-3.5 h-3.5 text-foreground-dim" />
             </div>
@@ -1164,9 +1160,12 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                 disabled={entry.readOnly}
               />
               {!entry.readOnly && (
-                <Button variant="icon" compact onClick={() => handleRevokeGrant(entry.grant.id)} className="opacity-0 group-hover:opacity-100">
-                  <X className="w-3 h-3" />
-                </Button>
+                <button
+                  onClick={() => handleRevokeGrant(entry.grant.id)}
+                  className="text-label-0-regular text-foreground-dim hover:text-red-400 transition-colors flex-shrink-0"
+                >
+                  Remove
+                </button>
               )}
             </div>
           </div>
