@@ -1,3 +1,4 @@
 commit	score	status	description
 baseline	2.5	kept	Additive model with no deny, no access summary, no kill switch, no audit history. Revocation incomplete.
 cc266c1	3.3	kept	Per-asset and per-user access summaries. Revocation feedback: "still has access through N paths."
+436e96a	4.1	kept	Revoke-all per user and per asset. One-click kill switch. Logged.

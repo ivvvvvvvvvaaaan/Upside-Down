@@ -74,6 +74,22 @@ Total: 62 unique assets
 
 One view. Complete picture. The "revoke all" button removes everything.
 
+### Revoke all access for a user
+
+From the per-user summary OR from the project settings People tab, an admin can "Revoke all access" for a person. This:
+1. Revokes all direct grants (shares) to that user
+2. Removes them from all collections they were added to
+3. Removes them from department membership (if applicable)
+4. Does NOT affect domain releases (those are CAM-managed, not app-managed)
+
+The action is logged. The user sees nothing in the app -- their view goes empty. The admin sees a confirmation: "All 62 assets are no longer accessible to David Park. 3 grants revoked, 1 department membership removed."
+
+This is the "kill switch" for when someone rolls off the project, gets terminated, or is under investigation.
+
+### Revoke all paths to an asset
+
+From the per-asset summary, an admin can "Revoke all access" to a specific asset. This removes the asset from all shared collections and revokes all direct grants. Department access remains (can't remove workspace files without moving them). This is the response when a specific asset is compromised -- lock it down, then investigate.
+
 ---
 
 ## What the industry does
