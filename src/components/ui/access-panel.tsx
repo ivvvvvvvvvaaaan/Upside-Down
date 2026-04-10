@@ -1217,7 +1217,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   })()
 
   return (
-    <div>
+    <div className="space-y-2">
       {/* Permission hints */}
       {!readOnly && !canAddGrants && !canManageAllGrants && (
         <div className="flex items-center gap-2 px-3 py-2 rounded bg-surface-mid text-body-0-regular text-foreground">
