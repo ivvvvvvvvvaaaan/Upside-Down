@@ -186,6 +186,25 @@ When a user is removed from the project (via "Revoke all access" or department r
 
 This prevents Scenario B: Sarah leaves, nobody can manage Framestore Handoff. The admin is prompted to transfer it at removal time.
 
+#### 3. Re-share is gated by permission level
+
+The permission ceiling already solves Scenario D. Re-sharing is gated:
+
+- **View and Comment** recipients CANNOT re-share. They can view, comment, but not put the asset in a new collection and share it.
+- **Add** recipients can upload new files but cannot re-share existing content.
+- **Edit** recipients CAN re-share -- but the ceiling applies. They can only grant up to their own level.
+- **Manage** recipients have full control including re-share.
+
+An artist who receives VFX comps at View level through a collection CANNOT add those comps to a new collection and share it. The "share" permission is only available at Edit level and above. View and Comment are consumption-only.
+
+This was in the permission model from the start but wasn't highlighted as a re-share prevention mechanism. It's load-bearing for content security.
+
+#### 4. Stale collection notifications
+
+For Scenario C: collections shared with others that haven't been modified in 90 days get flagged in the creator's inbox: "Your collection 'EP301 Review' hasn't been updated in 90 days. Review or archive?" The creator can dismiss, update, or archive (revokes all shares, marks inactive).
+
+Department coordinators see the same flag for department collections in their settings.
+
 ---
 
 ## Evaluation criteria
