@@ -1229,33 +1229,18 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         <p className="text-body-0-regular text-foreground-dim">You can manage shares you created. Only admins can modify shares created by others.</p>
       )}
 
-      {showTabs ? (
+      {showTabs && (
         <Tabs defaultValue="people" value={shareTab} onValueChange={(v) => setShareTab(v as 'people' | 'release')}>
           <TabsList>
             <Tab value="people">People {peopleCount > 0 && <span className="text-foreground-subtle ml-2">{peopleCount}</span>}</Tab>
             <Tab value="release">Release {domainCount > 0 && <span className="text-foreground-subtle ml-2">{domainCount}</span>}</Tab>
           </TabsList>
-
-          <TabsContent value="people">
-            {searchSection}
-            {haveAccessHeader}
-            {domainContextRow}
-            {userEntriesSection}
-            {blockedSection}
-            {teamEntriesSection}
-            {sharedViaCollectionsSection}
-            {pendingPeopleSection}
-            {peopleEmptyState}
-            {guestLinksSection}
-          </TabsContent>
-
-          <TabsContent value="release" className="space-y-4">
-            {releaseChecklist}
-          </TabsContent>
         </Tabs>
-      ) : (
-        /* No tabs — collections/folders: people content only */
-        <>
+      )}
+
+      {/* People content — always rendered, hidden when release tab is active */}
+      {(!showTabs || shareTab === 'people') && (
+        <div className="space-y-4">
           {searchSection}
           {haveAccessHeader}
           {domainContextRow}
@@ -1266,7 +1251,14 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           {pendingPeopleSection}
           {peopleEmptyState}
           {guestLinksSection}
-        </>
+        </div>
+      )}
+
+      {/* Release content — only when release tab is active */}
+      {showTabs && shareTab === 'release' && (
+        <div className="space-y-4">
+          {releaseChecklist}
+        </div>
       )}
 
       {/* Cross-domain warning (modal — outside tabs) */}
