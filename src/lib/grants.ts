@@ -1,4 +1,4 @@
-import type { DepartmentId } from '@/components/department/types'
+import type { DomainId, DepartmentId } from '@/components/department/types'
 import { PERSONAS } from '@/lib/personas'
 import { isUserInTeam, getTeamById } from '@/lib/teams'
 import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
@@ -13,7 +13,9 @@ export type ResourceType = 'asset' | 'cut' | 'folder' | 'collection' | 'smart-co
 export type ResourceRef = {
   id: string
   type: ResourceType
-  departmentId?: DepartmentId
+  domainId?: DomainId
+  /** @deprecated Use domainId */
+  departmentId?: DomainId
 }
 
 export const PROJECT_RESOURCE: ResourceRef = { id: 'project', type: 'project' }

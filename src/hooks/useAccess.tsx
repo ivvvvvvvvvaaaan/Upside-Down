@@ -263,11 +263,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const [discoverySettings, setDiscoverySettings] = useState<DiscoveryState>(() => ({
     asset: {
       enabled: SCENARIO.discovery.asset.enabled,
-      disabledDepartments: new Set(SCENARIO.discovery.asset.disabledDepartments),
+      disabledDepartments: new Set(SCENARIO.discovery.asset.disabledDomains),
     },
     cut: {
       enabled: SCENARIO.discovery.cut.enabled,
-      disabledDepartments: new Set(SCENARIO.discovery.cut.disabledDepartments),
+      disabledDepartments: new Set(SCENARIO.discovery.cut.disabledDomains),
     },
   }))
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([])

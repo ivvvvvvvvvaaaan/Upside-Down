@@ -1,10 +1,12 @@
-import type { DepartmentId } from '@/components/department/types'
+import type { DomainId } from '@/components/department/types'
 import type { ShareMode } from '@/lib/grants'
 
 export interface ReferenceFolderSource {
   resourceId: string
   resourceType: 'collection' | 'smart-collection'
-  departmentId?: DepartmentId
+  domainId?: DomainId
+  /** @deprecated Use domainId */
+  departmentId?: DomainId
   shareMode?: ShareMode
   snapshotAssetIds?: string[]
 }
@@ -18,7 +20,9 @@ export interface UnifiedFileNode {
   size?: number
   modifiedAt?: string
   modifiedBy?: string
-  departmentId?: DepartmentId
+  domainId?: DomainId
+  /** @deprecated Use domainId */
+  departmentId?: DomainId
   reference?: ReferenceFolderSource
   children?: UnifiedFileNode[]
 }
@@ -537,7 +541,7 @@ const audioFiles: WorkspaceFileNode[] = [
   },
 ]
 
-const departmentFileMap: Record<DepartmentId, WorkspaceFileNode[]> = {
+const domainFileMap: Record<DomainId, WorkspaceFileNode[]> = {
   'art-design': artDepartmentFiles,
   'vfx': vfxFiles,
   'camera': cameraFiles,
@@ -545,9 +549,12 @@ const departmentFileMap: Record<DepartmentId, WorkspaceFileNode[]> = {
   'audio-sound': audioFiles,
 }
 
-export function getDepartmentWorkspaceFiles(departmentId: DepartmentId): WorkspaceFileNode[] {
-  return departmentFileMap[departmentId] ?? []
+export function getDomainWorkspaceFiles(domainId: DomainId): WorkspaceFileNode[] {
+  return domainFileMap[domainId] ?? []
 }
+
+/** @deprecated Use getDomainWorkspaceFiles */
+export const getDepartmentWorkspaceFiles = getDomainWorkspaceFiles
 
 /** Find a node by ID in a tree of WorkspaceFileNodes */
 export function findNodeInTree(nodes: WorkspaceFileNode[], id: string): WorkspaceFileNode | null {
@@ -561,31 +568,34 @@ export function findNodeInTree(nodes: WorkspaceFileNode[], id: string): Workspac
   return null
 }
 
-/** Map department IDs used in workspace-data to the wrapper folder IDs used in the Finder tree */
-export const DEPARTMENT_FOLDER_MAP: Record<DepartmentId, { id: string; name: string }> = {
-  'art-design': { id: 'ws-art', name: 'Art Department' },
+/** Map domain IDs to the wrapper folder IDs used in the Finder tree */
+export const DOMAIN_FOLDER_MAP: Record<DomainId, { id: string; name: string }> = {
+  'art-design': { id: 'ws-art', name: 'Art & Design' },
   'vfx': { id: 'ws-vfx', name: 'VFX' },
   'camera': { id: 'ws-camera', name: 'Camera' },
   'editorial': { id: 'ws-editorial', name: 'Editorial' },
   'audio-sound': { id: 'ws-audio', name: 'Audio & Sound' },
 }
 
+/** @deprecated Use DOMAIN_FOLDER_MAP */
+export const DEPARTMENT_FOLDER_MAP = DOMAIN_FOLDER_MAP
+
 /**
  * Build the full Finder workspace tree:
- *   Single project root > [department folders wrapping departmentFileMap arrays]
+ *   Single project root > [domain folders wrapping domainFileMap arrays]
  */
 /** Well-known folder ID for mounted shared collections */
 export const SHARED_MOUNT_FOLDER_ID = 'ws-shared-mounts'
 
 export function getFinderWorkspaceTree(): UnifiedFileNode[] {
-  const departmentFolders: UnifiedFileNode[] = (Object.keys(departmentFileMap) as DepartmentId[]).map((deptId) => {
-    const meta = DEPARTMENT_FOLDER_MAP[deptId]
+  const domainFolders: UnifiedFileNode[] = (Object.keys(domainFileMap) as DomainId[]).map((domainId) => {
+    const meta = DOMAIN_FOLDER_MAP[domainId]
     return {
       id: meta.id,
       name: meta.name,
       type: 'folder' as const,
       modifiedAt: '2026-02-14',
-      children: departmentFileMap[deptId] as UnifiedFileNode[],
+      children: domainFileMap[domainId] as UnifiedFileNode[],
     }
   })
 
@@ -598,5 +608,5 @@ export function getFinderWorkspaceTree(): UnifiedFileNode[] {
     children: [],
   }
 
-  return [...departmentFolders, sharedFolder]
+  return [...domainFolders, sharedFolder]
 }
