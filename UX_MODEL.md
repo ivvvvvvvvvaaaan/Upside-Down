@@ -4,6 +4,19 @@
 
 ---
 
+## The model in 8 lines
+
+1. You belong to a **department**. You see your department's files.
+2. Your files live in a **workspace**. Everyone in the department sees everything in it.
+3. To send content outside your department, you **share** it (with a person or team) or **release** it (to an audience like Marketing or Studio Creative).
+4. Sharing uses **collections** -- named groups of assets. You pick what goes in, share the collection, control who sees what.
+5. Releasing is a broadcast. You toggle audience groups on/off. Released content travels across apps.
+6. What someone can do with shared content depends on their **permission level**: view, comment, add, edit, or manage.
+7. Content stays in your department until you share or release it. Every permission is traceable and revocable.
+8. You never release to your own audience -- that's what the workspace is for. Release goes outward.
+
+---
+
 ## Concepts (what the user must learn)
 
 1. **Department** -- your team. You belong to a department (VFX, Editorial, Camera, etc.). Department membership gives you full access to your department's workspace. Intra-department = open. Managed in-app by coordinators.
