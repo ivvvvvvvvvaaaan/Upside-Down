@@ -1240,18 +1240,20 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
       {/* People content — always rendered, hidden when release tab is active */}
       {(!showTabs || shareTab === 'people') && (
-        <div className="space-y-4">
+        <>
           {searchSection}
-          {haveAccessHeader}
-          {domainContextRow}
-          {userEntriesSection}
-          {blockedSection}
-          {teamEntriesSection}
+          <div className="pt-2">
+            {haveAccessHeader}
+            {domainContextRow}
+            {userEntriesSection}
+            {blockedSection}
+            {teamEntriesSection}
+          </div>
           {sharedViaCollectionsSection}
           {pendingPeopleSection}
           {peopleEmptyState}
           {guestLinksSection}
-        </div>
+        </>
       )}
 
       {/* Release content — only when release tab is active */}
