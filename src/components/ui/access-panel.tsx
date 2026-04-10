@@ -857,7 +857,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         </div>
       )}
 
-      {/* Domain release checklist — only for assets and cuts */}
+      {/* Domain release pills — only for assets and cuts */}
       {!readOnly && canAddGrants && resourceRef && (resourceRef.type === 'asset' || resourceRef.type === 'cut') && (() => {
         const releasedDomainIds = new Set(domainEntries.map(e => {
           const p = e.grant.principal as { type: 'domain'; domainId: string }
@@ -872,40 +872,46 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
         return (
           <div className="space-y-2">
-            <h3 className="text-label-1-bold text-foreground-dim flex items-center gap-1.5">
-              <Globe className="w-3.5 h-3.5" />
-              Release to domains
+            <h3 className="text-label-0-bold text-foreground-dim flex items-center gap-1.5">
+              <Globe className="w-3 h-3" />
+              Release
             </h3>
-            {domainsByGroup.map(({ group, domains }) => (
-              <div key={group} className="space-y-0.5">
-                <span className="text-label-0-regular text-foreground-subtle px-1">{group}</span>
-                <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+            <div className="space-y-1.5">
+              {domainsByGroup.map(({ group, domains }) => (
+                <div key={group} className="flex flex-wrap items-center gap-1">
+                  <span className="text-label-0-regular text-foreground-subtle w-10 flex-shrink-0">{group}</span>
                   {domains.map(domain => {
                     const isReleased = releasedDomainIds.has(domain.id)
                     const isPending = pendingDomainIds.has(domain.id)
-                    const isChecked = isReleased || isPending
+                    const isActive = isReleased || isPending
                     return (
-                      <label key={domain.id} className="flex items-center gap-1.5 px-1 py-0.5 rounded hover:bg-surface-2 cursor-pointer text-body-0-regular text-foreground">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          disabled={isReleased}
-                          onChange={(e) => {
-                            if (e.target.checked && !isReleased) {
-                              handleSelectPrincipal({ type: 'domain', domainId: domain.id }, domain.name, 'domain')
-                            } else if (!e.target.checked && isPending) {
-                              handleRemovePending(domain.id)
-                            }
-                          }}
-                          className="rounded border-border-dim"
-                        />
-                        <span className={isReleased ? 'text-foreground-dim' : ''}>{domain.name}</span>
-                      </label>
+                      <button
+                        key={domain.id}
+                        disabled={isReleased}
+                        onClick={() => {
+                          if (isReleased) return
+                          if (isPending) {
+                            handleRemovePending(domain.id)
+                          } else {
+                            handleSelectPrincipal({ type: 'domain', domainId: domain.id }, domain.name, 'domain')
+                          }
+                        }}
+                        className={cn(
+                          'px-2 py-0.5 rounded text-label-0-regular transition-colors',
+                          isReleased
+                            ? 'bg-surface-interactive text-foreground-dim cursor-default'
+                            : isPending
+                              ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/40'
+                              : 'bg-surface-mid text-foreground-dim hover:bg-surface-2 hover:text-foreground',
+                        )}
+                      >
+                        {domain.name}
+                      </button>
                     )
                   })}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )
       })()}
@@ -951,11 +957,11 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         )
       })}
 
-      {/* Pending additions */}
-      {pendingGrants.length > 0 && (
+      {/* Pending additions (domain grants handled by the pills above) */}
+      {pendingGrants.filter(p => p.kind !== 'domain').length > 0 && (
         <div className="space-y-2">
           <h3 className="text-label-1-bold text-foreground-dim">Adding</h3>
-          {pendingGrants.map(pending => (
+          {pendingGrants.filter(p => p.kind !== 'domain').map(pending => (
             <div key={pending.id} className="rounded-lg bg-surface-mid p-3 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
