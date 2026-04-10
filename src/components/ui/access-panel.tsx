@@ -10,7 +10,7 @@ import { Button } from './button'
 import { RoleSelect } from './role-select'
 import { MenuSelect } from './menu-select'
 import { Avatar } from './avatar'
-import { DepartmentAvatar } from './department-avatar'
+import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
 import { Toggle } from './switch'
 import { Modal } from './modal'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
@@ -1109,6 +1109,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               const existingEntry = releasedDomainGrants.get(domain.id)!
               return (
                 <div key={domain.id} className="flex items-center gap-2 py-1">
+                  <ReleaseDomainAvatar size="sm" />
                   <span className="text-body-0-regular text-foreground flex-1 min-w-0">{domain.name}</span>
                   <RoleSelect
                     options={domainRoleOptions}
@@ -1141,6 +1142,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
             {/* Not yet released */}
             {domains.filter(d => !releasedDomainGrants.has(d.id) && !pendingDomainIds.has(d.id)).map(domain => (
               <div key={domain.id} className="flex items-center gap-2 py-1">
+                <ReleaseDomainAvatar size="sm" />
                 <span className="text-body-0-regular text-foreground flex-1 min-w-0">{domain.name}</span>
                 {!readOnly && (
                   <Button variant="primary" compact onClick={() => handleSelectPrincipal({ type: 'domain', domainId: domain.id }, domain.name, 'domain')}>
