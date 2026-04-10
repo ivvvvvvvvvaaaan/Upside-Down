@@ -20,7 +20,7 @@
 ## Concepts (what the user must learn)
 
 1. **Department** -- your team. You belong to a department (VFX, Editorial, Camera, etc.). Department membership gives you full access to your department's workspace. Intra-department = open. Managed in-app by coordinators.
-2. **Workspace** -- your department's private file system. Folders and files. Only department members see it. Production departments have workspaces; distribution domains don't.
+2. **Workspace** -- your department's files. Folders and files. Only department members see it. Production departments have workspaces; distribution audiences don't. Every file in the workspace is an asset -- there's no "promote" or "publish" step. Drop a file in, it gets a thumbnail, it's searchable, it's taggable, it can be shared. The workspace and the library are two views of the same data: the workspace is how you organize (folder tree), the library is how you discover (search, metadata, smart collections).
 3. **Collection** -- a named group of assets. How assets get in is a setting: (a) you pick them manually, (b) a filter picks them automatically, or (c) they mirror a workspace folder. One concept, one share model, regardless of how contents are populated.
 4. **Asset** -- an individual file (shot, video, image, audio, text). A cut is a composite asset assembled from files across departments. Sharing a cut grants playback access, not constituent access.
 5. **Permission level** -- what you can do with what you received. Each level includes everything above it:
@@ -48,6 +48,10 @@ The Release tab shows **audience groups** organized by tier (Studio / Wide / Oth
 ### Layer 1: Department (workspace boundary)
 
 You belong to a department. You see your department's files. Everyone in VFX sees all VFX files -- including WIP. This is by design: intra-department visibility is the baseline. The boundary protects against cross-department leaks, not within-department visibility.
+
+**Workspace = library. Same files, two lenses.** Every file in the workspace is automatically an asset. No toggle, no promotion step. The system handles thumbnailing, metadata extraction, and AI tagging in the background. The workspace view shows the folder tree (how you organize). The library view shows search, metadata, smart collections (how you discover). Users who work in folders (DITs, editors) use the workspace view. Users who discover content (directors, supervisors) use the library view. Both see the same underlying files.
+
+This eliminates the "managed vs unmanaged" split that confused users in the current Content Hub, where workspace and media library were intentionally separated. In the next-gen model, they're one product.
 
 **Department membership is seeded from project onboarding but managed in-app by coordinators.** When a crew member is added to the project (via the production management system or CAM onboarding), they're assigned to a department. Coordinators within the department can then adjust: move someone between departments, grant temporary cross-department access, or remove someone who's rolled off. This keeps the daily management close to the people who understand the work -- the VFX coordinator knows who should be in the VFX workspace -- while the initial assignment comes from the production pipeline.
 
