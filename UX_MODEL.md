@@ -87,6 +87,8 @@ Domain replaces "department" as the boundary concept. This aligns with real Cont
 
 Domain release is integrated into the share flow. "Release to MARKETING" = share with the MARKETING domain. Same grant mechanism as sharing with a person. The word "release" is preserved as a label for domain shares because it carries meaning and history in the Content Hub ecosystem. The newer Content Hub already unifies People and Domains in one share dialog (two tabs); this model takes it further with a single unified recipient field.
 
+**Auto-release** stays as a project-level setting, not a collection: "All assets of type EDITORIAL auto-release to STUDIO_POST on ingest." This is admin configuration, not a user-facing concept. It maps directly to the existing Content Hub auto-release feature. The setting is configured per project by a coordinator/admin and lives in project settings, not in the collection system. When auto-release fires, it creates the same domain grant as a manual release -- the audit trail is identical.
+
 ## Vocabulary
 
 | This model says | Content Hub says | Creative Review says |

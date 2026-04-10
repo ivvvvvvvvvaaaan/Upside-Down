@@ -9,3 +9,4 @@ ec7feb4	4.1	5	93	0	kept	Add sensitive media as CAM capability flag. Orthogonal t
 504d483	4.6	5	96	0	kept	Define cross-app: domain shares travel (CAM-backed), person shares are app-specific. Push to CR = release to CR domain.
 5ed7926	4.7	5	100	0	kept	Resolve F3 (different results) via transparency: show filter + personalized counts. 100% coverage.
 fc8f08b	4.6	5	100	0	reverted	Auto-release as shared filtered collection. Elegant but degradation risk: fragile if tagging inconsistent.
+db61baa	4.7	5	100	0	kept	Auto-release as project-level admin setting. Matches existing Content Hub feature. No tagging dependency.
