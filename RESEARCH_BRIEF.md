@@ -216,21 +216,45 @@ Section 3b captures workflow failures. This section captures **conceptual confus
 
 ## 5. Evaluation Criteria (The Loss Function)
 
+*Updated 2026-04-10 after cross-referencing with Granola meeting transcripts, real Content Hub release implementation, and prototype testing.*
+
 For any proposed UX model, score against these dimensions:
 
 ### 5a. Concept count (fewer = better)
 
 How many distinct concepts does a user need to learn before they can share content?
 
-Current model concepts: department, workspace, folder, collection (3 flavors), asset, cut, group, grant, review link, inbox, permission level, role group = **~12 concepts**
-
 Target: A new user should be productive after learning **5 or fewer** concepts.
 
-### 5b. Steps to complete each scenario (fewer = better)
+**Critical finding (April 10):** "Domain" and "department" are NOT the same thing. Collapsing them was an error. The real architecture has two layers:
+- **Domain** = CAM capability layer. Controls tool access and release channels. You release content TO domains. Managed by CAM, not by this app.
+- **Department/workspace** = asset-level boundary. Where your files live. Managed in-app by coordinators. Intra-department = open access. Cross-department = gated via collections.
 
-For each of the core workflows in section 3a, count the number of user decisions and actions. Include cognitive decisions ("do I share the folder or create a collection?").
+These are separate concepts serving different roles. The model must account for both without conflating them.
 
-### 5c. Contradiction check (zero contradictions required)
+### 5b. Two-layer access model (must be correct)
+
+The access model has two layers. Both must work independently:
+
+**Layer 1: Workspace (intra-department).** Department membership = full access to your department's file tree. VFX team sees all VFX files. This is confirmed by user research: "intra-department = open, cross-department = gated." WIP is private from OTHER departments, not from your own. The workspace boundary is the department, not the domain.
+
+**Layer 2: Release + Share (cross-department).** Two outward mechanisms:
+- **Share** = targeted, person/team. "Send this collection to Lisa." App-specific grant.
+- **Release** = broadcast, domain-targeted. "Make this cut visible to everyone in Marketing." CAM-backed grant. Release is always outward -- you release FROM your department TO other domains. You never release to your own domain (it's a no-op; you already have workspace access).
+
+Evaluate: does the model keep these layers clean? Does sharing leak inward (give workspace access to outsiders)? Does release leak the wrong direction (release to own domain)?
+
+### 5c. Release directionality (outward only)
+
+Release in the real Content Hub is capability-gated and unidirectional:
+- `releaseFromDomains` controls WHO can release (must hold the capability)
+- Release target domains are always OTHER domains, never your own
+- The release UI should filter out the asset's origin domain
+- Auto-release fires to configured target domains, not back to origin
+
+Evaluate: can a user accidentally release content to their own domain? Does the UI make the outward direction clear?
+
+### 5d. Contradiction check (zero contradictions required)
 
 Does the model contradict any fixed constraint in section 1? Common failure modes:
 - Requires deny rules (violates additive access)
@@ -238,37 +262,63 @@ Does the model contradict any fixed constraint in section 1? Common failure mode
 - Creates access that Foundations component can't model
 - Leaks content across department boundaries without intentional share
 - Auto-grants access when someone joins a group (violates no-retroactive-inheritance)
+- Conflates domain (CAM tool access) with department (workspace boundary)
+- Allows release to own domain (no-op that confuses the model)
 
-### 5d. Explainability (every permission answerable)
+### 5e. Explainability (every permission answerable)
 
 For any asset, can the system answer: who has access, why, through what path, who shared it, when it expires, how to remove it?
 
+Access paths should be traceable to one of three sources:
+1. **Department membership** -- "You're in VFX, so you see VFX workspace files"
+2. **Share** -- "Lisa shared this collection with you on Feb 13"
+3. **Release** -- "This was released to Studio Creative on Feb 18"
+
 If the model introduces implicit access (e.g., "you can see this because you're in the project"), explainability degrades.
 
-### 5e. Graceful degradation
+### 5f. Steps to complete each scenario (fewer = better)
+
+For each of the core workflows in section 3a, count the number of user decisions and actions. Include cognitive decisions ("do I share or release?").
+
+The share-vs-release decision should be intuitive: sharing is in the People tab, releasing is in the Release tab. The user doesn't need to think about the mechanism -- the UI separates them.
+
+### 5g. Graceful degradation
 
 When boundaries don't align cleanly:
-- Department != domain (e.g., VFX spans multiple CAM domains)
-- A user belongs to 2 departments
-- A vendor needs access to assets from 3 departments
-- A group contains people from different departments
+- A user belongs to 2 departments (sees 2 workspaces)
+- A vendor belongs to no department (sees only shared collections, no workspace)
+- A department maps to multiple CAM domains (or vice versa)
 - CR's domain model doesn't map to Content Hub's department model
+- A distribution domain (Marketing) has no workspace -- only receives released content
 
 Does the model still work, or does it produce confusing edge cases?
 
-### 5f. Scenario coverage (100% required)
+### 5h. Scenario coverage (100% required)
 
 Every workflow in section 3a must complete. Every friction scenario in section 3b must be addressed (either solved or explicitly deferred with rationale).
 
-### 5g. Cross-app coherence
+### 5i. Cross-app coherence
 
-If a user shares content in Content Hub, what happens in Creative Review? The model should have a clear answer, even if that answer is "nothing; CR is separate."
+Two channels, clear boundary:
+- **Domain releases** are CAM-backed. They travel across apps. CR can honor a Studio Creative release.
+- **Person/team shares** are app-specific. CR doesn't automatically see them.
 
-### 5h. Vocabulary alignment
+Evaluate: is the cross-app behavior clear to the user? Does releasing to a domain produce the expected result in CR?
 
-How many terms does the system introduce that conflict with existing vocabulary (domain, workspace, collection, playlist, folder, department, group, team)?
+### 5j. Vocabulary alignment
 
-Ideal: the model uses terms that map cleanly to what each team already calls things, or introduces one new term that subsumes multiple existing ones.
+Terms the model uses and their mapping:
+
+| Concept | This model | CAM | Content Hub | Creative Review |
+|---|---|---|---|---|
+| Team boundary | Department | -- | -- | -- |
+| File space | Workspace | -- | LucidLink | Folders |
+| Release channel | Domain | Domain | Domain | Domain |
+| Group of assets | Collection | -- | Collection | Playlist |
+| Distribute to audience | Release (to domain) | -- | Release | -- |
+| Targeted share | Share (to person/team) | -- | Share | Share |
+
+Key distinction: "department" is a new concept introduced by the next-gen library for workspace boundaries. "Domain" is existing CAM infrastructure for release channels. They serve different purposes and should not be conflated.
 
 ---
 
@@ -278,7 +328,7 @@ These are questions that the current docs and meetings have not answered. A good
 
 | # | Question | Current state | Why it matters |
 |---|----------|--------------|---------------|
-| Q1 | Is "department" the same as "domain"? | **Critical finding:** the real Content Hub has no department-based access control. Departments exist only as asset type tags for metadata. All real access runs through domains. The prototype's department-as-boundary concept is entirely new. | Three options: (a) departments are a new layer on top of domains (more concepts), (b) departments ARE domains with a friendlier name (simpler, but domains weren't designed as workspace boundaries), (c) skip departments entirely (fewest concepts, but lose the "team space" model). |
+| Q1 | Is "department" the same as "domain"? | **Resolved (April 10).** They are NOT the same. Department = workspace boundary (asset-level, in-app, intra-department = open access). Domain = CAM capability layer (tool access, release channels, cross-app). Content Hub has no department-based access control today -- departments are new ground. Domains are existing infrastructure for release. Both concepts are needed; they serve different layers. | The model must support both without conflating them. Department owns the workspace. Domain owns the release channel. A user belongs to a department (sees the workspace) AND has domain capabilities (can release to other domains). |
 | Q2 | Should smart collections be shareable? | Deferred ("when tagging infrastructure is ready") | If yes, filter = access gate. If no, only curated collections cross boundaries. |
 | Q3 | What happens when you share a cut? | Open question in ACCESS_CONTROL.md | Playback-only vs full constituent access. |
 | Q4 | Should folders be visible outside departments? | Some departments want zero visibility | Discovery vs privacy tension. |
