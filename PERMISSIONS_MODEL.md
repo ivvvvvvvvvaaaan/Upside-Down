@@ -90,6 +90,20 @@ This is the "kill switch" for when someone rolls off the project, gets terminate
 
 From the per-asset summary, an admin can "Revoke all access" to a specific asset. This removes the asset from all shared collections and revokes all direct grants. Department access remains (can't remove workspace files without moving them). This is the response when a specific asset is compromised -- lock it down, then investigate.
 
+### Block: the exception to additive
+
+The access model is additive with one exception: a **block**. An admin can block a specific user from a specific asset. A block overrides all additive grants -- no matter how many paths the user has, the block wins.
+
+Blocks are:
+- Rare. Used for security incidents, not routine access control.
+- Visible. The asset shows a block indicator in the access panel: "Blocked: David Park (by Lisa Kim, Feb 28)."
+- Logged. The audit trail records who blocked whom and why.
+- Reversible. Only by an admin with Manage on the asset.
+
+This is NOT a general "deny" rule system. There's no deny-list, no deny-by-group, no deny-by-collection. It's a per-user, per-asset override for when the additive model produces the wrong result and you need to fix it immediately.
+
+**When to use it:** Someone was shared an asset they shouldn't have seen (wrong version, sensitive content, accidental share). You block them from that asset. Even if they have access through their department or another collection, the block stops them.
+
 ### Project-level lockdown
 
 An admin can toggle "Lock project" which immediately:

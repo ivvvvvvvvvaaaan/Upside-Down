@@ -3,3 +3,4 @@ baseline	2.5	kept	Additive model with no deny, no access summary, no kill switch
 cc266c1	3.3	kept	Per-asset and per-user access summaries. Revocation feedback: "still has access through N paths."
 436e96a	4.1	kept	Revoke-all per user and per asset. One-click kill switch. Logged.
 b7f2971	4.6	kept	Project lockdown (freeze all external access). Audit log with historical queries. Revoked grants retained.
+b00c2f2	4.7	kept	Explicit block: per-user per-asset override. Rare, visible, logged, reversible. The one exception to additive.
