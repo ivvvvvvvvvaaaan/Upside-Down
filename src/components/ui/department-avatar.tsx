@@ -37,7 +37,7 @@ export function ReleaseDomainAvatar({ size = 'sm' }: { size?: AvatarSize }) {
   return (
     <span
       className={cn(
-        'flex items-center justify-center flex-shrink-0 text-white bg-gray-400',
+        'flex items-center justify-center flex-shrink-0 text-gray-900 bg-gray-400',
         sizeClasses[size],
       )}
     >
