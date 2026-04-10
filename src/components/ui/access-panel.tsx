@@ -797,9 +797,18 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const directEntries = useMemo(() => allEntries.filter(e => !e.sourceName), [allEntries])
   const inheritedEntries = useMemo(() => allEntries.filter(e => !!e.sourceName), [allEntries])
 
+  // Deduplicate: department members shown in the department card shouldn't also appear in "Have access"
+  const departmentMemberIds = useMemo(() =>
+    new Set(domainContext?.members.map(m => m.id) ?? []),
+    [domainContext],
+  )
+
   const userEntries = useMemo(() =>
-    [...directEntries, ...inheritedEntries].filter(e => e.grant.principal.type === 'user'),
-    [directEntries, inheritedEntries],
+    [...directEntries, ...inheritedEntries].filter(e =>
+      e.grant.principal.type === 'user' &&
+      !departmentMemberIds.has((e.grant.principal as { userId: string }).userId)
+    ),
+    [directEntries, inheritedEntries, departmentMemberIds],
   )
   const teamEntries = useMemo(() =>
     [...directEntries, ...inheritedEntries].filter(e => e.grant.principal.type === 'team'),
