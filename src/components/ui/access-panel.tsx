@@ -26,6 +26,7 @@ import type { GuestLinkSeed } from '@/lib/scenario'
 import { resolveCollectionAssetIds, getAssetIdVariants } from '@/lib/data'
 import { isGrantActive } from '@/lib/grants'
 import { useUserCollections } from '@/hooks/useUserCollections'
+import { useShareAsCollection } from '@/hooks/useShareAsCollection'
 import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
 import { TEAMS } from '@/lib/teams'
 import { PERSONAS } from '@/lib/personas'
@@ -402,6 +403,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const [expires, setExpires] = useState(false)
   const [expiresInDays, setExpiresInDays] = useState(7)
   const { getCollection, collections } = useUserCollections()
+  const { resolveShareTarget } = useShareAsCollection()
   const isCollectionResource = resourceRef?.type === 'collection'
   const isAssetResource = resourceRef?.type === 'asset' || resourceRef?.type === 'cut'
 
@@ -568,11 +570,17 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const resourceDomainName = resourceDomainId ? (domainConfigs[resourceDomainId]?.name ?? resourceDomainId) : undefined
 
   const commitPendingGrants = () => {
-    const targets = isBatch && batchResourceRefs ? batchResourceRefs : (resourceRef ? [resourceRef] : [])
-    if (targets.length === 0) return
+    const rawTargets = isBatch && batchResourceRefs ? batchResourceRefs : (resourceRef ? [resourceRef] : [])
+    if (rawTargets.length === 0) return
 
     for (const pending of pendingGrants) {
-      for (const target of targets) {
+      for (const rawTarget of rawTargets) {
+        // Folders get converted to workspace collections before granting
+        const resolved = rawTarget.type === 'folder'
+          ? resolveShareTarget(rawTarget, rawTarget.id)
+          : null
+        const target = resolved?.resourceRef ?? rawTarget
+
         const targetGrants = getResourceGrants(target.id)
         if (pending.principal.type === 'user' && targetGrants.some(g => g.principal.type === 'user' && g.principal.userId === (pending.principal as { userId: string }).userId)) continue
         if (pending.principal.type === 'team' && targetGrants.some(g => g.principal.type === 'team' && g.principal.teamId === (pending.principal as { teamId: string }).teamId)) continue

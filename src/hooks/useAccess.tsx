@@ -1098,6 +1098,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const getCollectionRippleGrants = useCallback((assetId: string) => {
     const rippled: { grant: Grant; fromResourceId: string; fromResourceName: string }[] = []
     for (const collection of collections) {
+      // Only show grants from collections the current viewer can access
+      if (!canAccess(collection.id)) continue
       const collectionAssetIds = new Set(resolveCollectionAssetIds(collection).flatMap(getAssetIdVariants))
       if (!collectionAssetIds.has(assetId)) continue
       const collGrants = grants.filter(g => g.resource.id === collection.id && isGrantActive(g))
@@ -1106,7 +1108,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       }
     }
     return rippled
-  }, [collections, grants])
+  }, [collections, grants, canAccess])
 
   const getVersionHistory = useCallback((resourceId: string, principalKey?: string): { version: number; note: string; date: string; grantId: string }[] => {
     return grants
