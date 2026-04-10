@@ -51,6 +51,7 @@ Domain recipients appear in a grouped list: Studio tier first, Wide tier second,
 - **Moving a file is an access decision.** If an asset is in a folder-linked collection, moving it out of that folder removes it from the collection (and from every share that collection has). The system warns before this happens: "Moving this file will remove it from 2 shared collections. 5 people will lose access." This directly prevents the F1 scenario (hundreds of hours lost to access triaging from folder moves).
 - Domain membership is managed by CAM, not by this app. No in-app domain management.
 - Groups expand at share time into individual grants. No retroactive inheritance.
+- **Leave action.** A recipient can leave a shared collection at any time. Their grant is removed; they stop seeing it. The collection stays intact for everyone else. Leaving is not deleting -- only members of the owning domain can delete a collection. This gives recipients control without affecting others.
 - Filtered collections show personalized results: "47 assets match this filter (you can access 23)." Two people see different subsets based on their access. This is correct behavior -- like a search engine returning different results based on your permissions. The filter criteria are always visible.
 - Curated/shared collections show everyone the same assets. "12 assets. Everyone with access sees all 12." This is the sharing mode -- you control exactly what the recipient sees.
 
