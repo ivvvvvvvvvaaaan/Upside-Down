@@ -22,6 +22,7 @@ import { PROJECT_RESOURCE, profileLabel, isGrantActive, roleGroupOptions } from 
 import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef, ResourceRef } from '@/lib/grants'
 import type { DomainId, ProductionDomainId } from '@/components/department/types'
 import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
+import { domainConfigs } from '@/lib/domain-configs'
 import type { DiscoveryResourceType, UserAccessSummary, DepartmentCollectionInfo } from '@/hooks/useAccess'
 import type { AuditEvent, AuditEventType } from '@/lib/audit-log'
 
@@ -107,7 +108,7 @@ function addOrMoveDomainMember(domainId: DomainId, teamId: string, email: string
       name: toDisplayNameFromEmail(normalizedEmail),
       email: normalizedEmail,
       role: 'artist',
-      title: `${DOMAIN_FOLDER_MAP[domainId].name} Artist`,
+      title: `${DOMAIN_FOLDER_MAP[domainId]?.name ?? domainConfigs[domainId]?.name ?? domainId} Artist`,
       domainId,
       teamIds: [teamId],
     }
@@ -332,7 +333,7 @@ function PeopleTab({
         const involvement = stats.get(persona.id) ?? { received: 0, shared: 0, directGrantCount: 0, teamCount: 0 }
         const teamCount = TEAMS.filter((team) => team.memberUserIds.includes(persona.id)).length
         const primaryLabel = persona.domainId
-          ? `${DOMAIN_FOLDER_MAP[persona.domainId].name} member`
+          ? `${domainConfigs[persona.domainId]?.name ?? persona.domainId} member`
           : persona.role === 'vendor'
           ? 'External participant'
           : 'Shared participant'
