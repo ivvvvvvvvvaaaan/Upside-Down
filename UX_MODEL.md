@@ -43,8 +43,8 @@ Domain recipients appear in a grouped list: Studio tier first, Wide tier second,
 - Domains are boundaries. Workspace content stays in the domain unless explicitly shared.
 - Domain membership is managed by CAM, not by this app. No in-app domain management.
 - Groups expand at share time into individual grants. No retroactive inheritance.
-- Smart collections filter by your existing access -- two people may see different assets.
-- Curated collections show everyone the same assets.
+- Filtered collections show personalized results: "47 assets match this filter (you can access 23)." Two people see different subsets based on their access. This is correct behavior -- like a search engine returning different results based on your permissions. The filter criteria are always visible.
+- Curated/shared collections show everyone the same assets. "12 assets. Everyone with access sees all 12." This is the sharing mode -- you control exactly what the recipient sees.
 
 ## Ownership
 
