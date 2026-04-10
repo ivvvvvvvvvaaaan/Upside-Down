@@ -40,6 +40,8 @@ What you can share:
 
 Per-recipient settings: live (synced) or snapshot (frozen), upload enabled, expiration.
 
+**Smart defaults reduce decisions.** Share with a person → defaults to live, view permission. Share with a vendor → defaults to snapshot, add permission, upload enabled. Share with a domain → defaults to view, no expiration. The user can change any default, but the common case is one click: select recipient, hit share. Role templates (e.g., "reviewer" = view + comment) further reduce per-share decisions for coordinators.
+
 Domain recipients appear in a grouped list: Studio tier first, Wide tier second, Other third. Only domains the user has release capability for appear in autocomplete.
 
 **Cross-domain sharing warning.** When sharing with someone outside your domain, the share dialog shows a confirmation: "Sarah Chen is not in your domain (STUDIO_VFX). This share will give her access to [N] assets from your workspace." Similar to Google Docs' "This person is outside your organization" warning. Prevents accidental cross-boundary shares while keeping intentional ones frictionless (one extra click). For domain-level releases, the warning shows the full blast radius: "Release to Wide makes this visible to Marketing, Legal, Globalization... (estimated 47 people)."
