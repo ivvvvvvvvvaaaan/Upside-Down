@@ -882,7 +882,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
             </span>
           </div>
         </div>
-        <span className="text-label-0-regular text-foreground-dim flex-shrink-0">Owner</span>
+        <span className="text-label-0-regular text-foreground-dim flex-shrink-0">Owners</span>
       </div>
       {domainContextExpanded && domainContext.members.length > 0 && (
         <div className="relative ml-1">
