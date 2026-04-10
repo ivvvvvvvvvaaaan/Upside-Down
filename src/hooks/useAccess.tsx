@@ -52,6 +52,8 @@ import { resolveCollectionAssetIds } from '@/lib/data'
 import { SCENARIO, buildGuestLinks, SENSITIVE_ASSET_IDS } from '@/lib/scenario'
 import type { GuestLinkSeed } from '@/lib/scenario'
 import { domainConfigs } from '@/lib/domain-configs'
+import { logAuditEvent, getAuditLog, type AuditEventType, type AuditEvent } from '@/lib/audit-log'
+import { resolveCollectionAssets } from '@/lib/data'
 
 export type AccessRequest = {
   id: string
@@ -213,6 +215,20 @@ interface AccessContextValue {
   projectLockInfo: ProjectLockInfo
   lockProject: () => void
   unlockProject: () => void
+
+  // Collection governance (Phase 5)
+  getCollectionsContainingDepartmentAssets: (domainId: DomainId) => DepartmentCollectionInfo[]
+
+  // Audit log (Phase 6)
+  getAuditLog: (filters?: { resourceId?: string; userId?: string; type?: AuditEventType }) => AuditEvent[]
+}
+
+export type DepartmentCollectionInfo = {
+  collectionId: string
+  collectionName: string
+  createdBy: string
+  sharedWithCount: number
+  departmentAssetCount: number
 }
 
 const AccessContext = createContext<AccessContextValue | null>(null)
@@ -1026,6 +1042,28 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         allowUpload: options?.allowUpload,
       }
 
+      // Audit log
+      let auditTargetName = 'unknown'
+      let auditTargetUserId: string | undefined
+      if (principal.type === 'user') {
+        auditTargetName = PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
+        auditTargetUserId = principal.userId
+      } else if (principal.type === 'team') {
+        auditTargetName = getTeamById(principal.teamId)?.name ?? principal.teamId
+      } else if (principal.type === 'domain') {
+        auditTargetName = principal.domainId
+      }
+      logAuditEvent({
+        type: 'grant',
+        actorId: grantorUserId,
+        actorName: activePersona?.name ?? 'System',
+        targetUserId: auditTargetUserId,
+        targetUserName: auditTargetName,
+        resourceId: resource.id,
+        resourceLabel: getResourceLabel(resource.id),
+        details: `Granted ${profileId} access to ${auditTargetName} on ${getResourceLabel(resource.id)}`,
+      })
+
       return [...prev, newGrant]
     })
   }, [activePersona, userId, roleGroups, canShareFn, grantorUserId, setGrants])
@@ -1045,13 +1083,35 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       const grant = prev.find((candidate) => candidate.id === grantId && isGrantActive(candidate))
       if (!grant || !canManageGrantForState(grant, prev)) return prev
 
+      let revokeTargetName = 'unknown'
+      let revokeTargetUserId: string | undefined
+      const revokePrincipal = grant.principal
+      if (revokePrincipal.type === 'user') {
+        revokeTargetName = PERSONAS.find(p => p.id === revokePrincipal.userId)?.name ?? revokePrincipal.userId
+        revokeTargetUserId = revokePrincipal.userId
+      } else if (revokePrincipal.type === 'team') {
+        revokeTargetName = getTeamById(revokePrincipal.teamId)?.name ?? revokePrincipal.teamId
+      } else if (revokePrincipal.type === 'domain') {
+        revokeTargetName = revokePrincipal.domainId
+      }
+      logAuditEvent({
+        type: 'revoke',
+        actorId: grantorUserId,
+        actorName: activePersona?.name ?? 'System',
+        targetUserId: revokeTargetUserId,
+        targetUserName: revokeTargetName,
+        resourceId: grant.resource.id,
+        resourceLabel: getResourceLabel(grant.resource.id),
+        details: `Revoked access for ${revokeTargetName} on ${getResourceLabel(grant.resource.id)}`,
+      })
+
       return prev.map((candidate) =>
         candidate.id === grantId && isGrantActive(candidate)
           ? { ...candidate, revokedAt: new Date().toISOString() }
           : candidate,
       )
     })
-  }, [canManageGrantForState, setGrants])
+  }, [canManageGrantForState, setGrants, grantorUserId, activePersona])
 
   const revokeUserAccess = useCallback((targetUserId: string) => {
     setGrants((prev) => {
@@ -1358,6 +1418,17 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
   const blockUser = useCallback((targetUserId: string, resourceId: string, reason?: string) => {
     if (!userId) return
+    const targetPersona = PERSONAS.find(p => p.id === targetUserId)
+    logAuditEvent({
+      type: 'block',
+      actorId: userId,
+      actorName: activePersona?.name ?? 'System',
+      targetUserId,
+      targetUserName: targetPersona?.name ?? targetUserId,
+      resourceId,
+      resourceLabel: getResourceLabel(resourceId),
+      details: `Blocked ${targetPersona?.name ?? targetUserId} on ${getResourceLabel(resourceId)}${reason ? `: ${reason}` : ''}`,
+    })
     setBlocks((prev) => {
       if (prev.some(b => b.userId === targetUserId && b.resourceId === resourceId)) return prev
       return [...prev, {
@@ -1369,11 +1440,22 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         reason,
       }]
     })
-  }, [userId])
+  }, [userId, activePersona])
 
   const unblockUser = useCallback((targetUserId: string, resourceId: string) => {
+    const targetPersona = PERSONAS.find(p => p.id === targetUserId)
+    logAuditEvent({
+      type: 'unblock',
+      actorId: userId ?? 'system',
+      actorName: activePersona?.name ?? 'System',
+      targetUserId,
+      targetUserName: targetPersona?.name ?? targetUserId,
+      resourceId,
+      resourceLabel: getResourceLabel(resourceId),
+      details: `Unblocked ${targetPersona?.name ?? targetUserId} on ${getResourceLabel(resourceId)}`,
+    })
     setBlocks((prev) => prev.filter(b => !(b.userId === targetUserId && b.resourceId === resourceId)))
-  }, [])
+  }, [userId, activePersona])
 
   const isBlockedFn = useCallback((targetUserId: string, resourceId: string): boolean => {
     return blocks.some(b => b.userId === targetUserId && b.resourceId === resourceId)
@@ -1489,6 +1571,15 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     setProjectLockInfo(info)
     try { localStorage.setItem('project-locked', JSON.stringify(info)) } catch { /* ignore */ }
 
+    logAuditEvent({
+      type: 'lock',
+      actorId: activePersona?.id ?? 'system',
+      actorName: activePersona?.name ?? 'System',
+      resourceId: 'project',
+      resourceLabel: 'Project',
+      details: `Project locked by ${activePersona?.name ?? 'System'}`,
+    })
+
     // Expire all guest links
     const today = new Date().toISOString().slice(0, 10)
     setGuestLinks(prev => prev.map(link => ({
@@ -1501,6 +1592,54 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     const info: ProjectLockInfo = { locked: false }
     setProjectLockInfo(info)
     try { localStorage.setItem('project-locked', JSON.stringify(info)) } catch { /* ignore */ }
+
+    logAuditEvent({
+      type: 'unlock',
+      actorId: activePersona?.id ?? 'system',
+      actorName: activePersona?.name ?? 'System',
+      resourceId: 'project',
+      resourceLabel: 'Project',
+      details: `Project unlocked by ${activePersona?.name ?? 'System'}`,
+    })
+  }, [activePersona])
+
+  // --- Collection governance (Phase 5) ---
+  const getCollectionsContainingDepartmentAssets = useCallback((domainId: DomainId): DepartmentCollectionInfo[] => {
+    const results: DepartmentCollectionInfo[] = []
+    // Find personas in this department to determine "same department" creators
+    const departmentEmails = new Set(
+      PERSONAS.filter(p => p.domainId === domainId).map(p => p.email.toLowerCase())
+    )
+
+    for (const collection of collections) {
+      // Skip collections created by someone IN the department
+      if (collection.createdBy && departmentEmails.has(collection.createdBy.toLowerCase())) continue
+
+      // Resolve assets and check if any belong to this department
+      const assets = resolveCollectionAssets(collection)
+      const deptAssets = assets.filter(a => a.department === domainId)
+      if (deptAssets.length === 0) continue
+
+      // Count shares on this collection
+      const sharedWithCount = grants.filter(
+        g => g.resource.id === collection.id && isGrantActive(g)
+      ).length
+
+      results.push({
+        collectionId: collection.id,
+        collectionName: collection.name,
+        createdBy: collection.createdBy ?? 'Unknown',
+        sharedWithCount,
+        departmentAssetCount: deptAssets.length,
+      })
+    }
+
+    return results
+  }, [collections, grants])
+
+  // --- Audit log accessor (Phase 6) ---
+  const getAuditLogFn = useCallback((filters?: { resourceId?: string; userId?: string; type?: AuditEventType }) => {
+    return getAuditLog(filters)
   }, [])
 
   const contextValue = useMemo(() => ({
@@ -1569,6 +1708,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     projectLockInfo,
     lockProject,
     unlockProject,
+    getCollectionsContainingDepartmentAssets,
+    getAuditLog: getAuditLogFn,
   }), [
     canAccess,
     filterByAccess,
@@ -1634,6 +1775,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     projectLockInfo,
     lockProject,
     unlockProject,
+    getCollectionsContainingDepartmentAssets,
+    getAuditLogFn,
   ])
 
   return (

@@ -20,7 +20,8 @@
       "mcp__granola__query_granola_meetings",
       "Bash(git commit:*)",
       "Bash(git merge:*)",
-      "Bash(echo \"EXIT CODE: $?\")"
+      "Bash(echo \"EXIT CODE: $?\")",
+      "Bash(echo \"Exit code: $?\")"
     ]
   }
 }

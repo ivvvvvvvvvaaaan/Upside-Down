@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import { Search, ChevronDown, ChevronRight, Plus, X, Info, RefreshCw, Shield, Lock, Unlock } from 'lucide-react'
+import { Search, ChevronDown, ChevronRight, Plus, X, Info, RefreshCw, Shield, Lock, Unlock, FileText, ArrowRightLeft, Archive } from 'lucide-react'
 import { Facepile } from './facepile'
 import { Modal } from './modal'
 import { Button } from './button'
@@ -12,6 +12,8 @@ import { Avatar } from './avatar'
 import { DepartmentAvatar } from './department-avatar'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import { useAccess, usePersona } from '@/hooks'
+import { useUserCollections } from '@/hooks/useUserCollections'
+import { useToast } from './toast'
 import { cn } from '@/lib/utils'
 import { PERSONAS, DIRECTORY_UPDATED_EVENT } from '@/lib/personas'
 import type { User } from '@/lib/personas'
@@ -20,7 +22,8 @@ import { PROJECT_RESOURCE, profileLabel, isGrantActive } from '@/lib/grants'
 import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef, ResourceRef } from '@/lib/grants'
 import type { DomainId, ProductionDomainId } from '@/components/department/types'
 import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
-import type { DiscoveryResourceType, UserAccessSummary } from '@/hooks/useAccess'
+import type { DiscoveryResourceType, UserAccessSummary, DepartmentCollectionInfo } from '@/hooks/useAccess'
+import type { AuditEvent, AuditEventType } from '@/lib/audit-log'
 
 const ALL_PERMISSIONS: { id: Permission; name: string }[] = [
   { id: 'open', name: 'Read' },
@@ -520,6 +523,62 @@ function DiscoverySection({
   )
 }
 
+// --- External collections section (Phase 5) ---
+
+function ExternalCollectionsSection({
+  domainId,
+  getExternalCollections,
+  onPullAssets,
+}: {
+  domainId: DomainId
+  getExternalCollections: (domainId: DomainId) => DepartmentCollectionInfo[]
+  onPullAssets: (collectionName: string) => void
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const externalCollections = useMemo(() => getExternalCollections(domainId), [getExternalCollections, domainId])
+
+  if (externalCollections.length === 0) return null
+
+  return (
+    <div className="mt-2 pt-2 border-t border-border-dim">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-1.5 w-full text-left py-1"
+      >
+        {isOpen ? (
+          <ChevronDown className="w-3 h-3 text-foreground-dim" />
+        ) : (
+          <ChevronRight className="w-3 h-3 text-foreground-dim" />
+        )}
+        <span className="text-label-0-bold text-foreground-dim uppercase">
+          External collections ({externalCollections.length})
+        </span>
+      </button>
+      {isOpen && (
+        <div className="space-y-1 mt-1">
+          {externalCollections.map((col) => (
+            <div key={col.collectionId} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded hover:bg-surface-3/40">
+              <div className="min-w-0 flex-1">
+                <span className="text-body-0-regular text-foreground truncate block">{col.collectionName}</span>
+                <span className="text-label-0-regular text-foreground-dim block">
+                  by {col.createdBy} · shared with {col.sharedWithCount} · {col.departmentAssetCount} dept assets
+                </span>
+              </div>
+              <Button
+                variant="secondary"
+                compact
+                onClick={() => onPullAssets(col.collectionName)}
+              >
+                Pull assets
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // --- Domains tab ---
 
 function DomainsTab({
@@ -538,6 +597,8 @@ function DomainsTab({
   onStageInvite,
   onRemovePendingInvite,
   onRemoveDomainMember,
+  getExternalCollections,
+  onPullAssets,
   readOnly = false,
 }: {
   roleGroups: RoleGroup[]
@@ -555,6 +616,8 @@ function DomainsTab({
   onStageInvite: () => boolean
   onRemovePendingInvite: (inviteId: string) => void
   onRemoveDomainMember: (domainId: DomainId, teamId: string, userId: string) => void
+  getExternalCollections: (domainId: DomainId) => DepartmentCollectionInfo[]
+  onPullAssets: (collectionName: string) => void
   readOnly?: boolean
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -840,6 +903,11 @@ function DomainsTab({
                   {members.length === 0 && (
                     <p className="text-label-0-regular text-foreground-dim py-2 px-2 text-center">No members yet</p>
                   )}
+                  <ExternalCollectionsSection
+                    domainId={domainId}
+                    getExternalCollections={getExternalCollections}
+                    onPullAssets={onPullAssets}
+                  />
                 </div>
               )}
             </div>
@@ -948,12 +1016,18 @@ function SecurityTab({
   projectLockInfo,
   onLock,
   onUnlock,
+  orphanedCollections,
+  onTransferOwnership,
+  onArchiveCollection,
   readOnly = false,
 }: {
   projectLocked: boolean
   projectLockInfo: { locked: boolean; lockedBy?: string; lockedAt?: string }
   onLock: () => void
   onUnlock: () => void
+  orphanedCollections: { id: string; name: string; createdBy?: string }[]
+  onTransferOwnership: (collectionId: string, newOwnerEmail: string) => void
+  onArchiveCollection: (collectionName: string) => void
   readOnly?: boolean
 }) {
   return (
@@ -1035,6 +1109,242 @@ function SecurityTab({
           </div>
         )}
       </div>
+
+      {orphanedCollections.length > 0 && (
+        <OrphanedCollectionsSection
+          orphanedCollections={orphanedCollections}
+          onTransferOwnership={onTransferOwnership}
+          onArchiveCollection={onArchiveCollection}
+          readOnly={readOnly}
+        />
+      )}
+    </div>
+  )
+}
+
+// --- Orphaned collections section ---
+
+function OrphanedCollectionsSection({
+  orphanedCollections,
+  onTransferOwnership,
+  onArchiveCollection,
+  readOnly = false,
+}: {
+  orphanedCollections: { id: string; name: string; createdBy?: string }[]
+  onTransferOwnership: (collectionId: string, newOwnerEmail: string) => void
+  onArchiveCollection: (collectionName: string) => void
+  readOnly?: boolean
+}) {
+  const [transferTarget, setTransferTarget] = useState<string | null>(null)
+  const [transferEmail, setTransferEmail] = useState('')
+
+  return (
+    <div className="rounded-lg border border-border-dim p-4 space-y-3">
+      <div className="flex items-start gap-3">
+        <Archive className="w-5 h-5 text-foreground-dim mt-0.5 flex-shrink-0" />
+        <div>
+          <p className="text-body-0-bold text-foreground">Orphaned collections</p>
+          <p className="text-body-0-regular text-foreground-dim">
+            Collections whose creator is no longer an active project member.
+          </p>
+        </div>
+      </div>
+      <div className="space-y-1">
+        {orphanedCollections.map((col) => (
+          <div key={col.id} className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-surface-3/40">
+            <div className="min-w-0 flex-1">
+              <span className="text-body-0-regular text-foreground truncate block">{col.name}</span>
+              <span className="text-label-0-regular text-foreground-dim block">
+                Created by {col.createdBy ?? 'Unknown'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {transferTarget === col.id ? (
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="email"
+                    value={transferEmail}
+                    onChange={(e) => setTransferEmail(e.target.value)}
+                    placeholder="new-owner@email.com"
+                    className="w-48"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && transferEmail.trim()) {
+                        onTransferOwnership(col.id, transferEmail.trim())
+                        setTransferTarget(null)
+                        setTransferEmail('')
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="primary"
+                    compact
+                    disabled={!transferEmail.trim() || readOnly}
+                    onClick={() => {
+                      onTransferOwnership(col.id, transferEmail.trim())
+                      setTransferTarget(null)
+                      setTransferEmail('')
+                    }}
+                  >
+                    Confirm
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    compact
+                    onClick={() => {
+                      setTransferTarget(null)
+                      setTransferEmail('')
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Button
+                    variant="secondary"
+                    compact
+                    disabled={readOnly}
+                    onClick={() => setTransferTarget(col.id)}
+                  >
+                    <ArrowRightLeft className="w-3 h-3 mr-1" />
+                    Transfer
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    compact
+                    disabled={readOnly}
+                    onClick={() => onArchiveCollection(col.name)}
+                  >
+                    <Archive className="w-3 h-3 mr-1" />
+                    Archive
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// --- Audit Log tab (Phase 6) ---
+
+function AuditLogTab({
+  getAuditLog,
+}: {
+  getAuditLog: (filters?: { resourceId?: string; userId?: string; type?: AuditEventType }) => AuditEvent[]
+}) {
+  const [typeFilter, setTypeFilter] = useState<AuditEventType | ''>('')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const events = useMemo(() => {
+    const filters: { type?: AuditEventType } = {}
+    if (typeFilter) filters.type = typeFilter
+    const all = getAuditLog(filters)
+    if (!searchQuery.trim()) return all
+    const q = searchQuery.toLowerCase()
+    return all.filter(e =>
+      (e.actorName?.toLowerCase().includes(q)) ||
+      (e.targetUserName?.toLowerCase().includes(q)) ||
+      (e.resourceLabel?.toLowerCase().includes(q)) ||
+      (e.details?.toLowerCase().includes(q))
+    )
+  }, [getAuditLog, typeFilter, searchQuery])
+
+  const typeOptions = [
+    { value: '', label: 'All events' },
+    { value: 'grant', label: 'Grant' },
+    { value: 'revoke', label: 'Revoke' },
+    { value: 'block', label: 'Block' },
+    { value: 'unblock', label: 'Unblock' },
+    { value: 'lock', label: 'Lock' },
+    { value: 'unlock', label: 'Unlock' },
+    { value: 'release', label: 'Release' },
+  ]
+
+  const formatTime = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp)
+      return date.toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    } catch {
+      return timestamp
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-body-0-regular text-foreground-dim">
+        Log of all access-related actions on this project.
+      </p>
+
+      <div className="flex items-center gap-2">
+        <MenuSelect
+          className="w-36"
+          options={typeOptions}
+          value={typeFilter}
+          onChange={(value) => setTypeFilter(value as AuditEventType | '')}
+          size="standard"
+          align="start"
+          width="sm"
+        />
+        <Input
+          icon={<Search />}
+          iconPosition="left"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search events..."
+        />
+      </div>
+
+      {events.length === 0 ? (
+        <p className="text-body-0-regular text-foreground-dim py-4 text-center">
+          No audit events recorded yet.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr>
+                <th className="text-left text-label-0-bold uppercase text-foreground-dim py-2 pr-3 pl-2">Time</th>
+                <th className="text-left text-label-0-bold uppercase text-foreground-dim py-2 px-3">Action</th>
+                <th className="text-left text-label-0-bold uppercase text-foreground-dim py-2 px-3">Actor</th>
+                <th className="text-left text-label-0-bold uppercase text-foreground-dim py-2 px-3">Target</th>
+                <th className="text-left text-label-0-bold uppercase text-foreground-dim py-2 px-3">Resource</th>
+                <th className="text-left text-label-0-bold uppercase text-foreground-dim py-2 pl-3">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {events.map((event) => (
+                <tr key={event.id} className="hover:bg-surface-1 transition-colors border-t border-border-dim">
+                  <td className="py-2 pr-3 pl-2 text-label-0-regular text-foreground-dim whitespace-nowrap">{formatTime(event.timestamp)}</td>
+                  <td className="py-2 px-3">
+                    <span className={cn(
+                      'text-label-0-bold uppercase px-1.5 py-0.5 rounded',
+                      event.type === 'grant' && 'text-foreground-system-success bg-surface-flat',
+                      event.type === 'revoke' && 'text-red-400 bg-surface-flat',
+                      event.type === 'block' && 'text-red-400 bg-surface-flat',
+                      event.type === 'unblock' && 'text-foreground-dim bg-surface-flat',
+                      event.type === 'lock' && 'text-red-400 bg-surface-flat',
+                      event.type === 'unlock' && 'text-foreground-system-success bg-surface-flat',
+                      event.type === 'release' && 'text-indigo-400 bg-surface-flat',
+                    )}>{event.type}</span>
+                  </td>
+                  <td className="py-2 px-3 text-body-0-regular text-foreground">{event.actorName}</td>
+                  <td className="py-2 px-3 text-body-0-regular text-foreground">{event.targetUserName ?? '-'}</td>
+                  <td className="py-2 px-3 text-body-0-regular text-foreground truncate max-w-[160px]">{event.resourceLabel ?? '-'}</td>
+                  <td className="py-2 pl-3 text-label-0-regular text-foreground-dim truncate max-w-[240px]">{event.details}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
@@ -1069,7 +1379,11 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     projectLockInfo,
     lockProject,
     unlockProject,
+    getCollectionsContainingDepartmentAssets,
+    getAuditLog,
   } = useAccess()
+  const { orphanedCollections, transferCollectionOwnership } = useUserCollections()
+  const { showToast } = useToast()
   const { activePersona } = usePersona()
   const canManageProject = canEditAcl(PROJECT_RESOURCE)
   const [activeTab, setActiveTab] = useState('departments')
@@ -1194,6 +1508,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               {canManageProject && <Tab value="role-groups">Role Groups</Tab>}
               {canManageProject && <Tab value="settings">Settings</Tab>}
               {canManageProject && <Tab value="security">Security</Tab>}
+              {canManageProject && <Tab value="audit-log">Audit Log</Tab>}
             </TabsList>
 
             <div className="flex-1 overflow-y-auto max-h-[50vh] px-1 pb-4">
@@ -1236,6 +1551,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     setPendingDomainInvites((prev) => prev.filter((invite) => invite.id !== inviteId))
                   }}
                   onRemoveDomainMember={handleRemoveDomainMember}
+                  getExternalCollections={getCollectionsContainingDepartmentAssets}
+                  onPullAssets={(collectionName) => showToast(`Assets pulled from ${collectionName}`)}
                   readOnly={!canManageDomains && !canManageProject}
                 />
               </TabsContent>
@@ -1279,7 +1596,20 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     projectLockInfo={projectLockInfo}
                     onLock={lockProject}
                     onUnlock={unlockProject}
+                    orphanedCollections={orphanedCollections}
+                    onTransferOwnership={(collectionId, newOwnerEmail) => {
+                      transferCollectionOwnership(collectionId, newOwnerEmail)
+                      showToast(`Collection ownership transferred to ${newOwnerEmail}`)
+                    }}
+                    onArchiveCollection={(collectionName) => {
+                      showToast(`Collection "${collectionName}" archived`)
+                    }}
                   />
+                </TabsContent>
+              )}
+              {canManageProject && (
+                <TabsContent value="audit-log">
+                  <AuditLogTab getAuditLog={getAuditLog} />
                 </TabsContent>
               )}
             </div>

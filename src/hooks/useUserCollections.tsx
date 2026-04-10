@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect, t
 import { usePersona } from './usePersona'
 import { buildSeedCollections } from '@/lib/scenario'
 import { mergeCollectionAssetIds } from '@/lib/collection-membership'
+import { PERSONAS } from '@/lib/personas'
 
 /**
  * User-created collection (distinct from smart collections)
@@ -57,6 +58,8 @@ interface UserCollectionsContextValue {
   addAssetsToCollection: (id: string, assetIds: string[]) => void
   deleteCollection: (id: string) => void
   getCollection: (id: string) => UserCollection | undefined
+  transferCollectionOwnership: (collectionId: string, newOwnerEmail: string) => void
+  orphanedCollections: UserCollection[]
 }
 
 const UserCollectionsContext = createContext<UserCollectionsContextValue | null>(null)
@@ -133,6 +136,22 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
     return collections.find(c => c.id === id)
   }, [collections])
 
+  const transferCollectionOwnership = useCallback((collectionId: string, newOwnerEmail: string) => {
+    setCollections(prev => prev.map(c =>
+      c.id === collectionId ? { ...c, createdBy: newOwnerEmail } : c
+    ))
+  }, [setCollections])
+
+  const orphanedCollections = useMemo(() => {
+    const activeEmails = new Set(
+      PERSONAS.filter(p => p.domainId || p.teamIds.length > 0).map(p => p.email.toLowerCase())
+    )
+    return collections.filter(c => {
+      if (!c.createdBy) return true
+      return !activeEmails.has(c.createdBy.toLowerCase())
+    })
+  }, [collections])
+
   return (
     <UserCollectionsContext.Provider value={useMemo(() => ({
       collections,
@@ -141,7 +160,9 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
       addAssetsToCollection,
       deleteCollection,
       getCollection,
-    }), [collections, createCollection, createWorkspaceCollection, addAssetsToCollection, deleteCollection, getCollection])}>
+      transferCollectionOwnership,
+      orphanedCollections,
+    }), [collections, createCollection, createWorkspaceCollection, addAssetsToCollection, deleteCollection, getCollection, transferCollectionOwnership, orphanedCollections])}>
       {children}
     </UserCollectionsContext.Provider>
   )
