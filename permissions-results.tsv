@@ -1,0 +1,2 @@
+commit	score	status	description
+baseline	2.5	kept	Additive model with no deny, no access summary, no kill switch, no audit history. Revocation incomplete.
