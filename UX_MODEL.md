@@ -53,9 +53,15 @@ Domain recipients appear in a grouped list: Studio tier first, Wide tier second,
 
 ## VFX turnover support
 
-Modeled as: snapshot collection + upload enabled. Vendor receives a frozen set of assets and can upload deliveries.
+A turnover is a collection pattern, not a separate entity.
 
-Missing: collection versioning (re-turnovers), change deltas, intent metadata (per-shot notes, delivery specs).
+**How it works:** Coordinator creates a collection (e.g., "Framestore SQ03"), adds the scoped set of plates/reference/notes, shares as snapshot with upload enabled. Vendor receives the frozen brief, uploads deliveries into the same collection.
+
+**Re-turnovers via collection versioning:** When the cut changes, the coordinator updates the collection contents and re-shares. The system records this as a new version (v2, v3...). Each version captures: what was added, what was removed, what changed. The vendor sees "Version 2: +3 assets, -1 asset" with a note from the coordinator.
+
+**Version history** is not a new concept -- it's a property of sharing. Every re-share of a snapshot collection creates a version. The coordinator can see the full version timeline. The vendor sees their current version and what changed from the previous one.
+
+**Notes per version:** When re-sharing, the coordinator attaches notes ("re-turnover: 3 new shots from locked cut 2, dropped SQ03_SH0020 -- client approved alternate take").
 
 ## Sensitive media
 
