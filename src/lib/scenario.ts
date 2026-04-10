@@ -6,6 +6,7 @@ import type { User, UserRole } from '@/lib/personas'
 import type { Team } from '@/lib/teams'
 import type {
   Grant,
+  PrincipalRef,
   RoleGroup,
   AccessProfileId,
   Permission,
@@ -38,7 +39,7 @@ type ScenarioRoleGroup = {
   permissions: Permission[]
 }
 
-type ScenarioShareGrant = { to: string; as: AccessProfileId } | { toTeam: string; as: AccessProfileId }
+type ScenarioShareGrant = { to: string; as: AccessProfileId } | { toTeam: string; as: AccessProfileId } | { toDomain: string; as: AccessProfileId }
 
 type ScenarioShare = {
   resource: { id: string; type: ResourceType; domain?: DomainId }
@@ -275,70 +276,70 @@ export const SCENARIO: Scenario = {
       ],
     },
     // --- Cut shares (composite entities, not raw files) ---
-    // Locked Cut 1: Maria shares first lock with VFX for timing + dailies review team
+    // Locked Cut 1: Maria releases first lock to Studio VFX + shares with David for review
     {
       resource: { id: 'cut-ep301-lc-1', type: 'cut', domain: 'editorial' },
       label: 'EP301 Locked Cut 1',
       by: 'editorial-artist',
       date: '2026-02-08',
-      context: 'Maria shares the first picture lock with VFX for timing reference. Mike and Sarah need exact in/out points so their comps match the edit duration. Also shared to the dailies review group for the regular review cycle.',
+      context: 'Maria releases the first picture lock to Studio VFX for timing reference. Mike and Sarah need exact in/out points so their comps match the edit duration. David gets direct share for review notes.',
       grants: [
-        { toTeam: 'vfx-core', as: 'view' },
+        { toDomain: 'studio-vfx', as: 'view' },
         { to: 'creative-david', as: 'comment' },
       ],
     },
-    // Locked Cut 2: Lisa shares updated cut with David for review + Alex for studio sign-off
+    // Locked Cut 2: Lisa releases to Studio Creative + Studio VFX, shares with David
     {
       resource: { id: 'cut-ep301-lc-2', type: 'cut', domain: 'editorial' },
       label: 'EP301 Locked Cut 2',
       by: 'editorial-coordinator',
       date: '2026-02-13',
-      context: 'Lisa shares the second lock — David\'s pacing notes from the last review session are incorporated. Alex needs to see it before the marketing team can start pulling frames for the campaign.',
+      context: 'Lisa releases the second lock — David\'s pacing notes from the last review session are incorporated. Released to Studio Creative for leadership visibility and Studio VFX for continued timing work.',
       grants: [
-        { toTeam: 'studio-leadership', as: 'view' },
-        { toTeam: 'vfx-core', as: 'view' },
+        { toDomain: 'studio-creative', as: 'view' },
+        { toDomain: 'studio-vfx', as: 'view' },
         { to: 'creative-david', as: 'comment' },
       ],
     },
-    // Locked Cut 3: shared to audio for sound design + Netflix Post for oversight
+    // Locked Cut 3: released to Studio Post, Studio Creative, Studio VFX + direct share to audio
     {
       resource: { id: 'cut-ep301-lc-3', type: 'cut', domain: 'editorial' },
       label: 'EP301 Locked Cut 3',
       by: 'editorial-coordinator',
       date: '2026-02-18',
-      context: 'Lisa sends the third lock to Rachel so the sound team can begin spotting and designing the final mix. Audio needs the exact edit to place SFX, music, and ADR cues frame-accurately. Netflix Post gets it for cross-department oversight.',
+      context: 'Lisa releases the third lock. Audio supervisor gets a direct share for spotting. Released to Studio Post for cross-domain oversight, Studio Creative for leadership, and Studio VFX for final comp timing.',
       grants: [
         { to: 'audio-supervisor', as: 'view' },
-        { toTeam: 'netflix-post', as: 'view' },
-        { toTeam: 'studio-leadership', as: 'view' },
-        { toTeam: 'vfx-core', as: 'view' },
+        { toDomain: 'studio-post', as: 'view' },
+        { toDomain: 'studio-creative', as: 'view' },
+        { toDomain: 'studio-vfx', as: 'view' },
       ],
     },
-    // Final Cut: shared to Super Prod for delivery approval
+    // Final Cut: released to Studio Production, Studio Post, Studio Creative, Studio VFX + Alex direct
     {
       resource: { id: 'cut-ep301-fc', type: 'cut', domain: 'editorial' },
       label: 'EP301 Final Cut',
       by: 'editorial-coordinator',
       date: '2026-02-28',
-      context: 'Final picture and sound — all VFX final, approved for delivery. Super Prod team reviews before the EMF gets generated for downstream localization.',
+      context: 'Final picture and sound — all VFX final, approved for delivery. Released to Studio Production for delivery sign-off, Studio Post for oversight, and all Studio domains for visibility.',
       grants: [
-        { toTeam: 'super-prod', as: 'view' },
-        { toTeam: 'netflix-studio', as: 'view' },
-        { toTeam: 'netflix-post', as: 'view' },
-        { toTeam: 'studio-leadership', as: 'view' },
-        { toTeam: 'vfx-core', as: 'view' },
+        { toDomain: 'studio-production', as: 'view' },
+        { toDomain: 'studio-post', as: 'view' },
+        { toDomain: 'studio-creative', as: 'view' },
+        { toDomain: 'studio-vfx', as: 'view' },
+        { to: 'studio-alex', as: 'view' },
       ],
     },
-    // EP302 Locked Cut 1: early stage shared to dailies review
+    // EP302 Locked Cut 1: early stage — released to Studio VFX, shared with David
     {
       resource: { id: 'cut-ep302-lc-1', type: 'cut', domain: 'editorial' },
       label: 'EP302 Locked Cut 1',
       by: 'editorial-artist',
       date: '2026-02-20',
-      context: 'Maria shares the first EP302 lock for the regular dailies review. Early stage — temp sound only, no VFX yet.',
+      context: 'Maria releases the first EP302 lock to Studio VFX. Early stage — temp sound only, no VFX yet. David gets direct share for review.',
       grants: [
         { to: 'creative-david', as: 'comment' },
-        { toTeam: 'vfx-core', as: 'view' },
+        { toDomain: 'studio-vfx', as: 'view' },
       ],
     },
     {
@@ -680,9 +681,11 @@ export function buildGrants(): Grant[] {
     }
 
     for (const g of share.grants) {
-      const principal = 'to' in g
-        ? { type: 'user' as const, userId: g.to }
-        : { type: 'team' as const, teamId: (g as { toTeam: string }).toTeam }
+      const principal: PrincipalRef = 'to' in g
+        ? { type: 'user', userId: g.to }
+        : 'toTeam' in g
+          ? { type: 'team', teamId: g.toTeam }
+          : { type: 'domain', domainId: (g as { toDomain: string }).toDomain }
       const grant: Grant = {
         id: grantId(),
         resource,

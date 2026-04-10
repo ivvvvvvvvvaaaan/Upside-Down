@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { X, Users, Search, Info, Link2, AlertTriangle } from 'lucide-react'
+import { X, Users, Search, Info, Link2, AlertTriangle, Globe } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip } from './tooltip'
 import { Input } from './input'
@@ -701,6 +701,10 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     [...directEntries, ...inheritedEntries].filter(e => e.grant.principal.type === 'team'),
     [directEntries, inheritedEntries],
   )
+  const domainEntries = useMemo(() =>
+    [...directEntries, ...inheritedEntries].filter(e => e.grant.principal.type === 'domain'),
+    [directEntries, inheritedEntries],
+  )
 
   return (
     <div className="space-y-4">
@@ -758,7 +762,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
       {/* Domain access */}
       {/* Existing access */}
-      {(domainContext || userEntries.length > 0 || teamEntries.length > 0 || sharedViaCollections.length > 0) && (
+      {(domainContext || userEntries.length > 0 || teamEntries.length > 0 || domainEntries.length > 0 || sharedViaCollections.length > 0) && (
         <h3 className="text-label-1-bold text-foreground-dim">Have access</h3>
       )}
 
@@ -815,6 +819,43 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                 onUpdateShareMode={!entry.readOnly ? handleUpdateShareMode : undefined}
             />
           ))}
+        </div>
+      )}
+
+      {/* Domain releases */}
+      {domainEntries.length > 0 && (
+        <div className="space-y-0">
+          {domainEntries.map((entry) => {
+            const domainPrincipal = entry.grant.principal as { type: 'domain'; domainId: string }
+            const domain = RELEASE_DOMAINS.find(d => d.id === domainPrincipal.domainId)
+            const domainRoleOptions = addRoleOptions.filter(o => o.value === 'view' || o.value === 'comment')
+            return (
+              <div key={entry.key} className="flex items-center gap-2 px-2 py-2 rounded hover:bg-surface-2 transition-colors group">
+                <div className="w-7 h-7 rounded-full bg-surface-mid flex items-center justify-center flex-shrink-0">
+                  <Globe className="w-3.5 h-3.5 text-foreground-dim" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-body-0-regular text-foreground truncate block">
+                    Released to {domain?.name ?? domainPrincipal.domainId}
+                  </span>
+                  <span className="text-label-0-regular text-foreground-dim">{domain?.group ?? 'Domain'}</span>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <RoleSelect
+                    options={domainRoleOptions}
+                    value={entry.grant.templateId ?? 'view'}
+                    onChange={(value) => handleUpdateProfile(entry.grant.id, value as AccessProfileId)}
+                    disabled={entry.readOnly}
+                  />
+                  {!entry.readOnly && (
+                    <Button variant="icon" compact onClick={() => handleRevokeGrant(entry.grant.id)} className="opacity-0 group-hover:opacity-100">
+                      <X className="w-3 h-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
 
@@ -916,7 +957,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       )}
 
       {/* Empty state */}
-      {userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && sharedViaCollections.length === 0 && !domainContext && pendingGrants.length === 0 && (
+      {userEntries.length === 0 && teamEntries.length === 0 && domainEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && sharedViaCollections.length === 0 && !domainContext && pendingGrants.length === 0 && (
         <p className="text-body-0-regular text-foreground-dim">{emptyLabel}</p>
       )}
 
