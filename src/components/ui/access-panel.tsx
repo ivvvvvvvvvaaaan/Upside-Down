@@ -481,12 +481,14 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     const teamGrant = domainRootGrants.find(g => g.principal.type === 'team' && team && g.principal.teamId === team.id)
     if (!teamGrant) return null
     const members = team ? PERSONAS.filter(p => team.memberUserIds.includes(p.id)) : []
+    const creator = collection.createdBy ? PERSONAS.find(p => p.email === collection.createdBy) : undefined
     return {
       teamName: team?.name ?? domainFolder.name,
       roleLabel: profileLabel(teamGrant.templateId, roleGroups),
       domainName: domainFolder.name,
       domId,
       members,
+      creatorName: creator?.name,
     }
   }, [isCollectionResource, resourceRef, getCollection, getResourceGrants, roleGroups])
 
@@ -495,6 +497,10 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     const allowedProfiles = new Set(getGrantableProfiles(resourceRef))
     return roleGroupOptions(roleGroups).filter((option) => allowedProfiles.has(option.value as AccessProfileId))
   }, [resourceRef, roleGroups, getGrantableProfiles])
+
+  // Scoped visibility: what can the current user see in this access panel?
+  const canSeeFullAccessList = canAddGrants || canManageAllGrants
+  const isInOwnerDepartment = domainContext?.members.some(m => m.id === activePersona?.id) ?? false
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -871,7 +877,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                     : 'You'
                   : `${domainContext.members.length} member${domainContext.members.length !== 1 ? 's' : ''}`
                 : 'Department access'}
-              {domainContext.members.length > 0 && (
+              {domainContext.members.length > 0 && (isInOwnerDepartment || canSeeFullAccessList) && (
                 <>
                   {' '}
                   <span role="button" onClick={() => toggleGroupExpanded('domain-context')} className="text-foreground hover:underline cursor-pointer">
@@ -882,9 +888,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
             </span>
           </div>
         </div>
-        <span className="text-label-0-regular text-foreground-dim flex-shrink-0">Owners</span>
       </div>
-      {domainContextExpanded && domainContext.members.length > 0 && (
+      {domainContextExpanded && (<>
         <div className="relative ml-1">
           {domainContext.members.map((member, i) => (
             <div key={member.id} className="relative flex items-center gap-2 py-1 pl-4">
@@ -901,7 +906,10 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
             </div>
           ))}
         </div>
-      )}
+        {domainContext.creatorName && (
+          <p className="text-body-0-regular text-foreground-subtle pl-4 pt-1">Created by {domainContext.creatorName}</p>
+        )}
+      </>)}
     </div>
   )
 
@@ -1103,7 +1111,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   )
 
   const peopleEmptyState = userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && sharedViaCollections.length === 0 && pendingPeopleCount === 0 && (
-    <p className="text-body-0-regular text-foreground-subtle/50">Use the search above to share with people or teams.</p>
+    <p className="text-body-0-regular text-foreground-subtle py-2">Use the search above to share with people or teams.</p>
   )
 
   const guestLinksSection = (
@@ -1229,7 +1237,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         <p className="text-body-0-regular text-foreground-dim">You can manage shares you created. Only admins can modify shares created by others.</p>
       )}
 
-      {showTabs && (
+      {showTabs && canSeeFullAccessList && (
         <Tabs defaultValue="people" value={shareTab} onValueChange={(v) => setShareTab(v as 'people' | 'release')}>
           <TabsList>
             <Tab value="people">People {peopleCount > 0 && <span className="text-foreground-subtle ml-2">{peopleCount}</span>}</Tab>
@@ -1241,23 +1249,46 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       {/* People content — always rendered, hidden when release tab is active */}
       {(!showTabs || shareTab === 'people') && (
         <>
-          {searchSection}
+          {canSeeFullAccessList && searchSection}
           {domainContextRow}
-          <div className="pt-2">
-            {haveAccessHeader}
-            {userEntriesSection}
-            {blockedSection}
-            {teamEntriesSection}
-          </div>
-          {sharedViaCollectionsSection}
-          {pendingPeopleSection}
-          {peopleEmptyState}
-          {guestLinksSection}
+          {canSeeFullAccessList ? (
+            <div className="pt-2">
+              {haveAccessHeader}
+              {userEntriesSection}
+              {blockedSection}
+              {teamEntriesSection}
+            </div>
+          ) : (
+            /* View/Comment users: show only their own access path */
+            activePersona && (() => {
+              const myGrant = grants.find(g =>
+                g.principal.type === 'user' && g.principal.userId === activePersona.id
+              )
+              const myTeamGrant = grants.find(g =>
+                g.principal.type === 'team' && TEAMS.some(t => t.id === (g.principal as { teamId: string }).teamId && t.memberUserIds.includes(activePersona.id))
+              )
+              const grant = myGrant ?? myTeamGrant
+              if (!grant) return null
+              const grantLabel = profileLabel(grant.templateId, roleGroups)
+              const sharedBy = PERSONAS.find(p => p.id === grant.grantedByUserId)
+              return (
+                <div className="pt-2">
+                  <p className="text-body-0-regular text-foreground-subtle">
+                    Shared with you by {sharedBy?.name ?? 'someone'} · {grantLabel}
+                  </p>
+                </div>
+              )
+            })()
+          )}
+          {canSeeFullAccessList && sharedViaCollectionsSection}
+          {canSeeFullAccessList && pendingPeopleSection}
+          {canSeeFullAccessList && peopleEmptyState}
+          {canSeeFullAccessList && guestLinksSection}
         </>
       )}
 
       {/* Release content — only when release tab is active */}
-      {showTabs && shareTab === 'release' && (
+      {showTabs && canSeeFullAccessList && shareTab === 'release' && (
         <div className="space-y-4">
           {releaseChecklist}
         </div>
