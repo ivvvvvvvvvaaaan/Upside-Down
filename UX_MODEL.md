@@ -8,16 +8,13 @@ This is the mutable artifact. Each iteration proposes one change to this file.
 
 1. **Domain** -- your team boundary. Managed by CAM, not by this app. You belong to a domain (STUDIO_VFX, PRODUCTION_EDITORIAL, etc.). You see your domain's files. Domains are settled infrastructure: 15+ exist in 3 tiers (Studio/Wide/Other), each CAM-capability-gated.
 2. **Workspace** -- your domain's private file system. Folders and files. Only domain members see it.
-3. **Collection (curated)** -- a hand-picked set of assets you created.
-4. **Collection (smart)** -- a filter-based view that auto-populates (e.g., all assets tagged "Character: Elena").
-5. **Collection (workspace-bound)** -- a collection that mirrors a folder's contents, created when you share a folder.
-6. **Asset** -- an individual file (shot, video, image, audio, text).
-7. **Cut** -- a composite asset assembled from files across domains (editorial creates these).
-8. **Group** -- a saved list of people, like an address book.
-9. **Review link** -- an expiring, scoped link for external reviewers.
-10. **Inbox** -- where you see things shared with you.
-11. **Permission level** -- what you can do: view, comment, contribute, edit, manage.
-12. **Role group** -- a template of permission levels (e.g., "reviewer" = view + comment).
+3. **Collection** -- a named group of assets. How assets get in is a setting: (a) you pick them manually, (b) a filter picks them automatically, or (c) they mirror a workspace folder. One concept, one share model, regardless of how contents are populated.
+4. **Asset** -- an individual file (shot, video, image, audio, text). A cut is a composite asset assembled from files across domains.
+5. **Group** -- a saved list of people, like an address book.
+6. **Review link** -- an expiring, scoped link for external reviewers.
+7. **Inbox** -- where you see things shared with you.
+8. **Permission level** -- what you can do: view, comment, contribute, edit, manage.
+9. **Role group** -- a template of permission levels (e.g., "reviewer" = view + comment).
 
 ## Sharing model
 
