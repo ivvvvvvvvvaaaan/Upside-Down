@@ -1,188 +1,187 @@
 # Next-Gen Media Library: UX Model
 
-*Last updated: 2026-04-10. Second autoresearch pass. Corrects the domain/department conflation from the April 9 run. See RESEARCH_BRIEF.md section 5 for updated evaluation criteria.*
+*April 10, 2026*
 
----
-
-## The model in 8 lines
+## The model
 
 1. You belong to a **department**. You see your department's files.
-2. Your files live in a **workspace**. Everyone in the department sees everything in it.
+2. Your files live in a **workspace**. Everyone in the department sees everything in it. The workspace and the library are the same files -- folders to organize, search and metadata to discover.
 3. To send content outside your department, you **share** it (with a person or team) or **release** it (to an audience like Marketing or Studio Creative).
-4. Sharing uses **collections** -- named groups of assets. You pick what goes in, share the collection, control who sees what.
+4. Sharing uses **collections** -- named groups of assets. You control what goes in, who sees it, and what they can do with it.
 5. Releasing is a broadcast. You toggle audience groups on/off. Released content travels across apps.
-6. What someone can do with shared content depends on their **permission level**: view, comment, add, edit, or manage.
+6. What someone can do depends on their **permission level**: view, comment, add, edit, or manage.
 7. Content stays in your department until you share or release it. Every permission is traceable and revocable.
-8. You never release to your own audience -- that's what the workspace is for. Release goes outward.
+8. Release goes outward. You never release to your own audience -- that's what the workspace is for.
 
 ---
 
-## Concepts (what the user must learn)
+## Concepts
 
-1. **Department** -- your team. You belong to a department (VFX, Editorial, Camera, etc.). Department membership gives you full access to your department's workspace. Intra-department = open. Managed in-app by coordinators.
-2. **Workspace** -- your department's files. Folders and files. Only department members see it. Production departments have workspaces; distribution audiences don't. Every file in the workspace is an asset -- there's no "promote" or "publish" step. Drop a file in, it gets a thumbnail, it's searchable, it's taggable, it can be shared. The workspace and the library are two views of the same data: the workspace is how you organize (folder tree), the library is how you discover (search, metadata, smart collections).
-3. **Collection** -- a named group of assets. How assets get in is a setting: (a) you pick them manually, (b) a filter picks them automatically, or (c) they mirror a workspace folder. One concept, one share model, regardless of how contents are populated.
-4. **Asset** -- an individual file (shot, video, image, audio, text). A cut is a composite asset assembled from files across departments. Sharing a cut grants playback access, not constituent access.
-5. **Permission level** -- what you can do with what you received. Each level includes everything above it:
-   - **View** -- open, preview, download.
-   - **Comment** -- leave feedback, annotations, timecoded notes.
-   - **Add** -- upload new files into the collection. Cannot modify or delete existing content.
-   - **Edit** -- modify existing content, reshare with others.
-   - **Manage** -- change permissions, remove people, delete the collection.
+### Department
 
-### Features within sharing (not standalone concepts)
+Your team. VFX, Editorial, Camera, Art & Design, Audio & Sound. Department membership gives you full access to your department's workspace. Everyone inside sees everything -- including work in progress. The boundary protects against cross-department leaks, not within-department visibility.
 
-- **Groups**: saved recipient lists. Autocomplete in the share dialog. Expand to individual grants.
-- **Review links**: option in the share dialog for external reviewers. Expiring, passcode-optional, watermark-optional.
-- **Inbox**: notification surface for shares received.
-- **Role templates**: preset permission bundles (e.g., "reviewer" = view + comment). Power feature for coordinators.
+Membership is seeded from project onboarding and managed in-app by coordinators. The VFX coordinator knows who should be in the VFX workspace. A user can belong to more than one department.
 
-### Release audiences (visible in the Release tab, but not a concept to learn)
+### Workspace
 
-The Release tab shows **audience groups** organized by tier (Studio / Wide / Other). These map to CAM domains under the hood, but the user doesn't need to think about "domains" -- they see named groups like "Studio Creative," "Marketing," "Legal" and toggle them on/off. The system determines which groups appear based on the user's CAM capabilities and filters out the user's own department. The user mental model: "I'm making this available to Marketing" -- not "I'm creating a domain grant."
+Your department's files. Every file in the workspace is an asset -- no promotion step, no toggle. Drop a file in, it gets a thumbnail, it's searchable, taggable, shareable. The system handles metadata extraction and AI tagging in the background.
 
----
+Two views of the same data:
+- **Workspace view** -- folder tree. How you organize.
+- **Library view** -- search, metadata, smart collections. How you discover.
 
-## Two-layer access model
+DITs and editors work in the workspace view. Directors and supervisors browse the library view. Both see the same files. Production departments have workspaces. Distribution audiences (Marketing, Legal) don't -- they receive content via releases.
 
-### Layer 1: Department (workspace boundary)
+### Collection
 
-You belong to a department. You see your department's files. Everyone in VFX sees all VFX files -- including WIP. This is by design: intra-department visibility is the baseline. The boundary protects against cross-department leaks, not within-department visibility.
+A named group of assets. How assets get in is a setting:
+- **Manual** -- you pick them.
+- **Filtered** -- a filter picks them automatically (e.g., all assets tagged "final").
+- **Folder-linked** -- mirrors a workspace folder's contents.
 
-**Workspace = library. Same files, two lenses.** Every file in the workspace is automatically an asset. No toggle, no promotion step. The system handles thumbnailing, metadata extraction, and AI tagging in the background. The workspace view shows the folder tree (how you organize). The library view shows search, metadata, smart collections (how you discover). Users who work in folders (DITs, editors) use the workspace view. Users who discover content (directors, supervisors) use the library view. Both see the same underlying files.
+One concept. Same share model regardless of how contents are populated. Filtered collections show personalized results: "47 assets (you can access 23)." Shared collections show everyone the same contents.
 
-This eliminates the "managed vs unmanaged" split that confused users in the current Content Hub, where workspace and media library were intentionally separated. In the next-gen model, they're one product.
+### Asset
 
-**Department membership is seeded from project onboarding but managed in-app by coordinators.** When a crew member is added to the project (via the production management system or CAM onboarding), they're assigned to a department. Coordinators within the department can then adjust: move someone between departments, grant temporary cross-department access, or remove someone who's rolled off. This keeps the daily management close to the people who understand the work -- the VFX coordinator knows who should be in the VFX workspace -- while the initial assignment comes from the production pipeline.
+An individual file -- shot, video, image, audio, text. A cut is a composite asset assembled from files across departments. Sharing a cut grants playback access, not constituent access: the recipient can watch it but can't browse or download the individual source files unless those were shared separately. Each department controls when their source material is ready to share.
 
-This resolves Julie's concern: the app doesn't create CAM users or manage CAM domain capabilities. It manages department workspace access, which is a separate, lower-stakes layer. CAM remains the source of truth for tool access and domain capabilities.
+### Permission level
 
-**Multi-department membership.** A user can belong to more than one department. A VFX supervisor who also reviews editorial cuts could be in both VFX and Editorial. They see both workspaces in the sidebar. Each workspace is independent -- access in one doesn't leak to the other. When sharing or releasing, the system uses the asset's origin department to determine which release domains to filter. This is uncommon but the model handles it cleanly.
-
-### Layer 2: Share + Release (crossing the boundary)
-
-Two mechanisms for content to cross department boundaries:
-
-**Share** (People tab) -- targeted, relationship-defined.
-- Share with a person, a team, or a group.
-- App-specific grant. CR doesn't automatically see it.
-- Per-recipient settings: live/snapshot, upload enabled, expiration, permission level.
-- Smart defaults: vendor → snapshot + add + upload. Person → live + view.
-
-**Release** (Release tab) -- broadcast, audience-defined.
-- Release to one or more domains (Studio Creative, Marketing, Legal, etc.).
-- CAM-backed grant. Travels across apps. CR can honor domain releases.
-- View or Comment only. No upload, no live/snapshot toggle.
-- **Release is always outward.** You release FROM your department TO other domains. You never release to your own domain -- it's a no-op (you already have workspace access). The release UI filters out domains that map to the asset's origin department. If the asset is from VFX, "Studio VFX" doesn't appear in the pills.
-- Release capability is CAM-gated: you can only release to domains you hold the capability for. The intersection of "domains you CAN release to" and "domains that aren't your own" determines what appears.
+What you can do with what you received. Each level includes everything above it:
+- **View** -- open, preview, download.
+- **Comment** -- leave feedback, annotations, timecoded notes.
+- **Add** -- upload new files. Cannot modify or delete existing content.
+- **Edit** -- modify existing content, reshare with others.
+- **Manage** -- change permissions, remove people, delete.
 
 ---
 
-## Sharing model
+## Sharing and releasing
 
-One dialog. Two tabs for assets and cuts:
+### One dialog, two tabs
 
-**People tab:**
-- Search field for people and teams
-- Existing person/team grants with role pickers
-- Shared-via-collection grants
-- Pending additions with per-recipient settings
-- Guest links
+For assets and cuts, the share dialog has two tabs:
 
-**Release tab** (assets and cuts only):
-- Domain pills grouped by tier (Studio / Wide / Other)
-- Asset's own domain filtered out (no self-release)
-- Already-released domains shown as active (highlighted pill)
-- Click to stage/unstage pending releases
-- Existing domain release entries below pills
-- **Release presets** at the top: "Release to all Studio" and "Release to all Wide" as single-click shortcuts. One click stages all domains in that tier. Useful for final cuts that need broad visibility. Presets skip already-released domains.
+**People** -- targeted sharing.
+- Search for people and teams.
+- Per-recipient settings: live or snapshot, upload enabled, expiration, permission level.
+- Smart defaults: vendor gets snapshot + add + upload. Person gets live + view.
+- Guest links for external reviewers (expiring, passcode-optional, watermarkable).
 
-For collections and folders: People tab only (no Release tab -- domain release applies to individual assets/cuts, not containers).
+**Release** -- broadcast distribution.
+- Audience groups organized by tier: Studio, Wide, Other.
+- Toggle groups on/off. One-click presets: "Release to all Studio," "Release to all Wide."
+- View or Comment only. No upload, no live/snapshot.
+- Your own audience is filtered out -- release goes outward.
+- Released content is CAM-backed. It travels across apps.
+
+For collections and folders: People tab only. Release applies to individual assets and cuts.
+
+### How sharing works
+
+- **Single asset**: direct grant on the asset.
+- **Collection**: grant on the collection; recipients see everything in it.
+- **Folder**: creates a collection behind the scenes; grant on that.
+
+Shares are app-specific -- Creative Review doesn't automatically see them. Releases are CAM-backed -- any app that reads domain grants can honor them.
+
+### Groups, review links, and role templates
+
+These are features within sharing, not standalone concepts:
+- **Groups**: saved recipient lists. Expand to individual grants at share time. No retroactive inheritance.
+- **Review links**: expiring, scoped invitations for external reviewers. No account needed.
+- **Role templates**: preset permission bundles for coordinators ("reviewer" = view + comment).
 
 ---
 
 ## Access control
 
-- Access is additive. No deny rules. The sum of all grants = what you can see.
-- Departments are workspace boundaries. Content stays in the department unless explicitly shared or released.
-- Department membership is managed in-app by coordinators. This is separate from CAM domain capabilities.
-- Groups expand at share time into individual grants. No retroactive inheritance.
-- Filtered collections show personalized results: "47 assets (you can access 23)." Filter criteria always visible.
-- Curated/shared collections show everyone the same assets.
-- Moving a file is an access decision. Warning before moves that affect shared collections: "Moving this file removes it from 2 collections. 5 people lose access."
-- Cross-department sharing warning: "Sarah Chen is not in your department. This share will give her access to [N] assets."
-- **Access request flow.** When a user discovers an asset through search but doesn't have access, they can request it. The request goes to the asset's department coordinator (or whoever has Manage permission). The coordinator sees the request in their inbox and can approve (grants view access) or deny with a note. This is the counterpart to the "departments don't want leaks" principle -- discovery is allowed, access is gated.
-- Release blast radius: "Release to Wide makes this visible to Marketing, Legal, Globalization... (~N people)."
+Access is additive. No deny rules. The sum of all grants determines what you can see. To restrict, remove the share.
 
-## What distribution audiences see
+Three access paths, each traceable:
+1. **Department membership** -- "You're in VFX, so you see VFX workspace files."
+2. **Share** -- "Lisa shared this collection with you on Feb 13."
+3. **Release** -- "This was released to Studio Creative on Feb 18."
 
-Users whose primary CAM domain is a distribution domain (Marketing, Legal, Globalization, etc.) don't belong to a production department and don't have workspaces. Their experience:
+### Safety mechanisms
 
-- **Released content** fills their library. Assets released to their domain appear organized by smart collections (characters, scenes) and release date. This is their primary content surface.
-- **Shared collections** received via person/team shares appear in their inbox and collections list.
-- **They can comment and respond** (if given Comment permission on release or share) but they don't create content or organize files.
-- **They can request access** to content they discover through search but don't have access to.
+- **Cross-department warning**: "Sarah Chen is not in your department. This share will give her access to N assets."
+- **Release blast radius**: "Release to Wide makes this visible to Marketing, Legal, Globalization... (~N people)."
+- **File move warning**: "Moving this file removes it from 2 shared collections. 5 people lose access."
+- **Leave action**: recipients can leave a shared collection. Their grant is removed; the collection stays for everyone else.
+- **Access requests**: discover an asset through search, request access. The request goes to the department coordinator who approves or denies.
 
-The same 5 concepts apply: they understand they're in a "team" (Marketing), they browse a "library" (released content instead of a workspace), they open "collections" and "assets," they have "permission levels." The workspace concept simply doesn't appear for them.
+### Sensitive media
 
-## Ownership
+Asset-level flag set by the creating department. Even with collection access, you only see sensitive assets if you hold the sensitive media capability. Orthogonal to permission levels. Collections show: "3 of 12 assets restricted."
 
-- Department collections are owned by the department (any department member with manage access can manage).
-- Personal collections are owned by the creator.
+---
 
-## VFX turnover support
+## Turnovers
 
 A turnover is a collection pattern, not a separate entity.
 
-**How it works:** Coordinator creates a collection, adds the scoped set of plates/reference/notes, shares as snapshot with upload enabled. Vendor receives the frozen brief, uploads deliveries into the same collection.
+The coordinator creates a collection, adds the scoped set of plates, reference cuts, and notes, then shares it as a snapshot with upload enabled. The vendor receives the frozen brief and uploads deliveries into the same collection.
 
-**Re-turnovers via collection versioning:** When the cut changes, the coordinator updates the collection contents and re-shares. The system records this as a new version (v2, v3...). Each version captures what changed. The vendor sees "Version 2: +3 assets, -1 asset" with a note from the coordinator.
+When the cut changes, the coordinator updates the collection and re-shares. The system records this as a new version with a change delta. The vendor sees "Version 2: +3 assets, -1 asset" with a note from the coordinator.
 
-## Sensitive media
+---
 
-Asset-level flag, set by the creating department. Even if you have access to a collection containing a sensitive asset, you only see it if you hold the "sensitive media" CAM capability. Orthogonal to permission levels. Collections containing sensitive assets show: "3 of 12 assets restricted."
+## Distribution audiences
+
+Users in distribution domains (Marketing, Legal, Globalization) don't have workspaces. Their experience:
+
+- Released content fills their library, organized by smart collections and release date.
+- Shared collections appear in their inbox.
+- They can comment and request access but don't create content or organize files.
+
+The same 5 concepts apply. The workspace concept simply doesn't appear for them.
+
+---
 
 ## Cross-app behavior
 
-Two channels, one share dialog:
-- **Domain releases travel across apps.** CAM-backed. Content Hub, Creative Review, and future apps read the same domain grants.
-- **Person/group shares are app-specific.** CR doesn't automatically see them.
-- **Push to CR:** Release to the Creative Review domain. CR honors domain grants.
+- **Releases travel across apps.** CAM-backed. Content Hub, Creative Review, and future apps read the same grants.
+- **Shares are app-specific.** Creative Review doesn't automatically see Content Hub shares.
+- **Push to CR**: release to the Creative Review domain. One action.
 
-## Domain ≠ Department
+---
+
+## Department and domain
+
+These are different things.
 
 | | Department | Domain |
 |---|---|---|
-| **What it is** | Workspace boundary | Release channel / tool access |
-| **Managed by** | In-app (coordinators) | CAM (capabilities) |
-| **Scope** | Asset-level access within the project | Cross-app tool access and content distribution |
-| **User relationship** | "I belong to VFX" (see VFX files) | "I can release to Studio Creative" (capability) |
-| **Intra-boundary** | Open -- everyone sees everything | N/A -- domains don't have internal content |
-| **Cross-boundary** | Gated -- share or release | Release = outward only |
+| What it is | Workspace boundary | Release channel |
+| Managed by | In-app (coordinators) | CAM (capabilities) |
+| Scope | Files within a project | Cross-app content distribution |
+| User relationship | "I belong to VFX" | "I can release to Studio Creative" |
+| Internal visibility | Open -- everyone sees everything | N/A |
+| Cross-boundary | Gated by share or release | Outward only |
 
-A user belongs to a department (gets workspace access) AND holds domain capabilities (can release to specific domains). These are independent.
+Each production department maps to release domains:
 
-**Department-to-domain mapping for release filtering.** Each production department maps to one or more release domains (e.g., VFX → Studio VFX, Editorial → Production Editorial). When a user opens the Release tab on an asset from their department, the system hides the mapped domain(s). This mapping is project configuration, not a user concept. The mapping also determines auto-release rules: "all editorial finals auto-release to Studio Post" is configured per project by an admin.
+| Department | Release domain(s) |
+|---|---|
+| VFX | Studio VFX |
+| Editorial | Production Editorial, Studio Post |
+| Art & Design | Studio Creative |
+| Camera | -- (shares via collections) |
+| Audio & Sound | -- (shares via collections) |
 
-| Department | Maps to release domain(s) | Meaning |
-|---|---|---|
-| VFX | Studio VFX | VFX team's outbound release channel |
-| Editorial | Production Editorial, Studio Post | Editorial publishes to post and editorial domains |
-| Camera | (none by default) | Camera work is shared via collections, not released |
-| Art & Design | Studio Creative | Art publishes approved concepts to creative leadership |
-| Audio & Sound | (none by default) | Audio is shared directly with editorial via collections |
+Not every department releases. Some distribute exclusively via collections. The mapping is project configuration.
 
-Not every department needs a release domain. Some departments distribute exclusively via collections (person/team shares). The mapping is flexible per project.
+---
 
 ## Vocabulary
 
-| Concept | This model | CAM | Content Hub | Creative Review |
+| Concept | This model | Content Hub | Creative Review | CAM |
 |---|---|---|---|---|
 | Team boundary | Department | -- | -- | -- |
-| File space | Workspace | -- | LucidLink sync | Folders with templates |
-| Release channel | Domain | Domain | Domain | Domain |
-| Group of assets | Collection | -- | Collection | Playlist |
-| Formal distribution | Release (to domain) | -- | Release | -- |
-| Targeted collaboration | Share (to person/team) | -- | Share | Share |
-
-"Department" is a new concept introduced by the next-gen library. "Domain" is existing CAM infrastructure. They serve different purposes.
+| File space | Workspace | CDrive + LucidLink | Folders | -- |
+| Group of assets | Collection | Collection | Playlist | -- |
+| Release channel | (audience groups) | Domain | Domain | Domain |
+| Broadcast | Release | Release | -- | -- |
+| Targeted share | Share | Share | Share | -- |
