@@ -10,7 +10,12 @@ This is the mutable artifact. Each iteration proposes one change to this file.
 2. **Workspace** -- your domain's private file system. Folders and files. Only domain members see it. Production domains (STUDIO_VFX, PRODUCTION_EDITORIAL, etc.) have workspaces because they create and organize files. Distribution domains (MARKETING, LEGAL, GLOBALIZATION) don't have workspaces -- they receive content via releases and shares. Not every domain needs a workspace; the model handles both naturally.
 3. **Collection** -- a named group of assets. How assets get in is a setting: (a) you pick them manually, (b) a filter picks them automatically, or (c) they mirror a workspace folder. One concept, one share model, regardless of how contents are populated.
 4. **Asset** -- an individual file (shot, video, image, audio, text). A cut is a composite asset assembled from files across domains.
-5. **Permission level** -- what you can do with what you received: view, comment, contribute, edit, manage.
+5. **Permission level** -- what you can do with what you received. Each level includes everything above it:
+   - **View** -- open, preview, download.
+   - **Comment** -- leave feedback, annotations, timecoded notes.
+   - **Add** -- upload new files into the collection. Cannot modify or delete existing content. The critical boundary for vendor workflows.
+   - **Edit** -- modify existing content, reshare with others.
+   - **Manage** -- change permissions, remove people, delete the collection.
 
 ### Features within sharing (not standalone concepts)
 
