@@ -489,6 +489,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       domId,
       members,
       creatorName: creator?.name,
+      creatorEmail: collection.createdBy,
     }
   }, [isCollectionResource, resourceRef, getCollection, getResourceGrants, roleGroups])
 
@@ -889,27 +890,32 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           </div>
         </div>
       </div>
-      {domainContextExpanded && (<>
+      {domainContextExpanded && (
         <div className="relative ml-1">
-          {domainContext.members.map((member, i) => (
-            <div key={member.id} className="relative flex items-center gap-2 py-1 pl-4">
-              <div className="absolute left-1.5 top-0 h-1/2 border-l border-border-dim" />
-              {i < domainContext.members.length - 1 && (
-                <div className="absolute left-1.5 top-1/2 bottom-0 border-l border-border-dim" />
-              )}
-              <div className="absolute left-1.5 top-1/2 w-2.5 border-t border-border-dim" />
-              <Avatar name={member.name} size="compact" />
-              <div className="min-w-0">
-                <span className="text-body-0-regular text-foreground truncate block">{member.name}</span>
-                <span className="text-body-0-regular text-foreground-dim truncate block">{member.email}</span>
+          {domainContext.members.map((member, i) => {
+            const isCreator = member.email === domainContext.creatorEmail
+            return (
+              <div key={member.id} className="relative flex items-center justify-between gap-2 py-1 pl-4">
+                <div className="absolute left-1.5 top-0 h-1/2 border-l border-border-dim" />
+                {i < domainContext.members.length - 1 && (
+                  <div className="absolute left-1.5 top-1/2 bottom-0 border-l border-border-dim" />
+                )}
+                <div className="absolute left-1.5 top-1/2 w-2.5 border-t border-border-dim" />
+                <div className="flex items-center gap-2 min-w-0">
+                  <Avatar name={member.name} size="compact" />
+                  <div className="min-w-0">
+                    <span className="text-body-0-regular text-foreground truncate block">{member.name}</span>
+                    <span className="text-body-0-regular text-foreground-dim truncate block">{member.email}</span>
+                  </div>
+                </div>
+                <span className="text-label-0-regular text-foreground-subtle flex-shrink-0">
+                  {isCreator ? 'Creator' : domainContext.roleLabel}
+                </span>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
-        {domainContext.creatorName && (
-          <p className="text-body-0-regular text-foreground-subtle pl-4 pt-1">Created by {domainContext.creatorName}</p>
-        )}
-      </>)}
+      )}
     </div>
   )
 
