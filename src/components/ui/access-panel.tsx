@@ -14,6 +14,7 @@ import { DepartmentAvatar } from './department-avatar'
 import { Toggle } from './switch'
 import { Modal } from './modal'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
+import { Checkbox } from './checkbox'
 import { Card } from './card'
 import { domainConfigs } from '@/lib/domain-configs'
 import { useAccess, usePersona } from '@/hooks'
@@ -1091,19 +1092,17 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
               return (
                 <div key={domain.id} className="flex items-center gap-3 py-1">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={isChecked}
-                    onChange={(e) => {
-                      if (e.target.checked && !isReleased) {
+                    onChange={(checked) => {
+                      if (checked && !isReleased) {
                         handleSelectPrincipal({ type: 'domain', domainId: domain.id }, domain.name, 'domain')
-                      } else if (!e.target.checked) {
+                      } else if (!checked) {
                         if (isPending) handleRemovePending(domain.id)
                         else if (isReleased && existingEntry && !existingEntry.readOnly) handleRevokeGrant(existingEntry.grant.id)
                       }
                     }}
                     disabled={readOnly || (isReleased && existingEntry?.readOnly)}
-                    className="w-4 h-4 rounded border-border-dim accent-foreground flex-shrink-0"
                   />
                   <span className={cn(
                     'text-body-0-regular flex-1 min-w-0',
