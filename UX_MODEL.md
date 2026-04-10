@@ -24,9 +24,9 @@
 - **Inbox**: notification surface for shares received.
 - **Role templates**: preset permission bundles (e.g., "reviewer" = view + comment). Power feature for coordinators.
 
-### Infrastructure concepts (not user-facing, but load-bearing)
+### Release audiences (visible in the Release tab, but not a concept to learn)
 
-- **Domain**: CAM capability layer. Controls tool access and release channels. 15+ domains in 3 tiers (Studio/Wide/Other). Managed by CAM, not by this app. Users have domain capabilities that determine what they can release to. Domains are NOT the same as departments.
+The Release tab shows **audience groups** organized by tier (Studio / Wide / Other). These map to CAM domains under the hood, but the user doesn't need to think about "domains" -- they see named groups like "Studio Creative," "Marketing," "Legal" and toggle them on/off. The system determines which groups appear based on the user's CAM capabilities and filters out the user's own department. The user mental model: "I'm making this available to Marketing" -- not "I'm creating a domain grant."
 
 ---
 
