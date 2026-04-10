@@ -523,7 +523,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     if (domainContext) domainContext.members.forEach(m => totalPeople.add(m.id))
 
     const parts: string[] = []
-    if (deptName) parts.push(`${deptName} workspace`)
+    if (deptName) parts.push(deptName)
     if (collectionCount > 0) parts.push(`${collectionCount} collection${collectionCount !== 1 ? 's' : ''}`)
     if (totalPeople.size > 0) parts.push(`${totalPeople.size} people`)
 
