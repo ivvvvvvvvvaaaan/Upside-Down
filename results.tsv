@@ -4,3 +4,4 @@ baseline-v2	3.5	6	90	1	kept	Corrected baseline: department+domain as separate co
 f613f0d	4.9	5	95	0	kept	Reframe domain as release audiences. User sees "Marketing" not "MARKETING domain." 5 concepts.
 a9d07d8	4.95	5	97	0	kept	Explicit department-to-domain mapping. Not every dept releases; some only share via collections.
 42b9ce3	4.95	5	100	0	kept	Department membership: seeded from CAM onboarding, managed in-app by coordinators. Resolves Julie alarm.
+c0c5bea	4.55	4	100	0	reverted	Merge department into workspace. Overloads workspace with 3 roles (team, files, boundary). Conflicts with LucidLink naming.
