@@ -882,7 +882,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
             </span>
           </div>
         </div>
-        <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{domainContext.roleLabel}</span>
+        <span className="text-label-0-regular text-foreground-dim flex-shrink-0">Source</span>
       </div>
       {domainContextExpanded && domainContext.members.length > 0 && (
         <div className="relative ml-1">
@@ -1242,9 +1242,9 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       {(!showTabs || shareTab === 'people') && (
         <>
           {searchSection}
+          {domainContextRow}
           <div className="pt-2">
             {haveAccessHeader}
-            {domainContextRow}
             {userEntriesSection}
             {blockedSection}
             {teamEntriesSection}
