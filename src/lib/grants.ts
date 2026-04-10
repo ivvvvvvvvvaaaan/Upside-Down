@@ -79,6 +79,17 @@ export type Grant = {
   previousVersionId?: string
 }
 
+export type Block = {
+  id: string
+  userId: string
+  resourceId: string
+  blockedByUserId: string
+  blockedAt: string
+  reason?: string
+}
+
+export const DEFAULT_BLOCKS: Block[] = []
+
 
 /** Check if a grant is active (not revoked, not expired) */
 export function isGrantActive(grant: Grant): boolean {
@@ -295,7 +306,13 @@ export function resolveAccess(
   grants: Grant[],
   roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
   resourceDomainId?: DomainId,
+  blocks?: Block[],
 ): ResolvedAccess {
+  // Blocks take absolute priority — check before anything else
+  if (blocks && blocks.some(b => b.userId === userId && b.resourceId === resourceId)) {
+    return NO_ACCESS
+  }
+
   const user = PERSONAS.find((persona) => persona.id === userId)
   if (!user) return NO_ACCESS
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { X, Users, Search, Info, Link2, AlertTriangle, Globe } from 'lucide-react'
+import { X, Users, Search, Info, Link2, AlertTriangle, Globe, ShieldOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip } from './tooltip'
 import { Input } from './input'
@@ -16,7 +16,7 @@ import { Modal } from './modal'
 import { Card } from './card'
 import { domainConfigs } from '@/lib/domain-configs'
 import { useAccess, usePersona } from '@/hooks'
-import type { Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
+import type { Block, Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
 import { useToast } from './toast'
 import { getRoleGroup } from '@/lib/grants'
 import type { RoleGroup, ShareMode } from '@/lib/grants'
@@ -54,11 +54,12 @@ function roleGroupOptions(roleGroups: RoleGroup[]) {
     .map((rg) => ({ value: rg.id, label: rg.name }))
 }
 
-function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, onUpdateShareMode, name, subtitle, roleLabel, members, domainId, versionLabel }: {
+function GrantRow({ grant, readOnly, roleGroups, onRemove, onBlock, onUpdateProfile, onUpdateShareMode, name, subtitle, roleLabel, members, domainId, versionLabel }: {
   grant: Grant
   readOnly: boolean
   roleGroups: RoleGroup[]
   onRemove?: (grantId: string) => void
+  onBlock?: (grantId: string) => void
   onUpdateProfile?: (grantId: string, profileId: AccessProfileId) => void
   onUpdateShareMode?: (grantId: string, mode: ShareMode) => void
   name: string
@@ -113,11 +114,14 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, onUp
               options={[
                 ...roleGroupOptions(roleGroups),
                 ...(onRemove ? [{ value: '__remove__', label: 'Revoke Access', destructive: true }] : []),
+                ...(onBlock && grant.principal.type === 'user' ? [{ value: '__block__', label: 'Block User', destructive: true }] : []),
               ]}
               value={grant.templateId ?? 'view'}
               onChange={(value) => {
                 if (value === '__remove__' && onRemove) {
                   onRemove(grant.id)
+                } else if (value === '__block__' && onBlock) {
+                  onBlock(grant.id)
                 } else {
                   onUpdateProfile(grant.id, value as AccessProfileId)
                 }
@@ -350,6 +354,10 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     getCollectionShareCeiling,
     requestAccess,
     getRemainingAccessPaths,
+    blockUser,
+    unblockUser,
+    isBlocked,
+    getBlocksForResource,
   } = useAccess()
   const { showToast } = useToast()
   const { activePersona } = usePersona()
@@ -726,6 +734,27 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     updateGrantShareMode(grantId, mode)
   }
 
+  const handleBlockUser = (grantId: string) => {
+    const grant = grants.find(g => g.id === grantId)
+    if (!grant || grant.principal.type !== 'user') return
+    const targetUserId = grant.principal.userId
+    blockUser(targetUserId, resourceId)
+    markDirty()
+    revokeGrant(grantId)
+    const user = PERSONAS.find(p => p.id === targetUserId)
+    showToast(`${user?.name ?? targetUserId} has been blocked.`)
+  }
+
+  const handleUnblockUser = (block: Block) => {
+    unblockUser(block.userId, block.resourceId)
+    markDirty()
+    const user = PERSONAS.find(p => p.id === block.userId)
+    showToast(`${user?.name ?? block.userId} has been unblocked.`)
+  }
+
+  const resourceBlocks = getBlocksForResource(resourceId)
+  const isAdmin = activePersona?.isAdmin === true
+
   const allEntries = useMemo(() => {
     const directRaw = grants.map((grant) => ({
       key: `direct-${grant.id}`,
@@ -844,11 +873,45 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
             members={entry.members}
             domainId={entry.domainId}
             onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
+            onBlock={!entry.sourceName && !entry.readOnly && isAdmin && entry.grant.principal.type === 'user' ? handleBlockUser : undefined}
             onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
             onUpdateShareMode={!entry.readOnly ? handleUpdateShareMode : undefined}
             versionLabel={entry.grant.version ? `v${entry.grant.version}${entry.grant.versionNote ? ` \u2014 ${entry.grant.versionNote}` : ''}` : undefined}
           />
         ))}
+      </div>
+    </div>
+  )
+
+  const blockedSection = resourceBlocks.length > 0 && (
+    <div className="space-y-1">
+      <h3 className="text-label-1-bold text-red-400">Blocked</h3>
+      <div className="space-y-1">
+        {resourceBlocks.map((block) => {
+          const blockedUser = PERSONAS.find(p => p.id === block.userId)
+          const blockedBy = PERSONAS.find(p => p.id === block.blockedByUserId)
+          return (
+            <div key={block.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-red-500/10">
+              <div className="flex items-center gap-2 min-w-0">
+                <ShieldOff className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <div className="min-w-0">
+                  <span className="text-body-0-regular text-red-400 truncate block">
+                    Blocked: {blockedUser?.name ?? block.userId}
+                    {blockedBy ? ` (by ${blockedBy.name}, ${block.blockedAt.slice(0, 10)})` : ` (${block.blockedAt.slice(0, 10)})`}
+                  </span>
+                  {block.reason && (
+                    <span className="text-label-0-regular text-foreground-dim truncate block">{block.reason}</span>
+                  )}
+                </div>
+              </div>
+              {isAdmin && (
+                <Button variant="secondary-destructive" compact onClick={() => handleUnblockUser(block)}>
+                  Unblock
+                </Button>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -1169,6 +1232,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               {haveAccessHeader}
               {domainContextRow}
               {userEntriesSection}
+              {blockedSection}
               {teamEntriesSection}
               {sharedViaCollectionsSection}
               {pendingPeopleSection}
@@ -1193,6 +1257,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           {haveAccessHeader}
           {domainContextRow}
           {userEntriesSection}
+          {blockedSection}
           {teamEntriesSection}
           {sharedViaCollectionsSection}
           {pendingPeopleSection}

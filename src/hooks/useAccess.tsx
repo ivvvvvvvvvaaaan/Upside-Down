@@ -10,6 +10,7 @@ import type { DomainId, ProductionDomainId } from '@/components/department/types
 import {
   DEFAULT_GRANTS,
   DEFAULT_ROLE_GROUPS,
+  DEFAULT_BLOCKS,
   PROJECT_RESOURCE,
   getResourceGrants as getResourceGrantsFromList,
   buildSharesCreatedByMe,
@@ -25,6 +26,7 @@ import {
   getResourceLabel,
 } from '@/lib/grants'
 import type {
+  Block,
   Grant,
   GrantView,
   ResourceRef,
@@ -58,7 +60,7 @@ export type AccessRequest = {
 }
 
 // Re-export types consumers may need
-export type { Grant, GrantView, ResourceRef, ResourceType, PrincipalRef, AccessProfileId, RoleGroup, Permission }
+export type { Block, Grant, GrantView, ResourceRef, ResourceType, PrincipalRef, AccessProfileId, RoleGroup, Permission }
 
 export type AccessPathSource =
   | 'domain'               // user is in the same domain
@@ -180,6 +182,12 @@ interface AccessContextValue {
 
   // Revocation feedback — remaining access paths after removing specific grants
   getRemainingAccessPaths: (userId: string, resourceId: string, excludeGrantIds?: string[]) => RemainingAccessPath[]
+
+  // Blocks — per-user, per-asset overrides that prevent access regardless of grants
+  blockUser: (userId: string, resourceId: string, reason?: string) => void
+  unblockUser: (userId: string, resourceId: string) => void
+  isBlocked: (userId: string, resourceId: string) => boolean
+  getBlocksForResource: (resourceId: string) => Block[]
 }
 
 const AccessContext = createContext<AccessContextValue | null>(null)
@@ -291,6 +299,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     },
   }))
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([])
+  const [blocks, setBlocks] = useState<Block[]>(DEFAULT_BLOCKS)
 
   useEffect(() => {
     setGrantsState(loadStoredGrants())
@@ -430,6 +439,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
           currentGrants,
           roleGroups,
           collection.boundDomainId as DomainId | undefined,
+          blocks,
         ),
       ),
     )
@@ -445,6 +455,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
               currentGrants,
               roleGroups,
               collection.boundDomainId as DomainId,
+              blocks,
             ),
           ),
         )
@@ -452,7 +463,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
 
     return mergePermissionSets(...layers)
-  }, [activePersona, userId, grants, roleGroups, collectionById, ownerPermissionSet, fromResolvedAccess])
+  }, [activePersona, userId, grants, roleGroups, collectionById, ownerPermissionSet, fromResolvedAccess, blocks])
 
   const collectionAccessById = useMemo(() => {
     const accessById = new Map<string, EffectivePermissionSet>()
@@ -502,6 +513,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
           grants,
           roleGroups,
           getResourceDomainId(assetId),
+          blocks,
         )
         if (!sharerAssetAccess.permissions.includes('open')) continue
 
@@ -524,7 +536,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
 
     return accessById
-  }, [activePersona, userId, grants, roleGroups, collectionById, getResourceDomainId, toPermissionSet])
+  }, [activePersona, userId, grants, roleGroups, collectionById, getResourceDomainId, toPermissionSet, blocks])
 
   const visibleCollections = useMemo(() => {
     return collections.filter((collection) => collectionAccessById.has(collection.id))
@@ -569,6 +581,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
             currentGrants,
             roleGroups,
             resourceDomainId,
+            blocks,
           ),
         ),
       )
@@ -584,6 +597,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
             currentGrants,
             roleGroups,
             nodeToDomain.get(parentId),
+            blocks,
           ),
         ),
       )
@@ -608,6 +622,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     nodeToParent,
     nodeToDomain,
     collectionAssetAccessById,
+    blocks,
   ])
 
   const currentUserPermissionsForResource = useCallback((
@@ -802,7 +817,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     let capped = 0
     const cappedAssetIds: string[] = []
     for (const assetId of assetIds) {
-      const access = resolveAccess(userId, assetId, grants, roleGroups)
+      const access = resolveAccess(userId, assetId, grants, roleGroups, undefined, blocks)
       const sharerRank = access.effectiveProfile ? (TEMPLATE_RANK[access.effectiveProfile] ?? 0) : 0
       if (sharerRank >= intendedRank) {
         atLevel++
@@ -812,7 +827,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       }
     }
     return { total: assetIds.length, atLevel, capped, cappedAssetIds }
-  }, [collections, userId, grants, roleGroups])
+  }, [collections, userId, grants, roleGroups, blocks])
 
   // Resolve share labels: collection IDs → real collection names
   const collectionNameById = useMemo(() => {
@@ -1296,6 +1311,33 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       .sort((a, b) => b.version - a.version)
   }, [grants])
 
+  const blockUser = useCallback((targetUserId: string, resourceId: string, reason?: string) => {
+    if (!userId) return
+    setBlocks((prev) => {
+      if (prev.some(b => b.userId === targetUserId && b.resourceId === resourceId)) return prev
+      return [...prev, {
+        id: `block-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        userId: targetUserId,
+        resourceId,
+        blockedByUserId: userId,
+        blockedAt: new Date().toISOString(),
+        reason,
+      }]
+    })
+  }, [userId])
+
+  const unblockUser = useCallback((targetUserId: string, resourceId: string) => {
+    setBlocks((prev) => prev.filter(b => !(b.userId === targetUserId && b.resourceId === resourceId)))
+  }, [])
+
+  const isBlockedFn = useCallback((targetUserId: string, resourceId: string): boolean => {
+    return blocks.some(b => b.userId === targetUserId && b.resourceId === resourceId)
+  }, [blocks])
+
+  const getBlocksForResource = useCallback((resourceId: string): Block[] => {
+    return blocks.filter(b => b.resourceId === resourceId)
+  }, [blocks])
+
   const contextValue = useMemo(() => ({
     canAccess,
     filterByAccess,
@@ -1353,6 +1395,10 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     isSensitiveAsset,
     canViewSensitiveMedia,
     getRemainingAccessPaths,
+    blockUser,
+    unblockUser,
+    isBlocked: isBlockedFn,
+    getBlocksForResource,
   }), [
     canAccess,
     filterByAccess,
@@ -1410,6 +1456,10 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     isSensitiveAsset,
     canViewSensitiveMedia,
     getRemainingAccessPaths,
+    blockUser,
+    unblockUser,
+    isBlockedFn,
+    getBlocksForResource,
   ])
 
   return (
