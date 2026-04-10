@@ -88,9 +88,9 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
                 {principal.type === 'team' && members && members.length > 0 && onToggleExpanded && (
                   <>
                     {' '}
-                    <button onClick={onToggleExpanded} className="text-foreground hover:underline">
+                    <span role="button" onClick={onToggleExpanded} className="text-foreground hover:underline cursor-pointer">
                       {expanded ? 'Collapse' : 'See all'}
-                    </button>
+                    </span>
                   </>
                 )}
               </span>
@@ -874,9 +874,9 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               {domainContext.members.length > 0 && (
                 <>
                   {' '}
-                  <button onClick={() => toggleGroupExpanded('domain-context')} className="text-foreground hover:underline">
+                  <span role="button" onClick={() => toggleGroupExpanded('domain-context')} className="text-foreground hover:underline cursor-pointer">
                     {domainContextExpanded ? 'Collapse' : 'See all'}
-                  </button>
+                  </span>
                 </>
               )}
             </span>
