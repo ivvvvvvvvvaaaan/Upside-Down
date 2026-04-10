@@ -1124,31 +1124,31 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                 </div>
               )
             })}
+            {/* Pending (staged for release) */}
+            {domains.filter(d => !releasedDomainGrants.has(d.id) && pendingDomainIds.has(d.id)).map(domain => (
+              <div key={domain.id} className="flex items-center gap-2 py-1">
+                <span className="text-body-0-regular text-foreground flex-1 min-w-0">{domain.name}</span>
+                <RoleSelect
+                  options={domainRoleOptions}
+                  value={pendingGrants.find(p => p.id === domain.id)?.role ?? 'view'}
+                  onChange={(value) => setPendingGrants(prev => prev.map(p => p.id === domain.id ? { ...p, role: value as AccessProfileId } : p))}
+                />
+                <Button variant="secondary" compact onClick={() => handleRemovePending(domain.id)}>
+                  Remove
+                </Button>
+              </div>
+            ))}
             {/* Not yet released */}
-            {domains.filter(d => !releasedDomainGrants.has(d.id)).map(domain => {
-              const isPending = pendingDomainIds.has(domain.id)
-              return (
-                <div key={domain.id} className="flex items-center gap-2 py-1">
-                  <Checkbox
-                    checked={isPending}
-                    onChange={(checked) => {
-                      if (checked) {
-                        handleSelectPrincipal({ type: 'domain', domainId: domain.id }, domain.name, 'domain')
-                      } else {
-                        handleRemovePending(domain.id)
-                      }
-                    }}
-                    disabled={readOnly}
-                  />
-                  <span className={cn(
-                    'text-body-0-regular flex-1 min-w-0',
-                    isPending ? 'text-foreground' : 'text-foreground-dim',
-                  )}>
-                    {domain.name}
-                  </span>
-                </div>
-              )
-            })}
+            {domains.filter(d => !releasedDomainGrants.has(d.id) && !pendingDomainIds.has(d.id)).map(domain => (
+              <div key={domain.id} className="flex items-center gap-2 py-1">
+                <span className="text-body-0-regular text-foreground-dim flex-1 min-w-0">{domain.name}</span>
+                {!readOnly && (
+                  <Button variant="secondary" compact onClick={() => handleSelectPrincipal({ type: 'domain', domainId: domain.id }, domain.name, 'domain')}>
+                    Release
+                  </Button>
+                )}
+              </div>
+            ))}
           </div>
         )})}
       </div>
