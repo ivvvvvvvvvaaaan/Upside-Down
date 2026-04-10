@@ -167,9 +167,15 @@ Collections can exist outside department boundaries. Four scenarios:
 
 **Scenario D: Re-share chain.** An artist receives VFX comps via a shared collection. They create a NEW personal collection, add the VFX comps, and share that with someone outside the project. The VFX department never authorized this propagation.
 
-### Current model's answer
+### Resolution
 
-UNRESOLVED. Needs resolution in this loop.
+#### 1. Department coordinators see all collections containing their assets
+
+If a collection contains assets from the VFX workspace, the VFX coordinator can see that collection in a "Collections containing our assets" view in the department settings. They can see who it's shared with and can revoke the collection's access to their specific assets (without destroying the entire collection).
+
+This means: David shares a collection containing VFX comps with his agent. Sarah (VFX coordinator) sees this in her department settings: "EP301 Review (David Park) — contains 3 VFX assets, shared with 1 external person." Sarah can pull the VFX assets out of David's collection or block the agent from those assets.
+
+The coordinator doesn't own David's collection. But they retain control over their department's assets regardless of which collections they appear in.
 
 ---
 
