@@ -1080,37 +1080,55 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     const domainRoleOptions = addRoleOptions.filter(o => o.value === 'view' || o.value === 'comment')
 
     return (
-      <div className="space-y-3">
-        {domainsByGroup.map(({ group, domains }) => (
-          <div key={group} className="space-y-0.5">
-            <span className="text-label-0-bold text-foreground-dim">{group}</span>
-            {domains.map(domain => {
-              const existingEntry = releasedDomainGrants.get(domain.id)
-              const isReleased = !!existingEntry
-              const isPending = pendingDomainIds.has(domain.id)
-              const isChecked = isReleased || isPending
+      <div className="space-y-4">
+        {domainsByGroup.map(({ group, domains }) => {
+          const releasedInGroup = domains.filter(d => releasedDomainGrants.has(d.id))
+          const unreleasedInGroup = domains.filter(d => !releasedDomainGrants.has(d.id) && !pendingDomainIds.has(d.id))
+          const hasUnreleased = unreleasedInGroup.length > 0
 
-              if (isReleased && existingEntry) {
-                return (
-                  <div key={domain.id} className="flex items-center gap-3 py-1">
-                    <span className="text-body-0-regular text-foreground flex-1 min-w-0">{domain.name}</span>
-                    <RoleSelect
-                      options={domainRoleOptions}
-                      value={existingEntry.grant.templateId ?? 'view'}
-                      onChange={(value) => handleUpdateProfile(existingEntry.grant.id, value as AccessProfileId)}
-                      disabled={existingEntry.readOnly}
-                    />
-                    {!existingEntry.readOnly && (
-                      <Button variant="secondary" compact onClick={() => handleRevokeGrant(existingEntry.grant.id)}>
-                        Remove
-                      </Button>
-                    )}
-                  </div>
-                )
-              }
-
+          return (
+          <div key={group} className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-label-0-bold text-foreground-dim">{group}</span>
+              {!readOnly && hasUnreleased && (
+                <Button
+                  variant="secondary"
+                  compact
+                  onClick={() => {
+                    for (const d of unreleasedInGroup) {
+                      handleSelectPrincipal({ type: 'domain', domainId: d.id }, d.name, 'domain')
+                    }
+                  }}
+                >
+                  Release all
+                </Button>
+              )}
+            </div>
+            {/* Already released */}
+            {releasedInGroup.map(domain => {
+              const existingEntry = releasedDomainGrants.get(domain.id)!
               return (
-                <div key={domain.id} className="flex items-center gap-3 py-1">
+                <div key={domain.id} className="flex items-center gap-2 py-1">
+                  <span className="text-body-0-regular text-foreground flex-1 min-w-0">{domain.name}</span>
+                  <RoleSelect
+                    options={domainRoleOptions}
+                    value={existingEntry.grant.templateId ?? 'view'}
+                    onChange={(value) => handleUpdateProfile(existingEntry.grant.id, value as AccessProfileId)}
+                    disabled={existingEntry.readOnly}
+                  />
+                  {!existingEntry.readOnly && (
+                    <Button variant="secondary" compact onClick={() => handleRevokeGrant(existingEntry.grant.id)}>
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              )
+            })}
+            {/* Not yet released */}
+            {domains.filter(d => !releasedDomainGrants.has(d.id)).map(domain => {
+              const isPending = pendingDomainIds.has(domain.id)
+              return (
+                <div key={domain.id} className="flex items-center gap-2 py-1">
                   <Checkbox
                     checked={isPending}
                     onChange={(checked) => {
@@ -1132,7 +1150,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               )
             })}
           </div>
-        ))}
+        )})}
       </div>
     )
   })()

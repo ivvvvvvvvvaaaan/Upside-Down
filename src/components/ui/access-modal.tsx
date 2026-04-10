@@ -82,7 +82,7 @@ export function AccessModal({
         {pending && pendingHandlers ? (
           <>
             <Button variant="secondary" onClick={() => { pendingHandlers.cancel() }}>Cancel</Button>
-            <Button variant="primary" onClick={() => { pendingHandlers.confirm() }}>Add</Button>
+            <Button variant="primary" onClick={() => { pendingHandlers.confirm() }}>Confirm</Button>
           </>
         ) : dirty && dirtyHandlers ? (
           <>
