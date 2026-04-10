@@ -493,14 +493,17 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         .map((grant) => grant.principal.domainId),
     )
 
+    // Domain release only applies to assets and cuts, not collections/folders
+    const canReleaseTodomains = resourceRef?.type === 'asset' || resourceRef?.type === 'cut'
+
     return buildShareSearchResults({
       query,
       activeUserId: activePersona?.id,
       existingUserIds,
       existingTeamIds: existingGroupIds,
-      existingDomainIds,
+      existingDomainIds: canReleaseTodomains ? existingDomainIds : new Set(RELEASE_DOMAINS.map(d => d.id)),
     })
-  }, [query, activePersona, grants])
+  }, [query, activePersona, grants, resourceRef])
 
   const hasResults = results.length > 0
 
@@ -872,7 +875,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                   <span className="text-body-0-regular text-foreground truncate">{pending.name}</span>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  {isCollectionResource && (
+                  {isCollectionResource && pending.kind !== 'domain' && (
                     <>
                     <label className="flex items-center gap-1.5 mr-2 text-label-0-regular text-foreground-dim cursor-pointer">
                       <Toggle
@@ -896,7 +899,9 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                     </>
                   )}
                   <RoleSelect
-                    options={addRoleOptions}
+                    options={pending.kind === 'domain'
+                      ? addRoleOptions.filter(o => o.value === 'view' || o.value === 'comment')
+                      : addRoleOptions}
                     value={pending.role}
                     onChange={(value) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, role: value as AccessProfileId } : p))}
                   />
