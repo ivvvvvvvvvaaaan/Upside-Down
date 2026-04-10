@@ -73,9 +73,10 @@ One dialog. Two tabs for assets and cuts:
 **Release tab** (assets and cuts only):
 - Domain pills grouped by tier (Studio / Wide / Other)
 - Asset's own domain filtered out (no self-release)
-- Already-released domains shown as active
+- Already-released domains shown as active (highlighted pill)
 - Click to stage/unstage pending releases
 - Existing domain release entries below pills
+- **Release presets** at the top: "Release to all Studio" and "Release to all Wide" as single-click shortcuts. One click stages all domains in that tier. Useful for final cuts that need broad visibility. Presets skip already-released domains.
 
 For collections and folders: People tab only (no Release tab -- domain release applies to individual assets/cuts, not containers).
 
