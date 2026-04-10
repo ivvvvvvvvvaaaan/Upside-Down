@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from './button'
 import { Avatar } from './avatar'
-import { DepartmentAvatar } from './department-avatar'
+import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
 import { AccessModal } from './access-modal'
 import { useAccess, usePersona } from '@/hooks'
 import { useShareAsCollection } from '@/hooks/useShareAsCollection'
@@ -70,12 +70,14 @@ export function AccessSummary({
               <div className="flex items-center gap-2 min-w-0">
                 {row.principalType === 'team' ? (
                   <DepartmentAvatar domainId={row.domainId} size="compact" />
+                ) : row.principalType === 'domain' ? (
+                  <ReleaseDomainAvatar size="compact" />
                 ) : (
                   <Avatar name={row.name} size="compact" />
                 )}
                 <div className="min-w-0">
                   <span className="text-body-0-regular text-foreground truncate block">{row.name}</span>
-                  {row.subtitle && (
+                  {row.subtitle && row.subtitle !== row.name && (
                     <span className="text-body-0-regular text-foreground-dim truncate block">{row.subtitle}</span>
                   )}
                 </div>
