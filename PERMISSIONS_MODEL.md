@@ -205,6 +205,14 @@ For Scenario C: collections shared with others that haven't been modified in 90 
 
 Department coordinators see the same flag for department collections in their settings.
 
+#### Summary: collection governance rules
+
+1. **You can only share what you have.** Permission ceiling. No escalation.
+2. **You can only re-share if you have Edit or Manage.** View and Comment are consumption-only.
+3. **Department coordinators see everything containing their assets.** Regardless of who created the collection.
+4. **When a creator leaves, their collections are transferred or frozen.** No orphaned active shares.
+5. **Stale collections get flagged.** 90-day inactivity triggers a review prompt.
+
 ---
 
 ## Evaluation criteria
