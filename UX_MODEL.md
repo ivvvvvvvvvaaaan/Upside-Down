@@ -128,6 +128,18 @@ Two channels, one share dialog:
 
 A user belongs to a department (gets workspace access) AND holds domain capabilities (can release to specific domains). These are independent.
 
+**Department-to-domain mapping for release filtering.** Each production department maps to one or more release domains (e.g., VFX → Studio VFX, Editorial → Production Editorial). When a user opens the Release tab on an asset from their department, the system hides the mapped domain(s). This mapping is project configuration, not a user concept. The mapping also determines auto-release rules: "all editorial finals auto-release to Studio Post" is configured per project by an admin.
+
+| Department | Maps to release domain(s) | Meaning |
+|---|---|---|
+| VFX | Studio VFX | VFX team's outbound release channel |
+| Editorial | Production Editorial, Studio Post | Editorial publishes to post and editorial domains |
+| Camera | (none by default) | Camera work is shared via collections, not released |
+| Art & Design | Studio Creative | Art publishes approved concepts to creative leadership |
+| Audio & Sound | (none by default) | Audio is shared directly with editorial via collections |
+
+Not every department needs a release domain. Some departments distribute exclusively via collections (person/team shares). The mapping is flexible per project.
+
 ## Vocabulary
 
 | Concept | This model | CAM | Content Hub | Creative Review |

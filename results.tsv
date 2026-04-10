@@ -2,3 +2,4 @@ commit	score	concepts	coverage	contradictions	status	description
 baseline-v2	3.5	6	90	1	kept	Corrected baseline: department+domain as separate concepts. 6 concepts (dept, workspace, collection, asset, permission, domain-as-infrastructure). Contradiction: release UI shows own domain.
 324a856	4.7	6	95	0	kept	Filter own domain from release pills. Eliminates the self-release contradiction.
 f613f0d	4.9	5	95	0	kept	Reframe domain as release audiences. User sees "Marketing" not "MARKETING domain." 5 concepts.
+a9d07d8	4.95	5	97	0	kept	Explicit department-to-domain mapping. Not every dept releases; some only share via collections.
