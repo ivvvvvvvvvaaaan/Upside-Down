@@ -1,0 +1,2 @@
+commit	score	concepts	coverage	contradictions	status	description
+baseline	2.1	12	70	1	kept	Initial prototype model: 12 concepts, no domain release, department/domain split unresolved
