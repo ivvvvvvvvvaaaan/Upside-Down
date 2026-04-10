@@ -1,6 +1,6 @@
 # Next-Gen Media Library: UX Model
 
-This is the mutable artifact. Each iteration proposes one change to this file.
+*Last updated: 2026-04-09. Output of autoresearch loop (22 experiments, 17 kept, 5 reverted). Score: 2.1 -> 5.0. See `results.tsv` for experiment log, `RESEARCH_BRIEF.md` for inputs, `PROGRAM.md` for loop methodology. This is the current source of truth for the conceptual model. Supersedes previous ACCESS_CONTROL.md, COLLECTIONS.md, UNIFIED_COLLECTION_MODEL.md, and SHARING_PLAN.md.*
 
 ---
 

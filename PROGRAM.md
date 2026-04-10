@@ -1,5 +1,7 @@
 # UX Autoresearch Program
 
+*Created: 2026-04-09. Modeled after [autoresearch-mlx](https://github.com/trevin-creator/autoresearch-mlx). Reusable -- point at updated RESEARCH_BRIEF.md and UX_MODEL.md to re-run with new inputs.*
+
 You are running an autonomous research loop to optimize a UX model for a next-gen media library.
 
 ## The loop

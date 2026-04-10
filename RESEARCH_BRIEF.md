@@ -1,5 +1,7 @@
 # UX Autoresearch Brief
 
+*Last updated: 2026-04-09. Compiled from 3 meeting transcripts, ACCESS_CONTROL.md/COLLECTIONS.md (now superseded), prototype codebase exploration, and real Content Hub codebase analysis. This is the input dataset for the autoresearch loop. Re-run with updated inputs as user personas and requirements evolve.*
+
 This document is the "training dataset" for running an autoresearch-style optimization loop on the next-gen media library's sharing and access model. It captures everything that's fixed, everything that's been observed, and the criteria for evaluating whether a proposed UX model is better or worse.
 
 ---
