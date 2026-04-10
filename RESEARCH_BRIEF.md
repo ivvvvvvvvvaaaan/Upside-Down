@@ -329,7 +329,7 @@ These are questions that the current docs and meetings have not answered. A good
 | # | Question | Current state | Why it matters |
 |---|----------|--------------|---------------|
 | Q1 | Is "department" the same as "domain"? | **Resolved (April 10).** They are NOT the same. Department = workspace boundary (asset-level, in-app, intra-department = open access). Domain = CAM capability layer (tool access, release channels, cross-app). Content Hub has no department-based access control today -- departments are new ground. Domains are existing infrastructure for release. Both concepts are needed; they serve different layers. | The model must support both without conflating them. Department owns the workspace. Domain owns the release channel. A user belongs to a department (sees the workspace) AND has domain capabilities (can release to other domains). |
-| Q2 | Should smart collections be shareable? | Deferred ("when tagging infrastructure is ready") | If yes, filter = access gate. If no, only curated collections cross boundaries. |
+| Q2 | Should smart collections be shareable? | **Resolved.** Yes -- sharing a smart collection snapshots it into a curated collection for the recipient. The filter runs at share time, producing a fixed asset list. No "shared smart collection" concept needed. | The sharer keeps their dynamic filter; the recipient gets a stable curated collection. Re-sharing creates a new version. |
 | Q3 | What happens when you share a cut? | Open question in ACCESS_CONTROL.md | Playback-only vs full constituent access. |
 | Q4 | Should folders be visible outside departments? | Some departments want zero visibility | Discovery vs privacy tension. |
 | Q5 | Can the Foundations access component model everything we need? | Unknown; Foundations wasn't in the room | Risk: we design something their component can't support. |
@@ -341,7 +341,7 @@ These are questions that the current docs and meetings have not answered. A good
 | Q11 | What is the minimum viable access model for the VFX pilot? | Unknown | CAM won't be ready. What can we ship without it? |
 | Q12 | Should "release to domain" be a type of collection share? | New Content Hub already unifies people + domains in one dialog | If yes, domains are just another recipient type. If no, release remains a separate workflow. |
 | Q13 | How do VFX turnovers map to collections? | Prototype has snapshot + upload; missing versioning and change deltas | Turnovers are the most demanding collection use case. If collections can't model turnovers, they're incomplete. |
-| Q14 | Should auto-release be a shared smart collection? | Content Hub has auto-release config per asset type + domain | "All finals auto-release to STUDIO_POST" = shared smart collection with filter "status=final" and recipient = STUDIO_POST domain. Elegant unification or dangerous conflation? |
+| Q14 | Should auto-release be a shared smart collection? | **Resolved.** No -- auto-release stays as a project-level admin setting. Simpler, no tagging dependency. | Auto-release config is separate from the collection system. |
 
 ---
 
@@ -435,7 +435,7 @@ The newer Content Hub UI already puts **People and Domains in the same share dia
 
 1. **Domains are a recipient type, not a separate workflow.** "Release to MARKETING" is conceptually "share with the Marketing group." The grant mechanism can be the same. The language ("release") can stay -- it carries meaning and history.
 
-2. **Auto-release maps to smart collection sharing.** "All finals auto-release to STUDIO_POST" = a shared filter where tagging an asset as "final" is the release action. The system does the distribution; the user just tags.
+2. **Auto-release is a project-level admin setting** (e.g., "all editorial assets auto-release to STUDIO_POST on ingest"). Separate from the collection system -- no tagging dependency.
 
 3. **Domain tiers (Studio/Wide) are permission escalation.** Releasing to Studio is narrower than releasing to Wide. The share dialog should reflect this hierarchy -- Studio domains first, Wide second -- just as the current Content Hub already does.
 
