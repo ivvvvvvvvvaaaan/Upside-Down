@@ -857,7 +857,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
   const domainContextExpanded = expandedGroups.has('domain-context')
   const domainContextRow = domainContext && (
-    <div className="py-1">
+    <div className="bg-surface-mid rounded-lg p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <DepartmentAvatar domainId={domainContext.domId} size="sm" />
