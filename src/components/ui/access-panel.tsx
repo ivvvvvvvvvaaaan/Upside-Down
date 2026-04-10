@@ -1062,116 +1062,71 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     </div>
   )
 
-  /* ---- Release tab sub-sections ---- */
+  /* ---- Release tab: unified checklist ---- */
 
-  const domainReleasePills = !readOnly && canAddGrants && resourceRef && (resourceRef.type === 'asset' || resourceRef.type === 'cut') && (() => {
-    const releasedDomainIds = new Set(domainEntries.map(e => {
-      const p = e.grant.principal as { type: 'domain'; domainId: string }
-      return p.domainId
-    }))
+  const releaseChecklist = (() => {
+    const releasedDomainGrants = new Map<string, typeof domainEntries[number]>()
+    for (const entry of domainEntries) {
+      const p = entry.grant.principal as { type: 'domain'; domainId: string }
+      releasedDomainGrants.set(p.domainId, entry)
+    }
     const pendingDomainIds = new Set(pendingGrants.filter(p => p.kind === 'domain').map(p => p.id))
     const groups = ['Studio', 'Wide', 'Other'] as const
     const domainsByGroup = groups.map(group => ({
       group,
       domains: RELEASE_DOMAINS.filter(d => d.group === group),
     })).filter(g => g.domains.length > 0)
+    const domainRoleOptions = addRoleOptions.filter(o => o.value === 'view' || o.value === 'comment')
 
     return (
-      <div className="space-y-2">
-        <div className="space-y-1.5">
-          {domainsByGroup.map(({ group, domains }) => {
-            const unreleased = domains.filter(d => !releasedDomainIds.has(d.id) && !pendingDomainIds.has(d.id))
-            const hasUnreleased = unreleased.length > 0
-            return (
-            <div key={group} className="flex flex-wrap items-center gap-1">
-              <span className="text-label-0-regular text-foreground-subtle w-10 flex-shrink-0">{group}</span>
-              {hasUnreleased && (
-                <button
-                  onClick={() => {
-                    for (const d of unreleased) {
-                      handleSelectPrincipal({ type: 'domain', domainId: d.id }, d.name, 'domain')
-                    }
-                  }}
-                  className="text-label-0-regular text-foreground-subtle hover:text-foreground transition-colors mr-1"
-                >
-                  all
-                </button>
-              )}
-              {domains.map(domain => {
-                const isReleased = releasedDomainIds.has(domain.id)
-                const isPending = pendingDomainIds.has(domain.id)
-                return (
-                  <button
-                    key={domain.id}
-                    disabled={isReleased}
-                    onClick={() => {
-                      if (isReleased) return
-                      if (isPending) {
-                        handleRemovePending(domain.id)
-                      } else {
+      <div className="space-y-3">
+        {domainsByGroup.map(({ group, domains }) => (
+          <div key={group} className="space-y-0.5">
+            <span className="text-label-0-bold text-foreground-dim">{group}</span>
+            {domains.map(domain => {
+              const existingEntry = releasedDomainGrants.get(domain.id)
+              const isReleased = !!existingEntry
+              const isPending = pendingDomainIds.has(domain.id)
+              const isChecked = isReleased || isPending
+
+              return (
+                <div key={domain.id} className="flex items-center gap-3 py-1">
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={(e) => {
+                      if (e.target.checked && !isReleased) {
                         handleSelectPrincipal({ type: 'domain', domainId: domain.id }, domain.name, 'domain')
+                      } else if (!e.target.checked) {
+                        if (isPending) handleRemovePending(domain.id)
+                        else if (isReleased && existingEntry && !existingEntry.readOnly) handleRevokeGrant(existingEntry.grant.id)
                       }
                     }}
-                    className={cn(
-                      'px-2 py-0.5 rounded text-label-0-regular transition-colors',
-                      isReleased
-                        ? 'bg-surface-interactive text-foreground-dim cursor-default'
-                        : isPending
-                          ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/40'
-                          : 'bg-surface-mid text-foreground-dim hover:bg-surface-2 hover:text-foreground',
-                    )}
-                  >
+                    disabled={readOnly || (isReleased && existingEntry?.readOnly)}
+                    className="w-4 h-4 rounded border-border-dim accent-foreground flex-shrink-0"
+                  />
+                  <span className={cn(
+                    'text-body-0-regular flex-1 min-w-0',
+                    isChecked ? 'text-foreground' : 'text-foreground-dim',
+                  )}>
                     {domain.name}
-                  </button>
-                )
-              })}
-            </div>
-            )
-          })}
-        </div>
+                  </span>
+                  {isReleased && existingEntry && (
+                    <RoleSelect
+                      options={domainRoleOptions}
+                      value={existingEntry.grant.templateId ?? 'view'}
+                      onChange={(value) => handleUpdateProfile(existingEntry.grant.id, value as AccessProfileId)}
+                      disabled={existingEntry.readOnly}
+                    />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        ))}
       </div>
     )
   })()
-
-  const domainEntriesSection = domainEntries.length > 0 && (
-    <div className="space-y-0">
-      {domainEntries.map((entry) => {
-        const domainPrincipal = entry.grant.principal as { type: 'domain'; domainId: string }
-        const domain = RELEASE_DOMAINS.find(d => d.id === domainPrincipal.domainId)
-        const domainRoleOptions = addRoleOptions.filter(o => o.value === 'view' || o.value === 'comment')
-        return (
-          <div key={entry.key} className="flex items-center gap-2 py-1.5 transition-colors group">
-            <div className="w-7 h-7 rounded-full bg-surface-mid flex items-center justify-center flex-shrink-0">
-              <Globe className="w-3.5 h-3.5 text-foreground-dim" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <span className="text-body-0-regular text-foreground truncate block">
-                Released to {domain?.name ?? domainPrincipal.domainId}
-              </span>
-              <span className="text-label-0-regular text-foreground-dim">{domain?.group ?? 'Domain'}</span>
-            </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <RoleSelect
-                options={domainRoleOptions}
-                value={entry.grant.templateId ?? 'view'}
-                onChange={(value) => handleUpdateProfile(entry.grant.id, value as AccessProfileId)}
-                disabled={entry.readOnly}
-              />
-              {!entry.readOnly && (
-                <Button variant="secondary" compact onClick={() => handleRevokeGrant(entry.grant.id)} className="h-8">
-                  Remove
-                </Button>
-              )}
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-
-  const releaseEmptyState = domainEntries.length === 0 && pendingDomainCount === 0 && (
-    <p className="text-body-0-regular text-foreground-dim">No domains released yet. Select domains above to release.</p>
-  )
 
   return (
     <div className="space-y-4">
@@ -1207,9 +1162,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           </TabsContent>
 
           <TabsContent value="release" className="space-y-4">
-            {domainReleasePills}
-            {domainEntriesSection}
-            {releaseEmptyState}
+            {releaseChecklist}
           </TabsContent>
         </Tabs>
       ) : (
