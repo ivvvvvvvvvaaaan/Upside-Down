@@ -36,7 +36,9 @@ The Release tab shows **audience groups** organized by tier (Studio / Wide / Oth
 
 You belong to a department. You see your department's files. Everyone in VFX sees all VFX files -- including WIP. This is by design: intra-department visibility is the baseline. The boundary protects against cross-department leaks, not within-department visibility.
 
-Department membership is managed in-app (coordinators add/remove people). This is separate from CAM domain membership.
+**Department membership is seeded from project onboarding but managed in-app by coordinators.** When a crew member is added to the project (via the production management system or CAM onboarding), they're assigned to a department. Coordinators within the department can then adjust: move someone between departments, grant temporary cross-department access, or remove someone who's rolled off. This keeps the daily management close to the people who understand the work -- the VFX coordinator knows who should be in the VFX workspace -- while the initial assignment comes from the production pipeline.
+
+This resolves Julie's concern: the app doesn't create CAM users or manage CAM domain capabilities. It manages department workspace access, which is a separate, lower-stakes layer. CAM remains the source of truth for tool access and domain capabilities.
 
 ### Layer 2: Share + Release (crossing the boundary)
 
