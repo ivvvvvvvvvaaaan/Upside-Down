@@ -14,3 +14,4 @@ db61baa	4.7	5	100	0	kept	Auto-release as project-level admin setting. Matches ex
 cfc0d08	4.8	5	100	0	kept	Clarify: production domains have workspaces, distribution domains don't. Explicit, not edge case.
 06edd34	4.6	5	100	0	reverted	Simplify permissions 5->3 tiers. Loses comment-only for directors/reviewers. Real use case.
 9ccad2f	4.8	5	100	0	kept	Rename permission levels: contribute->add. Clearer names, resolves meeting friction point #10.
+ceda72f	4.9	5	100	0	kept	File-move-is-access-decision warning. Prevents F1 (hundreds of hours lost to access triaging).
