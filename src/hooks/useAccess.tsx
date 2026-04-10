@@ -102,7 +102,7 @@ interface AccessContextValue {
   visibleCollections: UserCollection[]
   getVisibleCollection: (id: string) => UserCollection | undefined
   getCollectionAssetCount: (id: string) => { total: number; accessible: number }
-  getCollectionShareCeiling: (collectionId: string, intendedProfile: AccessProfileId) => { total: number; atLevel: number; capped: number }
+  getCollectionShareCeiling: (collectionId: string, intendedProfile: AccessProfileId) => { total: number; atLevel: number; capped: number; cappedAssetIds: string[] }
   getCurrentUserGrant: (resourceId: string) => Grant | undefined
   createGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId, options?: { permissions?: Permission[]; shareMode?: ShareMode; snapshotAssetIds?: string[]; allowUpload?: boolean; expiresInDays?: number }) => void
   getGrantableProfiles: (resource: ResourceRef) => AccessProfileId[]
@@ -782,13 +782,14 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [collectionAssetCounts])
 
   /** For a collection share: how many assets can the sharer grant at the chosen level vs how many are capped below it */
-  const getCollectionShareCeiling = useCallback((collectionId: string, intendedProfile: AccessProfileId): { total: number; atLevel: number; capped: number } => {
+  const getCollectionShareCeiling = useCallback((collectionId: string, intendedProfile: AccessProfileId): { total: number; atLevel: number; capped: number; cappedAssetIds: string[] } => {
     const collection = collections.find(c => c.id === collectionId)
-    if (!collection || !userId) return { total: 0, atLevel: 0, capped: 0 }
+    if (!collection || !userId) return { total: 0, atLevel: 0, capped: 0, cappedAssetIds: [] }
     const assetIds = resolveCollectionAssetIds(collection)
     const intendedRank = TEMPLATE_RANK[intendedProfile] ?? 0
     let atLevel = 0
     let capped = 0
+    const cappedAssetIds: string[] = []
     for (const assetId of assetIds) {
       const access = resolveAccess(userId, assetId, grants, roleGroups)
       const sharerRank = access.effectiveProfile ? (TEMPLATE_RANK[access.effectiveProfile] ?? 0) : 0
@@ -796,9 +797,10 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         atLevel++
       } else if (access.hasAccess) {
         capped++
+        cappedAssetIds.push(assetId)
       }
     }
-    return { total: assetIds.length, atLevel, capped }
+    return { total: assetIds.length, atLevel, capped, cappedAssetIds }
   }, [collections, userId, grants, roleGroups])
 
   // Resolve share labels: collection IDs → real collection names
