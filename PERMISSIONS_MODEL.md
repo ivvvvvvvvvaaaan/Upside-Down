@@ -2,9 +2,13 @@
 
 *Mutable artifact for autoresearch on access control correctness.*
 
-## Current position
+## Core principle
 
-Access is additive. No deny rules. The sum of all grants = what you can see. To restrict, remove the share.
+**No access by default. Access only through explicit grants.** You see nothing unless someone gave you access -- through department membership, a share, or a release. Each grant is a specific, traceable path.
+
+When multiple grants exist for the same asset, the user gets the highest permission level across all paths. This is the standard "additive" model used across the industry (ShotGrid, Iconik, Frame.io, PIX).
+
+The additive model has one override: **blocks**. An admin can block a specific user from a specific asset, and the block wins regardless of grants.
 
 Three access paths:
 1. **Department membership** -- workspace access
