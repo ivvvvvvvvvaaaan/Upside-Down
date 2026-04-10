@@ -21,6 +21,8 @@ import {
   canAssignProfile,
   isGrantActive,
   TEMPLATE_RANK,
+  RELEASE_DOMAINS,
+  getResourceLabel,
 } from '@/lib/grants'
 import type {
   Grant,
@@ -33,8 +35,9 @@ import type {
   Permission,
   ShareMode,
 } from '@/lib/grants'
+import { PERSONAS } from '@/lib/personas'
 import { useFileTree } from './useFileTree'
-import { isUserInTeam } from '@/lib/teams'
+import { isUserInTeam, getTeamById } from '@/lib/teams'
 import {
   findNodeInTree,
   DOMAIN_FOLDER_MAP,
@@ -63,6 +66,11 @@ export type AccessPathSource =
   | 'folder-inheritance'   // inherited from a parent folder grant
   | 'collection-ripple'    // accessible via a shared collection
   | 'admin'                // admin bypass
+
+export type RemainingAccessPath = {
+  path: 'department' | 'collection' | 'direct' | 'domain' | 'folder' | 'team'
+  source: string
+}
 
 export type AccessPath = {
   source: AccessPathSource
@@ -169,6 +177,9 @@ interface AccessContextValue {
   // Sensitive media
   isSensitiveAsset: (assetId: string) => boolean
   canViewSensitiveMedia: () => boolean
+
+  // Revocation feedback — remaining access paths after removing specific grants
+  getRemainingAccessPaths: (userId: string, resourceId: string, excludeGrantIds?: string[]) => RemainingAccessPath[]
 }
 
 const AccessContext = createContext<AccessContextValue | null>(null)
@@ -1134,6 +1145,135 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return rippled
   }, [collections, grants, canAccess])
 
+  // Compute remaining access paths for a user on a resource, excluding specific grants
+  const getRemainingAccessPaths = useCallback((
+    targetUserId: string,
+    resourceId: string,
+    excludeGrantIds?: string[],
+  ): RemainingAccessPath[] => {
+    const paths: RemainingAccessPath[] = []
+    const excludeSet = new Set(excludeGrantIds ?? [])
+
+    // Filter grants: active and not in the exclude list
+    const activeGrants = grants.filter(g => isGrantActive(g) && !excludeSet.has(g.id))
+
+    // 1. Direct user grants on this resource
+    const directUserGrants = activeGrants.filter(
+      g => g.resource.id === resourceId &&
+        g.principal.type === 'user' &&
+        g.principal.userId === targetUserId,
+    )
+    for (const g of directUserGrants) {
+      const grantor = PERSONAS.find(p => p.id === g.grantedByUserId)
+      paths.push({
+        path: 'direct',
+        source: `Direct share from ${grantor?.name ?? g.grantedByUserId}`,
+      })
+    }
+
+    // 2. Team grants on this resource where user is a member
+    const teamGrants = activeGrants.filter(
+      g => g.resource.id === resourceId &&
+        g.principal.type === 'team' &&
+        isUserInTeam(targetUserId, g.principal.teamId),
+    )
+    for (const g of teamGrants) {
+      if (g.principal.type === 'team') {
+        const team = getTeamById(g.principal.teamId)
+        paths.push({
+          path: 'team',
+          source: team?.name ?? g.principal.teamId,
+        })
+      }
+    }
+
+    // 3. Domain/release grants on this resource where user is in the domain
+    for (const g of activeGrants) {
+      if (g.resource.id !== resourceId) continue
+      const p = g.principal
+      if (p.type !== 'domain') continue
+      const domain = RELEASE_DOMAINS.find(d => d.id === p.domainId)
+      if (!domain) continue
+      const userInDomain = (domain.granteeUserIds?.includes(targetUserId)) ||
+        domain.granteeTeamIds.some(teamId => isUserInTeam(targetUserId, teamId))
+      if (userInDomain) {
+        paths.push({
+          path: 'domain',
+          source: `Released to ${domain.name}`,
+        })
+      }
+    }
+
+    // 4. Folder inheritance — walk parent chain
+    let parentId = nodeToParent.get(resourceId)
+    while (parentId) {
+      const currentParentId = parentId
+      const parentGrants = activeGrants.filter(g => g.resource.id === currentParentId)
+      for (const g of parentGrants) {
+        const p = g.principal
+        let matchesUser = false
+        if (p.type === 'user') matchesUser = p.userId === targetUserId
+        else if (p.type === 'team') matchesUser = isUserInTeam(targetUserId, p.teamId)
+        else if (p.type === 'domain') {
+          const domain = RELEASE_DOMAINS.find(d => d.id === p.domainId)
+          matchesUser = !!(domain && (
+            (domain.granteeUserIds?.includes(targetUserId)) ||
+            domain.granteeTeamIds.some(teamId => isUserInTeam(targetUserId, teamId))
+          ))
+        }
+        if (matchesUser) {
+          const node = findNodeInTree(fileTree, currentParentId)
+          paths.push({
+            path: 'folder',
+            source: `Inherited from ${node?.name ?? getResourceLabel(currentParentId)}`,
+          })
+        }
+      }
+      parentId = nodeToParent.get(parentId)
+    }
+
+    // 5. Department workspace access — check if resource is in a domain the user has grants on
+    const resourceDomain = nodeToDomain.get(resourceId)
+    if (resourceDomain) {
+      const domainRootId = DOMAIN_FOLDER_MAP[resourceDomain]?.id
+      if (domainRootId && domainRootId !== resourceId) {
+        const domainRootGrants = activeGrants.filter(g => g.resource.id === domainRootId)
+        for (const g of domainRootGrants) {
+          const matchesUser =
+            (g.principal.type === 'user' && g.principal.userId === targetUserId) ||
+            (g.principal.type === 'team' && isUserInTeam(targetUserId, g.principal.teamId))
+          if (matchesUser) {
+            const domainMeta = DOMAIN_FOLDER_MAP[resourceDomain]
+            paths.push({
+              path: 'department',
+              source: `${domainMeta.name} workspace`,
+            })
+          }
+        }
+      }
+    }
+
+    // 6. Collection ripple — check if user has access via shared collections
+    for (const collection of collections) {
+      const collectionAssetIds = new Set(resolveCollectionAssetIds(collection).flatMap(getAssetIdVariants))
+      if (!collectionAssetIds.has(resourceId)) continue
+      const collGrants = activeGrants.filter(g => g.resource.id === collection.id)
+      for (const g of collGrants) {
+        const matchesUser =
+          (g.principal.type === 'user' && g.principal.userId === targetUserId) ||
+          (g.principal.type === 'team' && isUserInTeam(targetUserId, g.principal.teamId))
+        if (matchesUser) {
+          paths.push({
+            path: 'collection',
+            source: collection.name,
+          })
+        }
+      }
+    }
+
+    return paths
+  }, [grants, nodeToParent, nodeToDomain, fileTree, collections])
+
   const getVersionHistory = useCallback((resourceId: string, principalKey?: string): { version: number; note: string; date: string; grantId: string }[] => {
     return grants
       .filter(g => g.resource.id === resourceId && g.version !== undefined)
@@ -1212,6 +1352,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     restoreResourceGuestLinks,
     isSensitiveAsset,
     canViewSensitiveMedia,
+    getRemainingAccessPaths,
   }), [
     canAccess,
     filterByAccess,
@@ -1268,6 +1409,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     restoreResourceGuestLinks,
     isSensitiveAsset,
     canViewSensitiveMedia,
+    getRemainingAccessPaths,
   ])
 
   return (

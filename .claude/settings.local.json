@@ -9,7 +9,17 @@
       "Bash(npm run build:*)",
       "mcp__figma__get_metadata",
       "WebFetch(domain:www.figma.com)",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "Bash(npx next:*)",
+      "Bash(npx vitest:*)",
+      "Bash(git add:*)",
+      "Bash(git reset:*)",
+      "Bash(git checkout:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "mcp__granola__query_granola_meetings",
+      "Bash(git commit:*)",
+      "Bash(git merge:*)"
     ]
   }
 }

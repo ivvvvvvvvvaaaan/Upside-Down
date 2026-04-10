@@ -17,6 +17,7 @@ import { Card } from './card'
 import { domainConfigs } from '@/lib/domain-configs'
 import { useAccess, usePersona } from '@/hooks'
 import type { Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
+import { useToast } from './toast'
 import { getRoleGroup } from '@/lib/grants'
 import type { RoleGroup, ShareMode } from '@/lib/grants'
 import { buildAccessDisplayEntries } from './access-display'
@@ -348,7 +349,9 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     restoreResourceGuestLinks,
     getCollectionShareCeiling,
     requestAccess,
+    getRemainingAccessPaths,
   } = useAccess()
+  const { showToast } = useToast()
   const { activePersona } = usePersona()
   const [shareTab, setShareTab] = useState<'people' | 'release'>('people')
   const [query, setQuery] = useState('')
@@ -669,8 +672,48 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   handleCancelPendingRef.current = handleCancelPending
 
   const handleRevokeGrant = (grantId: string) => {
+    // Capture the grant info before revoking so we can show feedback
+    const grant = grants.find(g => g.id === grantId)
+
     markDirty()
     revokeGrant(grantId)
+
+    // Show revocation feedback
+    if (grant) {
+      const principal = grant.principal
+      let principalName: string
+      let checkUserId: string | undefined
+
+      if (principal.type === 'user') {
+        const user = PERSONAS.find(p => p.id === principal.userId)
+        principalName = user?.name ?? principal.userId
+        checkUserId = principal.userId
+      } else if (principal.type === 'team') {
+        const team = TEAMS.find(t => t.id === principal.teamId)
+        principalName = team?.name ?? principal.teamId
+        // Check access for first team member as representative
+        checkUserId = team?.memberUserIds[0]
+      } else {
+        const domain = RELEASE_DOMAINS.find(d => d.id === principal.domainId)
+        principalName = domain?.name ?? principal.domainId
+        checkUserId = undefined
+      }
+
+      if (checkUserId) {
+        const remaining = getRemainingAccessPaths(checkUserId, resourceId, [grantId])
+        if (remaining.length === 0) {
+          showToast(`Access fully revoked for ${principalName}.`)
+        } else {
+          const pathCount = remaining.length
+          showToast(
+            `Removed. ${principalName} still has access through ${pathCount} other path${pathCount === 1 ? '' : 's'}.`,
+            'info',
+          )
+        }
+      } else {
+        showToast(`Access removed for ${principalName}.`)
+      }
+    }
   }
 
   const handleUpdateProfile = (grantId: string, profileId: AccessProfileId) => {
