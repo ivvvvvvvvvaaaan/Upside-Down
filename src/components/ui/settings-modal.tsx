@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import { Search, ChevronDown, Plus, X, Info, RefreshCw } from 'lucide-react'
+import { Search, ChevronDown, ChevronRight, Plus, X, Info, RefreshCw, Shield, Lock, Unlock } from 'lucide-react'
 import { Facepile } from './facepile'
 import { Modal } from './modal'
 import { Button } from './button'
@@ -20,7 +20,7 @@ import { PROJECT_RESOURCE, profileLabel, isGrantActive } from '@/lib/grants'
 import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef, ResourceRef } from '@/lib/grants'
 import type { DomainId, ProductionDomainId } from '@/components/department/types'
 import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
-import type { DiscoveryResourceType } from '@/hooks/useAccess'
+import type { DiscoveryResourceType, UserAccessSummary } from '@/hooks/useAccess'
 
 const ALL_PERMISSIONS: { id: Permission; name: string }[] = [
   { id: 'open', name: 'Read' },
@@ -196,19 +196,97 @@ type PendingDomainInvite = {
 
 // --- People tab ---
 
+function PersonAccessDetail({
+  userId,
+  getUserAccessSummary,
+  canRemove,
+  onRevokeAll,
+}: {
+  userId: string
+  getUserAccessSummary: (userId: string) => UserAccessSummary
+  canRemove: boolean
+  onRevokeAll?: () => void
+}) {
+  const summary = useMemo(() => getUserAccessSummary(userId), [getUserAccessSummary, userId])
+
+  return (
+    <div className="bg-surface-mid rounded px-3 py-2 ml-8 mr-2 mb-1 space-y-2">
+      {summary.departmentAssets.length > 0 && (
+        <div>
+          <p className="text-label-0-bold text-foreground-dim uppercase mb-1">Department</p>
+          {summary.departmentAssets.map((d) => (
+            <p key={d.domainId} className="text-body-0-regular text-foreground">
+              {d.domainName} workspace — {d.count} assets
+            </p>
+          ))}
+        </div>
+      )}
+
+      {summary.directShares.length > 0 && (
+        <div>
+          <p className="text-label-0-bold text-foreground-dim uppercase mb-1">Direct shares</p>
+          {summary.directShares.map((s) => (
+            <div key={s.resourceId} className="flex items-center justify-between">
+              <span className="text-body-0-regular text-foreground truncate">{s.label}</span>
+              <span className="text-label-0-regular text-foreground-dim flex-shrink-0 ml-2">{s.profile}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {summary.collectionShares.length > 0 && (
+        <div>
+          <p className="text-label-0-bold text-foreground-dim uppercase mb-1">Collections</p>
+          {summary.collectionShares.map((c) => (
+            <p key={c.collectionId} className="text-body-0-regular text-foreground">
+              {c.collectionName} — {c.assetCount} assets
+            </p>
+          ))}
+        </div>
+      )}
+
+      {summary.domainReleases.length > 0 && (
+        <div>
+          <p className="text-label-0-bold text-foreground-dim uppercase mb-1">Domain releases</p>
+          {summary.domainReleases.map((r) => (
+            <p key={r.domainId} className="text-body-0-regular text-foreground">
+              {r.domainName} — {r.assetCount} assets
+            </p>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between pt-1 border-t border-border-dim">
+        <p className="text-body-0-bold text-foreground">
+          {summary.totalUniqueAssets} unique assets accessible
+        </p>
+        {canRemove && onRevokeAll && (
+          <Button variant="secondary" compact onClick={onRevokeAll}>
+            Revoke all access
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function PeopleTab({
   grants,
   directoryVersion,
   canRemoveParticipants,
   activeUserId,
   onRemoveParticipant,
+  getUserAccessSummary,
 }: {
   grants: Grant[]
   directoryVersion: number
   canRemoveParticipants: boolean
   activeUserId?: string
   onRemoveParticipant?: (userId: string) => void
+  getUserAccessSummary: (userId: string) => UserAccessSummary
 }) {
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
+
   const policyResourceIds = useMemo(
     () => new Set(['project', ...Object.values(DOMAIN_FOLDER_MAP).map((folder) => folder.id)]),
     [],
@@ -297,39 +375,70 @@ function PeopleTab({
         <p className="text-body-0-regular text-foreground-dim py-4 text-center">No participants yet.</p>
       ) : (
         <div className="space-y-1">
-          {participants.map((persona) => (
-            <div key={persona.id} className="flex items-center justify-between gap-2 py-2 px-2 rounded hover:bg-surface-3/40 transition-colors">
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <Avatar name={persona.name} size="sm" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-body-0-regular text-foreground truncate">{persona.name}</span>
-                    {persona.title && (
-                      <span className="text-label-0-regular text-foreground-dim truncate hidden sm:inline">{persona.title}</span>
+          {participants.map((persona) => {
+            const isExpanded = expandedUserId === persona.id
+            return (
+              <div key={persona.id}>
+                <div
+                  className={cn(
+                    'flex items-center justify-between gap-2 py-2 px-2 rounded cursor-pointer transition-colors',
+                    isExpanded ? 'bg-surface-3/60' : 'hover:bg-surface-3/40',
+                  )}
+                  onClick={() => setExpandedUserId(isExpanded ? null : persona.id)}
+                >
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    {isExpanded ? (
+                      <ChevronDown className="w-3 h-3 text-foreground-dim flex-shrink-0" />
+                    ) : (
+                      <ChevronRight className="w-3 h-3 text-foreground-dim flex-shrink-0" />
+                    )}
+                    <Avatar name={persona.name} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-body-0-regular text-foreground truncate">{persona.name}</span>
+                        {persona.title && (
+                          <span className="text-label-0-regular text-foreground-dim truncate hidden sm:inline">{persona.title}</span>
+                        )}
+                      </div>
+                      <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="text-right">
+                      <div className="text-label-0-regular text-foreground">{persona.primaryLabel}</div>
+                      <div className="text-label-0-regular text-foreground-dim">{persona.activityLabel}</div>
+                    </div>
+                    {canRemoveParticipants && persona.canRemove && onRemoveParticipant && (
+                      <Button
+                        variant="icon"
+                        size="compact-icon"
+                        aria-label={`Remove ${persona.name} from project access`}
+                        title="Remove access"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onRemoveParticipant(persona.id)
+                        }}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
                     )}
                   </div>
-                  <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <div className="text-right">
-                  <div className="text-label-0-regular text-foreground">{persona.primaryLabel}</div>
-                  <div className="text-label-0-regular text-foreground-dim">{persona.activityLabel}</div>
-                </div>
-                {canRemoveParticipants && persona.canRemove && onRemoveParticipant && (
-                  <Button
-                    variant="icon"
-                    size="compact-icon"
-                    aria-label={`Remove ${persona.name} from project access`}
-                    title="Remove access"
-                    onClick={() => onRemoveParticipant(persona.id)}
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
+                {isExpanded && (
+                  <PersonAccessDetail
+                    userId={persona.id}
+                    getUserAccessSummary={getUserAccessSummary}
+                    canRemove={canRemoveParticipants && persona.canRemove}
+                    onRevokeAll={
+                      canRemoveParticipants && persona.canRemove && onRemoveParticipant
+                        ? () => onRemoveParticipant(persona.id)
+                        : undefined
+                    }
+                  />
                 )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
@@ -832,6 +941,104 @@ function RoleGroupsTab({
   )
 }
 
+// --- Security tab ---
+
+function SecurityTab({
+  projectLocked,
+  projectLockInfo,
+  onLock,
+  onUnlock,
+  readOnly = false,
+}: {
+  projectLocked: boolean
+  projectLockInfo: { locked: boolean; lockedBy?: string; lockedAt?: string }
+  onLock: () => void
+  onUnlock: () => void
+  readOnly?: boolean
+}) {
+  return (
+    <div className="space-y-4">
+      <p className="text-body-0-regular text-foreground-dim">
+        Emergency controls to restrict project access during a security incident.
+      </p>
+
+      <div
+        className={cn(
+          'rounded-lg border p-4 space-y-3',
+          projectLocked
+            ? 'bg-red-500/10 border-red-500/40'
+            : 'border-border-dim',
+        )}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className={cn(
+              'mt-0.5 flex-shrink-0',
+              projectLocked ? 'text-red-400' : 'text-foreground-dim',
+            )}>
+              {projectLocked ? <Lock className="w-5 h-5" /> : <Shield className="w-5 h-5" />}
+            </div>
+            <div>
+              <p className={cn(
+                'text-body-1-bold',
+                projectLocked ? 'text-red-400' : 'text-foreground',
+              )}>
+                {projectLocked ? 'Project is locked' : 'Lock project'}
+              </p>
+              <p className="text-body-0-regular text-foreground-dim">
+                Freeze all external access. Vendors and external reviewers will lose access immediately. Internal department access continues.
+              </p>
+            </div>
+          </div>
+
+          {!projectLocked ? (
+            <button
+              onClick={onLock}
+              disabled={readOnly}
+              className={cn(
+                'relative w-10 h-6 rounded-full transition-colors flex-shrink-0',
+                'bg-surface-3',
+                readOnly && 'opacity-40 cursor-not-allowed',
+              )}
+            >
+              <div className="absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform" />
+            </button>
+          ) : (
+            <button
+              onClick={onUnlock}
+              disabled={readOnly}
+              className={cn(
+                'relative w-10 h-6 rounded-full transition-colors flex-shrink-0',
+                'bg-red-500',
+                readOnly && 'opacity-40 cursor-not-allowed',
+              )}
+            >
+              <div className="absolute top-1 left-5 w-4 h-4 rounded-full bg-white transition-transform" />
+            </button>
+          )}
+        </div>
+
+        {projectLocked && projectLockInfo.lockedBy && (
+          <div className="flex items-center justify-between pt-2 border-t border-red-500/20">
+            <p className="text-label-0-regular text-red-400">
+              Locked by {projectLockInfo.lockedBy} on {projectLockInfo.lockedAt}
+            </p>
+            <Button
+              variant="secondary"
+              compact
+              onClick={onUnlock}
+              disabled={readOnly}
+            >
+              <Unlock className="w-3 h-3 mr-1" />
+              Unlock
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // --- Main modal ---
 
 interface SettingsModalProps {
@@ -857,6 +1064,11 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     getDiscoverySettings,
     setDiscoveryEnabledForType,
     toggleDomainDiscoveryForType,
+    getUserAccessSummary,
+    projectLocked,
+    projectLockInfo,
+    lockProject,
+    unlockProject,
   } = useAccess()
   const { activePersona } = usePersona()
   const canManageProject = canEditAcl(PROJECT_RESOURCE)
@@ -981,6 +1193,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               <Tab value="people">People</Tab>
               {canManageProject && <Tab value="role-groups">Role Groups</Tab>}
               {canManageProject && <Tab value="settings">Settings</Tab>}
+              {canManageProject && <Tab value="security">Security</Tab>}
             </TabsList>
 
             <div className="flex-1 overflow-y-auto max-h-[50vh] px-1 pb-4">
@@ -990,6 +1203,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   directoryVersion={directoryVersion}
                   canRemoveParticipants={canManageProject}
                   activeUserId={activePersona?.id}
+                  getUserAccessSummary={getUserAccessSummary}
                   onRemoveParticipant={(userId) => {
                     const persona = PERSONAS.find((candidate) => candidate.id === userId)
                     const name = persona?.name ?? 'this person'
@@ -1056,6 +1270,16 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                       )
                     })}
                   </div>
+                </TabsContent>
+              )}
+              {canManageProject && (
+                <TabsContent value="security">
+                  <SecurityTab
+                    projectLocked={projectLocked}
+                    projectLockInfo={projectLockInfo}
+                    onLock={lockProject}
+                    onUnlock={unlockProject}
+                  />
                 </TabsContent>
               )}
             </div>

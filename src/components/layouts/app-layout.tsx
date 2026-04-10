@@ -66,7 +66,7 @@ export function AppLayout({ children, hideNav = false }: AppLayoutProps) {
   }, [])
 
   return (
-    <div className="h-screen bg-surface-flat flex overflow-hidden">
+    <div className="h-full bg-surface-flat flex overflow-hidden">
       {/* Primary nav rail — full height, touches top of browser */}
       {!hideNav && (
         <div className="hidden md:flex">

@@ -24,6 +24,7 @@ import {
   TEMPLATE_RANK,
   RELEASE_DOMAINS,
   getResourceLabel,
+  profileLabel,
 } from '@/lib/grants'
 import type {
   Block,
@@ -50,6 +51,7 @@ import { getAssetIdsForFolder } from '@/lib/data-client'
 import { resolveCollectionAssetIds } from '@/lib/data'
 import { SCENARIO, buildGuestLinks, SENSITIVE_ASSET_IDS } from '@/lib/scenario'
 import type { GuestLinkSeed } from '@/lib/scenario'
+import { domainConfigs } from '@/lib/domain-configs'
 
 export type AccessRequest = {
   id: string
@@ -84,6 +86,20 @@ export type AccessPath = {
   sharedByUserId?: string
   /** Can the user browse the workspace folder where this asset lives */
   canBrowseWorkspace: boolean
+}
+
+export type UserAccessSummary = {
+  departmentAssets: { domainId: string; domainName: string; count: number }[]
+  directShares: { resourceId: string; label: string; profile: string }[]
+  collectionShares: { collectionId: string; collectionName: string; assetCount: number }[]
+  domainReleases: { domainId: string; domainName: string; assetCount: number }[]
+  totalUniqueAssets: number
+}
+
+export type ProjectLockInfo = {
+  locked: boolean
+  lockedBy?: string
+  lockedAt?: string
 }
 
 export type VisibilityState = 'accessible' | 'discoverable' | 'hidden'
@@ -188,6 +204,15 @@ interface AccessContextValue {
   unblockUser: (userId: string, resourceId: string) => void
   isBlocked: (userId: string, resourceId: string) => boolean
   getBlocksForResource: (resourceId: string) => Block[]
+
+  // Per-user access summary (Phase 3)
+  getUserAccessSummary: (userId: string) => UserAccessSummary
+
+  // Project lockdown (Phase 4)
+  projectLocked: boolean
+  projectLockInfo: ProjectLockInfo
+  lockProject: () => void
+  unlockProject: () => void
 }
 
 const AccessContext = createContext<AccessContextValue | null>(null)
@@ -300,6 +325,16 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }))
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([])
   const [blocks, setBlocks] = useState<Block[]>(DEFAULT_BLOCKS)
+
+  // Project lockdown state (Phase 4)
+  const [projectLockInfo, setProjectLockInfo] = useState<ProjectLockInfo>(() => {
+    if (typeof window === 'undefined') return { locked: false }
+    try {
+      const stored = localStorage.getItem('project-locked')
+      if (stored) return JSON.parse(stored) as ProjectLockInfo
+    } catch { /* fall through */ }
+    return { locked: false }
+  })
 
   useEffect(() => {
     setGrantsState(loadStoredGrants())
@@ -708,9 +743,18 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [canEditAclFn, setRoleGroups])
 
   // canAccess: explicit grants plus collection/folder inheritance
+  // When projectLocked is true, deny access for non-production domain users
   const canAccess = useCallback((id: string): boolean => {
     if (!activePersona) return true
     if (!userId) return false
+
+    // Project lockdown: deny access for non-production users
+    if (projectLockInfo.locked) {
+      const personaDomainId = activePersona.domainId
+      if (!personaDomainId) return false
+      const domainConfig = domainConfigs[personaDomainId]
+      if (!domainConfig || domainConfig.kind !== 'production') return false
+    }
 
     const referenceNode = nodeById.get(id)
     if (isReferenceFolder(referenceNode)) {
@@ -731,6 +775,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [
     activePersona,
     userId,
+    projectLockInfo.locked,
     nodeById,
     nodeToDomain,
     nodeToParent,
@@ -1338,6 +1383,126 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return blocks.filter(b => b.resourceId === resourceId)
   }, [blocks])
 
+  // --- Per-user access summary (Phase 3) ---
+  const getUserAccessSummary = useCallback((targetUserId: string): UserAccessSummary => {
+    const uniqueAssetIds = new Set<string>()
+    const activeGrants = grants.filter(g => isGrantActive(g))
+
+    // 1. Department assets: check which domains the user belongs to
+    const targetPersona = PERSONAS.find(p => p.id === targetUserId)
+    const departmentAssets: UserAccessSummary['departmentAssets'] = []
+    if (targetPersona?.domainId) {
+      const domainId = targetPersona.domainId
+      const domainMeta = DOMAIN_FOLDER_MAP[domainId]
+      if (domainMeta) {
+        const assetIds = getAssetIdsForFolder(domainMeta.id)
+        for (const id of assetIds) uniqueAssetIds.add(id)
+        departmentAssets.push({
+          domainId,
+          domainName: domainMeta.name,
+          count: assetIds.length,
+        })
+      }
+    }
+
+    // 2. Direct shares: non-collection, non-project resource grants to the user
+    const policyResourceIds = new Set(['project', ...Object.values(DOMAIN_FOLDER_MAP).map(f => f.id)])
+    const directShares: UserAccessSummary['directShares'] = []
+    for (const grant of activeGrants) {
+      if (policyResourceIds.has(grant.resource.id)) continue
+      if (grant.resource.type === 'collection') continue
+      const isTarget =
+        (grant.principal.type === 'user' && grant.principal.userId === targetUserId) ||
+        (grant.principal.type === 'team' && isUserInTeam(targetUserId, grant.principal.teamId))
+      if (!isTarget) continue
+      uniqueAssetIds.add(grant.resource.id)
+      directShares.push({
+        resourceId: grant.resource.id,
+        label: getResourceLabel(grant.resource.id),
+        profile: grant.templateId
+          ? profileLabel(grant.templateId, roleGroups)
+          : grant.permissions.join(', '),
+      })
+    }
+
+    // 3. Collection shares: collections the user has grants on
+    const collectionShares: UserAccessSummary['collectionShares'] = []
+    const seenCollections = new Set<string>()
+    for (const grant of activeGrants) {
+      if (grant.resource.type !== 'collection') continue
+      if (seenCollections.has(grant.resource.id)) continue
+      const isTarget =
+        (grant.principal.type === 'user' && grant.principal.userId === targetUserId) ||
+        (grant.principal.type === 'team' && isUserInTeam(targetUserId, grant.principal.teamId))
+      if (!isTarget) continue
+      seenCollections.add(grant.resource.id)
+      const collection = collectionById.get(grant.resource.id)
+      if (!collection) continue
+      const assetIds = resolveCollectionAssetIds(collection)
+      for (const id of assetIds) uniqueAssetIds.add(id)
+      collectionShares.push({
+        collectionId: collection.id,
+        collectionName: collection.name,
+        assetCount: assetIds.length,
+      })
+    }
+
+    // 4. Domain releases: check which release domains the user is in
+    const domainReleases: UserAccessSummary['domainReleases'] = []
+    for (const releaseDomain of RELEASE_DOMAINS) {
+      const inDomain =
+        (releaseDomain.granteeUserIds?.includes(targetUserId)) ||
+        releaseDomain.granteeTeamIds.some(teamId => isUserInTeam(targetUserId, teamId))
+      if (!inDomain) continue
+      // Count assets released to this domain
+      const domainGrants = activeGrants.filter(
+        g => g.principal.type === 'domain' && g.principal.domainId === releaseDomain.id
+      )
+      const domainAssetIds = new Set<string>()
+      for (const g of domainGrants) {
+        domainAssetIds.add(g.resource.id)
+        uniqueAssetIds.add(g.resource.id)
+      }
+      domainReleases.push({
+        domainId: releaseDomain.id,
+        domainName: releaseDomain.name,
+        assetCount: domainAssetIds.size,
+      })
+    }
+
+    return {
+      departmentAssets,
+      directShares,
+      collectionShares,
+      domainReleases,
+      totalUniqueAssets: uniqueAssetIds.size,
+    }
+  }, [grants, roleGroups, collectionById])
+
+  // --- Project lockdown (Phase 4) ---
+  const lockProject = useCallback(() => {
+    const info: ProjectLockInfo = {
+      locked: true,
+      lockedBy: activePersona?.name ?? 'Unknown',
+      lockedAt: new Date().toISOString().slice(0, 10),
+    }
+    setProjectLockInfo(info)
+    try { localStorage.setItem('project-locked', JSON.stringify(info)) } catch { /* ignore */ }
+
+    // Expire all guest links
+    const today = new Date().toISOString().slice(0, 10)
+    setGuestLinks(prev => prev.map(link => ({
+      ...link,
+      expiresAt: today,
+    })))
+  }, [activePersona])
+
+  const unlockProject = useCallback(() => {
+    const info: ProjectLockInfo = { locked: false }
+    setProjectLockInfo(info)
+    try { localStorage.setItem('project-locked', JSON.stringify(info)) } catch { /* ignore */ }
+  }, [])
+
   const contextValue = useMemo(() => ({
     canAccess,
     filterByAccess,
@@ -1399,6 +1564,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     unblockUser,
     isBlocked: isBlockedFn,
     getBlocksForResource,
+    getUserAccessSummary,
+    projectLocked: projectLockInfo.locked,
+    projectLockInfo,
+    lockProject,
+    unlockProject,
   }), [
     canAccess,
     filterByAccess,
@@ -1460,6 +1630,10 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     unblockUser,
     isBlockedFn,
     getBlocksForResource,
+    getUserAccessSummary,
+    projectLockInfo,
+    lockProject,
+    unlockProject,
   ])
 
   return (
