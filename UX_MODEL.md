@@ -7,7 +7,7 @@ This is the mutable artifact. Each iteration proposes one change to this file.
 ## Concepts (what the user must learn)
 
 1. **Domain** -- your team. Managed by CAM, not by this app. You belong to a domain (STUDIO_VFX, PRODUCTION_EDITORIAL, etc.). You see your domain's files. Domains are settled infrastructure: 15+ exist in 3 tiers (Studio/Wide/Other), each CAM-capability-gated.
-2. **Workspace** -- your domain's private file system. Folders and files. Only domain members see it.
+2. **Workspace** -- your domain's private file system. Folders and files. Only domain members see it. Production domains (STUDIO_VFX, PRODUCTION_EDITORIAL, etc.) have workspaces because they create and organize files. Distribution domains (MARKETING, LEGAL, GLOBALIZATION) don't have workspaces -- they receive content via releases and shares. Not every domain needs a workspace; the model handles both naturally.
 3. **Collection** -- a named group of assets. How assets get in is a setting: (a) you pick them manually, (b) a filter picks them automatically, or (c) they mirror a workspace folder. One concept, one share model, regardless of how contents are populated.
 4. **Asset** -- an individual file (shot, video, image, audio, text). A cut is a composite asset assembled from files across domains.
 5. **Permission level** -- what you can do with what you received: view, comment, contribute, edit, manage.
