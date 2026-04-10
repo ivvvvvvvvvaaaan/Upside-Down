@@ -1,6 +1,6 @@
 'use client'
 
-import { profileLabel } from '@/lib/grants'
+import { profileLabel, RELEASE_DOMAINS } from '@/lib/grants'
 import type { Grant, RoleGroup, AccessProfileId } from '@/lib/grants'
 import type { DomainId } from '@/lib/data'
 import { PERSONAS } from '@/lib/personas'
@@ -17,7 +17,7 @@ export type AccessDisplayEntry = AccessDisplaySourceEntry & {
   name: string
   subtitle?: string
   roleLabel: string
-  principalType: 'user' | 'team'
+  principalType: 'user' | 'team' | 'domain'
   domainId?: DomainId
   members?: {
     id: string
@@ -86,6 +86,20 @@ export function buildAccessDisplayEntries(
           roleLabel: profileLabel(grant.templateId, roleGroups),
           principalType: 'user' as const,
           domainId: persona?.domainId,
+        }
+      }
+
+      if (grant.principal.type === 'domain') {
+        const domainPrincipal = grant.principal
+        const domain = RELEASE_DOMAINS.find((d) => d.id === domainPrincipal.domainId)
+        return {
+          ...entry,
+          name: domain ? `${domain.name} (${domain.group})` : domainPrincipal.domainId,
+          subtitle: undefined,
+          roleLabel: profileLabel(grant.templateId, roleGroups),
+          principalType: 'domain' as const,
+          domainId: undefined,
+          members: undefined,
         }
       }
 

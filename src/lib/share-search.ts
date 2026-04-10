@@ -1,4 +1,5 @@
 import type { PrincipalRef } from '@/lib/grants'
+import { RELEASE_DOMAINS } from '@/lib/grants'
 import { PERSONAS } from '@/lib/personas'
 import { TEAMS } from '@/lib/teams'
 
@@ -7,7 +8,9 @@ export type ShareSearchResult = {
   principal: PrincipalRef
   name: string
   subtitle: string
-  kind: 'user' | 'team'
+  kind: 'user' | 'team' | 'domain'
+  /** Release domain tier, for grouping in the share dialog */
+  domainGroup?: 'Studio' | 'Wide' | 'Other'
 }
 
 export function buildShareSearchResults({
@@ -15,12 +18,14 @@ export function buildShareSearchResults({
   activeUserId,
   existingUserIds,
   existingTeamIds,
-  limit = 8,
+  existingDomainIds,
+  limit = 12,
 }: {
   query: string
   activeUserId?: string | null
   existingUserIds?: Set<string>
   existingTeamIds?: Set<string>
+  existingDomainIds?: Set<string>
   limit?: number
 }): ShareSearchResult[] {
   const trimmed = query.trim().toLowerCase()
@@ -37,10 +42,10 @@ export function buildShareSearchResults({
     )
     .map((persona) => ({
       key: `user-${persona.id}`,
-      principal: { type: 'user', userId: persona.id },
+      principal: { type: 'user' as const, userId: persona.id },
       name: persona.name,
       subtitle: persona.email,
-      kind: 'user',
+      kind: 'user' as const,
     }))
 
   const teamResults: ShareSearchResult[] = TEAMS
@@ -51,11 +56,36 @@ export function buildShareSearchResults({
     )
     .map((team) => ({
       key: `team-${team.id}`,
-      principal: { type: 'team', teamId: team.id },
+      principal: { type: 'team' as const, teamId: team.id },
       name: team.name,
       subtitle: `${team.memberUserIds.length} ${team.memberUserIds.length === 1 ? 'member' : 'members'}`,
-      kind: 'team',
+      kind: 'team' as const,
     }))
 
-  return [...userResults, ...teamResults].slice(0, limit)
+  const domainResults: ShareSearchResult[] = RELEASE_DOMAINS
+    .filter((domain) =>
+      !existingDomainIds?.has(domain.id) &&
+      (
+        domain.name.toLowerCase().includes(trimmed) ||
+        domain.id.toLowerCase().includes(trimmed) ||
+        'release'.includes(trimmed) ||
+        'domain'.includes(trimmed)
+      ),
+    )
+    .map((domain) => ({
+      key: `domain-${domain.id}`,
+      principal: { type: 'domain' as const, domainId: domain.id },
+      name: domain.name,
+      subtitle: `Release to ${domain.group}`,
+      kind: 'domain' as const,
+      domainGroup: domain.group,
+    }))
+
+  // Order: people first, then teams, then domains (Studio before Wide before Other)
+  const domainOrder = { Studio: 0, Wide: 1, Other: 2 }
+  const sortedDomains = domainResults.sort((a, b) =>
+    (domainOrder[a.domainGroup!] ?? 99) - (domainOrder[b.domainGroup!] ?? 99)
+  )
+
+  return [...userResults, ...teamResults, ...sortedDomains].slice(0, limit)
 }

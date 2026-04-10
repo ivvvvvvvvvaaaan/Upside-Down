@@ -29,7 +29,7 @@ import { useUserCollections } from '@/hooks/useUserCollections'
 import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
 import { TEAMS } from '@/lib/teams'
 import { PERSONAS } from '@/lib/personas'
-import { profileLabel } from '@/lib/grants'
+import { profileLabel, RELEASE_DOMAINS } from '@/lib/grants'
 import type { DomainId } from '@/components/department/types'
 
 interface AccessPanelProps {
@@ -343,7 +343,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const { activePersona } = usePersona()
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
-  type PendingGrant = { id: string; principal: PrincipalRef; name: string; kind: 'user' | 'team'; role: AccessProfileId; shareMode: ShareMode; expires: boolean; expiresInDays: number; allowUpload: boolean }
+  type PendingGrant = { id: string; principal: PrincipalRef; name: string; kind: 'user' | 'team' | 'domain'; role: AccessProfileId; shareMode: ShareMode; expires: boolean; expiresInDays: number; allowUpload: boolean }
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
   const [showCrossDomainWarning, setShowCrossDomainWarning] = useState(false)
   const [flaggedRecipients, setFlaggedRecipients] = useState<{ name: string; reason: string }[]>([])
@@ -408,7 +408,9 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     const coveredPrincipals = new Set<string>()
     for (const ig of (inheritedGrants ?? [])) {
       const p = ig.grant.principal
-      coveredPrincipals.add(p.type === 'user' ? `user:${p.userId}` : `team:${p.teamId}`)
+      coveredPrincipals.add(
+        p.type === 'user' ? `user:${p.userId}` : p.type === 'team' ? `team:${p.teamId}` : `domain:${p.domainId}`,
+      )
       // If a team grant covers domain members, mark individual members as covered
       if (p.type === 'team') {
         const team = TEAMS.find(t => t.id === p.teamId)
@@ -426,7 +428,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       const collGrants = getResourceGrants(collection.id)
         .filter(g => isGrantActive(g))
         .filter(g => {
-          const key = g.principal.type === 'user' ? `user:${g.principal.userId}` : `team:${g.principal.teamId}`
+          const key = g.principal.type === 'user' ? `user:${g.principal.userId}` : g.principal.type === 'team' ? `team:${g.principal.teamId}` : `domain:${g.principal.domainId}`
           return !coveredPrincipals.has(key)
         })
       if (collGrants.length === 0) continue
@@ -485,32 +487,60 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         .filter((grant): grant is Grant & { principal: { type: 'team'; teamId: string } } => grant.principal.type === 'team')
         .map((grant) => grant.principal.teamId),
     )
+    const existingDomainIds = new Set(
+      grants
+        .filter((grant): grant is Grant & { principal: { type: 'domain'; domainId: string } } => grant.principal.type === 'domain')
+        .map((grant) => grant.principal.domainId),
+    )
 
     return buildShareSearchResults({
       query,
       activeUserId: activePersona?.id,
       existingUserIds,
       existingTeamIds: existingGroupIds,
+      existingDomainIds,
     })
   }, [query, activePersona, grants])
 
   const hasResults = results.length > 0
 
-  const handleSelectPrincipal = (principal: PrincipalRef, name: string, kind: 'user' | 'team') => {
+  const handleSelectPrincipal = (principal: PrincipalRef, name: string, kind: 'user' | 'team' | 'domain') => {
     if (principal.type === 'user' && principal.userId === activePersona?.id) return
     // Don't add duplicates
-    const key = principal.type === 'user' ? principal.userId : (principal as { teamId: string }).teamId
+    const key = principal.type === 'user'
+      ? principal.userId
+      : principal.type === 'team'
+        ? principal.teamId
+        : principal.domainId
     if (pendingGrants.some(p => p.id === key)) return
+
+    // Smart defaults based on recipient type
+    let defaultRole = addAsRole
+    let defaultShareMode = shareMode
+    let defaultAllowUpload = false
+
+    if (kind === 'domain') {
+      defaultRole = 'view'
+      defaultShareMode = 'live'
+    } else if (principal.type === 'user') {
+      const persona = PERSONAS.find(p => p.id === principal.userId)
+      if (persona?.role === 'vendor') {
+        defaultRole = 'add'
+        defaultShareMode = 'snapshot'
+        defaultAllowUpload = true
+      }
+    }
+
     setPendingGrants(prev => [...prev, {
       id: key,
       principal,
       name,
       kind,
-      role: addAsRole,
-      shareMode,
+      role: defaultRole,
+      shareMode: defaultShareMode,
       expires,
       expiresInDays,
-      allowUpload: false,
+      allowUpload: defaultAllowUpload,
     }])
     setQuery('')
     setShowDropdown(false)
@@ -680,7 +710,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               value={query}
               onChange={e => { setQuery(e.target.value); setShowDropdown(true) }}
               onFocus={() => { if (query.trim()) setShowDropdown(true) }}
-              placeholder="Add people or teams..."
+              placeholder="Add people, teams, or domains..."
               icon={<Search className="w-4 h-4" />}
               iconPosition="left"
             />
@@ -787,10 +817,14 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                 const principal = grant.principal
                 const name = principal.type === 'user'
                   ? PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
-                  : TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
+                  : principal.type === 'team'
+                    ? TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
+                    : (() => { const d = RELEASE_DOMAINS.find(d => d.id === principal.domainId); return d ? `${d.name} (${d.group})` : principal.domainId })()
                 const domId = principal.type === 'team'
                   ? TEAMS.find(t => t.id === principal.teamId)?.domainId
-                  : PERSONAS.find(p => p.id === (principal as { userId: string }).userId)?.domainId
+                  : principal.type === 'user'
+                    ? PERSONAS.find(p => p.id === principal.userId)?.domainId
+                    : undefined
                 const canRevoke = canManageCollection || (canShareCollection && activePersona && grant.grantedByUserId === activePersona.id)
                 return (
                   <GrantRow

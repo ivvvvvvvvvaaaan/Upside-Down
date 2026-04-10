@@ -242,6 +242,7 @@ function PeopleTab({
         continue
       }
 
+      if (grant.principal.type !== 'team') continue
       const teamId = grant.principal.teamId
       const team = TEAMS.find((candidate) => candidate.id === teamId)
       for (const memberId of team?.memberUserIds ?? []) {

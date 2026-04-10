@@ -6,7 +6,9 @@ import {
   buildGrants,
   buildLabels,
   buildRoleGroups,
+  buildReleaseDomains,
 } from '@/lib/scenario'
+import type { ReleaseDomain } from '@/lib/scenario'
 
 export type ResourceType = 'asset' | 'cut' | 'folder' | 'collection' | 'smart-collection' | 'review-set' | 'project'
 
@@ -21,6 +23,7 @@ export const PROJECT_RESOURCE: ResourceRef = { id: 'project', type: 'project' }
 export type PrincipalRef =
   | { type: 'user'; userId: string }
   | { type: 'team'; teamId: string }
+  | { type: 'domain'; domainId: string }
 
 export type AccessProfileId =
   | 'owner'
@@ -80,6 +83,7 @@ export function isGrantActive(grant: Grant): boolean {
 
 export const DEFAULT_ROLE_GROUPS: RoleGroup[] = buildRoleGroups()
 export const DEFAULT_GRANTS: Grant[] = buildGrants()
+export const RELEASE_DOMAINS: ReleaseDomain[] = buildReleaseDomains()
 
 const SEED_LABELS = buildLabels()
 
@@ -192,6 +196,13 @@ function bestTemplateId(grants: Grant[]): AccessProfileId | null {
   return best
 }
 
+function isUserInReleaseDomain(userId: string, domainId: string): boolean {
+  const domain = RELEASE_DOMAINS.find(d => d.id === domainId)
+  if (!domain) return false
+  if (domain.granteeUserIds?.includes(userId)) return true
+  return domain.granteeTeamIds.some(teamId => isUserInTeam(userId, teamId))
+}
+
 function resolveMatchingGrants(
   grants: Grant[],
   userId: string,
@@ -206,7 +217,9 @@ function resolveMatchingGrants(
       (grant) => grant.principal.type === 'user' && grant.principal.userId === userId,
     ),
     team: activeGrants.filter(
-      (grant) => grant.principal.type === 'team' && isUserInTeam(userId, grant.principal.teamId),
+      (grant) =>
+        (grant.principal.type === 'team' && isUserInTeam(userId, grant.principal.teamId)) ||
+        (grant.principal.type === 'domain' && isUserInReleaseDomain(userId, grant.principal.domainId)),
     ),
   }
 }
@@ -387,6 +400,11 @@ function principalLabel(principal: PrincipalRef): string {
   if (principal.type === 'user') {
     const user = PERSONAS.find((persona) => persona.id === principal.userId)
     return user?.name ?? principal.userId
+  }
+
+  if (principal.type === 'domain') {
+    const domain = RELEASE_DOMAINS.find(d => d.id === principal.domainId)
+    return domain ? `${domain.name} (${domain.group})` : principal.domainId
   }
 
   const team = getTeamById(principal.teamId)

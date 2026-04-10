@@ -11,7 +11,7 @@ import { CreativeReviewCard } from './creative-review-card'
 import type { Asset, DomainId } from '@/lib/data'
 import { getAssetIdVariants } from '@/lib/data'
 import type { ResourceRef, Grant, RoleGroup } from '@/lib/grants'
-import { isGrantActive, profileLabel } from '@/lib/grants'
+import { isGrantActive, profileLabel, RELEASE_DOMAINS } from '@/lib/grants'
 import { useAccess, useFileTree, usePersona, useSmartCollections, useCuts } from '@/hooks'
 import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
 import { useUserCollections } from '@/hooks/useUserCollections'
@@ -28,6 +28,23 @@ import type { RelatedAssetGroup } from '@/lib/context-relationships'
 import { Modal } from './modal'
 import { Avatar } from './avatar'
 import type { AssetTag } from '@/lib/data'
+
+function resolvePrincipalName(principal: Grant['principal']): string {
+  if (principal.type === 'user') {
+    return PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
+  }
+  if (principal.type === 'domain') {
+    const domain = RELEASE_DOMAINS.find(d => d.id === principal.domainId)
+    return domain ? `${domain.name} (${domain.group})` : principal.domainId
+  }
+  return TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
+}
+
+function resolvePrincipalKey(principal: Grant['principal']): string {
+  if (principal.type === 'user') return `user:${principal.userId}`
+  if (principal.type === 'team') return `team:${principal.teamId}`
+  return `domain:${principal.domainId}`
+}
 
 function grantCapabilities(grant: Grant, roleGroups: RoleGroup[]): string[] {
   const caps: string[] = []
@@ -64,10 +81,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName }
   // Domain/inherited access (structural — not revocable from here)
   const domainEntries = useMemo(() => {
     return inheritedGrants.map(({ grant, fromResourceName }) => {
-      const principal = grant.principal
-      const name = principal.type === 'user'
-        ? PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
-        : TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
+      const name = resolvePrincipalName(grant.principal)
       return { grant, name, source: fromResourceName }
     })
   }, [inheritedGrants])
@@ -82,7 +96,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName }
     const coveredPrincipals = new Set<string>()
     for (const { grant } of inheritedGrants) {
       const p = grant.principal
-      coveredPrincipals.add(p.type === 'user' ? `user:${p.userId}` : `team:${p.teamId}`)
+      coveredPrincipals.add(resolvePrincipalKey(p))
       if (p.type === 'team') {
         const team = TEAMS.find(t => t.id === p.teamId)
         if (team) {
@@ -99,7 +113,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName }
       const grants = getResourceGrants(collection.id)
         .filter(g => isGrantActive(g))
         .filter(g => {
-          const key = g.principal.type === 'user' ? `user:${g.principal.userId}` : `team:${g.principal.teamId}`
+          const key = resolvePrincipalKey(g.principal)
           return !coveredPrincipals.has(key)
         })
       if (grants.length === 0) continue
@@ -135,10 +149,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName }
         <div className="space-y-1">
           <h3 className="text-label-1-bold text-foreground-dim">Direct access</h3>
           {directGrants.map(grant => {
-            const principal = grant.principal
-            const name = principal.type === 'user'
-              ? PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
-              : TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
+            const name = resolvePrincipalName(grant.principal)
             return (
               <div key={grant.id} className="flex items-center justify-between gap-2 py-0.5">
                 <div className="flex items-center gap-2 min-w-0">
@@ -157,10 +168,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName }
         <div key={collection.id} className="space-y-1">
           <h3 className="text-label-1-bold text-foreground-dim">Via <a href={`/nextgen/collections/${collection.id}`} className="hover:text-foreground transition-colors underline">{collection.name}</a></h3>
           {grants.map(grant => {
-            const principal = grant.principal
-            const name = principal.type === 'user'
-              ? PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
-              : TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
+            const name = resolvePrincipalName(grant.principal)
             return (
               <div key={grant.id} className="flex items-center justify-between gap-2 py-0.5">
                 <div className="flex items-center gap-2 min-w-0">
