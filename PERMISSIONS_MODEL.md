@@ -153,12 +153,34 @@ Revoked grants are NOT deleted -- they're marked as revoked with a timestamp. Th
 - **Audit logs retained**: every view, download, share event with user, timestamp, IP. Minimum 1 year.
 - **Forensic watermarking**: per-user/per-session invisible marks on high-value content.
 
-## Evaluation criteria for this loop
+## Collection ownership risks (unresolved)
 
-1. **Revocation completeness**: if I want to cut someone off from an asset, can I do it in one action regardless of how many paths they have?
-2. **Transparency**: does the revoker see all remaining access paths?
-3. **Audit trail**: can we reconstruct who had access at any historical point?
-4. **Emergency lockdown**: can an admin freeze all access in one action?
-5. **No accidental leakage**: can the system prevent a grant from reaching someone the grantor didn't intend?
-6. **Simplicity**: does the model stay understandable? Can a coordinator reason about it?
-7. **Compatibility**: does it work with the existing share/release model without breaking it?
+### The risk
+
+Collections can exist outside department boundaries. Four scenarios:
+
+**Scenario A: Personal aggregation.** David (director, no department) creates "EP301 Review" containing cuts from Editorial, VFX comps, and art concepts. He shares this with his agent. Three departments' content is now reachable through one collection that no department coordinator controls.
+
+**Scenario B: Creator leaves.** Sarah creates "Framestore Handoff," shares it with James. Sarah leaves. The collection still exists. James still has access. Nobody on VFX can manage or revoke it.
+
+**Scenario C: Stale collection.** Lisa created a review collection 3 months ago. The assets have been superseded. The collection is still shared with 5 people. Old versions are still accessible.
+
+**Scenario D: Re-share chain.** An artist receives VFX comps via a shared collection. They create a NEW personal collection, add the VFX comps, and share that with someone outside the project. The VFX department never authorized this propagation.
+
+### Current model's answer
+
+UNRESOLVED. Needs resolution in this loop.
+
+---
+
+## Evaluation criteria
+
+1. **Revocation completeness**: can I cut someone off in one action?
+2. **Transparency**: does the revoker see all remaining paths?
+3. **Audit trail**: historical access reconstruction?
+4. **Emergency lockdown**: admin freeze in one action?
+5. **No accidental leakage**: can the system prevent unauthorized propagation?
+6. **Collection governance**: who controls a collection that crosses department boundaries?
+7. **Creator departure**: what happens when the collection creator leaves?
+8. **Re-share control**: can a department limit how their assets propagate?
+9. **Simplicity**: can a coordinator reason about the model?
