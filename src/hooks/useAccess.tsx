@@ -6,7 +6,7 @@ import { useUserCollections } from './useUserCollections'
 import type { UserCollection } from './useUserCollections'
 import type { Asset } from '@/lib/data'
 import { getAssetIdVariants } from '@/lib/data'
-import type { DepartmentId } from '@/components/department/types'
+import type { DomainId } from '@/components/department/types'
 import {
   DEFAULT_GRANTS,
   DEFAULT_ROLE_GROUPS,
@@ -36,7 +36,7 @@ import { useFileTree } from './useFileTree'
 import { isUserInTeam } from '@/lib/teams'
 import {
   findNodeInTree,
-  DEPARTMENT_FOLDER_MAP,
+  DOMAIN_FOLDER_MAP,
   isReferenceFolder,
   type UnifiedFileNode,
 } from '@/lib/workspace-data'
@@ -57,7 +57,7 @@ export type AccessRequest = {
 export type { Grant, GrantView, ResourceRef, ResourceType, PrincipalRef, AccessProfileId, RoleGroup, Permission }
 
 export type AccessPathSource =
-  | 'department'           // user is in the same department
+  | 'domain'               // user is in the same domain
   | 'direct-grant'         // explicit grant on this resource
   | 'folder-inheritance'   // inherited from a parent folder grant
   | 'collection-ripple'    // accessible via a shared collection
@@ -80,7 +80,7 @@ export type DiscoveryResourceType = 'asset' | 'cut'
 
 export type DiscoverySettings = {
   enabled: boolean
-  disabledDepartments: Set<DepartmentId>
+  disabledDomains: Set<DomainId>
 }
 
 interface AccessContextValue {
@@ -129,7 +129,7 @@ interface AccessContextValue {
   // Discovery
   getDiscoverySettings: (resourceType: DiscoveryResourceType) => DiscoverySettings
   setDiscoveryEnabledForType: (resourceType: DiscoveryResourceType, enabled: boolean) => void
-  toggleDepartmentDiscoveryForType: (resourceType: DiscoveryResourceType, deptId: DepartmentId) => void
+  toggleDomainDiscoveryForType: (resourceType: DiscoveryResourceType, domainId: DomainId) => void
   getVisibilityState: (resource: ResourceRef) => VisibilityState
   requestAccess: (resourceId: string, resourceRef: ResourceRef) => void
   accessRequests: AccessRequest[]
@@ -164,13 +164,13 @@ interface AccessContextValue {
 
 const AccessContext = createContext<AccessContextValue | null>(null)
 
-const ALL_DEPARTMENTS: DepartmentId[] = Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[]
-const DEPARTMENT_WRAPPER_IDS: Record<DepartmentId, string> = Object.fromEntries(
-  ALL_DEPARTMENTS.map(d => [d, DEPARTMENT_FOLDER_MAP[d].id])
-) as Record<DepartmentId, string>
-const ROOT_ID_TO_DEPARTMENT: Record<string, DepartmentId> = Object.fromEntries(
-  ALL_DEPARTMENTS.map((departmentId) => [DEPARTMENT_WRAPPER_IDS[departmentId], departmentId]),
-) as Record<string, DepartmentId>
+const ALL_DOMAINS: DomainId[] = Object.keys(DOMAIN_FOLDER_MAP) as DomainId[]
+const DOMAIN_WRAPPER_IDS: Record<DomainId, string> = Object.fromEntries(
+  ALL_DOMAINS.map(d => [d, DOMAIN_FOLDER_MAP[d].id])
+) as Record<DomainId, string>
+const ROOT_ID_TO_DOMAIN: Record<string, DomainId> = Object.fromEntries(
+  ALL_DOMAINS.map((domainId) => [DOMAIN_WRAPPER_IDS[domainId], domainId]),
+) as Record<string, DomainId>
 
 function mergePermissions(...permissionSets: Permission[][]): Permission[] {
   return Array.from(new Set(permissionSets.flat()))
@@ -263,11 +263,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const [discoverySettings, setDiscoverySettings] = useState<DiscoveryState>(() => ({
     asset: {
       enabled: SCENARIO.discovery.asset.enabled,
-      disabledDepartments: new Set(SCENARIO.discovery.asset.disabledDomains),
+      disabledDomains: new Set(SCENARIO.discovery.asset.disabledDomains),
     },
     cut: {
       enabled: SCENARIO.discovery.cut.enabled,
-      disabledDepartments: new Set(SCENARIO.discovery.cut.disabledDomains),
+      disabledDomains: new Set(SCENARIO.discovery.cut.disabledDomains),
     },
   }))
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([])
@@ -292,30 +292,30 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // Reactive maps derived from the live file tree (handles user-created folders)
-  const { nodeToDepartment, nodeToParent, nodeById } = useMemo(() => {
-    const deptMap = new Map<string, DepartmentId>()
+  const { nodeToDomain, nodeToParent, nodeById } = useMemo(() => {
+    const domainMap = new Map<string, DomainId>()
     const parentMap = new Map<string, string>()
     const nodeMap = new Map<string, UnifiedFileNode>()
-    const walk = (nodes: UnifiedFileNode[], dept?: DepartmentId, parentId?: string) => {
+    const walk = (nodes: UnifiedFileNode[], domain?: DomainId, parentId?: string) => {
       for (const node of nodes) {
         nodeMap.set(node.id, node)
-        if (dept) deptMap.set(node.id, dept)
+        if (domain) domainMap.set(node.id, domain)
         if (parentId) parentMap.set(node.id, parentId)
-        if (node.children) walk(node.children, dept, node.id)
+        if (node.children) walk(node.children, domain, node.id)
       }
     }
-    for (const dept of ALL_DEPARTMENTS) {
-      // Map the department root itself
-      deptMap.set(DEPARTMENT_WRAPPER_IDS[dept], dept)
+    for (const domain of ALL_DOMAINS) {
+      // Map the domain root itself
+      domainMap.set(DOMAIN_WRAPPER_IDS[domain], domain)
     }
     for (const rootNode of fileTree) {
       nodeMap.set(rootNode.id, rootNode)
-      const dept = ROOT_ID_TO_DEPARTMENT[rootNode.id]
+      const domain = ROOT_ID_TO_DOMAIN[rootNode.id]
       if (rootNode.children) {
-        walk(rootNode.children, dept, rootNode.id)
+        walk(rootNode.children, domain, rootNode.id)
       }
     }
-    return { nodeToDepartment: deptMap, nodeToParent: parentMap, nodeById: nodeMap }
+    return { nodeToDomain: domainMap, nodeToParent: parentMap, nodeById: nodeMap }
   }, [fileTree])
 
   const markShareRead = useCallback((id: string) => {
@@ -342,16 +342,16 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }))
   }, [])
 
-  const toggleDepartmentDiscoveryForType = useCallback((resourceType: DiscoveryResourceType, deptId: DepartmentId) => {
+  const toggleDomainDiscoveryForType = useCallback((resourceType: DiscoveryResourceType, domainId: DomainId) => {
     setDiscoverySettings((prev) => {
-      const next = new Set(prev[resourceType].disabledDepartments)
-      if (next.has(deptId)) next.delete(deptId)
-      else next.add(deptId)
+      const next = new Set(prev[resourceType].disabledDomains)
+      if (next.has(domainId)) next.delete(domainId)
+      else next.add(domainId)
       return {
         ...prev,
         [resourceType]: {
           ...prev[resourceType],
-          disabledDepartments: next,
+          disabledDomains: next,
         },
       }
     })
@@ -360,9 +360,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   // Resolve user for grant operations
   const userId = activePersona?.id ?? null
   const grantorUserId = activePersona?.id ?? 'system-admin'
-  const getResourceDepartmentId = useCallback((resourceId: string): DepartmentId | undefined => {
-    return nodeToDepartment.get(resourceId) ?? ROOT_ID_TO_DEPARTMENT[resourceId]
-  }, [nodeToDepartment])
+  const getResourceDomainId = useCallback((resourceId: string): DomainId | undefined => {
+    return nodeToDomain.get(resourceId) ?? ROOT_ID_TO_DOMAIN[resourceId]
+  }, [nodeToDomain])
 
   const ownerPermissionSet = useMemo<EffectivePermissionSet>(() => ({
     templateId: 'owner',
@@ -409,22 +409,22 @@ export function AccessProvider({ children }: { children: ReactNode }) {
           collection.id,
           currentGrants,
           roleGroups,
-          collection.boundDepartmentId as DepartmentId | undefined,
+          collection.boundDomainId as DomainId | undefined,
         ),
       ),
     )
 
-    if (collection.boundDepartmentId) {
-      const deptRootId = DEPARTMENT_FOLDER_MAP[collection.boundDepartmentId as DepartmentId]?.id
-      if (deptRootId) {
+    if (collection.boundDomainId) {
+      const domainRootId = DOMAIN_FOLDER_MAP[collection.boundDomainId as DomainId]?.id
+      if (domainRootId) {
         layers.push(
           fromResolvedAccess(
             resolveAccess(
               userId,
-              deptRootId,
+              domainRootId,
               currentGrants,
               roleGroups,
-              collection.boundDepartmentId as DepartmentId,
+              collection.boundDomainId as DomainId,
             ),
           ),
         )
@@ -481,7 +481,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
           assetId,
           grants,
           roleGroups,
-          getResourceDepartmentId(assetId),
+          getResourceDomainId(assetId),
         )
         if (!sharerAssetAccess.permissions.includes('open')) continue
 
@@ -504,7 +504,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
 
     return accessById
-  }, [activePersona, userId, grants, roleGroups, collectionById, getResourceDepartmentId, toPermissionSet])
+  }, [activePersona, userId, grants, roleGroups, collectionById, getResourceDomainId, toPermissionSet])
 
   const visibleCollections = useMemo(() => {
     return collections.filter((collection) => collectionAccessById.has(collection.id))
@@ -535,7 +535,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     if (!activePersona) return ownerPermissionSet
     if (!userId) return EMPTY_PERMISSION_SET
 
-    const resourceDepartmentId = resource.departmentId ?? getResourceDepartmentId(resource.id)
+    const resourceDomainId = resource.departmentId ?? getResourceDomainId(resource.id)
     const layers: EffectivePermissionSet[] = []
 
     if (resource.type === 'collection') {
@@ -548,7 +548,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
             resource.id,
             currentGrants,
             roleGroups,
-            resourceDepartmentId,
+            resourceDomainId,
           ),
         ),
       )
@@ -563,7 +563,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
             parentId,
             currentGrants,
             roleGroups,
-            nodeToDepartment.get(parentId),
+            nodeToDomain.get(parentId),
           ),
         ),
       )
@@ -582,11 +582,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     grants,
     roleGroups,
     ownerPermissionSet,
-    getResourceDepartmentId,
+    getResourceDomainId,
     getDirectCollectionPermissionSet,
     fromResolvedAccess,
     nodeToParent,
-    nodeToDepartment,
+    nodeToDomain,
     collectionAssetAccessById,
   ])
 
@@ -601,11 +601,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     if (!activePersona) return true
     if (!userId) return false
 
-    if (resource.type === 'folder' && !resource.departmentId && !nodeToDepartment.has(resource.id)) return true
+    if (resource.type === 'folder' && !resource.departmentId && !nodeToDomain.has(resource.id)) return true
 
     const permissions = getEffectivePermissionSet(resource, currentGrants).permissions
     return permissions.includes('share') || permissions.includes('edit-acl')
-  }, [activePersona, userId, grants, nodeToDepartment, getEffectivePermissionSet])
+  }, [activePersona, userId, grants, nodeToDomain, getEffectivePermissionSet])
 
   const canGrantProfileForResourceFn = useCallback((
     resource: ResourceRef,
@@ -686,22 +686,22 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       }).permissions.includes('open')
     }
 
-    // Personal workspace folders (in tree but no department) are accessible to all project members
-    if (nodeById.has(id) && !nodeToDepartment.has(id) && !nodeToParent.has(id)) return true
+    // Personal workspace folders (in tree but no domain) are accessible to all project members
+    if (nodeById.has(id) && !nodeToDomain.has(id) && !nodeToParent.has(id)) return true
     return getEffectivePermissionSet({
       id,
       type: collectionById.has(id) ? 'collection' : 'asset',
-      departmentId: getResourceDepartmentId(id),
+      departmentId: getResourceDomainId(id),
     }).permissions.includes('open')
   }, [
     activePersona,
     userId,
     nodeById,
-    nodeToDepartment,
+    nodeToDomain,
     nodeToParent,
     collectionById,
     getEffectivePermissionSet,
-    getResourceDepartmentId,
+    getResourceDomainId,
   ])
 
   const getVisibilityState = useCallback((resource: ResourceRef): VisibilityState => {
@@ -714,13 +714,13 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     if (!settings.enabled) return 'hidden'
     if (!rule.allowedRoles.includes(activePersona.role)) return 'hidden'
 
-    const departmentId = resource.departmentId
-      ?? (resource.type === 'cut' ? 'editorial' : getResourceDepartmentId(resource.id))
+    const domainId = resource.departmentId
+      ?? (resource.type === 'cut' ? 'editorial' : getResourceDomainId(resource.id))
 
-    if (departmentId && settings.disabledDepartments.has(departmentId)) return 'hidden'
+    if (domainId && settings.disabledDomains.has(domainId)) return 'hidden'
 
     return 'discoverable'
-  }, [activePersona, canAccess, discoverySettings, getResourceDepartmentId])
+  }, [activePersona, canAccess, discoverySettings, getResourceDomainId])
 
   // filterByAccess: filter assets by persona access
   // Accepts optional additionalIds for domain-specific cascade rules (e.g., cut constituents)
@@ -729,7 +729,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return assets.filter((asset) => {
       if (canAccess(asset.id)) return true
       if (asset.sourceFolderIds?.some((fid) => canAccess(fid))) return true
-      if (asset.department && canAccess(DEPARTMENT_FOLDER_MAP[asset.department].id)) return true
+      if (asset.department && canAccess(DOMAIN_FOLDER_MAP[asset.department].id)) return true
       if (additionalIds?.has(asset.id)) return true
       return false
     })
@@ -843,18 +843,18 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return getEffectivePermissionSet({
       id,
       type: collectionById.has(id) ? 'collection' : 'asset',
-      departmentId: getResourceDepartmentId(id),
+      departmentId: getResourceDomainId(id),
     }).templateId
-  }, [activePersona, collectionById, getEffectivePermissionSet, getResourceDepartmentId])
+  }, [activePersona, collectionById, getEffectivePermissionSet, getResourceDomainId])
 
   const canEditFn = useCallback((id: string): boolean => {
     if (!activePersona) return true
     return getEffectivePermissionSet({
       id,
       type: collectionById.has(id) ? 'collection' : 'asset',
-      departmentId: getResourceDepartmentId(id),
+      departmentId: getResourceDomainId(id),
     }).canEdit
-  }, [activePersona, collectionById, getEffectivePermissionSet, getResourceDepartmentId])
+  }, [activePersona, collectionById, getEffectivePermissionSet, getResourceDomainId])
 
   const getResourceGrants = useCallback((id: string): Grant[] => {
     return getResourceGrantsFromList(id, grants)
@@ -1117,7 +1117,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     canEditAcl: canEditAclFn,
     getDiscoverySettings,
     setDiscoveryEnabledForType,
-    toggleDepartmentDiscoveryForType,
+    toggleDomainDiscoveryForType,
     getVisibilityState,
     requestAccess,
     accessRequests,
@@ -1169,7 +1169,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     canEditAclFn,
     getDiscoverySettings,
     setDiscoveryEnabledForType,
-    toggleDepartmentDiscoveryForType,
+    toggleDomainDiscoveryForType,
     getVisibilityState,
     requestAccess,
     accessRequests,

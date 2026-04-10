@@ -9,18 +9,18 @@ import { Card } from '@/components/ui/card'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
 import { AccessSummary } from '@/components/ui/access-summary'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
-import type { DepartmentId } from '@/components/department/types'
+import type { DomainId } from '@/components/department/types'
 import type { ResourceRef } from '@/lib/grants'
 import { formatDate } from '@/lib/utils'
 import { useAccess, useFileTree } from '@/hooks'
-import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
-import { departmentConfigs } from '@/lib/department-configs'
+import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
+import { domainConfigs } from '@/lib/domain-configs'
 
 interface WorkspaceSidePanelProps {
   node?: WorkspaceFileNode | null
   open?: boolean
   onClose: () => void
-  departmentId?: DepartmentId
+  domainId?: DomainId
   /** Folder variant: 'shared' | 'restricted' — changes the folder icon */
   folderVariant?: 'shared' | 'restricted'
   /** Called when user deletes this folder */
@@ -60,15 +60,15 @@ function findNodePath(nodes: WorkspaceFileNode[], id: string, trail: WorkspaceFi
   return null
 }
 
-const DEPARTMENT_ROOT_ID_TO_ID = new Map(
-  Object.entries(DEPARTMENT_FOLDER_MAP).map(([id, meta]) => [meta.id, id as DepartmentId]),
+const DOMAIN_ROOT_ID_TO_ID = new Map(
+  Object.entries(DOMAIN_FOLDER_MAP).map(([id, meta]) => [meta.id, id as DomainId]),
 )
 
 export function WorkspaceSidePanel({
   node,
   open = true,
   onClose,
-  departmentId,
+  domainId,
   folderVariant,
   onDelete,
   onRename,
@@ -86,21 +86,21 @@ export function WorkspaceSidePanel({
     return node ? findNodePath(fileTree as WorkspaceFileNode[], node.id) : null
   }, [node, fileTree])
 
-  const resolvedDepartmentId = useMemo(() => {
-    if (departmentId) return departmentId
+  const resolvedDomainId = useMemo(() => {
+    if (domainId) return domainId
     if (!node) return undefined
-    if (node.departmentId) return node.departmentId
-    const match = Object.entries(DEPARTMENT_FOLDER_MAP).find(([, meta]) => meta.id === node.id)
-    if (match) return match[0] as DepartmentId
+    if (node.domainId) return node.domainId
+    const match = Object.entries(DOMAIN_FOLDER_MAP).find(([, meta]) => meta.id === node.id)
+    if (match) return match[0] as DomainId
 
-    const departmentRootId = nodePath?.find((entry) => DEPARTMENT_ROOT_ID_TO_ID.has(entry.id))?.id
-    return departmentRootId ? DEPARTMENT_ROOT_ID_TO_ID.get(departmentRootId) : undefined
-  }, [departmentId, node, nodePath])
+    const domainRootId = nodePath?.find((entry) => DOMAIN_ROOT_ID_TO_ID.has(entry.id))?.id
+    return domainRootId ? DOMAIN_ROOT_ID_TO_ID.get(domainRootId) : undefined
+  }, [domainId, node, nodePath])
 
   const resourceRef: ResourceRef | undefined = node ? {
     id: node.id,
     type: node.type === 'folder' ? 'folder' : 'asset',
-    departmentId: resolvedDepartmentId,
+    domainId: resolvedDomainId,
   } : undefined
 
   const inheritedGrants = node ? getInheritedGrants(node.id).map(({ grant, fromResourceName }) => ({
@@ -112,20 +112,20 @@ export function WorkspaceSidePanel({
     if (!node) return null
 
     const rootPath = '/Apex S1'
-    if (!resolvedDepartmentId) return `${rootPath}/${node.name}`
+    if (!resolvedDomainId) return `${rootPath}/${node.name}`
 
-    const departmentRootId = DEPARTMENT_FOLDER_MAP[resolvedDepartmentId].id
-    const departmentName = departmentConfigs[resolvedDepartmentId].name
+    const domainRootId = DOMAIN_FOLDER_MAP[resolvedDomainId].id
+    const domainName = domainConfigs[resolvedDomainId].name
 
     if (!nodePath || nodePath.length === 0) {
-      return `${rootPath}/${departmentName}/${node.name}`
+      return `${rootPath}/${domainName}/${node.name}`
     }
 
     const pathNames = nodePath
-      .map((entry) => entry.id === departmentRootId ? departmentName : entry.name)
+      .map((entry) => entry.id === domainRootId ? domainName : entry.name)
 
     return `${rootPath}/${pathNames.join('/')}`
-  }, [node, nodePath, resolvedDepartmentId])
+  }, [node, nodePath, resolvedDomainId])
 
   return (
     <ResponsivePanel open={open} onClose={onClose}>

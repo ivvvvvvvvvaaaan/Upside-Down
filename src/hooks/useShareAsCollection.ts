@@ -55,7 +55,7 @@ export function useShareAsCollection() {
       const collection = createWorkspaceCollection(
         collectionName,
         resourceRef.id,
-        resourceRef.departmentId ?? '',
+        resourceRef.domainId ?? '',
       )
       return {
         resourceRef: { id: collection.id, type: 'collection' },

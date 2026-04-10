@@ -1,4 +1,4 @@
-import type { DepartmentId } from '@/components/department/types'
+import type { DomainId } from '@/components/department/types'
 import type { Asset, AssetType, AssetTag } from '@/lib/data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { getAITagsForFile, toAIMeta } from '@/lib/ai-tags'
@@ -10,7 +10,7 @@ export interface AssetInstance {
   sourceFileId: string
   sourceFileName: string
   sourcePath: string
-  department: DepartmentId
+  department: DomainId
   category: string
   type: AssetType
   size?: number
@@ -106,7 +106,7 @@ function inferAssetType(ext?: string, filename?: string): AssetType {
 /** Walk managed zones and generate instances for all files within */
 export function generateAssetInstances(
   files: WorkspaceFileNode[],
-  departmentId: DepartmentId,
+  domainId: DomainId,
 ): AssetInstance[] {
   const instances: AssetInstance[] = []
 
@@ -122,7 +122,7 @@ export function generateAssetInstances(
           sourceFileId: node.id,
           sourceFileName: node.name,
           sourcePath: [...pathParts, node.name].join(' / '),
-          department: departmentId,
+          department: domainId,
           category,
           type: inferAssetType(node.extension, node.name),
           ...(shotMeta && { shotMeta }),
@@ -163,7 +163,7 @@ export function groupInstancesByCategory(
   }))
 }
 
-import { pickForDepartment } from '@/lib/images'
+import { pickForDomain } from '@/lib/images'
 
 /** Generate a deterministic fake duration from an asset ID, scaled to the asset kind.
  *  Sequences/shots: 2–30s, video files: 30s–10min, audio: 10s–5min */
@@ -216,7 +216,7 @@ function getThumbnail(instance: AssetInstance): string | undefined {
   const ext = instance.sourceFileName.split('.').pop()?.toLowerCase() ?? ''
   if (NO_PREVIEW_EXTENSIONS.has(ext)) return undefined
   if (instance.type === 'image' || instance.type === 'video') {
-    return pickForDepartment(instance.department, instance.id, 1)[0]
+    return pickForDomain(instance.department, instance.id, 1)[0]
   }
   return undefined
 }

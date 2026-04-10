@@ -13,7 +13,7 @@ import { getAssetIdVariants } from '@/lib/data'
 import type { ResourceRef, Grant, RoleGroup } from '@/lib/grants'
 import { isGrantActive, profileLabel } from '@/lib/grants'
 import { useAccess, useFileTree, usePersona, useSmartCollections, useCuts } from '@/hooks'
-import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
+import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
 import { useUserCollections } from '@/hooks/useUserCollections'
 import { getReviewNoteSummary } from '@/lib/review-notes'
 import type { ReviewNoteSummary } from '@/lib/review-notes'
@@ -61,8 +61,8 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName }
 
   const assetVariants = useMemo(() => new Set(getAssetIdVariants(assetId)), [assetId])
 
-  // Department/inherited access (structural — not revocable from here)
-  const departmentEntries = useMemo(() => {
+  // Domain/inherited access (structural — not revocable from here)
+  const domainEntries = useMemo(() => {
     return inheritedGrants.map(({ grant, fromResourceName }) => {
       const principal = grant.principal
       const name = principal.type === 'user'
@@ -77,7 +77,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName }
     return getResourceGrants(assetId).filter(g => isGrantActive(g))
   }, [assetId, getResourceGrants])
 
-  // Collection-mediated access — exclude principals already shown in department/inherited section
+  // Collection-mediated access — exclude principals already shown in domain/inherited section
   const sharedCollections = useMemo(() => {
     const coveredPrincipals = new Set<string>()
     for (const { grant } of inheritedGrants) {
@@ -108,14 +108,14 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName }
     return results
   }, [collections, assetVariants, getResourceGrants, inheritedGrants])
 
-  const hasAnything = departmentEntries.length > 0 || directGrants.length > 0 || sharedCollections.length > 0
+  const hasAnything = domainEntries.length > 0 || directGrants.length > 0 || sharedCollections.length > 0
 
   return (
     <section className="space-y-4">
-      {/* Department / inherited access */}
-      {departmentEntries.length > 0 && (
+      {/* Domain / inherited access */}
+      {domainEntries.length > 0 && (
         <div className="space-y-1">
-          {departmentEntries.map(({ grant, name, source }) => (
+          {domainEntries.map(({ grant, name, source }) => (
             <div key={grant.id} className="flex items-center justify-between gap-2 py-0.5">
               <div className="flex items-center gap-2 min-w-0">
                 <Avatar name={name} size="compact" />
@@ -286,7 +286,7 @@ function TagManagerModal({
   )
 }
 
-const DEPARTMENT_NAMES: Record<DepartmentId, string> = {
+const DOMAIN_NAMES: Record<DepartmentId, string> = {
   'art-design': 'Art & Design',
   'vfx': 'VFX',
   'camera': 'Camera',
@@ -349,7 +349,7 @@ export function AssetDetailPanelContent({
 }: AssetDetailPanelContentProps) {
   const { getInheritedGrants, getCollectionRippleGrants, visibleCollections, canEdit, canAccess } = useAccess()
   const { activePersona } = usePersona()
-  const { getDepartmentFiles } = useFileTree()
+  const { getDomainFiles } = useFileTree()
   const { getCollection, scopedAssets } = useSmartCollections()
   const { getCutsForAsset } = useCuts()
 
@@ -420,19 +420,19 @@ export function AssetDetailPanelContent({
 
     const pathParts = asset.workspacePath.split('/').filter(Boolean)
     const folderNames = pathParts.slice(0, -1)
-    const fullLabel = `/Apex S1/${DEPARTMENT_NAMES[asset.department]}${folderNames.length > 0 ? `/${folderNames.join('/')}` : ''}`
+    const fullLabel = `/Apex S1/${DOMAIN_NAMES[asset.department]}${folderNames.length > 0 ? `/${folderNames.join('/')}` : ''}`
 
     if (folderNames.length === 0) {
-      const deptRootId = DEPARTMENT_FOLDER_MAP[asset.department]?.id
+      const domainRootId = DOMAIN_FOLDER_MAP[asset.department]?.id
       return {
         label: fullLabel,
         href: `/nextgen/workspace/${asset.department}`,
-        folderId: deptRootId,
+        folderId: domainRootId,
       }
     }
 
     const folderIds: string[] = []
-    let currentNodes = getDepartmentFiles(asset.department)
+    let currentNodes = getDomainFiles(asset.department)
 
     for (const folderName of folderNames) {
       const match = currentNodes.find((node) => node.type === 'folder' && node.name === folderName)
@@ -448,7 +448,7 @@ export function AssetDetailPanelContent({
       href: `/nextgen/workspace/${asset.department}/${folderIds.join('/')}`,
       folderId: folderIds[folderIds.length - 1],
     }
-  }, [asset, getDepartmentFiles])
+  }, [asset, getDomainFiles])
 
   const assetIdVariants = useMemo(() => asset ? new Set(getAssetIdVariants(asset.id)) : new Set<string>(), [asset])
 
@@ -614,9 +614,9 @@ export function AssetDetailPanelContent({
                 </div>
                 {asset.department && (
                   <div>
-                    <p className="text-body-0-regular text-foreground-dim">Department</p>
+                    <p className="text-body-0-regular text-foreground-dim">Domain</p>
                     <p className="text-body-0-regular text-foreground">
-                      {DEPARTMENT_NAMES[asset.department]}
+                      {DOMAIN_NAMES[asset.department]}
                     </p>
                   </div>
                 )}
@@ -664,7 +664,7 @@ export function AssetDetailPanelContent({
                 <div>
                   <p className="text-body-0-regular text-foreground-dim">Location</p>
                   <p className="text-body-0-regular text-foreground">
-                    {asset.department ? `${DEPARTMENT_NAMES[asset.department]} / ` : ''}{asset.workspacePath}
+                    {asset.department ? `${DOMAIN_NAMES[asset.department]} / ` : ''}{asset.workspacePath}
                   </p>
                 </div>
               )}

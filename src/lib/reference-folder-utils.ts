@@ -18,7 +18,7 @@ function assetToFileNode(asset: Asset): UnifiedFileNode {
     extension: asset.extension,
     modifiedAt: asset.created_at,
     modifiedBy: asset.modifiedBy,
-    departmentId: asset.department,
+    domainId: asset.department,
   }
 }
 

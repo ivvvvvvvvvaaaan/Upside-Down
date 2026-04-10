@@ -71,14 +71,14 @@ describe('matchesFilter', () => {
     })
   })
 
-  // ── department ──
+  // ── domain (department field) ──
   describe('department', () => {
-    it('matches exact department', () => {
+    it('matches exact domain', () => {
       const asset = makeAsset({ department: 'vfx' })
       expect(matchesFilter(asset, { department: 'vfx' })).toBe(true)
     })
 
-    it('rejects different department', () => {
+    it('rejects different domain', () => {
       const asset = makeAsset({ department: 'vfx' })
       expect(matchesFilter(asset, { department: 'editorial' })).toBe(false)
     })
@@ -253,7 +253,7 @@ describe('matchesFilter', () => {
         aiMeta: { characters: ['Marco Vitale'] },
       })
 
-      // department mismatch
+      // domain mismatch
       expect(matchesFilter(asset, { types: ['image'], department: 'vfx' })).toBe(false)
     })
   })

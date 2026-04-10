@@ -1,17 +1,17 @@
-import type { Asset, DepartmentId } from '@/lib/data'
+import type { Asset, DomainId } from '@/lib/data'
 import { mergeWorkspaceAssets, generateAssetInstances } from '@/lib/asset-instances'
 import { DEFAULT_GRANTS, getResourceLabel } from '@/lib/grants'
-import { getDepartmentWorkspaceFiles } from '@/lib/workspace-data'
+import { getDomainWorkspaceFiles } from '@/lib/workspace-data'
 
-const ALL_DEPARTMENTS: DepartmentId[] = ['art-design', 'vfx', 'camera', 'editorial', 'audio-sound']
+const ALL_DOMAINS: DomainId[] = ['art-design', 'vfx', 'camera', 'editorial', 'audio-sound']
 
 export function getPromotedWorkspaceAssets(): Asset[] {
-  const departmentInstances = ALL_DEPARTMENTS.flatMap((departmentId) => {
-    const files = getDepartmentWorkspaceFiles(departmentId)
-    return generateAssetInstances(files, departmentId)
+  const domainInstances = ALL_DOMAINS.flatMap((domainId) => {
+    const files = getDomainWorkspaceFiles(domainId)
+    return generateAssetInstances(files, domainId)
   })
 
-  return mergeWorkspaceAssets([], departmentInstances)
+  return mergeWorkspaceAssets([], domainInstances)
 }
 
 /**
@@ -31,7 +31,7 @@ function getSharedSnapshotAssets(): Asset[] {
         id: grant.resource.id,
         name: getResourceLabel(grant.resource.id),
         type: 'video',
-        department: grant.resource.departmentId,
+        department: grant.resource.domainId,
         created_at: grant.grantedAt,
       })
     }

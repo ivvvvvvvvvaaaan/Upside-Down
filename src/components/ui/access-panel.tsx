@@ -14,7 +14,7 @@ import { DepartmentAvatar } from './department-avatar'
 import { Toggle } from './switch'
 import { Modal } from './modal'
 import { Card } from './card'
-import { departmentConfigs } from '@/lib/department-configs'
+import { domainConfigs } from '@/lib/domain-configs'
 import { useAccess, usePersona } from '@/hooks'
 import type { Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
 import { getRoleGroup } from '@/lib/grants'
@@ -26,11 +26,11 @@ import type { GuestLinkSeed } from '@/lib/scenario'
 import { resolveCollectionAssetIds, getAssetIdVariants } from '@/lib/data'
 import { isGrantActive } from '@/lib/grants'
 import { useUserCollections } from '@/hooks/useUserCollections'
-import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
+import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
 import { TEAMS } from '@/lib/teams'
 import { PERSONAS } from '@/lib/personas'
 import { profileLabel } from '@/lib/grants'
-import type { DepartmentId } from '@/components/department/types'
+import type { DomainId } from '@/components/department/types'
 
 interface AccessPanelProps {
   resourceId: string
@@ -52,7 +52,7 @@ function roleGroupOptions(roleGroups: RoleGroup[]) {
     .map((rg) => ({ value: rg.id, label: rg.name }))
 }
 
-function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, onUpdateShareMode, name, subtitle, roleLabel, members, departmentId }: {
+function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, onUpdateShareMode, name, subtitle, roleLabel, members, domainId }: {
   grant: Grant
   readOnly: boolean
   roleGroups: RoleGroup[]
@@ -63,7 +63,7 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, onUp
   subtitle?: string
   roleLabel: string
   members?: AccessDisplayEntry['members']
-  departmentId?: DepartmentId
+  domainId?: DomainId
 }) {
   const isOwner = grant.templateId === 'owner'
   const principal = grant.principal
@@ -75,7 +75,7 @@ function GrantRow({ grant, readOnly, roleGroups, onRemove, onUpdateProfile, onUp
           {principal.type === 'user' ? (
             <Avatar name={name} size="sm" />
           ) : (
-            <DepartmentAvatar departmentId={departmentId} size="sm" />
+            <DepartmentAvatar domainId={domainId} size="sm" />
           )}
           <div className="min-w-0">
             <span className="text-body-0-regular text-foreground truncate block">{name}</span>
@@ -345,7 +345,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const [showDropdown, setShowDropdown] = useState(false)
   type PendingGrant = { id: string; principal: PrincipalRef; name: string; kind: 'user' | 'team'; role: AccessProfileId; shareMode: ShareMode; expires: boolean; expiresInDays: number; allowUpload: boolean }
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
-  const [showCrossDeptWarning, setShowCrossDeptWarning] = useState(false)
+  const [showCrossDomainWarning, setShowCrossDomainWarning] = useState(false)
   const [flaggedRecipients, setFlaggedRecipients] = useState<{ name: string; reason: string }[]>([])
   const handleConfirmPendingRef = useRef(() => {})
   const handleCancelPendingRef = useRef(() => {})
@@ -399,17 +399,17 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const isAssetResource = resourceRef?.type === 'asset' || resourceRef?.type === 'cut'
 
   // Collection-mediated access for assets — "Shared via" section
-  // Exclude grants whose principals already appear in inherited/department grants
+  // Exclude grants whose principals already appear in inherited/domain grants
   const sharedViaCollections = useMemo(() => {
     if (!isAssetResource) return []
     const variants = new Set(getAssetIdVariants(resourceId))
 
-    // Build set of principals already covered by department/inherited access
+    // Build set of principals already covered by domain/inherited access
     const coveredPrincipals = new Set<string>()
     for (const ig of (inheritedGrants ?? [])) {
       const p = ig.grant.principal
       coveredPrincipals.add(p.type === 'user' ? `user:${p.userId}` : `team:${p.teamId}`)
-      // If a team grant covers department members, mark individual members as covered
+      // If a team grant covers domain members, mark individual members as covered
       if (p.type === 'team') {
         const team = TEAMS.find(t => t.id === p.teamId)
         if (team) {
@@ -435,24 +435,24 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     return results
   }, [isAssetResource, resourceId, collections, getResourceGrants, inheritedGrants])
 
-  // Department access context for workspace-bound collections
-  const departmentContext = useMemo(() => {
+  // Domain access context for workspace-bound collections
+  const domainContext = useMemo(() => {
     if (!isCollectionResource || !resourceRef) return null
     const collection = getCollection(resourceRef.id)
-    if (!collection?.boundDepartmentId) return null
-    const deptId = collection.boundDepartmentId as DepartmentId
-    const deptFolder = DEPARTMENT_FOLDER_MAP[deptId]
-    if (!deptFolder) return null
-    const deptRootGrants = getResourceGrants(deptFolder.id)
-    if (deptRootGrants.length === 0) return null
-    const team = TEAMS.find(t => t.departmentId === deptId)
-    const teamGrant = deptRootGrants.find(g => g.principal.type === 'team' && team && g.principal.teamId === team.id)
+    if (!collection?.boundDomainId) return null
+    const domId = collection.boundDomainId as DomainId
+    const domainFolder = DOMAIN_FOLDER_MAP[domId]
+    if (!domainFolder) return null
+    const domainRootGrants = getResourceGrants(domainFolder.id)
+    if (domainRootGrants.length === 0) return null
+    const team = TEAMS.find(t => t.domainId === domId)
+    const teamGrant = domainRootGrants.find(g => g.principal.type === 'team' && team && g.principal.teamId === team.id)
     if (!teamGrant) return null
     return {
-      teamName: team?.name ?? deptFolder.name,
+      teamName: team?.name ?? domainFolder.name,
       roleLabel: profileLabel(teamGrant.templateId, roleGroups),
-      deptName: deptFolder.name,
-      deptId,
+      domainName: domainFolder.name,
+      domId,
     }
   }, [isCollectionResource, resourceRef, getCollection, getResourceGrants, roleGroups])
 
@@ -517,17 +517,17 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     onPendingChange?.(true, { confirm: () => handleConfirmPendingRef.current(), cancel: () => handleCancelPendingRef.current() })
   }
 
-  // Determine the resource's department for cross-dept checks
-  const resourceDeptId = useMemo(() => {
-    if (resourceRef?.departmentId) return resourceRef.departmentId
+  // Determine the resource's domain for cross-domain checks
+  const resourceDomainId = useMemo(() => {
+    if (resourceRef?.domainId) return resourceRef.domainId
     if (isCollectionResource && resourceRef) {
       const coll = getCollection(resourceRef.id)
-      return coll?.boundDepartmentId as DepartmentId | undefined
+      return coll?.boundDomainId as DomainId | undefined
     }
     return undefined
   }, [resourceRef, isCollectionResource, getCollection])
 
-  const resourceDeptName = resourceDeptId ? (departmentConfigs[resourceDeptId]?.name ?? resourceDeptId) : undefined
+  const resourceDomainName = resourceDomainId ? (domainConfigs[resourceDomainId]?.name ?? resourceDomainId) : undefined
 
   const commitPendingGrants = () => {
     const targets = isBatch && batchResourceRefs ? batchResourceRefs : (resourceRef ? [resourceRef] : [])
@@ -559,33 +559,33 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const handleConfirmPending = () => {
     if (pendingGrants.length === 0) return
 
-    // Check for cross-department or external recipients
-    if (resourceDeptId) {
+    // Check for cross-domain or external recipients
+    if (resourceDomainId) {
       const flagged: { name: string; reason: string }[] = []
       for (const pending of pendingGrants) {
         if (pending.principal.type === 'user') {
           const persona = PERSONAS.find(p => p.id === (pending.principal as { userId: string }).userId)
           if (persona?.role === 'vendor') {
             flagged.push({ name: pending.name, reason: `External vendor${persona.title ? ` (${persona.title})` : ''}` })
-          } else if (!persona?.departmentId) {
-            flagged.push({ name: pending.name, reason: persona?.title ?? 'No department' })
-          } else if (persona.departmentId !== resourceDeptId) {
-            const deptName = departmentConfigs[persona.departmentId]?.name ?? persona.departmentId
-            flagged.push({ name: pending.name, reason: deptName })
+          } else if (!persona?.domainId) {
+            flagged.push({ name: pending.name, reason: persona?.title ?? 'No domain' })
+          } else if (persona.domainId !== resourceDomainId) {
+            const domainName = domainConfigs[persona.domainId]?.name ?? persona.domainId
+            flagged.push({ name: pending.name, reason: domainName })
           }
         } else {
           const team = TEAMS.find(t => t.id === (pending.principal as { teamId: string }).teamId)
-          if (team?.departmentId && team.departmentId !== resourceDeptId) {
-            const deptName = departmentConfigs[team.departmentId]?.name ?? team.departmentId
-            flagged.push({ name: pending.name, reason: deptName })
-          } else if (!team?.departmentId) {
-            flagged.push({ name: pending.name, reason: 'Cross-department group' })
+          if (team?.domainId && team.domainId !== resourceDomainId) {
+            const domainName = domainConfigs[team.domainId]?.name ?? team.domainId
+            flagged.push({ name: pending.name, reason: domainName })
+          } else if (!team?.domainId) {
+            flagged.push({ name: pending.name, reason: 'Cross-domain group' })
           }
         }
       }
       if (flagged.length > 0) {
         setFlaggedRecipients(flagged)
-        setShowCrossDeptWarning(true)
+        setShowCrossDomainWarning(true)
         return
       }
     }
@@ -712,22 +712,22 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         </div>
       )}
 
-      {/* Department access */}
+      {/* Domain access */}
       {/* Existing access */}
-      {(departmentContext || userEntries.length > 0 || teamEntries.length > 0 || sharedViaCollections.length > 0) && (
+      {(domainContext || userEntries.length > 0 || teamEntries.length > 0 || sharedViaCollections.length > 0) && (
         <h3 className="text-label-1-bold text-foreground-dim">Have access</h3>
       )}
 
-      {departmentContext && (
+      {domainContext && (
         <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-surface-mid">
           <div className="flex items-center gap-2 min-w-0">
-            <DepartmentAvatar departmentId={departmentContext.deptId} size="sm" />
+            <DepartmentAvatar domainId={domainContext.domId} size="sm" />
             <div className="min-w-0">
-              <span className="text-body-0-regular text-foreground truncate block">{departmentContext.teamName}</span>
-              <span className="text-label-0-regular text-foreground-dim block">Department access</span>
+              <span className="text-body-0-regular text-foreground truncate block">{domainContext.teamName}</span>
+              <span className="text-label-0-regular text-foreground-dim block">Domain access</span>
             </div>
           </div>
-          <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{departmentContext.roleLabel}</span>
+          <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{domainContext.roleLabel}</span>
         </div>
       )}
       {userEntries.length > 0 && (
@@ -743,7 +743,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                 subtitle={entry.subtitle}
                 roleLabel={entry.roleLabel}
                 members={entry.members}
-                departmentId={entry.departmentId}
+                domainId={entry.domainId}
                 onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
                 onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
                 onUpdateShareMode={!entry.readOnly ? handleUpdateShareMode : undefined}
@@ -765,7 +765,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               subtitle={entry.subtitle}
               roleLabel={entry.roleLabel}
               members={entry.members}
-              departmentId={entry.departmentId}
+              domainId={entry.domainId}
               onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
               onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
                 onUpdateShareMode={!entry.readOnly ? handleUpdateShareMode : undefined}
@@ -788,9 +788,9 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                 const name = principal.type === 'user'
                   ? PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
                   : TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
-                const deptId = principal.type === 'team'
-                  ? TEAMS.find(t => t.id === principal.teamId)?.departmentId
-                  : PERSONAS.find(p => p.id === (principal as { userId: string }).userId)?.departmentId
+                const domId = principal.type === 'team'
+                  ? TEAMS.find(t => t.id === principal.teamId)?.domainId
+                  : PERSONAS.find(p => p.id === (principal as { userId: string }).userId)?.domainId
                 const canRevoke = canManageCollection || (canShareCollection && activePersona && grant.grantedByUserId === activePersona.id)
                 return (
                   <GrantRow
@@ -800,7 +800,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                     roleGroups={roleGroups}
                     name={name}
                     roleLabel={profileLabel(grant.templateId, roleGroups)}
-                    departmentId={deptId}
+                    domainId={domId}
                     onRemove={canRevoke ? (id) => { markDirty(); revokeGrant(id) } : undefined}
                     onUpdateProfile={canRevoke ? (id, pid) => { markDirty(); updateGrantProfile(id, pid) } : undefined}
                   />
@@ -866,7 +866,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       )}
 
       {/* Empty state */}
-      {userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && sharedViaCollections.length === 0 && !departmentContext && pendingGrants.length === 0 && (
+      {userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && sharedViaCollections.length === 0 && !domainContext && pendingGrants.length === 0 && (
         <p className="text-body-0-regular text-foreground-dim">{emptyLabel}</p>
       )}
 
@@ -885,13 +885,13 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         />
       </div>
 
-      {/* Cross-department warning */}
-      <Modal open={showCrossDeptWarning} onOpenChange={setShowCrossDeptWarning} size="sm">
-        <Modal.Header title={`Sharing outside ${resourceDeptName ?? 'this department'}`} />
+      {/* Cross-domain warning */}
+      <Modal open={showCrossDomainWarning} onOpenChange={setShowCrossDomainWarning} size="sm">
+        <Modal.Header title={`Sharing outside ${resourceDomainName ?? 'this domain'}`} />
         <Modal.Body>
           <div className="space-y-3">
             <p className="text-body-0-regular text-foreground-dim">
-              {flaggedRecipients.length === 1 ? 'This person is' : 'These people are'} not part of {resourceDeptName ?? 'this department'}:
+              {flaggedRecipients.length === 1 ? 'This person is' : 'These people are'} not part of {resourceDomainName ?? 'this domain'}:
             </p>
             <div className="space-y-2">
               {flaggedRecipients.map(({ name, reason }) => (
@@ -905,8 +905,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           </div>
         </Modal.Body>
         <Card.Footer>
-          <Button variant="secondary" onClick={() => setShowCrossDeptWarning(false)}>Cancel</Button>
-          <Button variant="primary" onClick={() => { setShowCrossDeptWarning(false); commitPendingGrants() }}>Share anyway</Button>
+          <Button variant="secondary" onClick={() => setShowCrossDomainWarning(false)}>Cancel</Button>
+          <Button variant="primary" onClick={() => { setShowCrossDomainWarning(false); commitPendingGrants() }}>Share anyway</Button>
         </Card.Footer>
       </Modal>
 

@@ -34,8 +34,8 @@ import { useUserCollections } from '@/hooks/useUserCollections'
 import { isSmart, isCollection } from '@/lib/collection-types'
 import type { SmartCollectionEntry } from '@/lib/collection-types'
 import { matchesFilter } from '@/lib/smart-collection-filters'
-import type { DepartmentId } from '@/components/department/types'
-import { DEPARTMENT_FOLDER_MAP, SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
+import type { DomainId } from '@/components/department/types'
+import { DOMAIN_FOLDER_MAP, SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { cn } from '@/lib/utils'
 import { Tag } from './tag'
@@ -447,8 +447,8 @@ function FolderNavTree({ nodes, basePath, sharedFolderIds }: { nodes: WorkspaceF
   )
 }
 
-// Department info for nav items
-const DEPARTMENT_NAV_ITEMS: { href: string; label: string; id: DepartmentId }[] = [
+// Domain info for nav items
+const DOMAIN_NAV_ITEMS: { href: string; label: string; id: DomainId }[] = [
   { href: '/nextgen/workspace/art-design', label: 'Art & Design', id: 'art-design' },
   { href: '/nextgen/workspace/camera', label: 'Camera', id: 'camera' },
   { href: '/nextgen/workspace/editorial', label: 'Editorial', id: 'editorial' },
@@ -457,19 +457,19 @@ const DEPARTMENT_NAV_ITEMS: { href: string; label: string; id: DepartmentId }[] 
 ]
 
 
-/** Renders a single department nav item, using files from the shared file tree */
-function DepartmentNavItem({ item }: { item: typeof DEPARTMENT_NAV_ITEMS[number] }) {
-  const { getDepartmentFiles } = useFileTree()
+/** Renders a single domain nav item, using files from the shared file tree */
+function DomainNavItem({ item }: { item: typeof DOMAIN_NAV_ITEMS[number] }) {
+  const { getDomainFiles } = useFileTree()
   const { getResourceGrants } = useAccess()
   const { collections } = useUserCollections()
-  const files = getDepartmentFiles(item.id) as WorkspaceFileNode[]
+  const files = getDomainFiles(item.id) as WorkspaceFileNode[]
   const hasFolders = files.some((n) => n.type === 'folder')
 
   // Folders that have a workspace-bound collection with active outgoing grants
   const sharedFolderIds = useMemo(() => {
     const ids = new Set<string>()
     for (const c of collections) {
-      if (c.boundFolderId && c.boundDepartmentId === item.id) {
+      if (c.boundFolderId && c.boundDomainId === item.id) {
         const grants = getResourceGrants(c.id)
         if (grants.length > 0) ids.add(c.boundFolderId)
       }
@@ -587,12 +587,12 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
   const { sharesReceivedByMe, allProjectShares, canAccess, visibleCollections: userCollections, getCollectionAssetCount } = useAccess()
   const { activePersona, isAdmin } = usePersona()
   const { visibleCollections: unifiedCollections } = useCollections()
-  // Workspace-level folders: top-level folders created by user (exclude department folders already rendered above)
-  const DEPT_FOLDER_IDS = new Set(Object.values(DEPARTMENT_FOLDER_MAP).map(d => d.id))
-  const workspaceFolders = fileTree.filter((f) => f.type === 'folder' && !DEPT_FOLDER_IDS.has(f.id) && f.id !== SHARED_MOUNT_FOLDER_ID) as WorkspaceFileNode[]
-  const accessibleDepartments = DEPARTMENT_NAV_ITEMS.filter((item) => canAccess(DEPARTMENT_FOLDER_MAP[item.id].id))
+  // Workspace-level folders: top-level folders created by user (exclude domain folders already rendered above)
+  const DOMAIN_FOLDER_IDS = new Set(Object.values(DOMAIN_FOLDER_MAP).map(d => d.id))
+  const workspaceFolders = fileTree.filter((f) => f.type === 'folder' && !DOMAIN_FOLDER_IDS.has(f.id) && f.id !== SHARED_MOUNT_FOLDER_ID) as WorkspaceFileNode[]
+  const accessibleDomains = DOMAIN_NAV_ITEMS.filter((item) => canAccess(DOMAIN_FOLDER_MAP[item.id].id))
   // In the unified model, shared content appears under Collections, not Workspaces
-  const showWorkspaceLink = accessibleDepartments.length > 0 || workspaceFolders.length > 0
+  const showWorkspaceLink = accessibleDomains.length > 0 || workspaceFolders.length > 0
   const sharedCollectionIds = new Set(
     (isAdmin ? allProjectShares : sharesReceivedByMe)
       .filter((entry) => entry.resourceType === 'collection')
@@ -623,8 +623,8 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
           <div className="pt-3" />
           {showWorkspaceLink && (
             <TreeNavLink href="/nextgen/workspace" label="Workspaces" defaultExpanded={true}>
-              {accessibleDepartments.map((item) => (
-                <DepartmentNavItem key={item.href} item={item} />
+              {accessibleDomains.map((item) => (
+                <DomainNavItem key={item.href} item={item} />
               ))}
               {workspaceFolders.map((folder) => {
                 const href = `/nextgen/workspace/${folder.id}`
@@ -665,18 +665,18 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
             badge={smartCollectionCounts.get(collection.id) || undefined}
           />
         ))}
-        {/* All accessible collections — owned, department, received */}
+        {/* All accessible collections — owned, domain, received */}
         {(() => {
           const seen = new Set<string>()
           const items: { id: string; name: string; count: number; isShared: boolean }[] = []
 
-          // Owned + department collections (skip workspace-bound — those show under Workspaces)
+          // Owned + domain collections (skip workspace-bound — those show under Workspaces)
           for (const c of unifiedCollections.filter(isCollection)) {
             if (seen.has(c.id)) continue
             if (c.boundFolderId) continue
             const isOwned = !activePersona || c.createdBy === activePersona.email
-            const isDept = 'boundDepartmentId' in c && c.boundDepartmentId === activePersona?.departmentId
-            if (!isOwned && !isDept && !isAdmin) continue
+            const isDomain = 'boundDomainId' in c && c.boundDomainId === activePersona?.departmentId
+            if (!isOwned && !isDomain && !isAdmin) continue
             seen.add(c.id)
             items.push({ id: c.id, name: c.name, count: getCollectionAssetCount(c.id), isShared: false })
           }

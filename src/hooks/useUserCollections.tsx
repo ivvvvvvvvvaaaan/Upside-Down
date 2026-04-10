@@ -18,7 +18,7 @@ export type UserCollection = {
   createdBy?: string
   /** If set, this collection resolves assets from a folder at query time */
   boundFolderId?: string
-  boundDepartmentId?: string
+  boundDomainId?: string
 }
 
 const COLLECTIONS_STORAGE_KEY = 'user-collections'
@@ -53,7 +53,7 @@ function persistCollections(collections: UserCollection[]) {
 interface UserCollectionsContextValue {
   collections: UserCollection[]
   createCollection: (name: string, assetIds: string[]) => UserCollection
-  createWorkspaceCollection: (name: string, folderId: string, departmentId: string) => UserCollection
+  createWorkspaceCollection: (name: string, folderId: string, domainId: string) => UserCollection
   addAssetsToCollection: (id: string, assetIds: string[]) => void
   deleteCollection: (id: string) => void
   getCollection: (id: string) => UserCollection | undefined
@@ -96,7 +96,7 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
     return newCollection
   }, [activePersona, setCollections])
 
-  const createWorkspaceCollection = useCallback((name: string, folderId: string, departmentId: string): UserCollection => {
+  const createWorkspaceCollection = useCallback((name: string, folderId: string, domainId: string): UserCollection => {
     const existing = collections.find(c => c.boundFolderId === folderId)
     if (existing) return existing
 
@@ -108,7 +108,7 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
       createdAt: new Date(),
       createdBy: activePersona?.email,
       boundFolderId: folderId,
-      boundDepartmentId: departmentId,
+      boundDomainId: domainId,
     }
     setCollections(prev => [...prev, newCollection])
     return newCollection

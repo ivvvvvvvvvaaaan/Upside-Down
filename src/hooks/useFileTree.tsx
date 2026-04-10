@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react'
-import type { DepartmentId } from '@/components/department/types'
+import type { DomainId } from '@/components/department/types'
 import {
   getFinderWorkspaceTree,
   type ReferenceFolderSource,
@@ -35,8 +35,8 @@ function persistTree(tree: UnifiedFileNode[]) {
   } catch {}
 }
 
-/** Map workspace department IDs to their wrapper folder IDs in the Finder tree */
-const DEPT_TO_FOLDER_ID: Record<DepartmentId, string> = {
+/** Map workspace domain IDs to their wrapper folder IDs in the Finder tree */
+const DOMAIN_TO_FOLDER_ID: Record<DomainId, string> = {
   'art-design': 'ws-art',
   'vfx': 'ws-vfx',
   'camera': 'ws-camera',
@@ -168,7 +168,7 @@ function findReferenceFolder(
 
 interface FileTreeContextValue {
   tree: UnifiedFileNode[]
-  getDepartmentFiles: (id: DepartmentId) => WorkspaceFileNode[]
+  getDomainFiles: (id: DomainId) => WorkspaceFileNode[]
   createFolder: (parentId: string | null, name: string, children?: UnifiedFileNode[]) => string
   createFile: (parentId: string, name: string, extension?: string) => string
   createReferenceFolder: (parentId: string | null, name: string, reference: ReferenceFolderSource) => string
@@ -202,8 +202,8 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const getDepartmentFiles = useCallback((id: DepartmentId): WorkspaceFileNode[] => {
-    const folderId = DEPT_TO_FOLDER_ID[id]
+  const getDomainFiles = useCallback((id: DomainId): WorkspaceFileNode[] => {
+    const folderId = DOMAIN_TO_FOLDER_ID[id]
     return (findSubtree(tree, folderId) ?? []) as WorkspaceFileNode[]
   }, [tree])
 
@@ -271,13 +271,13 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<FileTreeContextValue>(() => ({
     tree,
-    getDepartmentFiles,
+    getDomainFiles,
     createFolder,
     createFile,
     createReferenceFolder,
     renameNode,
     deleteNode,
-  }), [tree, getDepartmentFiles, createFolder, createFile, createReferenceFolder, renameNode, deleteNode])
+  }), [tree, getDomainFiles, createFolder, createFile, createReferenceFolder, renameNode, deleteNode])
 
   return (
     <FileTreeContext.Provider value={value}>

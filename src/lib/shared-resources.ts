@@ -1,10 +1,12 @@
-import type { DepartmentId } from '@/components/department/types'
+import type { DomainId } from '@/components/department/types'
 import type { AccessEntryKind } from '@/lib/access'
 
 export type SharedResourceRef = {
   resourceId: string
   resourceType: AccessEntryKind
-  departmentId?: DepartmentId
+  domainId?: DomainId
+  /** @deprecated Use domainId */
+  departmentId?: DomainId
 }
 
 export function getSharedResourceHref(resource: SharedResourceRef): string | undefined {
@@ -13,8 +15,9 @@ export function getSharedResourceHref(resource: SharedResourceRef): string | und
   if (resource.resourceType === 'collection') return `/nextgen/collections/${resource.resourceId}`
   if (resource.resourceType === 'smart-collection') return `/nextgen/collections/${resource.resourceId}`
   if (resource.resourceType === 'folder') {
-    if (!resource.departmentId) return '/nextgen/workspace'
-    const deptRoot = `/nextgen/workspace/${resource.departmentId}`
+    const effectiveDomainId = resource.domainId ?? resource.departmentId
+    if (!effectiveDomainId) return '/nextgen/workspace'
+    const deptRoot = `/nextgen/workspace/${effectiveDomainId}`
     // Link to the specific folder, not just the department root
     return resource.resourceId ? `${deptRoot}/${resource.resourceId}` : deptRoot
   }

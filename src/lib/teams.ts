@@ -1,11 +1,13 @@
-import type { DepartmentId } from '@/components/department/types'
+import type { DomainId } from '@/components/department/types'
 import { buildTeams } from '@/lib/scenario'
 
 export type Team = {
   id: string
   name: string
   memberUserIds: string[]
-  departmentId?: DepartmentId
+  domainId?: DomainId
+  /** @deprecated Use domainId */
+  departmentId?: DomainId
 }
 
 const DEFAULT_TEAMS: Team[] = buildTeams()

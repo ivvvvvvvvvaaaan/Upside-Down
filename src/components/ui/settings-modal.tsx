@@ -18,8 +18,8 @@ import type { User } from '@/lib/personas'
 import { TEAMS } from '@/lib/teams'
 import { PROJECT_RESOURCE, profileLabel, isGrantActive } from '@/lib/grants'
 import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef, ResourceRef } from '@/lib/grants'
-import type { DepartmentId } from '@/components/department/types'
-import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
+import type { DomainId } from '@/components/department/types'
+import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
 import type { DiscoveryResourceType } from '@/hooks/useAccess'
 
 const ALL_PERMISSIONS: { id: Permission; name: string }[] = [
@@ -82,9 +82,9 @@ function toDisplayNameFromEmail(email: string): string {
     .join(' ')
 }
 
-function toPersonaId(departmentId: DepartmentId, email: string): string {
+function toPersonaId(domainId: DomainId, email: string): string {
   const localPart = email.split('@')[0].replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase()
-  const base = `${departmentId}-${localPart || 'member'}`
+  const base = `${domainId}-${localPart || 'member'}`
   let nextId = base
   let index = 2
   while (PERSONAS.some((persona) => persona.id === nextId)) {
@@ -93,40 +93,40 @@ function toPersonaId(departmentId: DepartmentId, email: string): string {
   return nextId
 }
 
-function addOrMoveDepartmentMember(departmentId: DepartmentId, teamId: string, email: string): User | null {
+function addOrMoveDomainMember(domainId: DomainId, teamId: string, email: string): User | null {
   const normalizedEmail = email.trim().toLowerCase()
   if (!normalizedEmail) return null
 
-  const departmentTeamIds = new Set(
-    TEAMS.filter((team) => team.departmentId).map((team) => team.id),
+  const domainTeamIds = new Set(
+    TEAMS.filter((team) => team.domainId).map((team) => team.id),
   )
 
   let persona = PERSONAS.find((candidate) => candidate.email.toLowerCase() === normalizedEmail)
 
   if (!persona) {
     persona = {
-      id: toPersonaId(departmentId, normalizedEmail),
+      id: toPersonaId(domainId, normalizedEmail),
       name: toDisplayNameFromEmail(normalizedEmail),
       email: normalizedEmail,
       role: 'artist',
-      title: `${DEPARTMENT_FOLDER_MAP[departmentId].name} Artist`,
-      departmentId,
+      title: `${DOMAIN_FOLDER_MAP[domainId].name} Artist`,
+      domainId,
       teamIds: [teamId],
     }
     PERSONAS.push(persona)
   } else {
-    persona.departmentId = departmentId
+    persona.domainId = domainId
     if (persona.role !== 'manager' && persona.role !== 'artist') {
       persona.role = 'artist'
     }
     persona.teamIds = Array.from(new Set([
-      ...persona.teamIds.filter((id) => !departmentTeamIds.has(id)),
+      ...persona.teamIds.filter((id) => !domainTeamIds.has(id)),
       teamId,
     ]))
   }
 
   for (const team of TEAMS) {
-    if (!team.departmentId) continue
+    if (!team.domainId) continue
     if (team.id === teamId) {
       if (!team.memberUserIds.includes(persona.id)) {
         team.memberUserIds.push(persona.id)
@@ -147,7 +147,7 @@ function removePersonFromDirectory(userId: string): User | null {
   const persona = PERSONAS.find((candidate) => candidate.id === userId)
   if (!persona) return null
 
-  persona.departmentId = undefined
+  persona.domainId = undefined
   persona.teamIds = []
 
   for (const team of TEAMS) {
@@ -161,7 +161,7 @@ function removePersonFromDirectory(userId: string): User | null {
   return persona
 }
 
-function removeDepartmentMember(departmentId: DepartmentId, teamId: string, userId: string): User | null {
+function removeDomainMember(domainId: DomainId, teamId: string, userId: string): User | null {
   const persona = PERSONAS.find((candidate) => candidate.id === userId)
   if (!persona) return null
 
@@ -172,11 +172,11 @@ function removeDepartmentMember(departmentId: DepartmentId, teamId: string, user
 
   persona.teamIds = persona.teamIds.filter((id) => id !== teamId)
 
-  if (persona.departmentId === departmentId) {
-    const nextDepartmentTeam = TEAMS.find(
-      (candidate) => candidate.departmentId && persona.teamIds.includes(candidate.id),
+  if (persona.domainId === domainId) {
+    const nextDomainTeam = TEAMS.find(
+      (candidate) => candidate.domainId && persona.teamIds.includes(candidate.id),
     )
-    persona.departmentId = nextDepartmentTeam?.departmentId
+    persona.domainId = nextDomainTeam?.domainId
   }
 
   if (typeof window !== 'undefined') {
@@ -186,10 +186,10 @@ function removeDepartmentMember(departmentId: DepartmentId, teamId: string, user
   return persona
 }
 
-type PendingDepartmentInvite = {
+type PendingDomainInvite = {
   id: string
   email: string
-  departmentId: DepartmentId
+  domainId: DomainId
   teamId: string
   displayName: string
 }
@@ -210,7 +210,7 @@ function PeopleTab({
   onRemoveParticipant?: (userId: string) => void
 }) {
   const policyResourceIds = useMemo(
-    () => new Set(['project', ...Object.values(DEPARTMENT_FOLDER_MAP).map((folder) => folder.id)]),
+    () => new Set(['project', ...Object.values(DOMAIN_FOLDER_MAP).map((folder) => folder.id)]),
     [],
   )
 
@@ -250,12 +250,12 @@ function PeopleTab({
     }
 
     return PERSONAS
-      .filter((persona) => persona.departmentId || stats.has(persona.id))
+      .filter((persona) => persona.domainId || stats.has(persona.id))
       .map((persona) => {
         const involvement = stats.get(persona.id) ?? { received: 0, shared: 0, directGrantCount: 0, teamCount: 0 }
         const teamCount = TEAMS.filter((team) => team.memberUserIds.includes(persona.id)).length
-        const primaryLabel = persona.departmentId
-          ? `${DEPARTMENT_FOLDER_MAP[persona.departmentId].name} member`
+        const primaryLabel = persona.domainId
+          ? `${DOMAIN_FOLDER_MAP[persona.domainId].name} member`
           : persona.role === 'vendor'
           ? 'External participant'
           : 'Shared participant'
@@ -270,13 +270,13 @@ function PeopleTab({
           activityLabel: activityParts.length > 0 ? activityParts.join(' · ') : 'No active shares',
           directGrantCount: involvement.directGrantCount,
           teamCount,
-          canRemove: persona.id !== activeUserId && (Boolean(persona.departmentId) || involvement.directGrantCount > 0 || teamCount > 0),
+          canRemove: persona.id !== activeUserId && (Boolean(persona.domainId) || involvement.directGrantCount > 0 || teamCount > 0),
         }
       })
       .sort((a, b) => {
-        const aDept = a.departmentId ? 0 : 1
-        const bDept = b.departmentId ? 0 : 1
-        if (aDept !== bDept) return aDept - bDept
+        const aDom = a.domainId ? 0 : 1
+        const bDom = b.domainId ? 0 : 1
+        if (aDom !== bDom) return aDom - bDom
         return a.name.localeCompare(b.name)
       })
   }, [grants, policyResourceIds, directoryVersion, activeUserId])
@@ -284,11 +284,11 @@ function PeopleTab({
   return (
     <div className="space-y-3">
       <p className="text-body-0-regular text-foreground-dim">
-        People appear here because they belong to a department or are involved through explicit shares. Add new working users from the Departments tab, and use share controls on assets or collections for ad hoc access.
+        People appear here because they belong to a domain or are involved through explicit shares. Add new working users from the Domains tab, and use share controls on assets or collections for ad hoc access.
       </p>
       {canRemoveParticipants && (
         <p className="text-label-0-regular text-foreground-dim">
-          Project admins can remove a person here to revoke their direct shares and remove them from department and team membership.
+          Project admins can remove a person here to revoke their direct shares and remove them from domain and team membership.
         </p>
       )}
 
@@ -340,16 +340,16 @@ function DiscoverySection({
   description,
   enabled,
   onToggleEnabled,
-  disabledDepartments,
-  onToggleDepartment,
+  disabledDomains,
+  onToggleDomain,
   disabled,
 }: {
   title: string
   description: string
   enabled: boolean
   onToggleEnabled: () => void
-  disabledDepartments: Set<DepartmentId>
-  onToggleDepartment: (deptId: DepartmentId) => void
+  disabledDomains: Set<DomainId>
+  onToggleDomain: (domId: DomainId) => void
   disabled: boolean
 }) {
   return (
@@ -379,25 +379,25 @@ function DiscoverySection({
 
       {enabled && (
         <div className="space-y-1">
-          <p className="text-label-1-bold text-foreground-dim">Department overrides</p>
-          {(Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[]).map((deptId) => {
-            const deptDisabled = disabledDepartments.has(deptId)
+          <p className="text-label-1-bold text-foreground-dim">Domain overrides</p>
+          {(Object.keys(DOMAIN_FOLDER_MAP) as DomainId[]).map((domId) => {
+            const domainDisabled = disabledDomains.has(domId)
             return (
-              <div key={deptId} className="flex items-center justify-between py-1">
-                <span className="text-body-0-regular text-foreground">{DEPARTMENT_FOLDER_MAP[deptId].name}</span>
+              <div key={domId} className="flex items-center justify-between py-1">
+                <span className="text-body-0-regular text-foreground">{DOMAIN_FOLDER_MAP[domId].name}</span>
                 <button
-                  onClick={() => onToggleDepartment(deptId)}
+                  onClick={() => onToggleDomain(domId)}
                   disabled={disabled}
                   className={cn(
                     'relative w-10 h-6 rounded-full transition-colors flex-shrink-0',
-                    !deptDisabled ? 'bg-indigo-500' : 'bg-surface-3',
+                    !domainDisabled ? 'bg-indigo-500' : 'bg-surface-3',
                     disabled && 'opacity-40 cursor-not-allowed',
                   )}
                 >
                   <div
                     className={cn(
                       'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
-                      !deptDisabled ? 'left-5' : 'left-1',
+                      !domainDisabled ? 'left-5' : 'left-1',
                     )}
                   />
                 </button>
@@ -410,9 +410,9 @@ function DiscoverySection({
   )
 }
 
-// --- Departments tab ---
+// --- Domains tab ---
 
-function DepartmentsTab({
+function DomainsTab({
   roleGroups,
   getResourceGrants,
   onRoleChange,
@@ -423,11 +423,11 @@ function DepartmentsTab({
   pendingInvites,
   inviteEmail,
   onInviteEmailChange,
-  selectedDepartmentId,
-  onSelectedDepartmentChange,
+  selectedDomainId,
+  onSelectedDomainChange,
   onStageInvite,
   onRemovePendingInvite,
-  onRemoveDepartmentMember,
+  onRemoveDomainMember,
   readOnly = false,
 }: {
   roleGroups: RoleGroup[]
@@ -437,14 +437,14 @@ function DepartmentsTab({
   onRemoveGrant: (grantId: string) => void
   canShareResource: (resource: ResourceRef) => boolean
   canEditResource: (resource: ResourceRef) => boolean
-  pendingInvites: PendingDepartmentInvite[]
+  pendingInvites: PendingDomainInvite[]
   inviteEmail: string
   onInviteEmailChange: (value: string) => void
-  selectedDepartmentId: DepartmentId
-  onSelectedDepartmentChange: (departmentId: DepartmentId) => void
+  selectedDomainId: DomainId
+  onSelectedDomainChange: (domainId: DomainId) => void
   onStageInvite: () => boolean
   onRemovePendingInvite: (inviteId: string) => void
-  onRemoveDepartmentMember: (departmentId: DepartmentId, teamId: string, userId: string) => void
+  onRemoveDomainMember: (domainId: DomainId, teamId: string, userId: string) => void
   readOnly?: boolean
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -460,24 +460,24 @@ function DepartmentsTab({
   }
 
   const options = useMemo(() => roleGroupOptions(roleGroups), [roleGroups])
-  const departments = useMemo(
-    () => (Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[]).map((departmentId) => ({
-      departmentId,
-      folder: DEPARTMENT_FOLDER_MAP[departmentId],
-      team: TEAMS.find((candidate) => candidate.departmentId === departmentId),
+  const domains = useMemo(
+    () => (Object.keys(DOMAIN_FOLDER_MAP) as DomainId[]).map((domainId) => ({
+      domainId,
+      folder: DOMAIN_FOLDER_MAP[domainId],
+      team: TEAMS.find((candidate) => candidate.domainId === domainId),
     })),
     [],
   )
-  const departmentOptions = useMemo(
-    () => departments.map(({ departmentId, folder }) => ({ value: departmentId, label: folder.name })),
-    [departments],
+  const domainOptions = useMemo(
+    () => domains.map(({ domainId, folder }) => ({ value: domainId, label: folder.name })),
+    [domains],
   )
-  const pendingByDepartment = useMemo(() => {
-    const map = new Map<DepartmentId, PendingDepartmentInvite[]>()
+  const pendingByDomain = useMemo(() => {
+    const map = new Map<DomainId, PendingDomainInvite[]>()
     for (const invite of pendingInvites) {
-      const existing = map.get(invite.departmentId) ?? []
+      const existing = map.get(invite.domainId) ?? []
       existing.push(invite)
-      map.set(invite.departmentId, existing)
+      map.set(invite.domainId, existing)
     }
     return map
   }, [pendingInvites])
@@ -486,12 +486,12 @@ function DepartmentsTab({
   return (
     <div className="space-y-3">
       <p className="text-body-0-regular text-foreground-dim">
-        Departments own content. Members get workspace access automatically based on the role set here.
+        Domains own content. Members get workspace access automatically based on the role set here.
       </p>
       {!readOnly && (
         <div className="space-y-2">
           <p className="text-body-0-regular text-foreground-dim">
-            Queue someone into a department, then confirm with Update Access in the footer.
+            Queue someone into a domain, then confirm with Update Access in the footer.
           </p>
           <div className="flex items-start gap-2">
             <Input
@@ -504,16 +504,16 @@ function DepartmentsTab({
                 if (e.key !== 'Enter') return
                 e.preventDefault()
                 if (onStageInvite()) {
-                  setExpanded((prev) => new Set(prev).add(selectedDepartmentId))
+                  setExpanded((prev) => new Set(prev).add(selectedDomainId))
                 }
               }}
               placeholder="Add by email..."
             />
             <MenuSelect
               className="w-48 flex-shrink-0"
-              options={departmentOptions}
-              value={selectedDepartmentId}
-              onChange={(value) => onSelectedDepartmentChange(value as DepartmentId)}
+              options={domainOptions}
+              value={selectedDomainId}
+              onChange={(value) => onSelectedDomainChange(value as DomainId)}
               size="standard"
               align="start"
               width="sm"
@@ -522,7 +522,7 @@ function DepartmentsTab({
               variant="secondary"
               onClick={() => {
                 if (onStageInvite()) {
-                  setExpanded((prev) => new Set(prev).add(selectedDepartmentId))
+                  setExpanded((prev) => new Set(prev).add(selectedDomainId))
                 }
               }}
               disabled={!canStageInvite}
@@ -535,19 +535,19 @@ function DepartmentsTab({
       )}
 
       <div className="space-y-1">
-        {departments.map(({ departmentId, folder, team }) => {
-          const isOpen = expanded.has(departmentId)
+        {domains.map(({ domainId, folder, team }) => {
+          const isOpen = expanded.has(domainId)
           const members = (team?.memberUserIds ?? [])
             .map(uid => PERSONAS.find(p => p.id === uid))
             .filter(Boolean)
-          const pendingMembers = pendingByDepartment.get(departmentId) ?? []
-          const resourceRef: ResourceRef = { id: folder.id, type: 'folder', departmentId }
+          const pendingMembers = pendingByDomain.get(domainId) ?? []
+          const resourceRef: ResourceRef = { id: folder.id, type: 'folder', domainId }
           const rootGrants = getResourceGrants(resourceRef.id)
           const grant = team
             ? rootGrants.find(g => g.principal.type === 'team' && g.principal.teamId === team.id)
             : undefined
-          const canShareDepartment = canShareResource(resourceRef)
-          const canEditDepartment = canEditResource(resourceRef)
+          const canShareDomain = canShareResource(resourceRef)
+          const canEditDomain = canEditResource(resourceRef)
           const noDefaultAccessValue = '__no_default_access__'
           const defaultRoleValue = grant?.templateId ?? noDefaultAccessValue
           const defaultMemberLabel = grant?.templateId
@@ -555,14 +555,14 @@ function DepartmentsTab({
             : 'No default access'
 
           return (
-            <div key={departmentId} className={cn('rounded-lg transition-colors', isOpen && 'bg-surface-3/40')}>
+            <div key={domainId} className={cn('rounded-lg transition-colors', isOpen && 'bg-surface-3/40')}>
               <div className={cn('flex items-center justify-between gap-2 py-2 px-2 rounded-lg transition-colors', !isOpen && 'hover:bg-surface-3/40')}>
                 <button
-                  onClick={() => toggle(departmentId)}
+                  onClick={() => toggle(domainId)}
                   className="flex items-center gap-2 min-w-0 flex-1"
                 >
                   <ChevronDown className={cn('w-3.5 h-3.5 text-foreground-dim transition-transform flex-shrink-0', !isOpen && '-rotate-90')} />
-                  <DepartmentAvatar departmentId={departmentId} size="sm" />
+                  <DepartmentAvatar domainId={domainId} size="sm" />
                   <div className="min-w-0 flex-1 text-left">
                     <span className="text-body-0-bold text-foreground truncate block">{folder.name}</span>
                     <span className="text-label-0-regular text-foreground-dim block">
@@ -582,7 +582,7 @@ function DepartmentsTab({
                   <RoleSelect
                     options={[{ value: noDefaultAccessValue, label: 'No default access' }, ...options]}
                     value={defaultRoleValue}
-                    disabled={readOnly || (grant ? !canEditDepartment : !canShareDepartment)}
+                    disabled={readOnly || (grant ? !canEditDomain : !canShareDomain)}
                     onChange={(value) => {
                       if (value === noDefaultAccessValue) {
                         if (grant) onRemoveGrant(grant.id)
@@ -634,13 +634,13 @@ function DepartmentsTab({
                       const overrideGrant = rootGrants.find(
                         (candidate) => candidate.principal.type === 'user' && candidate.principal.userId === persona.id,
                       )
-                      const overrideKey = `${departmentId}:${persona.id}`
+                      const overrideKey = `${domainId}:${persona.id}`
                       const isEditingOverride = editingOverrides.has(overrideKey)
                       const memberValue = overrideGrant?.templateId ?? noDefaultAccessValue
                       const displayedMemberLabel = overrideGrant?.templateId
                         ? profileLabel(overrideGrant.templateId, roleGroups)
                         : defaultMemberLabel
-                      const removeAccessValue = '__remove_department_access__'
+                      const removeAccessValue = '__remove_domain_access__'
                       const overrideOptions = [
                         ...(overrideGrant ? options : [{ value: noDefaultAccessValue, label: displayedMemberLabel }]),
                         ...options,
@@ -667,7 +667,7 @@ function DepartmentsTab({
                                 size="compact"
                                 width="sm"
                                 align="end"
-                                disabled={readOnly || (overrideGrant ? !canEditDepartment : !canShareDepartment)}
+                                disabled={readOnly || (overrideGrant ? !canEditDomain : !canShareDomain)}
                                 onChange={(value) => {
                                   if (value === noDefaultAccessValue) {
                                     setEditingOverrides((prev) => {
@@ -680,7 +680,7 @@ function DepartmentsTab({
 
                                   if (value === removeAccessValue) {
                                     if (overrideGrant) onRemoveGrant(overrideGrant.id)
-                                    onRemoveDepartmentMember(departmentId, team!.id, persona.id)
+                                    onRemoveDomainMember(domainId, team!.id, persona.id)
                                     setEditingOverrides((prev) => {
                                       const next = new Set(prev)
                                       next.delete(overrideKey)
@@ -709,7 +709,7 @@ function DepartmentsTab({
                             </div>
                           ) : (
                             <div className="flex items-center flex-shrink-0">
-                              {!readOnly && canShareDepartment && (
+                              {!readOnly && canShareDomain && (
                                 <Button
                                   variant="secondary"
                                   compact
@@ -762,7 +762,7 @@ function RoleGroupsTab({
   return (
     <div className="space-y-4">
       <p className="text-body-0-regular text-foreground-dim">
-        Role groups define what actions users can take. Assign a role group to a person or department to grant capabilities.
+        Role groups define what actions users can take. Assign a role group to a person or domain to grant capabilities.
       </p>
 
       <div className="overflow-x-auto">
@@ -855,29 +855,29 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     canEditAcl,
     getDiscoverySettings,
     setDiscoveryEnabledForType,
-    toggleDepartmentDiscoveryForType,
+    toggleDomainDiscoveryForType,
   } = useAccess()
   const { activePersona } = usePersona()
   const canManageProject = canEditAcl(PROJECT_RESOURCE)
-  const [activeTab, setActiveTab] = useState('departments')
+  const [activeTab, setActiveTab] = useState('domains')
   const [directoryVersion, setDirectoryVersion] = useState(0)
-  const [pendingDepartmentInvites, setPendingDepartmentInvites] = useState<PendingDepartmentInvite[]>([])
-  const departmentIds = useMemo(() => Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[], [])
+  const [pendingDomainInvites, setPendingDomainInvites] = useState<PendingDomainInvite[]>([])
+  const domainIds = useMemo(() => Object.keys(DOMAIN_FOLDER_MAP) as DomainId[], [])
   const [inviteEmail, setInviteEmail] = useState('')
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<DepartmentId>(departmentIds[0] ?? 'vfx')
-  const canManageDepartments = useMemo(
-    () => (Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[]).some((departmentId) => {
+  const [selectedDomainId, setSelectedDomainId] = useState<DomainId>(domainIds[0] ?? 'vfx')
+  const canManageDomains = useMemo(
+    () => (Object.keys(DOMAIN_FOLDER_MAP) as DomainId[]).some((domainId) => {
       const resourceRef: ResourceRef = {
-        id: DEPARTMENT_FOLDER_MAP[departmentId].id,
+        id: DOMAIN_FOLDER_MAP[domainId].id,
         type: 'folder',
-        departmentId,
+        domainId,
       }
       return canShare(resourceRef) || canEditAcl(resourceRef)
     }),
     [canShare, canEditAcl],
   )
-  const canManageAnything = canManageDepartments || canManageProject
-  const hasPendingDepartmentInvites = pendingDepartmentInvites.length > 0
+  const canManageAnything = canManageDomains || canManageProject
+  const hasPendingDomainInvites = pendingDomainInvites.length > 0
   const discoverySections: { resourceType: DiscoveryResourceType; title: string; description: string }[] = [
     {
       resourceType: 'asset',
@@ -891,16 +891,16 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     },
   ]
 
-  const resetPendingDepartmentInvites = useCallback(() => {
-    setPendingDepartmentInvites([])
+  const resetPendingDomainInvites = useCallback(() => {
+    setPendingDomainInvites([])
     setInviteEmail('')
   }, [])
 
-  const stageDepartmentInvite = useCallback(() => {
+  const stageDomainInvite = useCallback(() => {
     const normalizedEmail = inviteEmail.trim().toLowerCase()
     if (!normalizedEmail) return false
 
-    const team = TEAMS.find((candidate) => candidate.departmentId === selectedDepartmentId)
+    const team = TEAMS.find((candidate) => candidate.domainId === selectedDomainId)
     if (!team) return false
 
     const existingPersona = PERSONAS.find((candidate) => candidate.email.toLowerCase() === normalizedEmail)
@@ -909,12 +909,12 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       return false
     }
 
-    setPendingDepartmentInvites((prev) => {
+    setPendingDomainInvites((prev) => {
       const next = prev.filter((invite) => invite.email !== normalizedEmail)
       next.push({
-        id: `pending-${selectedDepartmentId}-${normalizedEmail}`,
+        id: `pending-${selectedDomainId}-${normalizedEmail}`,
         email: normalizedEmail,
-        departmentId: selectedDepartmentId,
+        domainId: selectedDomainId,
         teamId: team.id,
         displayName: existingPersona?.name ?? toDisplayNameFromEmail(normalizedEmail),
       })
@@ -922,28 +922,28 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     })
     setInviteEmail('')
     return true
-  }, [inviteEmail, selectedDepartmentId])
+  }, [inviteEmail, selectedDomainId])
 
-  const applyPendingDepartmentInvites = useCallback(() => {
-    if (pendingDepartmentInvites.length === 0) return
-    for (const invite of pendingDepartmentInvites) {
-      addOrMoveDepartmentMember(invite.departmentId, invite.teamId, invite.email)
+  const applyPendingDomainInvites = useCallback(() => {
+    if (pendingDomainInvites.length === 0) return
+    for (const invite of pendingDomainInvites) {
+      addOrMoveDomainMember(invite.domainId, invite.teamId, invite.email)
     }
     setDirectoryVersion((prev) => prev + 1)
-    resetPendingDepartmentInvites()
-  }, [pendingDepartmentInvites, resetPendingDepartmentInvites])
+    resetPendingDomainInvites()
+  }, [pendingDomainInvites, resetPendingDomainInvites])
 
-  const handleRemoveDepartmentMember = useCallback((departmentId: DepartmentId, teamId: string, userId: string) => {
-    removeDepartmentMember(departmentId, teamId, userId)
+  const handleRemoveDomainMember = useCallback((domainId: DomainId, teamId: string, userId: string) => {
+    removeDomainMember(domainId, teamId, userId)
     setDirectoryVersion((prev) => prev + 1)
   }, [])
 
   const handleModalOpenChange = useCallback((nextOpen: boolean) => {
     if (!nextOpen) {
-      resetPendingDepartmentInvites()
+      resetPendingDomainInvites()
     }
     onOpenChange(nextOpen)
-  }, [onOpenChange, resetPendingDepartmentInvites])
+  }, [onOpenChange, resetPendingDomainInvites])
 
   return (
     <Modal open={open} onOpenChange={handleModalOpenChange} size="md">
@@ -962,21 +962,21 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             <div className="mx-6 mt-4 flex items-start gap-2 rounded border border-border-dim bg-surface-low px-3 py-2">
               <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-foreground-dim" />
               <p className="text-body-0-regular text-foreground-dim">
-                {canManageDepartments
-                  ? 'Project-wide settings are view only. You can still manage department membership and department access where you have rights.'
+                {canManageDomains
+                  ? 'Project-wide settings are view only. You can still manage domain membership and domain access where you have rights.'
                   : 'Project-wide settings are managed by project admins.'}
               </p>
             </div>
           )}
 
           <Tabs
-            defaultValue="departments"
+            defaultValue="domains"
             value={activeTab}
             onValueChange={setActiveTab}
             className="px-6 pt-4"
           >
             <TabsList>
-              <Tab value="departments">Departments</Tab>
+              <Tab value="domains">Domains</Tab>
               <Tab value="people">People</Tab>
               {canManageProject && <Tab value="role-groups">Role Groups</Tab>}
               {canManageProject && <Tab value="settings">Settings</Tab>}
@@ -993,7 +993,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     const persona = PERSONAS.find((candidate) => candidate.id === userId)
                     const name = persona?.name ?? 'this person'
                     const confirmed = window.confirm(
-                      `Remove ${name} from the project? This revokes direct shares and removes department and team membership.`,
+                      `Remove ${name} from the project? This revokes direct shares and removes domain and team membership.`,
                     )
                     if (!confirmed) return
                     revokeUserAccess(userId)
@@ -1002,8 +1002,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   }}
                 />
               </TabsContent>
-              <TabsContent value="departments">
-                <DepartmentsTab
+              <TabsContent value="domains">
+                <DomainsTab
                   roleGroups={roleGroups}
                   getResourceGrants={getResourceGrants}
                   onRoleChange={updateGrantProfile}
@@ -1011,17 +1011,17 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   onRemoveGrant={revokeGrant}
                   canShareResource={canShare}
                   canEditResource={canEditAcl}
-                  pendingInvites={pendingDepartmentInvites}
+                  pendingInvites={pendingDomainInvites}
                   inviteEmail={inviteEmail}
                   onInviteEmailChange={setInviteEmail}
-                  selectedDepartmentId={selectedDepartmentId}
-                  onSelectedDepartmentChange={setSelectedDepartmentId}
-                  onStageInvite={stageDepartmentInvite}
+                  selectedDomainId={selectedDomainId}
+                  onSelectedDomainChange={setSelectedDomainId}
+                  onStageInvite={stageDomainInvite}
                   onRemovePendingInvite={(inviteId) => {
-                    setPendingDepartmentInvites((prev) => prev.filter((invite) => invite.id !== inviteId))
+                    setPendingDomainInvites((prev) => prev.filter((invite) => invite.id !== inviteId))
                   }}
-                  onRemoveDepartmentMember={handleRemoveDepartmentMember}
-                  readOnly={!canManageDepartments && !canManageProject}
+                  onRemoveDomainMember={handleRemoveDomainMember}
+                  readOnly={!canManageDomains && !canManageProject}
                 />
               </TabsContent>
               {canManageProject && (
@@ -1048,8 +1048,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                           description={description}
                           enabled={settings.enabled}
                           onToggleEnabled={() => setDiscoveryEnabledForType(resourceType, !settings.enabled)}
-                          disabledDepartments={settings.disabledDepartments}
-                          onToggleDepartment={(deptId) => toggleDepartmentDiscoveryForType(resourceType, deptId)}
+                          disabledDomains={settings.disabledDomains}
+                          onToggleDomain={(domId) => toggleDomainDiscoveryForType(resourceType, domId)}
                           disabled={false}
                         />
                       )
@@ -1062,12 +1062,12 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
         </div>
 
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-border-dim">
-          {hasPendingDepartmentInvites ? (
+          {hasPendingDomainInvites ? (
             <>
               <Button
                 variant="secondary"
                 onClick={() => {
-                  resetPendingDepartmentInvites()
+                  resetPendingDomainInvites()
                   onOpenChange(false)
                 }}
               >
@@ -1076,7 +1076,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               <Button
                 variant="primary"
                 onClick={() => {
-                  applyPendingDepartmentInvites()
+                  applyPendingDomainInvites()
                   onOpenChange(false)
                 }}
               >

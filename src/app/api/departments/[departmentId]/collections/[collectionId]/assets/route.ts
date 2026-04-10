@@ -1,19 +1,19 @@
 import { NextResponse } from 'next/server'
-import { getAssetsByDepartmentAndCollection } from '@/lib/data'
-import type { DepartmentId } from '@/lib/data'
+import { getAssetsByDomainAndCollection } from '@/lib/data'
+import type { DomainId } from '@/lib/data'
 
 export async function GET(
   _request: Request,
   { params }: { params: { departmentId: string; collectionId: string } }
 ) {
   try {
-    const assets = getAssetsByDepartmentAndCollection(
-      params.departmentId as DepartmentId,
+    const assets = getAssetsByDomainAndCollection(
+      params.departmentId as DomainId,
       params.collectionId
     )
     return NextResponse.json(assets)
   } catch (error) {
-    console.error('Error fetching department collection assets:', error)
+    console.error('Error fetching domain collection assets:', error)
     return NextResponse.json({ error: 'Failed to fetch assets' }, { status: 500 })
   }
 }

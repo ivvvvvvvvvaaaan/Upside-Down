@@ -1,15 +1,15 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import type { DepartmentId } from '@/components/department/types'
+import type { DomainId } from '@/components/department/types'
 import { type WorkspaceFileNode } from '@/lib/workspace-data'
 import { generateAssetInstances, groupInstancesByCategory } from '@/lib/asset-instances'
 import type { AssetInstance, AssetInstanceGroup } from '@/lib/asset-instances'
 import type { Asset, AssetType } from '@/lib/data'
 import { useFileTree } from './useFileTree'
 
-function getStorageKey(departmentId: DepartmentId) {
-  return `workspace-${departmentId}`
+function getStorageKey(domainId: DomainId) {
+  return `workspace-${domainId}`
 }
 
 interface StoredState {
@@ -20,10 +20,10 @@ const DEFAULT_STATE: StoredState = {
   managedFolderIds: [],
 }
 
-function getStoredState(departmentId: DepartmentId): StoredState {
+function getStoredState(domainId: DomainId): StoredState {
   if (typeof window === 'undefined') return DEFAULT_STATE
   try {
-    const stored = localStorage.getItem(getStorageKey(departmentId))
+    const stored = localStorage.getItem(getStorageKey(domainId))
     if (!stored) return DEFAULT_STATE
     const parsed = JSON.parse(stored)
     return {
@@ -34,10 +34,10 @@ function getStoredState(departmentId: DepartmentId): StoredState {
   }
 }
 
-function saveState(departmentId: DepartmentId, state: StoredState): void {
+function saveState(domainId: DomainId, state: StoredState): void {
   if (typeof window === 'undefined') return
   try {
-    localStorage.setItem(getStorageKey(departmentId), JSON.stringify(state))
+    localStorage.setItem(getStorageKey(domainId), JSON.stringify(state))
   } catch (error) {
     console.error('Failed to save workspace state:', error)
   }
@@ -131,7 +131,7 @@ export interface UseWorkspaceStateReturn {
   createFolder: (name: string, parentPath: string[]) => void
 }
 
-export function useWorkspaceState(departmentId: DepartmentId): UseWorkspaceStateReturn {
+export function useWorkspaceState(domainId: DomainId): UseWorkspaceStateReturn {
   const [mounted, setMounted] = useState(false)
   const [managedFolderIds, setManagedFolderIds] = useState<Set<string>>(new Set())
   const [curatedAssetNodes, setCuratedAssetNodes] = useState<WorkspaceFileNode[]>([])
@@ -147,20 +147,20 @@ export function useWorkspaceState(departmentId: DepartmentId): UseWorkspaceState
   // Load state on mount
   useEffect(() => {
     setMounted(true)
-    const deptFiles = fileTree.getDepartmentFiles(departmentId)
-    const stored = getStoredState(departmentId)
+    const domainFiles = fileTree.getDomainFiles(domainId)
+    const stored = getStoredState(domainId)
 
-    const defaultIds = getDefaultManagedIds(deptFiles)
+    const defaultIds = getDefaultManagedIds(domainFiles)
     const storedIds = stored.managedFolderIds
     const ids = storedIds.length > 0 ? storedIds : defaultIds
     setManagedFolderIds(new Set(ids))
-  }, [departmentId, fileTree])
+  }, [domainId, fileTree])
 
   // Fetch curated assets and convert to file nodes
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    fetch(`/api/departments/${departmentId}/assets`)
+    fetch(`/api/departments/${domainId}/assets`)
       .then((res) => res.json())
       .then((assets: Asset[]) => {
         if (!cancelled) {
@@ -174,7 +174,7 @@ export function useWorkspaceState(departmentId: DepartmentId): UseWorkspaceState
         if (!cancelled) setLoading(false)
       })
     return () => { cancelled = true }
-  }, [departmentId])
+  }, [domainId])
 
   const toggleManagedZone = useCallback((folderId: string) => {
     setManagedFolderIds((prev) => {
@@ -185,15 +185,15 @@ export function useWorkspaceState(departmentId: DepartmentId): UseWorkspaceState
         next.add(folderId)
       }
       if (mounted) {
-        saveState(departmentId, { managedFolderIds: Array.from(next) })
+        saveState(domainId, { managedFolderIds: Array.from(next) })
       }
       return next
     })
-  }, [mounted, departmentId])
+  }, [mounted, domainId])
 
   const rawFiles = useMemo(
-    () => fileTree.getDepartmentFiles(departmentId),
-    [fileTree, departmentId],
+    () => fileTree.getDomainFiles(domainId),
+    [fileTree, domainId],
   )
 
   const processedFiles = useMemo(() => {
@@ -214,8 +214,8 @@ export function useWorkspaceState(departmentId: DepartmentId): UseWorkspaceState
   const totalFileCount = useMemo(() => countFiles(processedFiles), [processedFiles])
 
   const assetInstances = useMemo(
-    () => generateAssetInstances(processedFiles, departmentId),
-    [processedFiles, departmentId],
+    () => generateAssetInstances(processedFiles, domainId),
+    [processedFiles, domainId],
   )
 
   const instanceGroups = useMemo(

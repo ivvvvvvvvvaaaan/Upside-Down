@@ -16,7 +16,7 @@ const BADGE_EXTENSIONS = new Set(['exr', 'nk', 'mb', 'hip', 'prproj', 'psd', 'ai
 const FILE_3D_EXTENSIONS = new Set(['nk', 'mb', 'hip', 'prproj'])
 
 // Department short names for display
-const DEPARTMENT_NAMES: Record<DepartmentId, string> = {
+const DOMAIN_NAMES: Record<DepartmentId, string> = {
   'art-design': 'Art',
   'vfx': 'VFX',
   'camera': 'Camera',
@@ -356,7 +356,7 @@ export function AssetCard({
                 return t.description ? <Tooltip key={t.label} label={t.description}>{tag}</Tooltip> : tag
               })}
               {isShared && asset.department && (
-                <Tag variant="glass">{DEPARTMENT_NAMES[asset.department] ?? asset.department}</Tag>
+                <Tag variant="glass">{DOMAIN_NAMES[asset.department] ?? asset.department}</Tag>
               )}
             </>
           )}

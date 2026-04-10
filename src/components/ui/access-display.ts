@@ -18,7 +18,7 @@ export type AccessDisplayEntry = AccessDisplaySourceEntry & {
   subtitle?: string
   roleLabel: string
   principalType: 'user' | 'team'
-  departmentId?: DepartmentId
+  domainId?: DepartmentId
   members?: {
     id: string
     name: string
@@ -85,7 +85,7 @@ export function buildAccessDisplayEntries(
           subtitle: persona?.email,
           roleLabel: profileLabel(grant.templateId, roleGroups),
           principalType: 'user' as const,
-          departmentId: persona?.departmentId,
+          domainId: persona?.domainId,
         }
       }
 
@@ -133,7 +133,7 @@ export function buildAccessDisplayEntries(
         subtitle,
         roleLabel: teamRoleLabel,
         principalType: 'team' as const,
-        departmentId: team?.departmentId,
+        domainId: team?.domainId,
         members,
       }
     })

@@ -20,7 +20,7 @@ export function useCuts() {
   const { grants, getVisibilityState } = useAccess()
   const { isAdmin, activePersona } = usePersona()
   const allSeedCuts = useMemo(() => buildCuts(), [])
-  const isEditorialMember = activePersona?.departmentId === 'editorial'
+  const isEditorialMember = activePersona?.domainId === 'editorial'
 
   const visibleCuts = useMemo((): VisibleCutEntry[] => {
     return allSeedCuts.flatMap((cut) => {
@@ -30,7 +30,7 @@ export function useCuts() {
         : getVisibilityState({
             id: cut.id,
             type: 'cut',
-            departmentId: 'editorial',
+            domainId: 'editorial',
           })
 
       if (visibility === 'hidden') {

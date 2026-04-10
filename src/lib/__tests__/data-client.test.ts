@@ -22,7 +22,7 @@ describe('getSharePreviewImages', () => {
     const previews = getSharePreviewImages({
       resourceId: 'ws-vfx-shots',
       resourceType: 'folder',
-      departmentId: 'vfx',
+      domainId: 'vfx',
     }, buildSeedCollections())
 
     expect(previews).toBeDefined()

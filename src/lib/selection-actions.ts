@@ -50,7 +50,7 @@ export function assetToSelectionEntity(asset: Asset, options?: {
     resourceRef: {
       id: options?.resourceId ?? asset.id,
       type: asset.kind === 'cut' ? 'cut' : 'asset',
-      departmentId: asset.department,
+      domainId: asset.department,
     },
     previewAsset: asset,
     canAddToCollection: options?.canAddToCollection,
@@ -76,12 +76,16 @@ export function collectionToSelectionEntity(
 export function folderToSelectionEntity({
   id,
   label,
+  domainId,
+  /** @deprecated Use domainId */
   departmentId,
   resourceId = id,
 }: {
   id: string
   label: string
-  departmentId?: ResourceRef['departmentId']
+  domainId?: ResourceRef['domainId']
+  /** @deprecated Use domainId */
+  departmentId?: ResourceRef['domainId']
   resourceId?: string
 }): SelectionEntity {
   return {
@@ -91,7 +95,7 @@ export function folderToSelectionEntity({
     resourceRef: {
       id: resourceId,
       type: 'folder',
-      departmentId,
+      domainId: domainId ?? departmentId,
     },
   }
 }

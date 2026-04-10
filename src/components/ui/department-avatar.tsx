@@ -1,10 +1,10 @@
 import { cn } from '@/lib/utils'
 import { Users } from 'lucide-react'
-import { departmentConfigs } from '@/lib/department-configs'
-import type { DepartmentId } from '@/components/department/types'
+import { domainConfigs } from '@/lib/domain-configs'
+import type { DomainId } from '@/components/department/types'
 
-interface DepartmentAvatarProps {
-  departmentId?: DepartmentId
+interface DomainAvatarProps {
+  domainId?: DomainId
   size?: 'compact' | 'sm' | 'md'
 }
 
@@ -20,8 +20,8 @@ const iconSizes = {
   md: 'w-4 h-4',
 }
 
-export function DepartmentAvatar({ departmentId, size = 'sm' }: DepartmentAvatarProps) {
-  const config = departmentId ? departmentConfigs[departmentId] : undefined
+export function DepartmentAvatar({ domainId, size = 'sm' }: DomainAvatarProps) {
+  const config = domainId ? domainConfigs[domainId] : undefined
   const colorClass = config?.color ?? 'bg-gray-500'
   return (
     <span

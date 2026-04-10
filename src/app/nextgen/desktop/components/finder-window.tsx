@@ -5,7 +5,7 @@ import { DesktopWindow } from './desktop-window'
 import { cn, formatDate } from '@/lib/utils'
 import type { WindowState, SyncStatus } from '../view'
 import type { UnifiedFileNode } from '@/lib/workspace-data'
-import { DEPARTMENT_FOLDER_MAP, isReferenceFolder } from '@/lib/workspace-data'
+import { DOMAIN_FOLDER_MAP, isReferenceFolder } from '@/lib/workspace-data'
 import { useAccess, useCollections, useFileTree, usePersona } from '@/hooks'
 import { materializeReferenceFolders } from '@/lib/reference-folder-utils'
 import {
@@ -54,8 +54,8 @@ const sidebarItems: SidebarItem[] = [
 // Use UnifiedFileNode as the file node type throughout Finder
 type FileNode = UnifiedFileNode
 
-const DEPARTMENT_ROOT_IDS = new Set(
-  Object.values(DEPARTMENT_FOLDER_MAP).map((departmentFolder) => departmentFolder.id),
+const DOMAIN_ROOT_IDS = new Set(
+  Object.values(DOMAIN_FOLDER_MAP).map((domainFolder) => domainFolder.id),
 )
 
 // LocalStorage key for expanded folders (workspace files now live in useFileTree)
@@ -494,8 +494,8 @@ export function FinderWindow({
     return sharesReceivedByMe
       .filter((entry) => {
         if (entry.resourceType !== 'folder') return false
-        if (DEPARTMENT_ROOT_IDS.has(entry.resourceId)) return false
-        if (activePersona?.departmentId && entry.departmentId === activePersona.departmentId) return false
+        if (DOMAIN_ROOT_IDS.has(entry.resourceId)) return false
+        if (activePersona?.domainId && entry.departmentId === activePersona.domainId) return false
         return true
       })
       .map((entry) => {
@@ -518,7 +518,7 @@ export function FinderWindow({
   const visibleWorkspaceFiles = useMemo(() => {
     const roots = resolvedWorkspaceFiles
       .map((node) => {
-        if (DEPARTMENT_ROOT_IDS.has(node.id) && !canAccess(node.id)) {
+        if (DOMAIN_ROOT_IDS.has(node.id) && !canAccess(node.id)) {
           return null
         }
         return filterWorkspaceNodeByAccess(node, canAccess, canSeeRestrictedFolders)

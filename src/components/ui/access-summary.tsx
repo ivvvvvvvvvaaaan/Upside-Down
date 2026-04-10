@@ -69,7 +69,7 @@ export function AccessSummary({
             <div key={row.key} className="flex items-center justify-between gap-2 py-0.5">
               <div className="flex items-center gap-2 min-w-0">
                 {row.principalType === 'team' ? (
-                  <DepartmentAvatar departmentId={row.departmentId} size="compact" />
+                  <DepartmentAvatar domainId={row.domainId} size="compact" />
                 ) : (
                   <Avatar name={row.name} size="compact" />
                 )}

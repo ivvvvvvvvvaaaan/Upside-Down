@@ -14,7 +14,7 @@ import type { AssetFilter, AssetType, DepartmentId } from '@/lib/data'
  * Smart Collection Filter Builder
  *
  * Unified filter builder for all smart collections.
- * Any filter (AI tags, asset type, department, etc.) can be added or removed.
+ * Any filter (AI tags, asset type, domain, etc.) can be added or removed.
  * All rules combined with AND logic.
  */
 
@@ -28,7 +28,7 @@ type FilterType =
 const FILTER_LABELS: Record<FilterType, string> = {
   query: 'Name contains',
   types: 'Asset type',
-  department: 'Department',
+  department: 'Domain',
   typeTags: 'Type tag',
   isKeyArt: 'Key art only',
   isFinal: 'Finals only',

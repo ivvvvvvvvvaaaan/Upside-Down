@@ -34,7 +34,7 @@ import type { ResourceRef } from '@/lib/grants'
 import type { AssetType } from '@/lib/data'
 import { SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
 import { useToast } from '@/components/ui/toast'
-import type { DepartmentId } from '@/components/department/types'
+import type { DomainId } from '@/components/department/types'
 
 function inferAssetType(ext: string): AssetType {
   if (['mp4', 'mov', 'avi', 'mkv', 'webm', 'mxf'].includes(ext)) return 'video'
@@ -444,7 +444,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                 resourceType: 'collection',
                 shareMode: grant?.shareMode ?? 'live',
                 snapshotAssetIds: grant?.snapshotAssetIds,
-                departmentId: collection.boundDepartmentId as DepartmentId | undefined,
+                domainId: collection.boundDomainId as DomainId | undefined,
               })
               showToast(`Mounted "${collection.name}" to /Shared/${collection.name}`)
             }

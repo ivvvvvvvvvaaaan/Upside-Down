@@ -74,7 +74,7 @@ export function LibraryView() {
   const [releaseTarget, setReleaseTarget] = useState<SeedCut | null>(null)
   const router = useRouter()
 
-  const isEditorialMember = activePersona?.departmentId === 'editorial'
+  const isEditorialMember = activePersona?.domainId === 'editorial'
 
   const canRelease = useMemo(() => {
     return isEditorialMember || isAdmin
@@ -144,7 +144,7 @@ export function LibraryView() {
   }, [allCutAssets, selectedIds])
 
   const handleRequestAccess = useCallback((asset: Asset) => {
-    requestAccess(asset.id, { id: asset.id, type: 'cut', departmentId: 'editorial' })
+    requestAccess(asset.id, { id: asset.id, type: 'cut', domainId: 'editorial' })
   }, [requestAccess])
 
   const handleAssetClick = (asset: Asset, event: React.MouseEvent, allAssets: Asset[]) => {

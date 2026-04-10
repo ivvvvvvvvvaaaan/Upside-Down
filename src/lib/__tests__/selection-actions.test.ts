@@ -44,7 +44,7 @@ describe('evaluateSelectionActions', () => {
       id: 'folder-1',
       label: 'Shots',
       resourceId: 'folder-1',
-      departmentId: 'vfx',
+      domainId: 'vfx',
     })
 
     const result = evaluateSelectionActions({
@@ -94,13 +94,13 @@ describe('evaluateSelectionActions', () => {
       id: 'folder-1',
       label: 'Shots',
       resourceId: 'folder-1',
-      departmentId: 'vfx',
+      domainId: 'vfx',
     })
     const second = folderToSelectionEntity({
       id: 'folder-2',
       label: 'Plates',
       resourceId: 'folder-2',
-      departmentId: 'vfx',
+      domainId: 'vfx',
     })
 
     const result = evaluateSelectionActions({

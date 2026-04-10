@@ -43,7 +43,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
       map.set(asset.id, getVisibilityState({
         id: asset.id,
         type: 'asset',
-        departmentId: asset.department,
+        domainId: asset.department,
       }))
     }
     return map
@@ -54,7 +54,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
   }, [visibilityByAssetId])
 
   const handleRequestAccess = useCallback((asset: Asset) => {
-    requestAccess(asset.id, { id: asset.id, type: 'asset', departmentId: asset.department })
+    requestAccess(asset.id, { id: asset.id, type: 'asset', domainId: asset.department })
   }, [requestAccess])
 
   // Filter results based on search query — include discoverable restricted assets

@@ -15,11 +15,11 @@ import {
   MobileToolbar,
 } from '@/components/ui'
 import { useAccess, usePersona, useViewPreferences, useSmartCollections, useMobilePanel } from '@/hooks'
-import type { Asset, DepartmentId } from '@/lib/data'
+import type { Asset, DomainId } from '@/lib/data'
 import { getReviewNoteSummary } from '@/lib/review-notes'
 import { getContextAssetGroups } from '@/lib/context-relationships'
 
-const DEPARTMENT_NAMES: Record<DepartmentId, string> = {
+const DOMAIN_NAMES: Record<DomainId, string> = {
   'art-design': 'Art & Design',
   'vfx': 'VFX',
   'camera': 'Camera',
@@ -302,7 +302,7 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
                     {asset.isFinal && <Tag type="positive">Final</Tag>}
                     {asset.department && (
                       <Tag type="neutral">
-                        {DEPARTMENT_NAMES[asset.department]}
+                        {DOMAIN_NAMES[asset.department]}
                       </Tag>
                     )}
                   </div>

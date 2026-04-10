@@ -1,4 +1,4 @@
-import type { DepartmentId } from '@/components/department/types'
+import type { DomainId } from '@/components/department/types'
 import { buildPersonas } from '@/lib/scenario'
 
 export type UserRole =
@@ -14,7 +14,9 @@ export type User = {
   email: string
   role: UserRole
   title: string
-  departmentId?: DepartmentId
+  domainId?: DomainId
+  /** @deprecated Use domainId */
+  departmentId?: DomainId
   teamIds: string[]
   avatar?: string
   isAdmin?: boolean

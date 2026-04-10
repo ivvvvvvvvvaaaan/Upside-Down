@@ -6,7 +6,7 @@
  * match the context of the entity they represent.
  */
 
-import type { DepartmentId } from './data-client'
+import type { DomainId } from './data-client'
 
 function hashCode(s: string): number {
   let h = 0
@@ -26,7 +26,7 @@ export function pick(images: string[], seed: string, count: number = 1): string[
 }
 
 // ---------------------------------------------------------------------------
-// Per-department image pools
+// Per-domain image pools
 // ---------------------------------------------------------------------------
 
 const ART_IMAGES = [
@@ -64,7 +64,7 @@ const AUDIO_IMAGES: string[] = [
   // Drop waveform screenshots, DAW sessions into /images/audio/
 ]
 
-export const DEPARTMENT_POOLS: Record<DepartmentId, string[]> = {
+export const DOMAIN_POOLS: Record<DomainId, string[]> = {
   'art-design': ART_IMAGES,
   'vfx': VFX_IMAGES,
   'camera': CAMERA_IMAGES,
@@ -126,11 +126,15 @@ export const IMAGE_POOL = [
 // Smart pick helpers
 // ---------------------------------------------------------------------------
 
-/** Pick from the department-specific pool, falling back to the combined pool */
-export function pickForDepartment(department: DepartmentId | undefined, seed: string, count: number = 1): string[] {
-  const pool = department ? DEPARTMENT_POOLS[department] : null
+/** Pick from the domain-specific pool, falling back to the combined pool */
+export function pickForDomain(domain: DomainId | undefined, seed: string, count: number = 1): string[] {
+  const pool = domain ? DOMAIN_POOLS[domain] : null
   return pick(pool && pool.length > 0 ? pool : IMAGE_POOL, seed, count)
 }
+/** @deprecated Use pickForDomain */
+export const pickForDepartment = pickForDomain
+/** @deprecated Use DOMAIN_POOLS */
+export const DEPARTMENT_POOLS = DOMAIN_POOLS
 
 /** Pick from the dimension-specific pool (for smart collection cards) */
 export function pickForDimension(dimension: ImageDimension | undefined, seed: string, count: number = 1): string[] {

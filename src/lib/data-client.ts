@@ -1,4 +1,4 @@
-import type { DepartmentId } from '@/components/department/types'
+import type { DomainId } from '@/components/department/types'
 import { getFileIdsByCharacter, getFileIdsByLocation, getFileIdsByScene } from '@/lib/ai-tags'
 import { pick, IMAGE_POOL as allImages, pickForDimension } from '@/lib/images'
 import type { ImageDimension } from '@/lib/images'
@@ -47,6 +47,8 @@ export type SequenceMetadata = {
   shot?: string
 }
 
+export type { DomainId } from '@/components/department/types'
+/** @deprecated Use DomainId */
 export type { DepartmentId } from '@/components/department/types'
 
 // Smart Collection Types
@@ -57,7 +59,7 @@ export type SmartCollectionIcon = 'character' | 'location' | 'scene' | 'palette'
 export type AssetFilter = {
   query?: string
   types?: AssetType[]
-  department?: DepartmentId
+  department?: DomainId
   typeTags?: string[]
   isKeyArt?: boolean
   isFinal?: boolean
@@ -131,7 +133,7 @@ export type Asset = {
   audioMeta?: AudioMetadata
   sequenceMeta?: SequenceMetadata
   collectionIds?: string[]
-  department?: DepartmentId
+  department?: DomainId
   isKeyArt?: boolean
   isFinal?: boolean
   isAutoPromoted?: boolean
@@ -163,7 +165,9 @@ type PreviewableUserCollection = {
 export type SharePreviewResource = {
   resourceId: string
   resourceType: 'asset' | 'cut' | 'folder' | 'collection' | 'smart-collection' | 'review-set' | 'project'
-  departmentId?: DepartmentId
+  domainId?: DomainId
+  /** @deprecated Use domainId */
+  departmentId?: DomainId
 }
 
 // Derive collection thumbnails from AI-tagged workspace files.
@@ -325,14 +329,14 @@ const ALL_COLLECTIONS = [
 const COLLECTION_BY_ID = new Map(ALL_COLLECTIONS.map(collection => [collection.id, collection]))
 const PROTOTYPE_ASSETS = getPromotedWorkspaceAssets()
 const PROTOTYPE_ASSET_BY_ID = new Map(PROTOTYPE_ASSETS.map(asset => [asset.id, asset]))
-const PROTOTYPE_ASSETS_BY_DEPARTMENT = new Map<DepartmentId, Asset[]>()
+const PROTOTYPE_ASSETS_BY_DOMAIN = new Map<DomainId, Asset[]>()
 const PROTOTYPE_ASSETS_BY_FOLDER = new Map<string, Asset[]>()
 
 for (const asset of PROTOTYPE_ASSETS) {
   if (asset.department) {
-    const departmentAssets = PROTOTYPE_ASSETS_BY_DEPARTMENT.get(asset.department) ?? []
-    departmentAssets.push(asset)
-    PROTOTYPE_ASSETS_BY_DEPARTMENT.set(asset.department, departmentAssets)
+    const domainAssets = PROTOTYPE_ASSETS_BY_DOMAIN.get(asset.department) ?? []
+    domainAssets.push(asset)
+    PROTOTYPE_ASSETS_BY_DOMAIN.set(asset.department, domainAssets)
   }
 
   for (const folderId of asset.sourceFolderIds ?? []) {
@@ -410,10 +414,11 @@ export function getSharePreviewImages(
     )
     if (folderImages) return folderImages
 
-    if (!resource.departmentId) return undefined
+    const effectiveDomainId = resource.domainId ?? resource.departmentId
+    if (!effectiveDomainId) return undefined
 
     return uniquePreviewImages(
-      (PROTOTYPE_ASSETS_BY_DEPARTMENT.get(resource.departmentId) ?? []).map(asset => asset.thumbnail),
+      (PROTOTYPE_ASSETS_BY_DOMAIN.get(effectiveDomainId) ?? []).map(asset => asset.thumbnail),
     )
   }
 

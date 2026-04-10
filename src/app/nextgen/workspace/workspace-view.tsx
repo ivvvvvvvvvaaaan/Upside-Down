@@ -31,8 +31,8 @@ import { ContextMenu } from '@/components/ui/context-menu'
 import type { ContextMenuItem } from '@/components/ui/context-menu'
 import { getGridColumns, useViewPreferences, useCompactBar, useWorkspaceState, useResourceSelection, useFileTree, useAccess, usePersona, useMobilePanel, useCollections } from '@/hooks'
 
-import type { DepartmentId } from '@/components/department/types'
-import { DEPARTMENT_FOLDER_MAP, isReferenceFolder, SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
+import type { DomainId } from '@/components/department/types'
+import { DOMAIN_FOLDER_MAP, isReferenceFolder, SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { promotedInstanceToAsset } from '@/lib/asset-instances'
 import type { Asset } from '@/lib/data'
@@ -42,7 +42,7 @@ import { getContextAssetGroups } from '@/lib/context-relationships'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { List, Columns, LayoutGrid, PanelRight, Info, Lock, Users, FolderPlus, FolderSymlink, Share2, Settings, RefreshCw, Trash2, FilePlus, Upload } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { departmentConfigs } from '@/lib/department-configs'
+import { domainConfigs } from '@/lib/domain-configs'
 import { assetToSelectionEntity, folderToSelectionEntity } from '@/lib/selection-actions'
 import type { SelectionEntity } from '@/lib/selection-actions'
 import { materializeReferenceFolders } from '@/lib/reference-folder-utils'
@@ -57,7 +57,7 @@ interface WorkspaceSelectionEntry {
   id: string
   entity: SelectionEntity
   node: WorkspaceFileNode
-  departmentId?: DepartmentId
+  domainId?: DomainId
   asset?: Asset
 }
 
@@ -75,12 +75,12 @@ function toFileNodes(nodes: WorkspaceFileNode[]): FileNode[] {
   }))
 }
 
-function folderNodeToAsset(node: WorkspaceFileNode, departmentId: DepartmentId): Asset {
+function folderNodeToAsset(node: WorkspaceFileNode, domainId: DomainId): Asset {
   return {
     id: node.id,
     name: node.name,
     type: 'text',
-    department: departmentId,
+    department: domainId,
     created_at: node.modifiedAt,
   }
 }
@@ -115,24 +115,24 @@ function flattenWorkspaceNodes(nodes: WorkspaceFileNode[]): WorkspaceFileNode[] 
   ])
 }
 
-function findDepartmentIdForNode(
+function findDomainIdForNode(
   node: WorkspaceFileNode,
-  getDepartmentFiles: (id: DepartmentId) => WorkspaceFileNode[],
-): DepartmentId | undefined {
-  if (node.departmentId) return node.departmentId
-  if (isDepartmentLandingNode(node.id)) return node.id
+  getDomainFiles: (id: DomainId) => WorkspaceFileNode[],
+): DomainId | undefined {
+  if (node.domainId) return node.domainId
+  if (isDomainLandingNode(node.id)) return node.id
 
-  for (const deptId of ALL_DEPARTMENT_IDS) {
-    if (findNodeById(getDepartmentFiles(deptId), node.id)) {
-      return deptId
+  for (const domId of ALL_DOMAIN_IDS) {
+    if (findNodeById(getDomainFiles(domId), node.id)) {
+      return domId
     }
   }
 
   return undefined
 }
 
-function isDepartmentLandingNode(nodeId: string): nodeId is DepartmentId {
-  return Object.prototype.hasOwnProperty.call(DEPARTMENT_FOLDER_MAP, nodeId)
+function isDomainLandingNode(nodeId: string): nodeId is DomainId {
+  return Object.prototype.hasOwnProperty.call(DOMAIN_FOLDER_MAP, nodeId)
 }
 
 /** Resolve URL path segments to an array of WorkspaceFileNode folders */
@@ -162,21 +162,21 @@ const VIEW_MODE_OPTIONS = [
   { value: 'columns', label: 'Columns', icon: <Columns className="w-4 h-4" /> },
 ]
 
-const ALL_DEPARTMENT_IDS = Object.keys(DEPARTMENT_FOLDER_MAP) as DepartmentId[]
-const DEPT_FOLDER_IDS = new Set(Object.values(DEPARTMENT_FOLDER_MAP).map(d => d.id))
+const ALL_DOMAIN_IDS = Object.keys(DOMAIN_FOLDER_MAP) as DomainId[]
+const DOMAIN_FOLDER_IDS = new Set(Object.values(DOMAIN_FOLDER_MAP).map(d => d.id))
 
 interface WorkspaceViewProps {
-  /** Department to display. When omitted, shows department folder landing. */
-  departmentId?: DepartmentId
+  /** Domain to display. When omitted, shows domain folder landing. */
+  domainId?: DomainId
   /** URL path segments representing the drilled-down folder path */
   folderPath: string[]
   /** Workspace-level transient folder ID to auto-drill into on the landing page */
   landingFolderId?: string
 }
 
-export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolderId }: WorkspaceViewProps) {
+export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }: WorkspaceViewProps) {
   const router = useRouter()
-  const isLanding = !departmentId
+  const isLanding = !domainId
   const { canAccess, sharesReceivedByMe, getInheritedGrants, filterByAccess } = useAccess()
   const { activePersona } = usePersona()
   const { getCollection, filterAssets: filterCollectionAssets, scopedAssets, ensureAssetsLoaded } = useCollections()
@@ -201,7 +201,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
     loading,
     createFolder,
   // Always call hook (React rules); results ignored when isLanding
-  } = useWorkspaceState(departmentId ?? 'art-design')
+  } = useWorkspaceState(domainId ?? 'art-design')
 
   const { resolveShareTarget } = useShareAsCollection()
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
@@ -212,7 +212,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const [uploadTargetFolderId, setUploadTargetFolderId] = useState<string | null>(null)
   const [landingDrillPath, setLandingDrillPath] = useState<WorkspaceFileNode[]>([])
-  const { createFolder: fileTreeCreateFolder, createFile: fileTreeCreateFile, deleteNode: fileTreeDeleteNode, renameNode: fileTreeRenameNode, tree: fileTree, getDepartmentFiles: getFileTreeDeptFiles } = useFileTree()
+  const { createFolder: fileTreeCreateFolder, createFile: fileTreeCreateFile, deleteNode: fileTreeDeleteNode, renameNode: fileTreeRenameNode, tree: fileTree, getDomainFiles: getFileTreeDomainFiles } = useFileTree()
   const resolveReferenceNodes = useCallback((nodes: WorkspaceFileNode[]) => {
     return materializeReferenceFolders(nodes, {
       getCollection,
@@ -221,32 +221,32 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
       scopedAssets,
     }) as WorkspaceFileNode[]
   }, [getCollection, filterCollectionAssets, filterByAccess, scopedAssets])
-  // Workspace-level folders: top-level folders created by user (exclude department folders already rendered via departmentNodes)
+  // Workspace-level folders: top-level folders created by user (exclude domain folders already rendered via domainNodes)
   const landingFolders = useMemo(() => {
     return resolveReferenceNodes(
-      fileTree.filter((f) => f.type === 'folder' && !DEPT_FOLDER_IDS.has(f.id)) as WorkspaceFileNode[],
+      fileTree.filter((f) => f.type === 'folder' && !DOMAIN_FOLDER_IDS.has(f.id)) as WorkspaceFileNode[],
     )
   }, [fileTree, resolveReferenceNodes])
 
   // Shared folder/collection nodes injected into the workspace landing
   const sharedFolderNodes: WorkspaceFileNode[] = useMemo(() => {
     if (!isLanding) return []
-    // Only show folders shared from OTHER departments (not your own department's internal folders)
+    // Only show folders shared from OTHER domains (not your own domain's internal folders)
     return sharesReceivedByMe
       .filter(e => {
         if (e.resourceType !== 'folder') return false
-        if (DEPT_FOLDER_IDS.has(e.resourceId)) return false
-        // Skip folders within the user's own department
-        if (activePersona?.departmentId && e.departmentId === activePersona.departmentId) return false
+        if (DOMAIN_FOLDER_IDS.has(e.resourceId)) return false
+        // Skip folders within the user's own domain
+        if (activePersona?.domainId && e.departmentId === activePersona.domainId) return false
         return true
       })
       .map((entry) => {
-        const departmentFiles = entry.departmentId ? (getFileTreeDeptFiles(entry.departmentId) as WorkspaceFileNode[]) : []
-        const sourceNode = findNodeById(departmentFiles, entry.resourceId)
+        const domainFiles = entry.departmentId ? (getFileTreeDomainFiles(entry.departmentId) as WorkspaceFileNode[]) : []
+        const sourceNode = findNodeById(domainFiles, entry.resourceId)
         if (sourceNode?.type === 'folder') {
           return {
             ...sourceNode,
-            departmentId: entry.departmentId,
+            domainId: entry.departmentId,
           }
         }
 
@@ -254,12 +254,12 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
           id: entry.resourceId,
           name: entry.label,
           type: 'folder' as const,
-          departmentId: entry.departmentId,
+          domainId: entry.departmentId,
           modifiedAt: entry.grantedAt,
           children: [],
         }
       })
-  }, [isLanding, sharesReceivedByMe, activePersona, getFileTreeDeptFiles])
+  }, [isLanding, sharesReceivedByMe, activePersona, getFileTreeDomainFiles])
 
   // O(1) lookup for shared folder IDs
   const sharedFolderIds = useMemo(() => new Set(sharedFolderNodes.map(n => n.id)), [sharedFolderNodes])
@@ -274,8 +274,8 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
     ]))
   }, [assetInstances])
   const getAclResourceId = useCallback((node: WorkspaceFileNode): string => {
-    if (isLanding && isDepartmentLandingNode(node.id)) {
-      return DEPARTMENT_FOLDER_MAP[node.id].id
+    if (isLanding && isDomainLandingNode(node.id)) {
+      return DOMAIN_FOLDER_MAP[node.id].id
     }
     if (isReferenceFolder(node)) {
       return node.reference.resourceId
@@ -318,21 +318,21 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
     { field: 'name', direction: 'asc' },
   ])
-  const departmentAccessible = departmentId ? canAccess(DEPARTMENT_FOLDER_MAP[departmentId].id) : true
+  const domainAccessible = domainId ? canAccess(DOMAIN_FOLDER_MAP[domainId].id) : true
 
-  // Department folder nodes for landing view — real WorkspaceFileNode shapes
-  const departmentNodes: WorkspaceFileNode[] = useMemo(() => {
+  // Domain folder nodes for landing view — real WorkspaceFileNode shapes
+  const domainNodes: WorkspaceFileNode[] = useMemo(() => {
     if (!isLanding) return []
-    return ALL_DEPARTMENT_IDS
-      .filter((id) => canAccess(DEPARTMENT_FOLDER_MAP[id].id))
+    return ALL_DOMAIN_IDS
+      .filter((id) => canAccess(DOMAIN_FOLDER_MAP[id].id))
       .map((id) => ({
         id,
-        name: departmentConfigs[id].name,
+        name: domainConfigs[id].name,
         type: 'folder' as const,
-        departmentId: id,
-        children: getFileTreeDeptFiles(id) as WorkspaceFileNode[],
+        domainId: id,
+        children: getFileTreeDomainFiles(id) as WorkspaceFileNode[],
       }))
-  }, [isLanding, canAccess, getFileTreeDeptFiles])
+  }, [isLanding, canAccess, getFileTreeDomainFiles])
 
   // Resolve URL path segments to actual folder nodes
   const resolvedFolderPath = useMemo(
@@ -340,17 +340,17 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
     [urlPath, processedFiles],
   )
 
-  // Sync breadcrumb extras for department routes and landing-scoped shared/workspace folders.
+  // Sync breadcrumb extras for domain routes and landing-scoped shared/workspace folders.
   useEffect(() => {
     const extras: { label: string; href?: string; onClick?: () => void }[] = []
 
-    if (departmentId) {
+    if (domainId) {
       extras.push({ label: 'Workspace', href: '/nextgen/workspace' })
-      const deptName = departmentConfigs[departmentId]?.name ?? departmentId
+      const domName = domainConfigs[domainId]?.name ?? domainId
       if (resolvedFolderPath.length > 0) {
-        extras.push({ label: deptName, href: `/nextgen/workspace/${departmentId}` })
+        extras.push({ label: domName, href: `/nextgen/workspace/${domainId}` })
       } else {
-        extras.push({ label: deptName })
+        extras.push({ label: domName })
       }
 
       // Folder path crumbs
@@ -361,7 +361,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
           onClick: !isLast
             ? () => {
                 const pathSegments = resolvedFolderPath.slice(0, i + 1).map((f) => f.id)
-                router.push(`/nextgen/workspace/${departmentId}/${pathSegments.join('/')}`)
+                router.push(`/nextgen/workspace/${domainId}/${pathSegments.join('/')}`)
               }
             : undefined,
         })
@@ -386,7 +386,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
 
     setBreadcrumbExtras(extras)
     return () => clearBreadcrumbExtras()
-  }, [departmentId, resolvedFolderPath, landingFolderId, landingDrillPath, setBreadcrumbExtras, clearBreadcrumbExtras, router])
+  }, [domainId, resolvedFolderPath, landingFolderId, landingDrillPath, setBreadcrumbExtras, clearBreadcrumbExtras, router])
 
   const sortFields = [
     { value: 'name', label: 'Name' },
@@ -399,8 +399,8 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
 
   const filterOptions: { id: string; label: string }[] = []
 
-  // Unified grid items — works for both landing and department views
-  // Department nodes on landing are always shown (no locking); folder-level filtering applies within departments
+  // Unified grid items — works for both landing and domain views
+  // Domain nodes on landing are always shown (no locking); folder-level filtering applies within domains
   const currentGridItems: WorkspaceFileNode[] = useMemo(() => {
     let items: WorkspaceFileNode[]
     if (isLanding) {
@@ -408,7 +408,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
       if (currentLandingFolder) {
         items = currentLandingFolder.children ?? []
       } else {
-        return [...departmentNodes, ...sharedFolderNodes, ...landingFolders]
+        return [...domainNodes, ...sharedFolderNodes, ...landingFolders]
       }
     } else if (resolvedFolderPath.length === 0) {
       items = processedFiles
@@ -418,13 +418,13 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
     }
     // Apply access filtering to both folders and files
     return items.filter((node) => {
-      if (isLanding && isDepartmentLandingNode(node.id)) return true
+      if (isLanding && isDomainLandingNode(node.id)) return true
       if (canAccess(getAclResourceId(node))) return true
       // Not accessible — show only if persona can see restricted (folders only, files stay hidden)
       if (node.type === 'folder') return activePersona?.role === 'manager'
       return false
     })
-  }, [isLanding, landingDrillPath, departmentNodes, sharedFolderNodes, landingFolders, processedFiles, resolvedFolderPath, canAccess, activePersona, getAclResourceId])
+  }, [isLanding, landingDrillPath, domainNodes, sharedFolderNodes, landingFolders, processedFiles, resolvedFolderPath, canAccess, activePersona, getAclResourceId])
 
   // Access-filtered total file count for compact bar
   const filteredFileCount = useMemo(
@@ -433,17 +433,17 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   )
 
   const buildSelectionEntry = useCallback((node: WorkspaceFileNode): WorkspaceSelectionEntry => {
-    const nodeDepartmentId = departmentId
-      ?? findDepartmentIdForNode(node, getFileTreeDeptFiles)
-      ?? (node.type === 'file' ? (activePersona?.departmentId ?? ALL_DEPARTMENT_IDS[0]) : undefined)
+    const nodeDomainId = domainId
+      ?? findDomainIdForNode(node, getFileTreeDomainFiles)
+      ?? (node.type === 'file' ? (activePersona?.domainId ?? ALL_DOMAIN_IDS[0]) : undefined)
 
     if (node.type === 'file') {
-      const asset = assetBySourceFileId.get(node.id) ?? folderNodeToAsset(node, nodeDepartmentId)
+      const asset = assetBySourceFileId.get(node.id) ?? folderNodeToAsset(node, nodeDomainId)
       return {
         id: asset.id,
         entity: assetToSelectionEntity(asset, { resourceId: node.id }),
         node,
-        departmentId: nodeDepartmentId,
+        domainId: nodeDomainId,
         asset,
       }
     }
@@ -454,12 +454,12 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
         id: node.id,
         resourceId: getAclResourceId(node),
         label: node.name,
-        departmentId: nodeDepartmentId,
+        domainId: nodeDomainId,
       }),
       node,
-      departmentId: nodeDepartmentId,
+      domainId: nodeDomainId,
     }
-  }, [departmentId, getFileTreeDeptFiles, activePersona, assetBySourceFileId, getAclResourceId])
+  }, [domainId, getFileTreeDomainFiles, activePersona, assetBySourceFileId, getAclResourceId])
 
   const topLevelSelectionEntries = useMemo(
     () => currentGridItems.map(buildSelectionEntry),
@@ -497,7 +497,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
   }, [primaryId, selectionEntryById])
   const primaryNodeId = primarySelectionEntry?.node.id ?? null
 
-  const workspaceLocationKey = `${departmentId ?? 'landing'}:${landingFolderId ?? ''}:${urlPath.join('/')}`
+  const workspaceLocationKey = `${domainId ?? 'landing'}:${landingFolderId ?? ''}:${urlPath.join('/')}`
   useEffect(() => {
     clearSelection()
   }, [workspaceLocationKey, clearSelection])
@@ -530,9 +530,9 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
       }
     } else {
       const newPath = [...urlPath, folder.id]
-      router.push(`/nextgen/workspace/${departmentId}/${newPath.join('/')}`)
+      router.push(`/nextgen/workspace/${domainId}/${newPath.join('/')}`)
     }
-  }, [departmentId, isLanding, landingFolderId, landingFolderIds, router, sharedFolderIds, urlPath])
+  }, [domainId, isLanding, landingFolderId, landingFolderIds, router, sharedFolderIds, urlPath])
   const handlePanelAssetSwitch = useCallback((nextAsset: Asset) => {
     const selectionEntry = selectionEntryById.get(nextAsset.id)
     if (selectionEntry) {
@@ -608,52 +608,52 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
 
   const isInsideFolder = resolvedFolderPath.length > 0
   const currentFolder = isInsideFolder ? resolvedFolderPath[resolvedFolderPath.length - 1] : null
-  const departmentName = departmentId ? (departmentConfigs[departmentId]?.name ?? departmentId) : 'Workspace'
+  const domainName = domainId ? (domainConfigs[domainId]?.name ?? domainId) : 'Workspace'
 
-  // Default panel context: show current folder or department when nothing is explicitly selected.
-  // On the landing page, department cards use department ids for routing, but ACL lives on the
-  // department wrapper folder ids from DEPARTMENT_FOLDER_MAP.
+  // Default panel context: show current folder or domain when nothing is explicitly selected.
+  // On the landing page, domain cards use domain ids for routing, but ACL lives on the
+  // domain wrapper folder ids from DOMAIN_FOLDER_MAP.
   const landingDrillFolder = landingDrillPath[landingDrillPath.length - 1] ?? null
 
   // Context node: what the user selected, or failing that, the folder they're currently in.
   // One concept, one priority chain: selection > current folder > current location root.
   const currentLocationNode: WorkspaceFileNode | null = useMemo(() => {
-    // Inside a department subfolder
+    // Inside a domain subfolder
     if (currentFolder) return currentFolder
     // Inside a workspace-level folder (landing drill-down)
     if (landingDrillFolder) return landingDrillFolder
-    // At a department root
-    if (departmentId) {
+    // At a domain root
+    if (domainId) {
       return {
-        id: DEPARTMENT_FOLDER_MAP[departmentId].id,
-        name: departmentName,
+        id: DOMAIN_FOLDER_MAP[domainId].id,
+        name: domainName,
         type: 'folder' as const,
-        departmentId,
+        domainId,
         children: processedFiles,
       }
     }
     return null
-  }, [currentFolder, landingDrillFolder, departmentId, departmentName, processedFiles])
+  }, [currentFolder, landingDrillFolder, domainId, domainName, processedFiles])
 
   const effectiveNode: WorkspaceFileNode | null = useMemo(() => {
     if (primarySelectionEntry) {
       const selectedNode = primarySelectionEntry.node
-      // Landing department cards represent a department root, not the card node itself
-      if (isLanding && Object.prototype.hasOwnProperty.call(DEPARTMENT_FOLDER_MAP, selectedNode.id)) {
-        const selectedDeptId = selectedNode.id as DepartmentId
+      // Landing domain cards represent a domain root, not the card node itself
+      if (isLanding && Object.prototype.hasOwnProperty.call(DOMAIN_FOLDER_MAP, selectedNode.id)) {
+        const selectedDomainId = selectedNode.id as DomainId
         return {
-          id: DEPARTMENT_FOLDER_MAP[selectedDeptId].id,
+          id: DOMAIN_FOLDER_MAP[selectedDomainId].id,
           name: selectedNode.name,
           type: 'folder' as const,
-          departmentId: selectedDeptId,
-          children: getFileTreeDeptFiles(selectedDeptId) as WorkspaceFileNode[],
+          domainId: selectedDomainId,
+          children: getFileTreeDomainFiles(selectedDomainId) as WorkspaceFileNode[],
         }
       }
       return selectedNode
     }
     return currentLocationNode
-  }, [primarySelectionEntry, isLanding, currentLocationNode, getFileTreeDeptFiles])
-  const selectedNodeDepartmentId = primarySelectionEntry?.departmentId
+  }, [primarySelectionEntry, isLanding, currentLocationNode, getFileTreeDomainFiles])
+  const selectedNodeDomainId = primarySelectionEntry?.domainId
   const selectedFileContextGroups = useMemo(() => {
     if (!primarySelectionEntry || primarySelectionEntry.node.type !== 'file' || !primarySelectionEntry.asset) {
       return undefined
@@ -665,20 +665,20 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
     if (primarySelectionEntry?.node.type !== 'file') return
     void ensureAssetsLoaded()
   }, [primarySelectionEntry, ensureAssetsLoaded])
-  const effectiveNodeDepartmentId = useMemo(() => {
+  const effectiveNodeDomainId = useMemo(() => {
     return effectiveNode
-      ? departmentId ?? findDepartmentIdForNode(effectiveNode, getFileTreeDeptFiles)
+      ? domainId ?? findDomainIdForNode(effectiveNode, getFileTreeDomainFiles)
       : undefined
-  }, [effectiveNode, departmentId, getFileTreeDeptFiles])
-  const pageTitle = landingDrillFolder?.name ?? currentFolder?.name ?? departmentName
+  }, [effectiveNode, domainId, getFileTreeDomainFiles])
+  const pageTitle = landingDrillFolder?.name ?? currentFolder?.name ?? domainName
   const isGridView = viewMode === 'grid'
   const explorerViewMode = (isGridView ? 'list' : viewMode) as FileViewMode
 
-  // Allow access if user can access the department root OR the specific folder they're navigating to
+  // Allow access if user can access the domain root OR the specific folder they're navigating to
   const targetFolderId = urlPath.length > 0 ? urlPath[urlPath.length - 1] : null
   const folderAccessible = targetFolderId ? canAccess(targetFolderId) : false
 
-  if (!isLanding && !departmentAccessible && !folderAccessible) {
+  if (!isLanding && !domainAccessible && !folderAccessible) {
     return (
       <div className="h-full flex flex-col">
         <div className="flex-1 min-h-0 overflow-auto">
@@ -686,7 +686,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
             <div className="max-w-7xl mx-auto">
               <EmptyState
                 title="Access Restricted"
-                message={`You don't have workspace access to ${departmentName}. Shared items will still appear in Search, Collections, or Inbox.`}
+                message={`You don't have workspace access to ${domainName}. Shared items will still appear in Search, Collections, or Inbox.`}
               />
             </div>
           </div>
@@ -702,8 +702,8 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
           <CompactBar
             visible={showCompactBar}
             title={pageTitle}
-            count={isLanding ? departmentNodes.length : filteredFileCount}
-            countLabel={isLanding ? 'department' : 'file'}
+            count={isLanding ? domainNodes.length : filteredFileCount}
+            countLabel={isLanding ? 'domain' : 'file'}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             filterOptions={filterOptions}
@@ -836,8 +836,8 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                             const fileCount = countAccessibleFiles(node.children ?? [], canAccess)
                             const isSharedFolder = sharedFolderIds.has(node.id)
                             const isRefFolder = isReferenceFolder(node)
-                            const folderAccessible = isLanding && isDepartmentLandingNode(node.id)
-                              ? canAccess(DEPARTMENT_FOLDER_MAP[node.id].id)
+                            const folderAccessible = isLanding && isDomainLandingNode(node.id)
+                              ? canAccess(DOMAIN_FOLDER_MAP[node.id].id)
                               : canAccess(node.id)
                             const isRestricted = !folderAccessible && !isSharedFolder && !isRefFolder
                             const accessIcon = isRefFolder
@@ -892,10 +892,10 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
                           }
                           const workspaceAsset = assetBySourceFileId.get(node.id) ?? folderNodeToAsset(
                             node,
-                            departmentId
-                              ?? findDepartmentIdForNode(node, getFileTreeDeptFiles)
-                              ?? activePersona?.departmentId
-                              ?? ALL_DEPARTMENT_IDS[0],
+                            domainId
+                              ?? findDomainIdForNode(node, getFileTreeDomainFiles)
+                              ?? activePersona?.domainId
+                              ?? ALL_DOMAIN_IDS[0],
                           )
                           return (
                             <AssetCard
@@ -953,7 +953,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
         </div>
 
         {/* Side Panel — AssetDetailPanel for files, WorkspaceSidePanel for folders */}
-        {primarySelectionEntry?.node.type === 'file' && selectedNodeDepartmentId && primarySelectionEntry.asset ? (
+        {primarySelectionEntry?.node.type === 'file' && selectedNodeDomainId && primarySelectionEntry.asset ? (
           <AssetDetailPanel
             asset={primarySelectionEntry.asset}
             open={panelOpen}
@@ -967,7 +967,7 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
             node={effectiveNode}
             open={panelOpen}
             onClose={closePanel}
-            departmentId={effectiveNodeDepartmentId}
+            domainId={effectiveNodeDomainId}
             folderVariant={
               false
                 ? 'shared'
@@ -1019,14 +1019,14 @@ export function WorkspaceView({ departmentId, folderPath: urlPath, landingFolder
         const rawRef: ResourceRef = {
           id: nodeId,
           type: accessModalNode.type === 'folder' ? 'folder' : 'asset',
-          departmentId,
+          domainId,
         }
         // Resolve folders to workspace-bound collections — same path as selection bar Share
         const resolved = accessModalNode.type === 'folder'
           ? resolveShareTarget(rawRef, accessModalNode.name)
           : null
         const modalRef = resolved
-          ? { id: resolved.resourceRef.id, type: resolved.resourceRef.type, departmentId } as ResourceRef
+          ? { id: resolved.resourceRef.id, type: resolved.resourceRef.type, domainId } as ResourceRef
           : rawRef
         const modalId = modalRef.id
         return (

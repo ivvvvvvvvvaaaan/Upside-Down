@@ -4,8 +4,8 @@ import {
   getAssetIdsForFolder,
   getAssetIdsForFolderRecursive,
 } from '@/lib/data-client'
-import { getDepartmentWorkspaceFiles } from '@/lib/workspace-data'
-import type { DepartmentId } from '@/components/department/types'
+import { getDomainWorkspaceFiles } from '@/lib/workspace-data'
+import type { DomainId } from '@/components/department/types'
 import type { Asset, Collection } from '@/lib/data-client'
 import { seedCutToAsset } from '@/lib/cuts'
 import { buildCuts } from '@/lib/scenario'
@@ -20,6 +20,8 @@ export type {
   ImageMetadata,
   TextMetadata,
   AudioMetadata,
+  DomainId,
+  /** @deprecated Use DomainId */
   DepartmentId,
   SmartCollectionCategory,
   SmartCollectionIcon,
@@ -80,13 +82,17 @@ function getAllAssets(): Asset[] {
   return [...assets, ...cutAssets]
 }
 
-export function getAssetsByDepartment(departmentId: DepartmentId): Asset[] {
-  return getAssets().filter(a => a.department === departmentId)
+export function getAssetsByDomain(domainId: DomainId): Asset[] {
+  return getAssets().filter(a => a.department === domainId)
 }
+/** @deprecated Use getAssetsByDomain */
+export const getAssetsByDepartment = getAssetsByDomain
 
-export function getAssetsByDepartmentAndCollection(departmentId: DepartmentId, collectionId: string): Asset[] {
-  return getAssets().filter(a => a.department === departmentId && a.collectionIds?.includes(collectionId))
+export function getAssetsByDomainAndCollection(domainId: DomainId, collectionId: string): Asset[] {
+  return getAssets().filter(a => a.department === domainId && a.collectionIds?.includes(collectionId))
 }
+/** @deprecated Use getAssetsByDomainAndCollection */
+export const getAssetsByDepartmentAndCollection = getAssetsByDomainAndCollection
 
 export function getRecentAssets(limit: number = 12): Asset[] {
   return getAllAssets()
@@ -114,8 +120,8 @@ export function getAssetsByIds(ids: string[]): Asset[] {
  */
 export function resolveCollectionAssetIds(collection: UserCollection): string[] {
   if (collection.boundFolderId) {
-    if (collection.boundDepartmentId) {
-      const tree = getDepartmentWorkspaceFiles(collection.boundDepartmentId as DepartmentId)
+    if (collection.boundDomainId) {
+      const tree = getDomainWorkspaceFiles(collection.boundDomainId as DomainId)
       // Walk the folder tree to collect all file node IDs
       const ids: string[] = []
       const findAndCollect = (nodes: { id: string; type: string; children?: unknown[] }[], targetId: string): boolean => {

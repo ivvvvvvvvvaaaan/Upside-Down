@@ -18,14 +18,14 @@ import {
 import type { Grant, ResourceRef, RoleGroup, Permission } from '@/lib/grants'
 
 describe('grant-based access model', () => {
-  it('uses explicit department-root grants for default department access', () => {
+  it('uses explicit domain-root grants for default domain access', () => {
     const result = resolveAccess('vfx-coordinator', 'ws-vfx', DEFAULT_GRANTS)
     expect(result.hasAccess).toBe(true)
     expect(result.source).toBe('team')
     expect(result.effectiveProfile).toBe('manage')
   })
 
-  it('uses department team defaults consistently for all department members', () => {
+  it('uses domain team defaults consistently for all domain members', () => {
     const lisa = resolveAccess('editorial-coordinator', 'ws-editorial', DEFAULT_GRANTS)
     const maria = resolveAccess('editorial-artist', 'ws-editorial', DEFAULT_GRANTS)
 
@@ -38,10 +38,10 @@ describe('grant-based access model', () => {
     expect(maria.effectiveProfile).toBe('manage')
   })
 
-  it('lets a direct person override outrank the department default', () => {
+  it('lets a direct person override outrank the domain default', () => {
     const customOverride: Grant = {
       id: 'editorial-override',
-      resource: { id: 'ws-editorial', type: 'folder', departmentId: 'editorial' },
+      resource: { id: 'ws-editorial', type: 'folder', domainId: 'editorial', departmentId: 'editorial' },
       principal: { type: 'user', userId: 'editorial-coordinator' },
       templateId: 'manage',
       permissions: DEFAULT_ROLE_GROUPS.find((group) => group.id === 'manage')!.permissions,
@@ -188,7 +188,7 @@ describe('capability decomposition', () => {
   })
 
   it('resource-level ACL helpers distinguish sharing from admin rights', () => {
-    const vfxFolder: ResourceRef = { id: 'ws-vfx-shots', type: 'folder', departmentId: 'vfx' }
+    const vfxFolder: ResourceRef = { id: 'ws-vfx-shots', type: 'folder', domainId: 'vfx', departmentId: 'vfx' }
 
     expect(canCreateGrantForResource('vfx-coordinator', vfxFolder, DEFAULT_GRANTS)).toBe(true)
     expect(canEditAclForResource('vfx-coordinator', vfxFolder, DEFAULT_GRANTS)).toBe(true)
@@ -231,7 +231,7 @@ describe('project-level roles', () => {
     expect(allShares.map((view) => view.resourceType)).not.toContain('project')
   })
 
-  it('department-root policy grants are excluded from share views', () => {
+  it('domain-root policy grants are excluded from share views', () => {
     const created = buildSharesCreatedByMe('studio-alex', DEFAULT_GRANTS)
     const received = buildSharesReceivedByMe('editorial-coordinator', DEFAULT_GRANTS)
     const allShares = buildAllProjectShares(DEFAULT_GRANTS)
