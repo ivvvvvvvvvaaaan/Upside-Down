@@ -72,7 +72,7 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
   const principal = grant.principal
 
   return (
-    <div className="py-1.5 space-y-1">
+    <div className="py-1">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           {principal.type === 'user' ? (
@@ -857,7 +857,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
   const domainContextExpanded = expandedGroups.has('domain-context')
   const domainContextRow = domainContext && (
-    <div className="py-1.5 space-y-1">
+    <div className="py-1">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <DepartmentAvatar domainId={domainContext.domId} size="sm" />
@@ -1236,7 +1236,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
             <Tab value="release">Release {domainCount > 0 && <span className="text-foreground-subtle ml-2">{domainCount}</span>}</Tab>
           </TabsList>
 
-          <TabsContent value="people" className="space-y-2">
+          <TabsContent value="people">
             {searchSection}
             {haveAccessHeader}
             {domainContextRow}

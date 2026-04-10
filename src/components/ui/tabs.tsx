@@ -134,7 +134,7 @@ function TabsContent({ value, children, className }: TabsContentProps) {
   return (
     <div
       role="tabpanel"
-      className={cn('pt-4', className)}
+      className={cn('pt-2', className)}
     >
       {children}
     </div>
