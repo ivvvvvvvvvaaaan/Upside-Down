@@ -851,7 +851,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     </div>
   )
 
-  const haveAccessHeader = (domainContext || userEntries.length > 0 || teamEntries.length > 0 || sharedViaCollections.length > 0) && (
+  const haveAccessHeader = (userEntries.length > 0 || teamEntries.length > 0 || sharedViaCollections.length > 0) && (
     <h3 className="text-body-0-bold text-foreground-dim">Have access</h3>
   )
 
@@ -1102,8 +1102,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     </div>
   )
 
-  const peopleEmptyState = userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && sharedViaCollections.length === 0 && !domainContext && pendingPeopleCount === 0 && (
-    <p className="text-body-0-regular text-foreground-dim">{emptyLabel}</p>
+  const peopleEmptyState = userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && sharedViaCollections.length === 0 && pendingPeopleCount === 0 && (
+    <p className="text-body-0-regular text-foreground-subtle/50">Use the search above to share with people or teams.</p>
   )
 
   const guestLinksSection = (
