@@ -110,9 +110,11 @@ Domain release is integrated into the share flow. "Release to MARKETING" = share
 
 ## Vocabulary
 
-| This model says | Content Hub says | Creative Review says |
-|---|---|---|
-| Domain | Domain | (user groups -- CR is its own domain) |
-| Collection | Collection | Playlist |
-| Workspace | (N/A -- LucidLink file sync) | (folders with mandated templates) |
-| Share | Share / Release | Share |
+| Concept | This model | Content Hub | Creative Review | Conflict? |
+|---|---|---|---|---|
+| Team boundary | Domain | Domain | Domain (CR is its own) | **None.** Aligned. |
+| File organization | Workspace | LucidLink file sync | Folders with templates | **None.** Different implementations, same idea. |
+| Group of assets | Collection | Collection | Playlist | **Manageable.** CR can label their UI "playlist" while the underlying entity is "collection." Same concept, different skin. Not a system conflict -- a branding choice. |
+| Distribute to audience | Share / Release | Share / Release | Share | **None.** "Release" preserved for domain shares; "share" for person shares. Both terms survive. |
+
+**Net conflicts: 0 system-level, 1 branding-level** (collection vs playlist). This is acceptable -- CR controls their UI label. The model, API, and grants all use "collection."

@@ -20,3 +20,4 @@ ceda72f	4.9	5	100	0	kept	File-move-is-access-decision warning. Prevents F1 (hund
 fff29d3	4.6	5	100	0	reverted	Always-collection sharing. Collection sprawl from wrapping every single-asset share.
 08d2a36	4.9	5	100	0	kept	Leave action for shared collections. Recipient can opt out without affecting others.
 61a0c02	4.9	5	100	0	kept	Define distribution-domain experience: released content + shared collections, no workspace.
+07eba5c	4.9	5	100	0	kept	Vocabulary alignment: 0 system conflicts, 1 branding choice (collection vs playlist in CR UI).
