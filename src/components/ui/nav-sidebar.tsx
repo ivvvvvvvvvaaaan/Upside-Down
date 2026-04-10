@@ -678,7 +678,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
             const isDomain = 'boundDomainId' in c && c.boundDomainId === activePersona?.domainId
             if (!isOwned && !isDomain && !isAdmin) continue
             seen.add(c.id)
-            items.push({ id: c.id, name: c.name, count: getCollectionAssetCount(c.id), isShared: false })
+            items.push({ id: c.id, name: c.name, count: getCollectionAssetCount(c.id).accessible, isShared: false })
           }
 
           // Received shares (not already shown)
@@ -687,7 +687,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
             if (entry.resourceType !== 'collection' && entry.resourceType !== 'smart-collection') continue
             if (seen.has(entry.resourceId)) continue
             seen.add(entry.resourceId)
-            items.push({ id: entry.resourceId, name: entry.label, count: getCollectionAssetCount(entry.resourceId), isShared: true })
+            items.push({ id: entry.resourceId, name: entry.label, count: getCollectionAssetCount(entry.resourceId).accessible, isShared: true })
           }
 
           return items.map(item => (

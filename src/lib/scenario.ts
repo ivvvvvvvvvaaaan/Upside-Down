@@ -24,6 +24,8 @@ type ScenarioPerson = {
   title: string
   domain?: DomainId
   teams: string[]
+  /** Whether this persona can view sensitive/restricted media */
+  sensitiveMediaCapability?: boolean
 }
 
 type ScenarioTeam = {
@@ -148,6 +150,8 @@ type Scenario = {
   guestLinks: ScenarioGuestLink[]
   collections: ScenarioCollection[]
   cuts: ScenarioCut[]
+  /** Asset IDs flagged as containing sensitive media */
+  sensitiveAssetIds: string[]
 }
 
 // --- The scenario ---
@@ -196,12 +200,12 @@ export const SCENARIO: Scenario = {
   ],
 
   people: [
-    { id: 'studio-alex',           name: 'Alex Rivera',   email: 'arivera@netflix.com',  role: 'studio-exec', title: 'VP Content',             domain: undefined,    teams: [] },
+    { id: 'studio-alex',           name: 'Alex Rivera',   email: 'arivera@netflix.com',  role: 'studio-exec', title: 'VP Content',             domain: undefined,    teams: [], sensitiveMediaCapability: true },
     { id: 'creative-david',        name: 'David Park',    email: 'dpark@netflix.com',    role: 'creative',    title: 'Director',               domain: undefined,    teams: [] },
     { id: 'vfx-supervisor',        name: 'Mike Torres',   email: 'mtorres@netflix.com',  role: 'manager',     title: 'VFX Supervisor',         domain: 'vfx',        teams: ['vfx-core'] },
     { id: 'vfx-coordinator',       name: 'Sarah Chen',    email: 'schen@netflix.com',    role: 'manager',     title: 'VFX Coordinator',        domain: 'vfx',        teams: ['vfx-core'] },
-    { id: 'editorial-coordinator', name: 'Lisa Kim',      email: 'lkim@netflix.com',     role: 'manager',     title: 'Editorial Coordinator',  domain: 'editorial',  teams: ['editorial'] },
-    { id: 'editorial-artist',      name: 'Maria Santos',  email: 'msantos@netflix.com',  role: 'artist',      title: 'Editor',                 domain: 'editorial',  teams: ['editorial'] },
+    { id: 'editorial-coordinator', name: 'Lisa Kim',      email: 'lkim@netflix.com',     role: 'manager',     title: 'Editorial Coordinator',  domain: 'editorial',  teams: ['editorial'], sensitiveMediaCapability: true },
+    { id: 'editorial-artist',      name: 'Maria Santos',  email: 'msantos@netflix.com',  role: 'artist',      title: 'Editor',                 domain: 'editorial',  teams: ['editorial'], sensitiveMediaCapability: true },
     { id: 'art-artist',            name: 'Priya Sharma',  email: 'psharma@netflix.com',  role: 'artist',      title: 'Concept Artist',         domain: 'art-design', teams: ['art-design'] },
     { id: 'vendor-framestore',     name: 'James Liu',     email: 'jliu@framestore.com',  role: 'vendor',      title: 'Lead Compositor',        domain: undefined,    teams: [] },
     { id: 'camera-dit',            name: 'Tom Nakamura',  email: 'tnakamura@netflix.com', role: 'manager',     title: 'DIT',                    domain: 'camera',     teams: ['camera-team'] },
@@ -544,6 +548,8 @@ export const SCENARIO: Scenario = {
     { id: 'coll-vfx-vendor-drop',  name: 'Framestore Drop',  createdBy: 'schen@netflix.com', assetIds: ['ws-vfx-010-030', 'ws-vfx-ref-brief'], boundDomainId: 'vfx' },
   ],
 
+  sensitiveAssetIds: ['ws-edit-cut-1', 'ws-edit-cut-2'],
+
   cuts: [
     // EP301 — full progression: Locked Cut 1-3 → Final Cut → EMF
     { id: 'cut-ep301-lc-1', name: 'EP301 Locked Cut 1', episode: 'EP301', stage: 'locked-cut', version: 1, assetVersion: '1.0',
@@ -585,8 +591,12 @@ export function buildPersonas(): User[] {
     title: p.title,
     domainId: p.domain,
     teamIds: p.teams,
+    sensitiveMediaCapability: p.sensitiveMediaCapability,
   }))
 }
+
+/** Set of asset IDs flagged as sensitive */
+export const SENSITIVE_ASSET_IDS = new Set(SCENARIO.sensitiveAssetIds)
 
 export function buildTeams(): Team[] {
   return SCENARIO.teams.map((t) => ({

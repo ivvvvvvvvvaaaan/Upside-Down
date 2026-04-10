@@ -18,6 +18,8 @@ export type User = {
   teamIds: string[]
   avatar?: string
   isAdmin?: boolean
+  /** Whether this user can view sensitive/restricted media */
+  sensitiveMediaCapability?: boolean
 }
 
 export const DIRECTORY_UPDATED_EVENT = 'prototype-directory-updated'

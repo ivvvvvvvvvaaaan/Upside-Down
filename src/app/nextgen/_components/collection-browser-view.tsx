@@ -27,6 +27,7 @@ import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import type { GalleryThumbnailMode } from '@/components/ui/collections-gallery-view'
 import type { CollectionCardAssetCount } from '@/components/ui/collection-card'
 import {
+  useAccess,
   useAssetSelection,
   useCollectionAssets,
   useCompactBar,
@@ -94,6 +95,7 @@ export function CollectionBrowserView({
     handleSelectionClick: handleCollectionSelectionClick,
     clearSelection: clearCollectionSelection,
   } = useResourceSelection<Collection>()
+  const { getCollectionAssetCount } = useAccess()
   const {
     selectedCollection,
     assets: collectionAssets,
@@ -470,6 +472,7 @@ export function CollectionBrowserView({
                       key={collection.id}
                       title={collection.name}
                       assetCount={collection.assetCount}
+                      totalAssetCount={getCollectionAssetCount(collection.id).total}
                       type={collection.type}
                       mainImage={collection.mainImage}
                       thumbnailImages={collection.thumbnailImages}

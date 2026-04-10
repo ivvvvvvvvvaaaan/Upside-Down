@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Asset, DomainId } from '@/lib/data'
 import type { MetadataFieldVisibility } from '@/hooks/useViewPreferences'
+import { useAccess } from '@/hooks/useAccess'
 
 const STATUS_LABELS = new Set(['Key Art', 'Final'])
 const BADGE_EXTENSIONS = new Set(['exr', 'nk', 'mb', 'hip', 'prproj', 'psd', 'ai', 'ptx', 'tiff', 'tx', 'pdf', 'zip', 'cube', 'xlsx'])
@@ -106,6 +107,7 @@ export function AssetCard({
   // Primary implies selected
   const isSelected = selected || primary
   const isShared = shared === true
+  const { isSensitiveAsset } = useAccess()
 
   // Loading state with breathing animation (no asset data available)
   if (loading || !asset) {
@@ -284,6 +286,13 @@ export function AssetCard({
         {restricted && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/20">
             <Lock className="w-5 h-5 text-white/80" />
+          </div>
+        )}
+
+        {/* Sensitive media badge - top-left */}
+        {!restricted && asset && isSensitiveAsset(asset.id) && (
+          <div className="absolute top-2 left-2 flex items-center gap-0.5 px-1 py-0.5 rounded bg-black/60">
+            <Lock className="w-3 h-3 text-white" />
           </div>
         )}
 

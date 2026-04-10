@@ -74,6 +74,8 @@ export interface CollectionCardProps extends React.HTMLAttributes<HTMLDivElement
   // Collection metadata
   title: string
   assetCount: number
+  /** Total asset count (before access filtering). When provided and > assetCount, shows "N assets (you can access M)" */
+  totalAssetCount?: number
   type?: CollectionCardType
 
   // Visual content
@@ -104,6 +106,7 @@ export interface CollectionCardProps extends React.HTMLAttributes<HTMLDivElement
 export function CollectionCard({
   title,
   assetCount,
+  totalAssetCount,
   type = 'character',
   mainImage,
   thumbnailImages = [],
@@ -122,6 +125,23 @@ export function CollectionCard({
   className,
   ...props
 }: CollectionCardProps) {
+  // Helper to render the asset count label with optional access-filtered parenthetical
+  const isFolder = type === 'folder'
+  const itemLabel = isFolder ? 'items' : 'assets'
+  const noItemsLabel = isFolder ? 'No items' : 'No assets'
+  const renderCountLabel = () => {
+    if (assetCount === 0) return noItemsLabel
+    if (totalAssetCount != null && totalAssetCount > assetCount) {
+      return (
+        <>
+          {totalAssetCount} {itemLabel}{' '}
+          <span className="text-foreground-subtle">(you can access {assetCount})</span>
+        </>
+      )
+    }
+    return `${assetCount} ${itemLabel}`
+  }
+
   const sizeStyles = size === 'sm'
     ? { thumbnail: 'aspect-video', emptyInset: 'inset-2' }
     : size === 'lg'
@@ -341,7 +361,7 @@ export function CollectionCard({
               {title}
             </div>
             <div className={cn(metaClass, assetCount === 0 ? 'text-foreground-dim' : 'text-foreground-subtle')}>
-              {assetCount === 0 ? 'No assets' : `${assetCount} assets`}
+              {renderCountLabel()}
             </div>
           </div>
         </div>
@@ -366,7 +386,7 @@ export function CollectionCard({
               {title}
             </div>
             <div className={cn(metaClass, assetCount === 0 ? 'text-foreground-dim' : 'text-foreground-subtle')}>
-              {assetCount === 0 ? 'No assets' : `${assetCount} assets`}
+              {renderCountLabel()}
             </div>
           </div>
         </div>
@@ -391,7 +411,7 @@ export function CollectionCard({
               {title}
             </div>
             <div className={cn(metaClass, assetCount === 0 ? 'text-foreground-dim' : 'text-foreground-subtle')}>
-              {assetCount === 0 ? 'No assets' : `${assetCount} assets`}
+              {renderCountLabel()}
             </div>
           </div>
         </div>
@@ -413,7 +433,7 @@ export function CollectionCard({
               {title}
             </div>
             <div className={cn(metaClass, assetCount === 0 ? 'text-foreground-dim' : 'text-foreground-subtle')}>
-              {assetCount === 0 ? 'No items' : `${assetCount} items`}
+              {renderCountLabel()}
             </div>
           </div>
           {type !== 'folder' && accessIcon && (
@@ -469,7 +489,7 @@ export function CollectionCard({
             {title}
           </div>
           <div className={cn(metaClass, assetCount === 0 ? 'text-foreground-dim' : 'text-foreground-subtle')}>
-            {assetCount === 0 ? 'No assets' : `${assetCount} assets`}
+            {renderCountLabel()}
           </div>
         </div>
       </div>

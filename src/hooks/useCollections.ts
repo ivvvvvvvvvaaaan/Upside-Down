@@ -88,7 +88,7 @@ export function useCollections(): UseCollectionsValue {
   }, [smartCollections])
 
   const getAssetCount = useCallback((collectionId: string): number => {
-    const curatedCount = getCuratedAssetCount(collectionId)
+    const curatedCount = getCuratedAssetCount(collectionId).accessible
     if (curatedCount > 0) return curatedCount
     const sc = smartCollections.getCollection(collectionId)
     if (sc) return smartCollections.scopedAssets.filter(a => matchesFilter(a, sc.filter)).length

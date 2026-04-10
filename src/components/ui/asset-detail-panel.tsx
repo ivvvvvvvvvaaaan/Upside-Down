@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
-import { X, Plus } from 'lucide-react'
+import { X, Plus, Lock } from 'lucide-react'
 import { Button } from './button'
 import { ResponsivePanel } from './responsive-panel'
 import { AccessModal } from './access-modal'
@@ -355,7 +355,7 @@ export function AssetDetailPanelContent({
   olderVersions,
   onVersionSelect,
 }: AssetDetailPanelContentProps) {
-  const { getInheritedGrants, getCollectionRippleGrants, visibleCollections, canEdit, canAccess } = useAccess()
+  const { getInheritedGrants, getCollectionRippleGrants, visibleCollections, canEdit, canAccess, isSensitiveAsset } = useAccess()
   const { activePersona } = usePersona()
   const { getDomainFiles } = useFileTree()
   const { getCollection, scopedAssets } = useSmartCollections()
@@ -620,6 +620,12 @@ export function AssetDetailPanelContent({
                   <p className="text-body-0-regular text-foreground-dim">Type</p>
                   <p className="text-body-0-regular text-foreground capitalize">{asset.type}</p>
                 </div>
+                {isSensitiveAsset(asset.id) && (
+                  <div className="flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-foreground-dim" />
+                    <Tag size="compact" type="notice" variant="fill">Sensitive</Tag>
+                  </div>
+                )}
                 {asset.department && (
                   <div>
                     <p className="text-body-0-regular text-foreground-dim">Domain</p>

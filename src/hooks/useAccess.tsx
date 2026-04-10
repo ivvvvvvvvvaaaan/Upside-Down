@@ -42,7 +42,7 @@ import {
 } from '@/lib/workspace-data'
 import { getAssetIdsForFolder } from '@/lib/data-client'
 import { resolveCollectionAssetIds } from '@/lib/data'
-import { SCENARIO, buildGuestLinks } from '@/lib/scenario'
+import { SCENARIO, buildGuestLinks, SENSITIVE_ASSET_IDS } from '@/lib/scenario'
 import type { GuestLinkSeed } from '@/lib/scenario'
 
 export type AccessRequest = {
@@ -100,7 +100,7 @@ interface AccessContextValue {
   getResourceGrants: (id: string) => Grant[]
   visibleCollections: UserCollection[]
   getVisibleCollection: (id: string) => UserCollection | undefined
-  getCollectionAssetCount: (id: string) => number
+  getCollectionAssetCount: (id: string) => { total: number; accessible: number }
   getCurrentUserGrant: (resourceId: string) => Grant | undefined
   createGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId, options?: { permissions?: Permission[]; shareMode?: ShareMode; snapshotAssetIds?: string[]; allowUpload?: boolean; expiresInDays?: number }) => void
   getGrantableProfiles: (resource: ResourceRef) => AccessProfileId[]
@@ -160,6 +160,10 @@ interface AccessContextValue {
   // Restore grants for a resource to a previous snapshot (for cancel flows)
   restoreResourceGrants: (resourceId: string, snapshot: Grant[]) => void
   restoreResourceGuestLinks: (resourceId: string, snapshot: GuestLinkSeed[]) => void
+
+  // Sensitive media
+  isSensitiveAsset: (assetId: string) => boolean
+  canViewSensitiveMedia: () => boolean
 }
 
 const AccessContext = createContext<AccessContextValue | null>(null)
@@ -722,11 +726,23 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return 'discoverable'
   }, [activePersona, canAccess, discoverySettings, getResourceDomainId])
 
+  // Sensitive media helpers
+  const isSensitiveAsset = useCallback((assetId: string): boolean => {
+    return SENSITIVE_ASSET_IDS.has(assetId)
+  }, [])
+
+  const canViewSensitiveMedia = useCallback((): boolean => {
+    return activePersona?.sensitiveMediaCapability === true
+  }, [activePersona])
+
   // filterByAccess: filter assets by persona access
   // Accepts optional additionalIds for domain-specific cascade rules (e.g., cut constituents)
   const filterByAccess = useCallback((assets: Asset[], additionalIds?: Set<string>): Asset[] => {
     if (!activePersona) return assets
+    const hasSensitiveCap = activePersona.sensitiveMediaCapability === true
     return assets.filter((asset) => {
+      // Sensitive media gate: exclude if user lacks the capability
+      if (!hasSensitiveCap && SENSITIVE_ASSET_IDS.has(asset.id)) return false
       if (canAccess(asset.id)) return true
       if (asset.sourceFolderIds?.some((fid) => canAccess(fid))) return true
       if (asset.department && canAccess(DOMAIN_FOLDER_MAP[asset.department].id)) return true
@@ -736,22 +752,28 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [activePersona, canAccess])
 
   // Collection asset counts — uses resolveCollectionAssetIds for consistent resolution
+  // Tracks both total (before access filtering) and accessible (after filtering) counts
   const collectionAssetCounts = useMemo(() => {
-    const counts = new Map<string, number>()
+    const accessibleCounts = new Map<string, number>()
+    const totalCounts = new Map<string, number>()
     for (const collection of collections) {
       if (!collectionAccessById.has(collection.id)) continue
       const assetIds = resolveCollectionAssetIds(collection)
+      totalCounts.set(collection.id, assetIds.length)
       let count = 0
       for (const assetId of assetIds) {
         if (canAccess(assetId)) count++
       }
-      counts.set(collection.id, count)
+      accessibleCounts.set(collection.id, count)
     }
-    return counts
+    return { accessible: accessibleCounts, total: totalCounts }
   }, [collections, collectionAccessById, canAccess])
 
-  const getCollectionAssetCount = useCallback((id: string): number => {
-    return collectionAssetCounts.get(id) ?? 0
+  const getCollectionAssetCount = useCallback((id: string): { total: number; accessible: number } => {
+    return {
+      total: collectionAssetCounts.total.get(id) ?? 0,
+      accessible: collectionAssetCounts.accessible.get(id) ?? 0,
+    }
   }, [collectionAssetCounts])
 
   // Resolve share labels: collection IDs → real collection names
@@ -1135,6 +1157,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     getGrantByReviewLinkId,
     restoreResourceGrants,
     restoreResourceGuestLinks,
+    isSensitiveAsset,
+    canViewSensitiveMedia,
   }), [
     canAccess,
     filterByAccess,
@@ -1187,6 +1211,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     getGrantByReviewLinkId,
     restoreResourceGrants,
     restoreResourceGuestLinks,
+    isSensitiveAsset,
+    canViewSensitiveMedia,
   ])
 
   return (
