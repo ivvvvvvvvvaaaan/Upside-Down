@@ -19,3 +19,4 @@ ceda72f	4.9	5	100	0	kept	File-move-is-access-decision warning. Prevents F1 (hund
 28f904d	4.9	5	100	0	kept	Cross-domain sharing warning + blast radius for domain releases. Safety net for intentional sharing.
 fff29d3	4.6	5	100	0	reverted	Always-collection sharing. Collection sprawl from wrapping every single-asset share.
 08d2a36	4.9	5	100	0	kept	Leave action for shared collections. Recipient can opt out without affecting others.
+61a0c02	4.9	5	100	0	kept	Define distribution-domain experience: released content + shared collections, no workspace.

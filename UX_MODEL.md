@@ -55,6 +55,16 @@ Domain recipients appear in a grouped list: Studio tier first, Wide tier second,
 - Filtered collections show personalized results: "47 assets match this filter (you can access 23)." Two people see different subsets based on their access. This is correct behavior -- like a search engine returning different results based on your permissions. The filter criteria are always visible.
 - Curated/shared collections show everyone the same assets. "12 assets. Everyone with access sees all 12." This is the sharing mode -- you control exactly what the recipient sees.
 
+## What distribution-domain users see
+
+Users in distribution domains (MARKETING, LEGAL, GLOBALIZATION, etc.) don't have workspaces. Their experience is:
+
+- **Released content.** Assets released to their domain appear in their library, organized by smart collections (characters, scenes, locations) and by release date. This is their primary content surface.
+- **Shared collections.** Collections shared with them directly (person or group share) appear in their inbox and collections list.
+- **No workspace, no folder tree.** They browse, search, and filter -- they don't organize files. They're consumers, not producers.
+
+This is clean: production domains produce and organize (workspace + collections). Distribution domains consume and respond (released content + shared collections). The same 5 concepts apply to both, but the workspace concept simply doesn't appear for distribution users.
+
 ## Ownership
 
 - Domain collections are owned by the domain (any domain member with manage access can manage).
