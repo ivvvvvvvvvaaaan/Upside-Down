@@ -17,3 +17,4 @@ cfc0d08	4.8	5	100	0	kept	Clarify: production domains have workspaces, distributi
 ceda72f	4.9	5	100	0	kept	File-move-is-access-decision warning. Prevents F1 (hundreds of hours lost to access triaging).
 7ca2946	4.9	5	100	0	kept	Resolve Q3: cut sharing = playback access, not constituent access. Preserves domain source control.
 28f904d	4.9	5	100	0	kept	Cross-domain sharing warning + blast radius for domain releases. Safety net for intentional sharing.
+fff29d3	4.6	5	100	0	reverted	Always-collection sharing. Collection sprawl from wrapping every single-asset share.
