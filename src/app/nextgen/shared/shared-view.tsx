@@ -236,7 +236,7 @@ const ADMIN_TAB_OPTIONS: { value: ShareTab; label: string }[] = [
 ]
 
 export function SharedView({ initialSelectedId = null }: { initialSelectedId?: string | null }) {
-  const { sharesCreatedByMe, visibleShares, allProjectShares, guestLinks, revokeGuestLink, canManageGuestLink, canAccess } = useAccess()
+  const { sharesCreatedByMe, visibleShares, allProjectShares, guestLinks, revokeGuestLink, canManageGuestLink, canAccess, revokeGrant } = useAccess()
   const { activePersona, isAdmin, hydrated } = usePersona()
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId)
   const [activeTab, setActiveTab] = useState<ShareTab>('mine')
@@ -272,6 +272,11 @@ export function SharedView({ initialSelectedId = null }: { initialSelectedId?: s
     revokeGuestLink(linkId)
     setSelectedId(null)
   }, [revokeGuestLink])
+
+  const handleLeaveShare = useCallback((grantId: string) => {
+    revokeGrant(grantId)
+    setSelectedId(null)
+  }, [revokeGrant])
 
   const totalCount = displayEntries.length + displayLinks.length
 
@@ -329,6 +334,7 @@ export function SharedView({ initialSelectedId = null }: { initialSelectedId?: s
         <SharedSidePanel
           entry={selectedEntry}
           onClose={handleClosePanel}
+          onLeave={handleLeaveShare}
         />
       )}
       {selectedLink && (

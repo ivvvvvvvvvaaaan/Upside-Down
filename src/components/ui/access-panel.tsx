@@ -589,12 +589,23 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const handleConfirmPending = () => {
     if (pendingGrants.length === 0) return
 
-    // Check for cross-domain or external recipients
-    if (resourceDomainId) {
+    // Check for cross-domain, external, or domain-release recipients
+    const hasDomainRecipient = pendingGrants.some(p => p.principal.type === 'domain')
+    if (resourceDomainId || hasDomainRecipient) {
       const flagged: { name: string; reason: string }[] = []
       for (const pending of pendingGrants) {
-        if (pending.principal.type === 'user') {
-          const persona = PERSONAS.find(p => p.id === (pending.principal as { userId: string }).userId)
+        const p = pending.principal
+        if (p.type === 'domain') {
+          const domain = RELEASE_DOMAINS.find(d => d.id === p.domainId)
+          if (domain) {
+            const memberCount = domain.granteeTeamIds.reduce((sum, tid) => {
+              const t = TEAMS.find(t2 => t2.id === tid)
+              return sum + (t?.memberUserIds?.length ?? 0)
+            }, 0) + (domain.granteeUserIds?.length ?? 0)
+            flagged.push({ name: pending.name, reason: `Release to ${domain.group} — visible to ~${memberCount} people` })
+          }
+        } else if (p.type === 'user') {
+          const persona = PERSONAS.find(u => u.id === p.userId)
           if (persona?.role === 'vendor') {
             flagged.push({ name: pending.name, reason: `External vendor${persona.title ? ` (${persona.title})` : ''}` })
           } else if (!persona?.domainId) {
@@ -603,8 +614,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
             const domainName = domainConfigs[persona.domainId]?.name ?? persona.domainId
             flagged.push({ name: pending.name, reason: domainName })
           }
-        } else {
-          const team = TEAMS.find(t => t.id === (pending.principal as { teamId: string }).teamId)
+        } else if (p.type === 'team') {
+          const team = TEAMS.find(t => t.id === p.teamId)
           if (team?.domainId && team.domainId !== resourceDomainId) {
             const domainName = domainConfigs[team.domainId]?.name ?? team.domainId
             flagged.push({ name: pending.name, reason: domainName })

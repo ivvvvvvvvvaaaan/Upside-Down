@@ -6,7 +6,7 @@ import { Button } from './button'
 import { ResponsivePanel } from './responsive-panel'
 import { AccessKindIcon } from './access-kind-icon'
 import { AccessSummary } from './access-summary'
-import { useAccess, useUserCollections } from '@/hooks'
+import { useAccess, usePersona, useUserCollections } from '@/hooks'
 import type { AccessEntryKind } from '@/lib/access'
 import { getSharePreviewImages } from '@/lib/data-client'
 import { getSharedResourceHref } from '@/lib/shared-resources'
@@ -18,6 +18,8 @@ import { profileLabel } from '@/lib/grants'
 interface SharedSidePanelProps {
   entry: GrantView
   onClose: () => void
+  /** Called when the user leaves (self-revokes) this share */
+  onLeave?: (grantId: string) => void
   /** Additional className for the ResponsivePanel */
   panelClassName?: string
 }
@@ -27,8 +29,9 @@ export interface SharedDetailContentProps {
   showAccess?: boolean
 }
 
-export function SharedDetailContent({ entry, showAccess = true }: SharedDetailContentProps) {
+export function SharedDetailContent({ entry, showAccess = true, onLeave }: SharedDetailContentProps & { onLeave?: (grantId: string) => void }) {
   const { getInheritedGrants } = useAccess()
+  const { activePersona } = usePersona()
   const { collections } = useUserCollections()
   const kind = entry.resourceType as AccessEntryKind
   const grantor = PERSONAS.find((p) => p.id === entry.grantedByUserId)
@@ -90,13 +93,20 @@ export function SharedDetailContent({ entry, showAccess = true }: SharedDetailCo
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {resolvedHref && (
-          <Button variant="secondary" asChild>
-            <Link href={resolvedHref}>
-              Open {entry.label}
-            </Link>
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {resolvedHref && (
+            <Button variant="secondary" asChild>
+              <Link href={resolvedHref}>
+                Open {entry.label}
+              </Link>
+            </Button>
+          )}
+          {onLeave && activePersona && entry.grantedByUserId !== activePersona.id && (
+            <Button variant="secondary" onClick={() => onLeave(entry.id)}>
+              Leave
+            </Button>
+          )}
+        </div>
 
         {/* Details section */}
         <section className="space-y-2">
@@ -134,10 +144,10 @@ export function SharedDetailContent({ entry, showAccess = true }: SharedDetailCo
   )
 }
 
-export function SharedSidePanel({ entry, onClose, panelClassName }: SharedSidePanelProps) {
+export function SharedSidePanel({ entry, onClose, onLeave, panelClassName }: SharedSidePanelProps) {
   return (
     <ResponsivePanel open={true} onClose={onClose} className={panelClassName}>
-      <SharedDetailContent entry={entry} />
+      <SharedDetailContent entry={entry} onLeave={onLeave} />
     </ResponsivePanel>
   )
 }
