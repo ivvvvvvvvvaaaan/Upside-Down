@@ -32,7 +32,7 @@ import { ContextMenu } from '@/components/ui/context-menu'
 import type { ContextMenuItem } from '@/components/ui/context-menu'
 import { getGridColumns, useViewPreferences, useCompactBar, useWorkspaceState, useResourceSelection, useFileTree, useAccess, usePersona, useMobilePanel, useCollections } from '@/hooks'
 
-import type { DomainId } from '@/components/department/types'
+import type { DomainId, ProductionDomainId } from '@/components/department/types'
 import { DOMAIN_FOLDER_MAP, isReferenceFolder, SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { promotedInstanceToAsset } from '@/lib/asset-instances'
@@ -163,7 +163,7 @@ const VIEW_MODE_OPTIONS = [
   { value: 'columns', label: 'Columns', icon: <Columns className="w-4 h-4" /> },
 ]
 
-const ALL_DOMAIN_IDS = Object.keys(DOMAIN_FOLDER_MAP) as DomainId[]
+const ALL_DOMAIN_IDS = Object.keys(DOMAIN_FOLDER_MAP) as ProductionDomainId[]
 const DOMAIN_FOLDER_IDS = new Set(Object.values(DOMAIN_FOLDER_MAP).map(d => d.id))
 
 interface WorkspaceViewProps {
@@ -734,6 +734,33 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
   // Allow access if user can access the domain root OR the specific folder they're navigating to
   const targetFolderId = urlPath.length > 0 ? urlPath[urlPath.length - 1] : null
   const folderAccessible = targetFolderId ? canAccess(targetFolderId) : false
+
+  // Distribution domains don't have workspaces — redirect to library
+  const isDistributionDomain = activePersona?.domainId
+    ? domainConfigs[activePersona.domainId]?.kind === 'distribution'
+    : false
+
+  if (isDistributionDomain) {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="flex-1 min-h-0 overflow-auto">
+          <div className="p-6">
+            <div className="max-w-7xl mx-auto">
+              <EmptyState
+                title="No Workspace"
+                message="Your domain receives content via releases and shares. Browse released content in your library."
+              />
+              <div className="flex justify-center mt-4">
+                <Button variant="primary" onClick={() => router.push('/nextgen')}>
+                  Go to Library
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (!isLanding && !domainAccessible && !folderAccessible) {
     return (

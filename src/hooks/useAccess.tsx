@@ -6,7 +6,7 @@ import { useUserCollections } from './useUserCollections'
 import type { UserCollection } from './useUserCollections'
 import type { Asset } from '@/lib/data'
 import { getAssetIdVariants } from '@/lib/data'
-import type { DomainId } from '@/components/department/types'
+import type { DomainId, ProductionDomainId } from '@/components/department/types'
 import {
   DEFAULT_GRANTS,
   DEFAULT_ROLE_GROUPS,
@@ -171,12 +171,12 @@ interface AccessContextValue {
 
 const AccessContext = createContext<AccessContextValue | null>(null)
 
-const ALL_DOMAINS: DomainId[] = Object.keys(DOMAIN_FOLDER_MAP) as DomainId[]
-const DOMAIN_WRAPPER_IDS: Record<DomainId, string> = Object.fromEntries(
-  ALL_DOMAINS.map(d => [d, DOMAIN_FOLDER_MAP[d].id])
-) as Record<DomainId, string>
+const ALL_PRODUCTION_DOMAINS: ProductionDomainId[] = Object.keys(DOMAIN_FOLDER_MAP) as ProductionDomainId[]
+const DOMAIN_WRAPPER_IDS: Record<ProductionDomainId, string> = Object.fromEntries(
+  ALL_PRODUCTION_DOMAINS.map(d => [d, DOMAIN_FOLDER_MAP[d].id])
+) as Record<ProductionDomainId, string>
 const ROOT_ID_TO_DOMAIN: Record<string, DomainId> = Object.fromEntries(
-  ALL_DOMAINS.map((domainId) => [DOMAIN_WRAPPER_IDS[domainId], domainId]),
+  ALL_PRODUCTION_DOMAINS.map((domainId) => [DOMAIN_WRAPPER_IDS[domainId], domainId]),
 ) as Record<string, DomainId>
 
 function mergePermissions(...permissionSets: Permission[][]): Permission[] {
@@ -311,7 +311,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         if (node.children) walk(node.children, domain, node.id)
       }
     }
-    for (const domain of ALL_DOMAINS) {
+    for (const domain of ALL_PRODUCTION_DOMAINS) {
       // Map the domain root itself
       domainMap.set(DOMAIN_WRAPPER_IDS[domain], domain)
     }

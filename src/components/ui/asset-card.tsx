@@ -23,6 +23,9 @@ const DOMAIN_NAMES: Record<DomainId, string> = {
   'camera': 'Camera',
   'editorial': 'Editorial',
   'audio-sound': 'Audio',
+  'marketing': 'Marketing',
+  'legal': 'Legal',
+  'globalization': 'Globalization',
 }
 
 /**

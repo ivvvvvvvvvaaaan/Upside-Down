@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react'
-import type { DomainId } from '@/components/department/types'
+import type { DomainId, ProductionDomainId } from '@/components/department/types'
 import {
   getFinderWorkspaceTree,
   type ReferenceFolderSource,
@@ -36,7 +36,7 @@ function persistTree(tree: UnifiedFileNode[]) {
 }
 
 /** Map workspace domain IDs to their wrapper folder IDs in the Finder tree */
-const DOMAIN_TO_FOLDER_ID: Record<DomainId, string> = {
+const DOMAIN_TO_FOLDER_ID: Record<ProductionDomainId, string> = {
   'art-design': 'ws-art',
   'vfx': 'ws-vfx',
   'camera': 'ws-camera',
@@ -247,7 +247,8 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const getDomainFiles = useCallback((id: DomainId): WorkspaceFileNode[] => {
-    const folderId = DOMAIN_TO_FOLDER_ID[id]
+    const folderId = (DOMAIN_TO_FOLDER_ID as Partial<Record<DomainId, string>>)[id]
+    if (!folderId) return []
     return (findSubtree(tree, folderId) ?? []) as WorkspaceFileNode[]
   }, [tree])
 

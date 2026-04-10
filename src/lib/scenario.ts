@@ -1,6 +1,6 @@
 // src/lib/scenario.ts — Single source of truth for the prototype permissions scenario
 
-import type { DomainId } from '@/components/department/types'
+import type { DomainId, ProductionDomainId } from '@/components/department/types'
 import { DOMAIN_FOLDER_MAP, getDomainWorkspaceFiles } from '@/lib/workspace-data'
 import type { User, UserRole } from '@/lib/personas'
 import type { Team } from '@/lib/teams'
@@ -214,6 +214,8 @@ export const SCENARIO: Scenario = {
     { id: 'vendor-framestore',     name: 'James Liu',     email: 'jliu@framestore.com',  role: 'vendor',      title: 'Lead Compositor',        domain: undefined,    teams: [] },
     { id: 'camera-dit',            name: 'Tom Nakamura',  email: 'tnakamura@netflix.com', role: 'manager',     title: 'DIT',                    domain: 'camera',     teams: ['camera-team'] },
     { id: 'audio-supervisor',      name: 'Rachel Obi',    email: 'robi@netflix.com',      role: 'manager',     title: 'Sound Supervisor',       domain: 'audio-sound', teams: ['audio-team'] },
+    { id: 'marketing-coordinator', name: 'Nina Garcia',   email: 'ngarcia@netflix.com',   role: 'manager',     title: 'Marketing Coordinator',  domain: 'marketing',   teams: ['team-marketing'] },
+    { id: 'legal-reviewer',        name: 'Sam Patel',     email: 'spatel@netflix.com',    role: 'manager',     title: 'Legal Reviewer',         domain: 'legal',       teams: ['team-legal'] },
   ],
 
   teams: [
@@ -229,8 +231,8 @@ export const SCENARIO: Scenario = {
     { id: 'super-prod',        name: 'Super Prod',        members: ['studio-alex', 'creative-david', 'vfx-coordinator', 'editorial-coordinator'] },
     // Wide/Other org teams — exist in the broader Netflix org, no prototype personas
     { id: 'team-globalization',     name: 'Globalization',      members: [] },
-    { id: 'team-marketing',         name: 'Marketing',          members: [] },
-    { id: 'team-legal',             name: 'Legal',              members: [] },
+    { id: 'team-marketing',         name: 'Marketing',          members: ['marketing-coordinator'] },
+    { id: 'team-legal',             name: 'Legal',              members: ['legal-reviewer'] },
     { id: 'team-music',             name: 'Music',              members: [] },
     { id: 'team-consumer-insights', name: 'Consumer Insights',  members: [] },
     { id: 'team-content-preview',   name: 'Content Preview',    members: [] },
@@ -256,6 +258,8 @@ export const SCENARIO: Scenario = {
       'vendor-framestore':     'view',
       'camera-dit':            'add',
       'audio-supervisor':      'add',
+      'marketing-coordinator': 'view',
+      'legal-reviewer':        'view',
     },
     teams: {},
   },
@@ -643,7 +647,7 @@ export function buildLabels(): Record<string, string> {
   }
 
   // Build a flat lookup of all workspace nodes across domains
-  const allDomainIds: DomainId[] = Object.keys(DOMAIN_FOLDER_MAP) as DomainId[]
+  const allDomainIds: ProductionDomainId[] = Object.keys(DOMAIN_FOLDER_MAP) as ProductionDomainId[]
   const walk = (nodes: { id: string; name: string; children?: { id: string; name: string; children?: unknown[] }[] }[]) => {
     for (const node of nodes) {
       labels[node.id] = node.name

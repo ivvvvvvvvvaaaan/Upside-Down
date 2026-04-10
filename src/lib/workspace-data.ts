@@ -1,4 +1,4 @@
-import type { DomainId } from '@/components/department/types'
+import type { DomainId, ProductionDomainId } from '@/components/department/types'
 import type { ShareMode } from '@/lib/grants'
 
 export interface ReferenceFolderSource {
@@ -537,7 +537,7 @@ const audioFiles: WorkspaceFileNode[] = [
   },
 ]
 
-const domainFileMap: Record<DomainId, WorkspaceFileNode[]> = {
+const domainFileMap: Record<ProductionDomainId, WorkspaceFileNode[]> = {
   'art-design': artDepartmentFiles,
   'vfx': vfxFiles,
   'camera': cameraFiles,
@@ -546,7 +546,7 @@ const domainFileMap: Record<DomainId, WorkspaceFileNode[]> = {
 }
 
 export function getDomainWorkspaceFiles(domainId: DomainId): WorkspaceFileNode[] {
-  return domainFileMap[domainId] ?? []
+  return (domainFileMap as Partial<Record<DomainId, WorkspaceFileNode[]>>)[domainId] ?? []
 }
 
 
@@ -563,7 +563,7 @@ export function findNodeInTree(nodes: WorkspaceFileNode[], id: string): Workspac
 }
 
 /** Map domain IDs to the wrapper folder IDs used in the Finder tree */
-export const DOMAIN_FOLDER_MAP: Record<DomainId, { id: string; name: string }> = {
+export const DOMAIN_FOLDER_MAP: Record<ProductionDomainId, { id: string; name: string }> = {
   'art-design': { id: 'ws-art', name: 'Art & Design' },
   'vfx': { id: 'ws-vfx', name: 'VFX' },
   'camera': { id: 'ws-camera', name: 'Camera' },
@@ -579,7 +579,7 @@ export const DOMAIN_FOLDER_MAP: Record<DomainId, { id: string; name: string }> =
 export const SHARED_MOUNT_FOLDER_ID = 'ws-shared-mounts'
 
 export function getFinderWorkspaceTree(): UnifiedFileNode[] {
-  const domainFolders: UnifiedFileNode[] = (Object.keys(domainFileMap) as DomainId[]).map((domainId) => {
+  const domainFolders: UnifiedFileNode[] = (Object.keys(domainFileMap) as ProductionDomainId[]).map((domainId) => {
     const meta = DOMAIN_FOLDER_MAP[domainId]
     return {
       id: meta.id,

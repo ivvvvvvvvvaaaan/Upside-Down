@@ -18,7 +18,7 @@ import type { User } from '@/lib/personas'
 import { TEAMS } from '@/lib/teams'
 import { PROJECT_RESOURCE, profileLabel, isGrantActive } from '@/lib/grants'
 import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef, ResourceRef } from '@/lib/grants'
-import type { DomainId } from '@/components/department/types'
+import type { DomainId, ProductionDomainId } from '@/components/department/types'
 import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
 import type { DiscoveryResourceType } from '@/hooks/useAccess'
 
@@ -381,7 +381,7 @@ function DiscoverySection({
       {enabled && (
         <div className="space-y-1">
           <p className="text-label-1-bold text-foreground-dim">Domain overrides</p>
-          {(Object.keys(DOMAIN_FOLDER_MAP) as DomainId[]).map((domId) => {
+          {(Object.keys(DOMAIN_FOLDER_MAP) as ProductionDomainId[]).map((domId) => {
             const domainDisabled = disabledDomains.has(domId)
             return (
               <div key={domId} className="flex items-center justify-between py-1">
@@ -462,7 +462,7 @@ function DomainsTab({
 
   const options = useMemo(() => roleGroupOptions(roleGroups), [roleGroups])
   const domains = useMemo(
-    () => (Object.keys(DOMAIN_FOLDER_MAP) as DomainId[]).map((domainId) => ({
+    () => (Object.keys(DOMAIN_FOLDER_MAP) as ProductionDomainId[]).map((domainId) => ({
       domainId,
       folder: DOMAIN_FOLDER_MAP[domainId],
       team: TEAMS.find((candidate) => candidate.domainId === domainId),
@@ -867,7 +867,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const [inviteEmail, setInviteEmail] = useState('')
   const [selectedDomainId, setSelectedDomainId] = useState<DomainId>(domainIds[0] ?? 'vfx')
   const canManageDomains = useMemo(
-    () => (Object.keys(DOMAIN_FOLDER_MAP) as DomainId[]).some((domainId) => {
+    () => (Object.keys(DOMAIN_FOLDER_MAP) as ProductionDomainId[]).some((domainId) => {
       const resourceRef: ResourceRef = {
         id: DOMAIN_FOLDER_MAP[domainId].id,
         type: 'folder',

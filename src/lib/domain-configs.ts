@@ -9,6 +9,7 @@ export const domainConfigs: Record<DomainId, DomainConfig> = {
     smartCollectionTypes: ['character', 'location', 'scene'],
     userCollectionType: 'art-type',
     color: 'bg-purple-500',
+    kind: 'production',
   },
   vfx: {
     id: 'vfx',
@@ -18,6 +19,7 @@ export const domainConfigs: Record<DomainId, DomainConfig> = {
     smartCollectionTypes: ['character', 'location', 'scene'],
     userCollectionType: 'art-type',
     color: 'bg-blue-500',
+    kind: 'production',
   },
   camera: {
     id: 'camera',
@@ -27,6 +29,7 @@ export const domainConfigs: Record<DomainId, DomainConfig> = {
     smartCollectionTypes: ['scene'],
     userCollectionType: 'art-type',
     color: 'bg-green-500',
+    kind: 'production',
   },
   editorial: {
     id: 'editorial',
@@ -36,6 +39,7 @@ export const domainConfigs: Record<DomainId, DomainConfig> = {
     smartCollectionTypes: ['scene'],
     userCollectionType: 'art-type',
     color: 'bg-yellow-500',
+    kind: 'production',
   },
   'audio-sound': {
     id: 'audio-sound',
@@ -45,5 +49,36 @@ export const domainConfigs: Record<DomainId, DomainConfig> = {
     smartCollectionTypes: ['scene'],
     userCollectionType: 'art-type',
     color: 'bg-red-500',
+    kind: 'production',
+  },
+  marketing: {
+    id: 'marketing',
+    name: 'Marketing',
+    shortName: 'Marketing',
+    description: 'Campaign assets, key art, and promotional content',
+    smartCollectionTypes: [],
+    userCollectionType: 'art-type',
+    color: 'bg-orange-500',
+    kind: 'distribution',
+  },
+  legal: {
+    id: 'legal',
+    name: 'Legal',
+    shortName: 'Legal',
+    description: 'Compliance reviews and clearance assets',
+    smartCollectionTypes: [],
+    userCollectionType: 'art-type',
+    color: 'bg-gray-500',
+    kind: 'distribution',
+  },
+  globalization: {
+    id: 'globalization',
+    name: 'Globalization',
+    shortName: 'Globalization',
+    description: 'Localization, dubbing, and subtitle assets',
+    smartCollectionTypes: [],
+    userCollectionType: 'art-type',
+    color: 'bg-teal-500',
+    kind: 'distribution',
   },
 }

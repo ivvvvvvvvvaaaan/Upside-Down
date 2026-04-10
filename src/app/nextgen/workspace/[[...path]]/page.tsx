@@ -1,7 +1,7 @@
 import { WorkspaceView } from '../workspace-view'
-import type { DomainId } from '@/components/department/types'
+import type { ProductionDomainId } from '@/components/department/types'
 
-const VALID_DOMAINS: DomainId[] = [
+const VALID_DOMAINS: ProductionDomainId[] = [
   'art-design',
   'camera',
   'editorial',
@@ -22,7 +22,7 @@ export default function WorkspacePage({ params }: Props) {
   }
 
   // First segment must be a valid domain ID
-  const domainId = path[0] as DomainId
+  const domainId = path[0] as ProductionDomainId
   if (!VALID_DOMAINS.includes(domainId)) {
     // Not a domain — treat as a landing-scoped shared/workspace folder route
     return <WorkspaceView folderPath={path.slice(1)} landingFolderId={path[0]} />

@@ -34,7 +34,8 @@ import { useUserCollections } from '@/hooks/useUserCollections'
 import { isSmart, isCollection } from '@/lib/collection-types'
 import type { SmartCollectionEntry } from '@/lib/collection-types'
 import { matchesFilter } from '@/lib/smart-collection-filters'
-import type { DomainId } from '@/components/department/types'
+import type { DomainId, ProductionDomainId } from '@/components/department/types'
+import { domainConfigs } from '@/lib/domain-configs'
 import { DOMAIN_FOLDER_MAP, SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { cn } from '@/lib/utils'
@@ -447,8 +448,8 @@ function FolderNavTree({ nodes, basePath, sharedFolderIds }: { nodes: WorkspaceF
   )
 }
 
-// Domain info for nav items
-const DOMAIN_NAV_ITEMS: { href: string; label: string; id: DomainId }[] = [
+// Domain info for nav items (production domains only — distribution domains have no workspace)
+const DOMAIN_NAV_ITEMS: { href: string; label: string; id: ProductionDomainId }[] = [
   { href: '/nextgen/workspace/art-design', label: 'Art & Design', id: 'art-design' },
   { href: '/nextgen/workspace/camera', label: 'Camera', id: 'camera' },
   { href: '/nextgen/workspace/editorial', label: 'Editorial', id: 'editorial' },
@@ -591,8 +592,12 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
   const DOMAIN_FOLDER_IDS = new Set(Object.values(DOMAIN_FOLDER_MAP).map(d => d.id))
   const workspaceFolders = fileTree.filter((f) => f.type === 'folder' && !DOMAIN_FOLDER_IDS.has(f.id) && f.id !== SHARED_MOUNT_FOLDER_ID) as WorkspaceFileNode[]
   const accessibleDomains = DOMAIN_NAV_ITEMS.filter((item) => canAccess(DOMAIN_FOLDER_MAP[item.id].id))
+  // Distribution domains don't have workspaces — they receive content via releases/shares
+  const isDistributionDomain = activePersona?.domainId
+    ? domainConfigs[activePersona.domainId]?.kind === 'distribution'
+    : false
   // In the unified model, shared content appears under Collections, not Workspaces
-  const showWorkspaceLink = accessibleDomains.length > 0 || workspaceFolders.length > 0
+  const showWorkspaceLink = !isDistributionDomain && (accessibleDomains.length > 0 || workspaceFolders.length > 0)
   const sharedCollectionIds = new Set(
     (isAdmin ? allProjectShares : sharesReceivedByMe)
       .filter((entry) => entry.resourceType === 'collection')

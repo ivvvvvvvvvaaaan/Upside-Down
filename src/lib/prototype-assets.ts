@@ -1,9 +1,10 @@
-import type { Asset, DomainId } from '@/lib/data'
+import type { Asset } from '@/lib/data'
+import type { ProductionDomainId } from '@/components/department/types'
 import { mergeWorkspaceAssets, generateAssetInstances } from '@/lib/asset-instances'
 import { DEFAULT_GRANTS, getResourceLabel } from '@/lib/grants'
 import { getDomainWorkspaceFiles } from '@/lib/workspace-data'
 
-const ALL_DOMAINS: DomainId[] = ['art-design', 'vfx', 'camera', 'editorial', 'audio-sound']
+const ALL_DOMAINS: ProductionDomainId[] = ['art-design', 'vfx', 'camera', 'editorial', 'audio-sound']
 
 export function getPromotedWorkspaceAssets(): Asset[] {
   const domainInstances = ALL_DOMAINS.flatMap((domainId) => {

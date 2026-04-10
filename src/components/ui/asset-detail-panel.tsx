@@ -300,6 +300,9 @@ const DOMAIN_NAMES: Record<DomainId, string> = {
   'camera': 'Camera',
   'editorial': 'Editorial',
   'audio-sound': 'Audio & Sound',
+  'marketing': 'Marketing',
+  'legal': 'Legal',
+  'globalization': 'Globalization',
 }
 
 function getDuration(asset: Asset): string | undefined {

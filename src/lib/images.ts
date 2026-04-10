@@ -70,6 +70,9 @@ export const DOMAIN_POOLS: Record<DomainId, string[]> = {
   'camera': CAMERA_IMAGES,
   'editorial': EDITORIAL_IMAGES,
   'audio-sound': AUDIO_IMAGES,
+  'marketing': [],
+  'legal': [],
+  'globalization': [],
 }
 
 // ---------------------------------------------------------------------------
