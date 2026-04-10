@@ -503,6 +503,39 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const canSeeFullAccessList = canAddGrants || canManageAllGrants
   const isInOwnerDepartment = domainContext?.members.some(m => m.id === activePersona?.id) ?? false
 
+  // Status card for assets: summary of how this asset is reachable
+  const assetStatusCard = isAssetResource && (() => {
+    const deptName = resourceRef?.domainId ? (domainConfigs[resourceRef.domainId]?.name ?? resourceRef.domainId) : null
+    const collectionCount = sharedViaCollections.length
+    const totalPeople = new Set<string>()
+    const countPrincipal = (p: PrincipalRef) => {
+      if (p.type === 'user') totalPeople.add(p.userId)
+      else if (p.type === 'team') {
+        const t = TEAMS.find(t2 => t2.id === p.teamId)
+        if (t) t.memberUserIds.forEach(uid => totalPeople.add(uid))
+      }
+    }
+    for (const g of grants) countPrincipal(g.principal)
+    for (const { grants: cg } of sharedViaCollections) {
+      for (const g of cg) countPrincipal(g.principal)
+    }
+    // Count department members
+    if (domainContext) domainContext.members.forEach(m => totalPeople.add(m.id))
+
+    const parts: string[] = []
+    if (deptName) parts.push(`${deptName} workspace`)
+    if (collectionCount > 0) parts.push(`${collectionCount} collection${collectionCount !== 1 ? 's' : ''}`)
+    if (totalPeople.size > 0) parts.push(`${totalPeople.size} people`)
+
+    if (parts.length === 0) return null
+
+    return (
+      <div className="bg-surface-mid rounded-lg px-3 py-2 text-body-0-regular text-foreground-dim">
+        {parts.join(' · ')}
+      </div>
+    )
+  })()
+
   // Close dropdown on click outside
   useEffect(() => {
     if (!showDropdown) return
@@ -1265,16 +1298,23 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       {(!showTabs || shareTab === 'people') && (
         <>
           {canSeeFullAccessList && searchSection}
-          {domainContextRow}
+
+          {/* Asset share modal: status card + direct grants only */}
+          {isAssetResource && assetStatusCard}
+
+          {/* Collection share modal: department card + full access list */}
+          {!isAssetResource && domainContextRow}
+
           {canSeeFullAccessList ? (
             <div>
-              <div className="pb-2">{haveAccessHeader}</div>
+              {(userEntries.length > 0 || teamEntries.length > 0) && (
+                <div className="pb-2">{haveAccessHeader}</div>
+              )}
               {userEntriesSection}
               {blockedSection}
               {teamEntriesSection}
             </div>
           ) : (
-            /* View/Comment users: show only their own access path */
             activePersona && (() => {
               const myGrant = grants.find(g =>
                 g.principal.type === 'user' && g.principal.userId === activePersona.id
@@ -1295,7 +1335,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               )
             })()
           )}
-          {canSeeFullAccessList && sharedViaCollectionsSection}
+          {/* Collection grants shown only for collection modals, not assets */}
+          {!isAssetResource && canSeeFullAccessList && sharedViaCollectionsSection}
           {canSeeFullAccessList && pendingPeopleSection}
           {canSeeFullAccessList && peopleEmptyState}
           {canSeeFullAccessList && guestLinksSection}
