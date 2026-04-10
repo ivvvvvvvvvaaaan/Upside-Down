@@ -352,6 +352,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const { showToast } = useToast()
   const { activePersona } = usePersona()
   const [shareTab, setShareTab] = useState<'people' | 'release'>('people')
+  const [domainContextExpanded, setDomainContextExpanded] = useState(false)
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
   type PendingGrant = { id: string; principal: PrincipalRef; name: string; kind: 'user' | 'team' | 'domain'; role: AccessProfileId; shareMode: ShareMode; expires: boolean; expiresInDays: number; allowUpload: boolean }
@@ -462,11 +463,13 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     const team = TEAMS.find(t => t.domainId === domId)
     const teamGrant = domainRootGrants.find(g => g.principal.type === 'team' && team && g.principal.teamId === team.id)
     if (!teamGrant) return null
+    const members = team ? PERSONAS.filter(p => team.memberUserIds.includes(p.id)) : []
     return {
       teamName: team?.name ?? domainFolder.name,
       roleLabel: profileLabel(teamGrant.templateId, roleGroups),
       domainName: domainFolder.name,
       domId,
+      members,
     }
   }, [isCollectionResource, resourceRef, getCollection, getResourceGrants, roleGroups])
 
@@ -836,15 +839,42 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   )
 
   const domainContextRow = domainContext && (
-    <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-surface-mid">
-      <div className="flex items-center gap-2 min-w-0">
-        <DepartmentAvatar domainId={domainContext.domId} size="sm" />
-        <div className="min-w-0">
-          <span className="text-body-0-regular text-foreground truncate block">{domainContext.teamName}</span>
-          <span className="text-label-0-regular text-foreground-dim block">Department access</span>
+    <div className="space-y-0">
+      <button
+        onClick={() => setDomainContextExpanded(prev => !prev)}
+        className="w-full flex items-center justify-between gap-2 py-1.5 hover:bg-surface-2 rounded transition-colors"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <DepartmentAvatar domainId={domainContext.domId} size="sm" />
+          <div className="min-w-0">
+            <span className="text-body-0-regular text-foreground truncate block">{domainContext.teamName}</span>
+            <span className="text-label-0-regular text-foreground-dim block">
+              {domainContext.members.length > 0
+                ? `You + ${domainContext.members.length - 1} other${domainContext.members.length - 1 !== 1 ? 's' : ''}`
+                : 'Department access'}
+            </span>
+          </div>
         </div>
-      </div>
-      <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{domainContext.roleLabel}</span>
+        <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{domainContext.roleLabel}</span>
+      </button>
+      {domainContextExpanded && domainContext.members.length > 0 && (
+        <div className="relative ml-1 pt-1">
+          {domainContext.members.map((member, i) => (
+            <div key={member.id} className="relative flex items-center gap-2 py-1 pl-4">
+              <div className="absolute left-1.5 top-0 h-1/2 border-l border-border-dim" />
+              {i < domainContext.members.length - 1 && (
+                <div className="absolute left-1.5 top-1/2 bottom-0 border-l border-border-dim" />
+              )}
+              <div className="absolute left-1.5 top-1/2 w-2.5 border-t border-border-dim" />
+              <Avatar name={member.name} size="compact" />
+              <div className="min-w-0">
+                <span className="text-body-0-regular text-foreground truncate block">{member.name}</span>
+                <span className="text-body-0-regular text-foreground-dim truncate block">{member.email}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 
