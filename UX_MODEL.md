@@ -93,7 +93,8 @@ For collections and folders: People tab only (no Release tab -- domain release a
 - Filtered collections show personalized results: "47 assets (you can access 23)." Filter criteria always visible.
 - Curated/shared collections show everyone the same assets.
 - Moving a file is an access decision. Warning before moves that affect shared collections: "Moving this file removes it from 2 collections. 5 people lose access."
-- Cross-department sharing warning: "Sarah Chen is not in your domain. This share will give her access to [N] assets."
+- Cross-department sharing warning: "Sarah Chen is not in your department. This share will give her access to [N] assets."
+- **Access request flow.** When a user discovers an asset through search but doesn't have access, they can request it. The request goes to the asset's department coordinator (or whoever has Manage permission). The coordinator sees the request in their inbox and can approve (grants view access) or deny with a note. This is the counterpart to the "departments don't want leaks" principle -- discovery is allowed, access is gated.
 - Release blast radius: "Release to Wide makes this visible to Marketing, Legal, Globalization... (~N people)."
 
 ## What distribution audiences see
