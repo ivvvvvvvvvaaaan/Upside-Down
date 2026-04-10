@@ -41,7 +41,7 @@ describe('grant-based access model', () => {
   it('lets a direct person override outrank the domain default', () => {
     const customOverride: Grant = {
       id: 'editorial-override',
-      resource: { id: 'ws-editorial', type: 'folder', domainId: 'editorial', departmentId: 'editorial' },
+      resource: { id: 'ws-editorial', type: 'folder', domainId: 'editorial' },
       principal: { type: 'user', userId: 'editorial-coordinator' },
       templateId: 'manage',
       permissions: DEFAULT_ROLE_GROUPS.find((group) => group.id === 'manage')!.permissions,
@@ -188,7 +188,7 @@ describe('capability decomposition', () => {
   })
 
   it('resource-level ACL helpers distinguish sharing from admin rights', () => {
-    const vfxFolder: ResourceRef = { id: 'ws-vfx-shots', type: 'folder', domainId: 'vfx', departmentId: 'vfx' }
+    const vfxFolder: ResourceRef = { id: 'ws-vfx-shots', type: 'folder', domainId: 'vfx' }
 
     expect(canCreateGrantForResource('vfx-coordinator', vfxFolder, DEFAULT_GRANTS)).toBe(true)
     expect(canEditAclForResource('vfx-coordinator', vfxFolder, DEFAULT_GRANTS)).toBe(true)

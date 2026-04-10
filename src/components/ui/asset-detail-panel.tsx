@@ -8,7 +8,7 @@ import { AccessModal } from './access-modal'
 import { Tag } from './tag'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import { CreativeReviewCard } from './creative-review-card'
-import type { Asset, DepartmentId } from '@/lib/data'
+import type { Asset, DomainId } from '@/lib/data'
 import { getAssetIdVariants } from '@/lib/data'
 import type { ResourceRef, Grant, RoleGroup } from '@/lib/grants'
 import { isGrantActive, profileLabel } from '@/lib/grants'
@@ -286,7 +286,7 @@ function TagManagerModal({
   )
 }
 
-const DOMAIN_NAMES: Record<DepartmentId, string> = {
+const DOMAIN_NAMES: Record<DomainId, string> = {
   'art-design': 'Art & Design',
   'vfx': 'VFX',
   'camera': 'Camera',
@@ -365,7 +365,7 @@ export function AssetDetailPanelContent({
   const resourceRef: ResourceRef | undefined = asset ? {
     id: asset.id,
     type: asset.kind === 'cut' ? 'cut' : 'asset',
-    departmentId: asset.department,
+    domainId: asset.department,
   } : undefined
 
   const folderInheritedGrants = useMemo(() => {

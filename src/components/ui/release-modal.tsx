@@ -49,7 +49,7 @@ export function ReleaseModal({ open, onClose, cut }: ReleaseModalProps) {
 
   const handleRelease = () => {
     if (!cut) return
-    const resource = { id: cut.id, type: 'cut' as const, departmentId: 'editorial' as const }
+    const resource = { id: cut.id, type: 'cut' as const, domainId: 'editorial' as const }
 
     // For each newly selected domain, create grants for its grantee teams
     for (const domain of allDomains) {

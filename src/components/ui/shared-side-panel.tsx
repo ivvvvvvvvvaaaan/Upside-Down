@@ -37,12 +37,12 @@ export function SharedDetailContent({ entry, showAccess = true }: SharedDetailCo
   const resourceRef: ResourceRef = {
     id: entry.resourceId,
     type: entry.resourceType,
-    departmentId: entry.departmentId,
+    domainId: entry.domainId,
   }
   const resolvedHref = getSharedResourceHref({
     resourceId: entry.resourceId,
     resourceType: kind,
-    departmentId: entry.departmentId,
+    domainId: entry.domainId,
   })
   const resolvedPreviewImages = getSharePreviewImages(entry, collections)
 

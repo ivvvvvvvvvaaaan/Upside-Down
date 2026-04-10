@@ -6,8 +6,6 @@ export type Team = {
   name: string
   memberUserIds: string[]
   domainId?: DomainId
-  /** @deprecated Use domainId */
-  departmentId?: DomainId
 }
 
 const DEFAULT_TEAMS: Team[] = buildTeams()

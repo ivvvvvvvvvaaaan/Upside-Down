@@ -77,15 +77,11 @@ export function folderToSelectionEntity({
   id,
   label,
   domainId,
-  /** @deprecated Use domainId */
-  departmentId,
   resourceId = id,
 }: {
   id: string
   label: string
   domainId?: ResourceRef['domainId']
-  /** @deprecated Use domainId */
-  departmentId?: ResourceRef['domainId']
   resourceId?: string
 }): SelectionEntity {
   return {
@@ -95,7 +91,7 @@ export function folderToSelectionEntity({
     resourceRef: {
       id: resourceId,
       type: 'folder',
-      domainId: domainId ?? departmentId,
+      domainId,
     },
   }
 }

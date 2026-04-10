@@ -675,7 +675,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
             if (seen.has(c.id)) continue
             if (c.boundFolderId) continue
             const isOwned = !activePersona || c.createdBy === activePersona.email
-            const isDomain = 'boundDomainId' in c && c.boundDomainId === activePersona?.departmentId
+            const isDomain = 'boundDomainId' in c && c.boundDomainId === activePersona?.domainId
             if (!isOwned && !isDomain && !isAdmin) continue
             seen.add(c.id)
             items.push({ id: c.id, name: c.name, count: getCollectionAssetCount(c.id), isShared: false })

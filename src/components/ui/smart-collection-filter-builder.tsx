@@ -8,7 +8,7 @@ import { Button } from './button'
 import { Toggle } from './switch'
 import { Popover, PopoverContent, PopoverTrigger } from './popover'
 import { cn } from '@/lib/utils'
-import type { AssetFilter, AssetType, DepartmentId } from '@/lib/data'
+import type { AssetFilter, AssetType, DomainId } from '@/lib/data'
 
 /**
  * Smart Collection Filter Builder
@@ -296,7 +296,7 @@ function FilterEditor({ type, filter, onUpdate }: FilterEditorProps) {
         <FormSelect
           options={DEPARTMENT_OPTIONS}
           value={filter.department || ''}
-          onChange={(value) => onUpdate({ department: value as DepartmentId })}
+          onChange={(value) => onUpdate({ department: value as DomainId })}
           size="compact"
         />
       )

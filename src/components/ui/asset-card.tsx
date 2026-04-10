@@ -8,7 +8,7 @@ import { MoreVertical, Music, FileText, ImageIcon, Film, File, Lock, Box } from 
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { Asset, DepartmentId } from '@/lib/data'
+import type { Asset, DomainId } from '@/lib/data'
 import type { MetadataFieldVisibility } from '@/hooks/useViewPreferences'
 
 const STATUS_LABELS = new Set(['Key Art', 'Final'])
@@ -16,7 +16,7 @@ const BADGE_EXTENSIONS = new Set(['exr', 'nk', 'mb', 'hip', 'prproj', 'psd', 'ai
 const FILE_3D_EXTENSIONS = new Set(['nk', 'mb', 'hip', 'prproj'])
 
 // Department short names for display
-const DOMAIN_NAMES: Record<DepartmentId, string> = {
+const DOMAIN_NAMES: Record<DomainId, string> = {
   'art-design': 'Art',
   'vfx': 'VFX',
   'camera': 'Camera',

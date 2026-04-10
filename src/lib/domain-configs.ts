@@ -47,6 +47,3 @@ export const domainConfigs: Record<DomainId, DomainConfig> = {
     color: 'bg-red-500',
   },
 }
-
-/** @deprecated Use domainConfigs */
-export const departmentConfigs = domainConfigs

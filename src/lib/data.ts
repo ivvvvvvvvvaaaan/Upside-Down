@@ -21,8 +21,6 @@ export type {
   TextMetadata,
   AudioMetadata,
   DomainId,
-  /** @deprecated Use DomainId */
-  DepartmentId,
   SmartCollectionCategory,
   SmartCollectionIcon,
   AssetFilter,

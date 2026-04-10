@@ -2,7 +2,7 @@
 
 import { profileLabel } from '@/lib/grants'
 import type { Grant, RoleGroup, AccessProfileId } from '@/lib/grants'
-import type { DepartmentId } from '@/lib/data'
+import type { DomainId } from '@/lib/data'
 import { PERSONAS } from '@/lib/personas'
 import { TEAMS } from '@/lib/teams'
 
@@ -18,7 +18,7 @@ export type AccessDisplayEntry = AccessDisplaySourceEntry & {
   subtitle?: string
   roleLabel: string
   principalType: 'user' | 'team'
-  domainId?: DepartmentId
+  domainId?: DomainId
   members?: {
     id: string
     name: string

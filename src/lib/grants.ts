@@ -1,7 +1,7 @@
-import type { DomainId, DepartmentId } from '@/components/department/types'
+import type { DomainId } from '@/components/department/types'
 import { PERSONAS } from '@/lib/personas'
 import { isUserInTeam, getTeamById } from '@/lib/teams'
-import { DEPARTMENT_FOLDER_MAP } from '@/lib/workspace-data'
+import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
 import {
   buildGrants,
   buildLabels,
@@ -14,8 +14,6 @@ export type ResourceRef = {
   id: string
   type: ResourceType
   domainId?: DomainId
-  /** @deprecated Use domainId */
-  departmentId?: DomainId
 }
 
 export const PROJECT_RESOURCE: ResourceRef = { id: 'project', type: 'project' }
@@ -107,7 +105,7 @@ const ALL_PERMISSIONS: Permission[] = [
 ]
 
 const POLICY_RESOURCE_IDS = new Set(
-  Object.values(DEPARTMENT_FOLDER_MAP).map((folder) => folder.id),
+  Object.values(DOMAIN_FOLDER_MAP).map((folder) => folder.id),
 )
 
 export function getRoleGroup(roleGroups: RoleGroup[], templateId?: AccessProfileId | null): RoleGroup | undefined {
@@ -277,7 +275,7 @@ export function resolveAccess(
   resourceId: string,
   grants: Grant[],
   roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
-  resourceDepartmentId?: DepartmentId,
+  resourceDomainId?: DomainId,
 ): ResolvedAccess {
   const user = PERSONAS.find((persona) => persona.id === userId)
   if (!user) return NO_ACCESS
@@ -300,14 +298,14 @@ export function resolveAccess(
   const resourceMatches = resolveMatchingGrants(grants, userId, resourceId)
   const resourceAccess = buildResolvedAccess(resourceMatches.direct, resourceMatches.team, roleGroups, 'team')
 
-  let departmentAccess: ResolvedAccess | null = null
-  if (resourceDepartmentId) {
-    const departmentRootId = DEPARTMENT_FOLDER_MAP[resourceDepartmentId]?.id
-    if (departmentRootId && departmentRootId !== resourceId) {
-      const departmentRootMatches = resolveMatchingGrants(grants, userId, departmentRootId)
-      departmentAccess = buildResolvedAccess(
-        departmentRootMatches.direct,
-        departmentRootMatches.team,
+  let domainAccess: ResolvedAccess | null = null
+  if (resourceDomainId) {
+    const domainRootId = DOMAIN_FOLDER_MAP[resourceDomainId]?.id
+    if (domainRootId && domainRootId !== resourceId) {
+      const domainRootMatches = resolveMatchingGrants(grants, userId, domainRootId)
+      domainAccess = buildResolvedAccess(
+        domainRootMatches.direct,
+        domainRootMatches.team,
         roleGroups,
         'team',
       )
@@ -315,13 +313,13 @@ export function resolveAccess(
   }
 
   // Take whichever level grants higher privilege
-  if (resourceAccess && departmentAccess) {
+  if (resourceAccess && domainAccess) {
     const rRank = resourceAccess.effectiveProfile ? TEMPLATE_RANK[resourceAccess.effectiveProfile] : 0
-    const dRank = departmentAccess.effectiveProfile ? TEMPLATE_RANK[departmentAccess.effectiveProfile] : 0
-    return rRank >= dRank ? resourceAccess : departmentAccess
+    const dRank = domainAccess.effectiveProfile ? TEMPLATE_RANK[domainAccess.effectiveProfile] : 0
+    return rRank >= dRank ? resourceAccess : domainAccess
   }
 
-  return resourceAccess ?? departmentAccess ?? NO_ACCESS
+  return resourceAccess ?? domainAccess ?? NO_ACCESS
 }
 
 function resolveAccessForResource(
@@ -330,7 +328,7 @@ function resolveAccessForResource(
   grants: Grant[],
   roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
 ): ResolvedAccess {
-  return resolveAccess(userId, resource.id, grants, roleGroups, resource.departmentId)
+  return resolveAccess(userId, resource.id, grants, roleGroups, resource.domainId)
 }
 
 function userHasPermissionOnResource(
@@ -366,10 +364,10 @@ export function userHasAccess(
   userId: string,
   resourceId: string,
   grants: Grant[],
-  resourceDepartmentId?: DepartmentId,
+  resourceDomainId?: DomainId,
   roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
 ): boolean {
-  return resolveAccess(userId, resourceId, grants, roleGroups, resourceDepartmentId).hasAccess
+  return resolveAccess(userId, resourceId, grants, roleGroups, resourceDomainId).hasAccess
 }
 
 export type GrantView = {
@@ -377,7 +375,7 @@ export type GrantView = {
   resourceId: string
   resourceType: ResourceType
   label: string
-  departmentId?: DepartmentId
+  domainId?: DomainId
   templateId?: AccessProfileId
   permissions: Permission[]
   grantedByUserId: string
@@ -393,7 +391,7 @@ function principalLabel(principal: PrincipalRef): string {
 
   const team = getTeamById(principal.teamId)
   if (!team) return principal.teamId
-  return team.departmentId ? `${team.name} (department)` : `${team.name} (team)`
+  return team.domainId ? `${team.name} (domain)` : `${team.name} (team)`
 }
 
 function grantToView(grant: Grant): GrantView {
@@ -402,7 +400,7 @@ function grantToView(grant: Grant): GrantView {
     resourceId: grant.resource.id,
     resourceType: grant.resource.type,
     label: getResourceLabel(grant.resource.id),
-    departmentId: grant.resource.departmentId,
+    domainId: grant.resource.domainId,
     templateId: grant.templateId,
     permissions: getGrantPermissions(grant),
     grantedByUserId: grant.grantedByUserId,

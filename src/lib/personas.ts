@@ -15,8 +15,6 @@ export type User = {
   role: UserRole
   title: string
   domainId?: DomainId
-  /** @deprecated Use domainId */
-  departmentId?: DomainId
   teamIds: string[]
   avatar?: string
   isAdmin?: boolean

@@ -495,7 +495,7 @@ export function FinderWindow({
       .filter((entry) => {
         if (entry.resourceType !== 'folder') return false
         if (DOMAIN_ROOT_IDS.has(entry.resourceId)) return false
-        if (activePersona?.domainId && entry.departmentId === activePersona.domainId) return false
+        if (activePersona?.domainId && entry.domainId === activePersona.domainId) return false
         return true
       })
       .map((entry) => {

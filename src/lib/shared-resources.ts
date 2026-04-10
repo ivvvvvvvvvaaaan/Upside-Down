@@ -5,8 +5,6 @@ export type SharedResourceRef = {
   resourceId: string
   resourceType: AccessEntryKind
   domainId?: DomainId
-  /** @deprecated Use domainId */
-  departmentId?: DomainId
 }
 
 export function getSharedResourceHref(resource: SharedResourceRef): string | undefined {
@@ -15,7 +13,7 @@ export function getSharedResourceHref(resource: SharedResourceRef): string | und
   if (resource.resourceType === 'collection') return `/nextgen/collections/${resource.resourceId}`
   if (resource.resourceType === 'smart-collection') return `/nextgen/collections/${resource.resourceId}`
   if (resource.resourceType === 'folder') {
-    const effectiveDomainId = resource.domainId ?? resource.departmentId
+    const effectiveDomainId = resource.domainId
     if (!effectiveDomainId) return '/nextgen/workspace'
     const deptRoot = `/nextgen/workspace/${effectiveDomainId}`
     // Link to the specific folder, not just the department root

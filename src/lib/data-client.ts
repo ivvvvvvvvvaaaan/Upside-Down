@@ -48,8 +48,6 @@ export type SequenceMetadata = {
 }
 
 export type { DomainId } from '@/components/department/types'
-/** @deprecated Use DomainId */
-export type { DepartmentId } from '@/components/department/types'
 
 // Smart Collection Types
 export type SmartCollectionCategory = 'narrative' | 'production' | 'cg' | 'edit'
@@ -166,8 +164,6 @@ export type SharePreviewResource = {
   resourceId: string
   resourceType: 'asset' | 'cut' | 'folder' | 'collection' | 'smart-collection' | 'review-set' | 'project'
   domainId?: DomainId
-  /** @deprecated Use domainId */
-  departmentId?: DomainId
 }
 
 // Derive collection thumbnails from AI-tagged workspace files.
@@ -414,7 +410,7 @@ export function getSharePreviewImages(
     )
     if (folderImages) return folderImages
 
-    const effectiveDomainId = resource.domainId ?? resource.departmentId
+    const effectiveDomainId = resource.domainId
     if (!effectiveDomainId) return undefined
 
     return uniquePreviewImages(

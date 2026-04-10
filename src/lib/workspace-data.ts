@@ -5,8 +5,6 @@ export interface ReferenceFolderSource {
   resourceId: string
   resourceType: 'collection' | 'smart-collection'
   domainId?: DomainId
-  /** @deprecated Use domainId */
-  departmentId?: DomainId
   shareMode?: ShareMode
   snapshotAssetIds?: string[]
 }
@@ -21,8 +19,6 @@ export interface UnifiedFileNode {
   modifiedAt?: string
   modifiedBy?: string
   domainId?: DomainId
-  /** @deprecated Use domainId */
-  departmentId?: DomainId
   reference?: ReferenceFolderSource
   children?: UnifiedFileNode[]
 }
@@ -553,8 +549,6 @@ export function getDomainWorkspaceFiles(domainId: DomainId): WorkspaceFileNode[]
   return domainFileMap[domainId] ?? []
 }
 
-/** @deprecated Use getDomainWorkspaceFiles */
-export const getDepartmentWorkspaceFiles = getDomainWorkspaceFiles
 
 /** Find a node by ID in a tree of WorkspaceFileNodes */
 export function findNodeInTree(nodes: WorkspaceFileNode[], id: string): WorkspaceFileNode | null {
@@ -576,9 +570,6 @@ export const DOMAIN_FOLDER_MAP: Record<DomainId, { id: string; name: string }> =
   'editorial': { id: 'ws-editorial', name: 'Editorial' },
   'audio-sound': { id: 'ws-audio', name: 'Audio & Sound' },
 }
-
-/** @deprecated Use DOMAIN_FOLDER_MAP */
-export const DEPARTMENT_FOLDER_MAP = DOMAIN_FOLDER_MAP
 
 /**
  * Build the full Finder workspace tree:

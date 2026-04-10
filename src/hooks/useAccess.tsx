@@ -535,7 +535,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     if (!activePersona) return ownerPermissionSet
     if (!userId) return EMPTY_PERMISSION_SET
 
-    const resourceDomainId = resource.departmentId ?? getResourceDomainId(resource.id)
+    const resourceDomainId = resource.domainId ?? getResourceDomainId(resource.id)
     const layers: EffectivePermissionSet[] = []
 
     if (resource.type === 'collection') {
@@ -601,7 +601,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     if (!activePersona) return true
     if (!userId) return false
 
-    if (resource.type === 'folder' && !resource.departmentId && !nodeToDomain.has(resource.id)) return true
+    if (resource.type === 'folder' && !resource.domainId && !nodeToDomain.has(resource.id)) return true
 
     const permissions = getEffectivePermissionSet(resource, currentGrants).permissions
     return permissions.includes('share') || permissions.includes('edit-acl')
@@ -682,7 +682,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       return getEffectivePermissionSet({
         id: referenceNode.reference.resourceId,
         type: referenceNode.reference.resourceType,
-        departmentId: referenceNode.reference.departmentId,
+        domainId: referenceNode.reference.domainId,
       }).permissions.includes('open')
     }
 
@@ -691,7 +691,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return getEffectivePermissionSet({
       id,
       type: collectionById.has(id) ? 'collection' : 'asset',
-      departmentId: getResourceDomainId(id),
+      domainId: getResourceDomainId(id),
     }).permissions.includes('open')
   }, [
     activePersona,
@@ -714,7 +714,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     if (!settings.enabled) return 'hidden'
     if (!rule.allowedRoles.includes(activePersona.role)) return 'hidden'
 
-    const domainId = resource.departmentId
+    const domainId = resource.domainId
       ?? (resource.type === 'cut' ? 'editorial' : getResourceDomainId(resource.id))
 
     if (domainId && settings.disabledDomains.has(domainId)) return 'hidden'
@@ -843,7 +843,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return getEffectivePermissionSet({
       id,
       type: collectionById.has(id) ? 'collection' : 'asset',
-      departmentId: getResourceDomainId(id),
+      domainId: getResourceDomainId(id),
     }).templateId
   }, [activePersona, collectionById, getEffectivePermissionSet, getResourceDomainId])
 
@@ -852,7 +852,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return getEffectivePermissionSet({
       id,
       type: collectionById.has(id) ? 'collection' : 'asset',
-      departmentId: getResourceDomainId(id),
+      domainId: getResourceDomainId(id),
     }).canEdit
   }, [activePersona, collectionById, getEffectivePermissionSet, getResourceDomainId])
 
@@ -963,7 +963,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     const resource: ResourceRef = {
       id: link.resource.id,
       type: link.resource.type as ResourceType,
-      departmentId: link.resource.departmentId,
+      domainId: link.resource.domainId,
     }
     if (canEditAclFn(resource, currentGrants)) return true
     return Boolean(userId && canShareFn(resource, currentGrants) && link.createdByUserId === userId)
@@ -982,7 +982,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     expires.setDate(expires.getDate() + options.expiresInDays)
     const link: GuestLinkSeed = {
       id: `link-${Date.now()}`,
-      resource: { id: resource.id, type: resource.type, departmentId: resource.departmentId },
+      resource: { id: resource.id, type: resource.type, domainId: resource.domainId },
       label: resource.id,
       permissions: options.allowDownload ? ['open', 'download'] : ['open'],
       templateId: 'link-viewer',

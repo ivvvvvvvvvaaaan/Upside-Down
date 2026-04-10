@@ -237,16 +237,16 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
         if (e.resourceType !== 'folder') return false
         if (DOMAIN_FOLDER_IDS.has(e.resourceId)) return false
         // Skip folders within the user's own domain
-        if (activePersona?.domainId && e.departmentId === activePersona.domainId) return false
+        if (activePersona?.domainId && e.domainId === activePersona.domainId) return false
         return true
       })
       .map((entry) => {
-        const domainFiles = entry.departmentId ? (getFileTreeDomainFiles(entry.departmentId) as WorkspaceFileNode[]) : []
+        const domainFiles = entry.domainId ? (getFileTreeDomainFiles(entry.domainId) as WorkspaceFileNode[]) : []
         const sourceNode = findNodeById(domainFiles, entry.resourceId)
         if (sourceNode?.type === 'folder') {
           return {
             ...sourceNode,
-            domainId: entry.departmentId,
+            domainId: entry.domainId,
           }
         }
 
@@ -254,7 +254,7 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
           id: entry.resourceId,
           name: entry.label,
           type: 'folder' as const,
-          domainId: entry.departmentId,
+          domainId: entry.domainId,
           modifiedAt: entry.grantedAt,
           children: [],
         }

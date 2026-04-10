@@ -582,7 +582,7 @@ export function buildPersonas(): User[] {
     email: p.email,
     role: p.role,
     title: p.title,
-    departmentId: p.domain,
+    domainId: p.domain,
     teamIds: p.teams,
   }))
 }
@@ -592,7 +592,7 @@ export function buildTeams(): Team[] {
     id: t.id,
     name: t.name,
     memberUserIds: t.members,
-    departmentId: t.domain,
+    domainId: t.domain,
   }))
 }
 
@@ -661,7 +661,7 @@ export function buildGrants(): Grant[] {
     const resource = {
       id: share.resource.id,
       type: share.resource.type,
-      departmentId: share.resource.domain,
+      domainId: share.resource.domain,
     }
 
     // Sharer gets an explicit manager grant on the resource
@@ -749,7 +749,7 @@ export function buildGrants(): Grant[] {
 
     grants.push({
       id: grantId(),
-      resource: { id: folderId, type: 'folder' as const, departmentId: policy.domain },
+      resource: { id: folderId, type: 'folder' as const, domainId: policy.domain },
       principal: { type: 'team', teamId: policy.defaultTeamId },
       templateId: policy.defaultProfile,
       permissions: permissionsForTemplate(policy.defaultProfile),
@@ -763,7 +763,7 @@ export function buildGrants(): Grant[] {
 
 export type GuestLinkSeed = {
   id: string
-  resource: { id: string; type: ResourceType; departmentId?: DomainId }
+  resource: { id: string; type: ResourceType; domainId?: DomainId }
   label: string
   permissions: Permission[]
   templateId?: 'link-viewer' | 'comment'
@@ -783,7 +783,7 @@ export function buildGuestLinks(): GuestLinkSeed[] {
 
   return SCENARIO.guestLinks.map((link) => ({
     id: linkId(),
-    resource: { id: link.resource.id, type: link.resource.type, departmentId: link.resource.domain },
+    resource: { id: link.resource.id, type: link.resource.type, domainId: link.resource.domain },
     label: link.label,
     permissions: link.allowDownload ? ['open', 'download'] : ['open'],
     templateId: 'link-viewer' as const,
