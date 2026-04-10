@@ -71,7 +71,15 @@ Collections containing sensitive assets show a badge: "3 of 12 assets are restri
 
 ## Cross-app behavior
 
-Undefined. "Manual push workflow" mentioned but no mechanism designed.
+Two channels, one share dialog:
+
+- **Domain shares travel across apps.** When you release content to STUDIO_VFX, the grant is CAM-backed. Any app that checks CAM domain grants can honor it. Content Hub, Creative Review, and future apps all read the same domain grants. This is the formal distribution channel.
+
+- **Person/group shares are app-specific.** When you share a collection with Sarah, that's a Content Hub grant. Creative Review doesn't automatically see it. If CR needs it, someone pushes it to CR explicitly (or CR builds the ability to read Content Hub grants -- a future integration).
+
+This distinction falls out naturally from how sharing works: domains are CAM infrastructure (cross-app by nature), people are app-level grants (app-specific by nature). The user doesn't need to think about this split -- they share with whoever they want, and the system handles where the grant lives.
+
+**The "push to CR" workflow:** If a coordinator shares a cut in Content Hub and wants it reviewable in CR, they share it with the CREATIVE_REVIEW domain (which is a real domain in CAM). CR honors domain grants. No separate "push" action needed -- domain release IS the cross-app mechanism.
 
 ## Domain integration
 
