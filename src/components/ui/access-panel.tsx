@@ -493,17 +493,15 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         .map((grant) => grant.principal.domainId),
     )
 
-    // Domain release only applies to assets and cuts, not collections/folders
-    const canReleaseTodomains = resourceRef?.type === 'asset' || resourceRef?.type === 'cut'
-
+    // Domains are shown in a separate checklist, not in search results
     return buildShareSearchResults({
       query,
       activeUserId: activePersona?.id,
       existingUserIds,
       existingTeamIds: existingGroupIds,
-      existingDomainIds: canReleaseTodomains ? existingDomainIds : new Set(RELEASE_DOMAINS.map(d => d.id)),
+      existingDomainIds: new Set(RELEASE_DOMAINS.map(d => d.id)),
     })
-  }, [query, activePersona, grants, resourceRef])
+  }, [query, activePersona, grants])
 
   const hasResults = results.length > 0
 
@@ -728,7 +726,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               value={query}
               onChange={e => { setQuery(e.target.value); setShowDropdown(true) }}
               onFocus={() => { if (query.trim()) setShowDropdown(true) }}
-              placeholder="Add people, teams, or domains..."
+              placeholder="Add people or teams..."
               icon={<Search className="w-4 h-4" />}
               iconPosition="left"
             />
@@ -858,6 +856,59 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           })}
         </div>
       )}
+
+      {/* Domain release checklist — only for assets and cuts */}
+      {!readOnly && canAddGrants && resourceRef && (resourceRef.type === 'asset' || resourceRef.type === 'cut') && (() => {
+        const releasedDomainIds = new Set(domainEntries.map(e => {
+          const p = e.grant.principal as { type: 'domain'; domainId: string }
+          return p.domainId
+        }))
+        const pendingDomainIds = new Set(pendingGrants.filter(p => p.kind === 'domain').map(p => p.id))
+        const groups = ['Studio', 'Wide', 'Other'] as const
+        const domainsByGroup = groups.map(group => ({
+          group,
+          domains: RELEASE_DOMAINS.filter(d => d.group === group),
+        })).filter(g => g.domains.length > 0)
+
+        return (
+          <div className="space-y-2">
+            <h3 className="text-label-1-bold text-foreground-dim flex items-center gap-1.5">
+              <Globe className="w-3.5 h-3.5" />
+              Release to domains
+            </h3>
+            {domainsByGroup.map(({ group, domains }) => (
+              <div key={group} className="space-y-0.5">
+                <span className="text-label-0-regular text-foreground-subtle px-1">{group}</span>
+                <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                  {domains.map(domain => {
+                    const isReleased = releasedDomainIds.has(domain.id)
+                    const isPending = pendingDomainIds.has(domain.id)
+                    const isChecked = isReleased || isPending
+                    return (
+                      <label key={domain.id} className="flex items-center gap-1.5 px-1 py-0.5 rounded hover:bg-surface-2 cursor-pointer text-body-0-regular text-foreground">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          disabled={isReleased}
+                          onChange={(e) => {
+                            if (e.target.checked && !isReleased) {
+                              handleSelectPrincipal({ type: 'domain', domainId: domain.id }, domain.name, 'domain')
+                            } else if (!e.target.checked && isPending) {
+                              handleRemovePending(domain.id)
+                            }
+                          }}
+                          className="rounded border-border-dim"
+                        />
+                        <span className={isReleased ? 'text-foreground-dim' : ''}>{domain.name}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
 
       {/* Shared via collections */}
       {sharedViaCollections.map(({ collection, grants: collGrants }) => {
