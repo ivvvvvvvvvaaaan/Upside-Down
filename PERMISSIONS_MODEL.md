@@ -94,6 +94,14 @@ This is the "kill switch" for when someone rolls off the project, gets terminate
 
 From the per-asset summary, an admin can "Revoke all access" to a specific asset. This removes the asset from all shared collections and revokes all direct grants. Department access remains (can't remove workspace files without moving them). This is the response when a specific asset is compromised -- lock it down, then investigate.
 
+### Revocation feedback
+
+Every revoke action shows a result:
+- **"Access fully revoked."** -- the user has no remaining paths to this asset. Done.
+- **"Removed from this collection. David still has access through 2 other paths."** -- with a link to the per-asset access summary so you can revoke the remaining paths if needed.
+
+This is not a modal or a blocking dialog -- it's an inline confirmation that appears after the revoke action completes. The coordinator always knows the result of their action.
+
 ### Block: the exception to additive
 
 The access model is additive with one exception: a **block**. An admin can block a specific user from a specific asset. A block overrides all additive grants -- no matter how many paths the user has, the block wins.

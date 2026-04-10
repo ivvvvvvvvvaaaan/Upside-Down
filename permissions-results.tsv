@@ -6,3 +6,4 @@ b7f2971	4.6	kept	Project lockdown (freeze all external access). Audit log with h
 b00c2f2	4.7	kept	Explicit block: per-user per-asset override. Rare, visible, logged, reversible. The one exception to additive.
 n/a	4.7	reverted	Deny-by-default experiment. Realized additive already IS deny-by-default (no access without a grant). The real issue was multi-path revocation, already solved.
 8b1c035	4.9	kept	Reframe: "no access by default, explicit grants" as the lead principle. Clearer than "additive."
+50adc2f	5.0	kept	Revocation feedback: every revoke shows "fully revoked" or "still has N other paths." ALL DIMENSIONS AT 5.
