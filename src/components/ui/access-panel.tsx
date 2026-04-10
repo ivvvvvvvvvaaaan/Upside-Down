@@ -1090,34 +1090,44 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               const isPending = pendingDomainIds.has(domain.id)
               const isChecked = isReleased || isPending
 
-              return (
-                <div key={domain.id} className="flex items-center gap-3 py-1">
-                  <Checkbox
-                    checked={isChecked}
-                    onChange={(checked) => {
-                      if (checked && !isReleased) {
-                        handleSelectPrincipal({ type: 'domain', domainId: domain.id }, domain.name, 'domain')
-                      } else if (!checked) {
-                        if (isPending) handleRemovePending(domain.id)
-                        else if (isReleased && existingEntry && !existingEntry.readOnly) handleRevokeGrant(existingEntry.grant.id)
-                      }
-                    }}
-                    disabled={readOnly || (isReleased && existingEntry?.readOnly)}
-                  />
-                  <span className={cn(
-                    'text-body-0-regular flex-1 min-w-0',
-                    isChecked ? 'text-foreground' : 'text-foreground-dim',
-                  )}>
-                    {domain.name}
-                  </span>
-                  {isReleased && existingEntry && (
+              if (isReleased && existingEntry) {
+                return (
+                  <div key={domain.id} className="flex items-center gap-3 py-1">
+                    <span className="text-body-0-regular text-foreground flex-1 min-w-0">{domain.name}</span>
                     <RoleSelect
                       options={domainRoleOptions}
                       value={existingEntry.grant.templateId ?? 'view'}
                       onChange={(value) => handleUpdateProfile(existingEntry.grant.id, value as AccessProfileId)}
                       disabled={existingEntry.readOnly}
                     />
-                  )}
+                    {!existingEntry.readOnly && (
+                      <Button variant="secondary" compact onClick={() => handleRevokeGrant(existingEntry.grant.id)}>
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                )
+              }
+
+              return (
+                <div key={domain.id} className="flex items-center gap-3 py-1">
+                  <Checkbox
+                    checked={isPending}
+                    onChange={(checked) => {
+                      if (checked) {
+                        handleSelectPrincipal({ type: 'domain', domainId: domain.id }, domain.name, 'domain')
+                      } else {
+                        handleRemovePending(domain.id)
+                      }
+                    }}
+                    disabled={readOnly}
+                  />
+                  <span className={cn(
+                    'text-body-0-regular flex-1 min-w-0',
+                    isPending ? 'text-foreground' : 'text-foreground-dim',
+                  )}>
+                    {domain.name}
+                  </span>
                 </div>
               )
             })}
