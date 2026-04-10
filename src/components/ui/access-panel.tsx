@@ -1089,10 +1089,10 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           return (
           <div key={group} className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-label-0-bold text-foreground-dim">{group}</span>
+              <span className="text-body-0-bold text-foreground-dim">{group}</span>
               {!readOnly && hasUnreleased && (
                 <Button
-                  variant="secondary"
+                  variant="tertiary"
                   compact
                   onClick={() => {
                     for (const d of unreleasedInGroup) {
@@ -1141,9 +1141,9 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
             {/* Not yet released */}
             {domains.filter(d => !releasedDomainGrants.has(d.id) && !pendingDomainIds.has(d.id)).map(domain => (
               <div key={domain.id} className="flex items-center gap-2 py-1">
-                <span className="text-body-0-regular text-foreground-dim flex-1 min-w-0">{domain.name}</span>
+                <span className="text-body-0-regular text-foreground flex-1 min-w-0">{domain.name}</span>
                 {!readOnly && (
-                  <Button variant="secondary" compact onClick={() => handleSelectPrincipal({ type: 'domain', domainId: domain.id }, domain.name, 'domain')}>
+                  <Button variant="primary" compact onClick={() => handleSelectPrincipal({ type: 'domain', domainId: domain.id }, domain.name, 'domain')}>
                     Release
                   </Button>
                 )}
