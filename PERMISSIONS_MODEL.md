@@ -90,6 +90,30 @@ This is the "kill switch" for when someone rolls off the project, gets terminate
 
 From the per-asset summary, an admin can "Revoke all access" to a specific asset. This removes the asset from all shared collections and revokes all direct grants. Department access remains (can't remove workspace files without moving them). This is the response when a specific asset is compromised -- lock it down, then investigate.
 
+### Project-level lockdown
+
+An admin can toggle "Lock project" which immediately:
+1. Freezes all external access (vendors, review links, cross-department shares)
+2. Expires all outstanding guest links
+3. Keeps internal department workspace access intact (teams can still work)
+
+This is the emergency response for a leak investigation or a security incident. One toggle. Reversible. Logged with who locked it and when.
+
+For a more targeted response: "Lock all external access to this asset" freezes just one asset's external grants while leaving internal access.
+
+### Audit log (access history)
+
+Every access event is recorded and retained:
+- **Grant events**: who shared what with whom, when, at what level
+- **Revoke events**: who revoked, when, which path
+- **View events**: who opened the asset, when, from what device
+- **Download events**: who downloaded, when, what format
+- **Release events**: who released to which domains, when
+
+The audit log is queryable: "Show me everyone who had access to cut-ep301-fc between Feb 15 and Feb 28." This answers the investigation question: not just who HAS access now, but who HAD access during the leak window.
+
+Revoked grants are NOT deleted -- they're marked as revoked with a timestamp. The access panel shows active grants; the audit log shows the full history including revoked ones.
+
 ---
 
 ## What the industry does
