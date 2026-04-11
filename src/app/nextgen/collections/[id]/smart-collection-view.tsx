@@ -12,7 +12,7 @@ import {
   CardGrid,
   AssetCard,
   CollectionCard,
-  SelectionBar,
+  ContextualActionBar,
   EmptyState,
   CollectionSidePanel,
   AssetDetailPanel,
@@ -24,6 +24,7 @@ import {
   Dropdown,
   DropdownMenuItem,
 } from '@/components/ui'
+import type { ActionBarAction } from '@/components/ui/contextual-action-bar'
 import type { CollectionCardType } from '@/components/ui/collection-card'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import { getGridColumns, useAssetSelection, useViewPreferences, useCompactBar, useResourceSelection, useSmartCollections, usePersona, useMobilePanel } from '@/hooks'
@@ -57,7 +58,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     assetsLoading,
     ensureAssetsLoaded,
   } = useSmartCollections()
-  const { activePersona } = usePersona()
+  const { activePersona, isAdmin } = usePersona()
   const {
     selectedIds: selectedAssetIds,
     primaryId: primaryAssetId,
@@ -91,8 +92,8 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
 
   const collection = getCollection(collectionId)
   const isOwner = collection?.createdBy === activePersona?.email
-  const canManageCurrentCollection = Boolean(collection && (isOwner || canEdit(collection.id) || canEditAcl(collectionResourceRef)))
-  const canDeleteCurrentCollection = Boolean(collection && (isOwner || canEditAcl(collectionResourceRef)))
+  const canManageCurrentCollection = Boolean(collection && (isOwner || isAdmin || canEdit(collection.id) || canEditAcl(collectionResourceRef)))
+  const canDeleteCurrentCollection = Boolean(collection && (isOwner || isAdmin))
 
   useEffect(() => {
     void ensureAssetsLoaded()
@@ -174,10 +175,10 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     }
   }
 
-  const handleMount = (assets: Asset[], name: string) => {
-    const grant = getCurrentUserGrant(collectionId)
+  const handleMount = (resourceId: string, name: string) => {
+    const grant = getCurrentUserGrant(resourceId)
     createReferenceFolder(SHARED_MOUNT_FOLDER_ID, name, {
-      resourceId: collectionId,
+      resourceId,
       resourceType: 'smart-collection',
       shareMode: grant?.shareMode ?? 'live',
       snapshotAssetIds: grant?.snapshotAssetIds,
@@ -284,6 +285,20 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     ? childCollections.length
     : filteredAssets.length
   const countLabel = isParentWithChildren ? 'collection' : 'asset'
+
+  const parentActions = useMemo(() => {
+    const actions: ActionBarAction[] = []
+    if (showShareButton) {
+      actions.push({
+        id: 'share',
+        label: 'Share',
+        icon: <Image src="/Icons/Icons-share.svg" alt="" width={16} height={16} />,
+        onClick: () => setShareModalOpen(true),
+        variant: 'primary',
+      })
+    }
+    return actions
+  }, [showShareButton])
 
   // Collection not found
   if (!collection && !loading) {
@@ -401,15 +416,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                           metadataFields={metadataFields}
                           onMetadataFieldChange={setMetadataField}
                         />
-                        {showShareButton && (
-                          <Button
-                            variant="primary"
-                            icon={<Image src="/Icons/Icons-share.svg" alt="" width={16} height={16} />}
-                            onClick={() => setShareModalOpen(true)}
-                          >
-                            Share
-                          </Button>
-                        )}
                         <Button
                           variant="icon"
                           onClick={togglePanel}
@@ -429,6 +435,12 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                     </div>
                   </div>
 
+                  <ContextualActionBar
+                    parentActions={parentActions}
+                    selectedEntities={activeSelectionEntities}
+                    onClearSelection={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
+                    metadata={loading ? undefined : `${itemCount} ${countLabel}${itemCount !== 1 ? 's' : ''}`}
+                  />
 
                   {/* Content */}
                   <div className="min-h-[400px]">
@@ -500,10 +512,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
             </div>
           </div>
 
-        <SelectionBar
-          selectedEntities={activeSelectionEntities}
-          onClear={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
-        />
       </div>
 
       {/* Side panel — priority: selected asset > selected child collection > current collection */}
@@ -523,8 +531,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
           onClose={() => { clearCollectionSelection(); closePanel() }}
           onAction={(action) => {
             if (action.type === 'mount') {
-              const childAssets = filteredAssets.filter(a => matchesFilter(a, selectedChildCollection.filter))
-              handleMount(childAssets, selectedChildCollection.name)
+              handleMount(selectedChildCollection.id, selectedChildCollection.name)
             }
           }}
           actionPermissions={{
@@ -545,7 +552,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
           onAction={(action) => {
             if (action.type === 'update') handleUpdateCollection(action.updates)
             else if (action.type === 'delete') handleDeleteCollection()
-            else if (action.type === 'mount') handleMount(filteredAssets, collection?.name ?? collectionId)
+            else if (action.type === 'mount') handleMount(collection.id, collection.name)
           }}
           actionPermissions={{
             canEdit: canManageCurrentCollection,

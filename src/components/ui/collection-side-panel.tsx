@@ -1,14 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { X, LayoutGrid, MoreVertical, Pencil, Trash2, MapPin, Film, Zap, Folder, HardDrive, Import } from 'lucide-react'
 import { Button } from './button'
 import { Avatar } from './avatar'
+import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
 import { Dropdown, DropdownMenuItem, DropdownMenuDivider } from './dropdown'
 import { Modal } from './modal'
 import { Card } from './card'
 import { ResponsivePanel } from './responsive-panel'
-import { AccessSummary } from './access-summary'
+import { AccessModal } from './access-modal'
 import { CreativeReviewCard } from './creative-review-card'
 import { OntologySection } from './ontology-section'
 import { SmartCollectionFilterBuilder } from './smart-collection-filter-builder'
@@ -17,11 +18,15 @@ import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import type { Collection } from '@/lib/collection-types'
 import { isSmart, isCollection, getCollectionCapabilities } from '@/lib/collection-types'
 import { getCollectionReviewSummary } from '@/lib/review-notes'
-import type { ResourceRef } from '@/lib/grants'
+import type { ResourceRef, Grant } from '@/lib/grants'
+import { profileLabel } from '@/lib/grants'
 import type { AssetFilter, SmartCollectionGroupBy } from '@/lib/data'
 import type { RelatedCollections } from '@/hooks/useSmartCollections'
 import { useAccess, usePersona } from '@/hooks'
 import { PERSONAS } from '@/lib/personas'
+import { TEAMS } from '@/lib/teams'
+import { getOntologyMeta } from '@/lib/ontology-meta'
+import type { OntologyMeta } from '@/lib/ontology-meta'
 
 const PANEL_ICONS: Record<string, typeof LayoutGrid> = {
   collection: LayoutGrid,
@@ -35,6 +40,84 @@ function PanelHeaderIcon({ icon, name }: { icon: string; name: string }) {
   if (icon === 'character') return <Avatar name={name} size="lg" />
   const Icon = PANEL_ICONS[icon] ?? LayoutGrid
   return <Icon className="w-8 h-8 text-foreground flex-shrink-0" />
+}
+
+function resolvePrincipalName(principal: Grant['principal']): string {
+  if (principal.type === 'user') return PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
+  if (principal.type === 'team') return TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
+  return principal.domainId
+}
+
+function PrincipalAvatar({ principal, name }: { principal: Grant['principal']; name: string }) {
+  if (principal.type === 'team') {
+    const team = TEAMS.find(t => t.id === principal.teamId)
+    return <DepartmentAvatar domainId={team?.domainId} size="compact" />
+  }
+  if (principal.type === 'domain') return <ReleaseDomainAvatar size="compact" />
+  return <Avatar name={name} size="compact" />
+}
+
+function MetaField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="space-y-0.5">
+      <p className="text-label-0-bold text-foreground-dim uppercase">{label}</p>
+      <p className="text-body-0-regular text-foreground">{value}</p>
+    </div>
+  )
+}
+
+function OntologyDetails({ meta }: { meta: OntologyMeta }) {
+  if (meta.type === 'character') {
+    const { bio, role, episodes, notes } = meta.data
+    const roleLabel = role.charAt(0).toUpperCase() + role.slice(1)
+    return (
+      <div className="space-y-4">
+        <p className="text-body-0-regular text-foreground leading-relaxed">{bio}</p>
+        <div className="space-y-3">
+          <MetaField label="Role" value={roleLabel} />
+          <MetaField label="Episodes" value={episodes.join(', ')} />
+          {notes && <MetaField label="Production notes" value={notes} />}
+        </div>
+      </div>
+    )
+  }
+
+  if (meta.type === 'scene') {
+    const { description, episode, pageRange, timeOfDay, mood, notes } = meta.data
+    return (
+      <div className="space-y-4">
+        <p className="text-body-0-regular text-foreground leading-relaxed">{description}</p>
+        <div className="space-y-3">
+          <div className="flex gap-4">
+            <MetaField label="Episode" value={episode} />
+            {pageRange && <MetaField label="Pages" value={pageRange} />}
+          </div>
+          <div className="flex gap-4">
+            {timeOfDay && <MetaField label="Time of day" value={timeOfDay} />}
+            {mood && <MetaField label="Mood" value={mood} />}
+          </div>
+          {notes && <MetaField label="Production notes" value={notes} />}
+        </div>
+      </div>
+    )
+  }
+
+  if (meta.type === 'location') {
+    const { description, setting, episodes, notes } = meta.data
+    const settingLabel = setting.charAt(0).toUpperCase() + setting.slice(1)
+    return (
+      <div className="space-y-4">
+        <p className="text-body-0-regular text-foreground leading-relaxed">{description}</p>
+        <div className="space-y-3">
+          <MetaField label="Setting" value={settingLabel} />
+          <MetaField label="Episodes" value={episodes.join(', ')} />
+          {notes && <MetaField label="Production notes" value={notes} />}
+        </div>
+      </div>
+    )
+  }
+
+  return null
 }
 
 export type CollectionAction =
@@ -81,12 +164,14 @@ export function CollectionSidePanel({
   const canDelete = Boolean(onAction && (actionPermissions?.canDelete ?? true) && caps.canDelete)
   const canMount = Boolean(onAction && (actionPermissions?.canMount ?? true) && caps.canMount)
 
+  const ontologyMeta = smart ? getOntologyMeta(collection.name, smart.icon) : null
   const assetCount = matchingCount ?? (curated ? curated.assetIds.length : 0)
   const assetIds = curated ? curated.assetIds : []
   const reviewNoteSummary = curated ? getCollectionReviewSummary(collection.id, assetIds) : null
 
-  const { sharesReceivedByMe, allProjectShares } = useAccess()
+  const { sharesReceivedByMe, allProjectShares, getResourceGrants, getResourceGuestLinks, roleGroups, canShare } = useAccess()
   const { isAdmin } = usePersona()
+  const [accessModalOpen, setAccessModalOpen] = useState(false)
 
   const resourceRef: ResourceRef = {
     id: collection.id,
@@ -96,6 +181,13 @@ export function CollectionSidePanel({
   const shares = isAdmin ? allProjectShares : sharesReceivedByMe
   const share = shares.find(s => s.resourceId === collection.id)
   const sharedBy = share ? (PERSONAS.find(p => p.id === share.grantedByUserId)?.name ?? null) : null
+  const createdByName = collection.createdBy
+    ? (PERSONAS.find(p => p.email === collection.createdBy)?.name ?? collection.createdBy)
+    : null
+
+  const grants = useMemo(() => getResourceGrants(collection.id), [collection.id, getResourceGrants])
+  const guestLinks = useMemo(() => getResourceGuestLinks(collection.id), [collection.id, getResourceGuestLinks])
+  const canManageAccess = isAdmin || canShare(resourceRef)
 
   const connectionsCount = relationships
     ? relationships.characters.length + relationships.scenes.length + relationships.locations.length
@@ -172,30 +264,40 @@ export function CollectionSidePanel({
         </TabsList>
 
         <div className="flex-1 overflow-y-auto">
-          <TabsContent value="details" className="px-4 pb-4 space-y-4">
-            <section className="space-y-1">
-              <div className="flex justify-between text-body-0-regular">
-                <span className="text-foreground-dim">Assets</span>
-                <span className="text-foreground">{assetCount}</span>
-              </div>
-              <div className="flex justify-between text-body-0-regular">
-                <span className="text-foreground-dim">Created</span>
-                <span className="text-foreground">{collection.createdAt.toLocaleDateString()}</span>
-              </div>
-              {sharedBy && (
+          <TabsContent value="details" className="p-4 space-y-4">
+            {ontologyMeta ? (
+              <OntologyDetails meta={ontologyMeta} />
+            ) : (
+              <section className="space-y-1">
                 <div className="flex justify-between text-body-0-regular">
-                  <span className="text-foreground-dim">Shared by</span>
-                  <span className="text-foreground">{sharedBy}</span>
+                  <span className="text-foreground-dim">Assets</span>
+                  <span className="text-foreground">{assetCount}</span>
                 </div>
-              )}
-            </section>
+                {createdByName && (
+                  <div className="flex justify-between text-body-0-regular">
+                    <span className="text-foreground-dim">Created by</span>
+                    <span className="text-foreground">{createdByName}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-body-0-regular">
+                  <span className="text-foreground-dim">Created</span>
+                  <span className="text-foreground">{collection.createdAt.toLocaleDateString()}</span>
+                </div>
+                {sharedBy && (
+                  <div className="flex justify-between text-body-0-regular">
+                    <span className="text-foreground-dim">Shared by</span>
+                    <span className="text-foreground">{sharedBy}</span>
+                  </div>
+                )}
+              </section>
+            )}
 
             {reviewNoteSummary && (
               <CreativeReviewCard summary={reviewNoteSummary} />
             )}
           </TabsContent>
 
-          <TabsContent value="connections" className="px-4 pb-4 space-y-4">
+          <TabsContent value="connections" className="p-4 space-y-4">
             {relationships && connectionsCount > 0 ? (
               <OntologySection
                 dimensions={relationships}
@@ -207,16 +309,77 @@ export function CollectionSidePanel({
           </TabsContent>
 
           {caps.showAccessTab && (
-            <TabsContent value="access" className="px-4 pb-4">
-              <AccessSummary
-                resourceId={collection.id}
-                resourceRef={resourceRef}
-                resourceName={collection.name}
-              />
+            <TabsContent value="access" className="p-4 space-y-3">
+              {/* Created by */}
+              {createdByName && (
+                <div className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-2">
+                  <span className="text-body-0-regular text-foreground-dim">Created by</span>
+                  <div className="flex items-center gap-2">
+                    <Avatar name={createdByName} size="compact" />
+                    <span className="text-body-0-regular text-foreground">{createdByName}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Shared with */}
+              {grants.length > 0 && (
+                <div className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-2">
+                  <span className="text-body-0-regular text-foreground-dim">Shared with</span>
+                  {grants.map(grant => {
+                    const name = resolvePrincipalName(grant.principal)
+                    return (
+                      <div key={grant.id} className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <PrincipalAvatar principal={grant.principal} name={name} />
+                          <span className="text-body-0-regular text-foreground truncate">{name}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-x-1.5 justify-end flex-shrink-0">
+                          <span className="text-body-0-regular text-foreground-dim">{profileLabel(grant.templateId, roleGroups)}</span>
+                          {grant.allowUpload && <span className="text-body-0-regular text-foreground-dim">Uploads</span>}
+                          {grant.shareMode === 'live' && <span className="text-body-0-regular text-foreground-dim">Include new</span>}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Guest links */}
+              {guestLinks.length > 0 && (
+                <div className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-2">
+                  <span className="text-body-0-regular text-foreground-dim">Guest links</span>
+                  {guestLinks.map(link => (
+                    <div key={link.id} className="flex items-center justify-between gap-2">
+                      <span className="text-body-0-regular text-foreground truncate">
+                        {link.allowDownload ? 'View + Download' : 'View only'}
+                        {link.expiresAt && <span className="text-foreground-dim"> · expires {link.expiresAt}</span>}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {grants.length === 0 && guestLinks.length === 0 && !createdByName && (
+                <p className="text-body-0-regular text-foreground-dim">Not shared</p>
+              )}
+
+              {canManageAccess && (
+                <Button variant="secondary" compact onClick={() => setAccessModalOpen(true)}>
+                  Manage Access
+                </Button>
+              )}
             </TabsContent>
           )}
         </div>
       </Tabs>
+
+      <AccessModal
+        open={accessModalOpen}
+        onClose={() => setAccessModalOpen(false)}
+        resourceId={collection.id}
+        resourceRef={resourceRef}
+        title={collection.name}
+      />
 
       {/* Edit modal */}
       {canEdit && (

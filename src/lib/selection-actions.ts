@@ -105,17 +105,7 @@ function intersectProfiles(profileSets: AccessProfileId[][]): AccessProfileId[] 
 }
 
 export function getSelectionCountLabel(selectedEntities: SelectionEntity[]): string {
-  if (selectedEntities.length === 0) return '0 selected'
-
-  const kinds = Array.from(new Set(selectedEntities.map((entity) => entity.kind)))
-  if (kinds.length !== 1) {
-    return `${selectedEntities.length} selected`
-  }
-
-  const kind = kinds[0]
-  const label = kind === 'smart-collection' ? 'collection' : kind
-  const plural = selectedEntities.length === 1 ? label : `${label}s`
-  return `${selectedEntities.length} ${plural} selected`
+  return `${selectedEntities.length} selected`
 }
 
 export function evaluateSelectionActions({

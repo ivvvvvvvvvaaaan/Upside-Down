@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { Film, PanelRight, Info, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
-import { PageHeader, EmptyState, SelectionBar, Button, MobileToolbar, CardGrid } from '@/components/ui'
+import { PageHeader, EmptyState, ContextualActionBar, Button, MobileToolbar, CardGrid } from '@/components/ui'
 import { AssetCard } from '@/components/ui/asset-card'
 import { ReleaseModal } from '@/components/ui/release-modal'
 import { useCuts, usePersona, useAssetSelection, useSmartCollections, useViewPreferences, useMobilePanel, useAccess, type VisibleCutEntry, type MetadataFieldVisibility } from '@/hooks'
@@ -16,7 +16,7 @@ import type { Asset } from '@/lib/data'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
 import { AssetDetailPanelContent } from '@/components/ui/asset-detail-panel'
 
-function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, onMenuClick, onRequestAccess, showTags, metadataFields }: {
+function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, onMenuClick, onRequestAccess, showTags, metadataFields, versionCounts }: {
   episode: string
   cuts: VisibleCutEntry[]
   selectedIds: Set<string>
@@ -26,6 +26,7 @@ function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, o
   onRequestAccess: (asset: Asset) => void
   showTags?: boolean
   metadataFields?: MetadataFieldVisibility
+  versionCounts?: Map<string, number>
 }) {
   const allAssets = cuts.map(c => c.asset)
   return (
@@ -34,24 +35,33 @@ function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, o
         <Film className="w-4 h-4 text-foreground-dim" />
         <h3 className="text-body-1-bold text-foreground">{episode}</h3>
         <span className="text-body-0-regular text-foreground-dim">
-          {cuts.length} {cuts.length === 1 ? 'version' : 'versions'}
+          {cuts.length} {cuts.length === 1 ? 'cut' : 'cuts'}
         </span>
       </div>
       <CardGrid columns={4} gap="4">
-        {cuts.map((cut) => (
-          <AssetCard
-            key={cut.asset.id}
-            asset={cut.asset}
-            selected={selectedIds.has(cut.asset.id)}
-            primary={primaryId === cut.asset.id}
-            onClick={(a, e) => onAssetClick(a, e, allAssets)}
-            onMenuClick={onMenuClick ? () => onMenuClick(cut.asset) : undefined}
-            restricted={cut.visibility === 'discoverable'}
-            onRequestAccess={onRequestAccess}
-            showTags={showTags}
-            metadataFields={metadataFields}
-          />
-        ))}
+        {cuts.map((cut) => {
+          const count = versionCounts?.get(cut.asset.id) ?? 1
+          return (
+            <div key={cut.asset.id} className="space-y-1">
+              <AssetCard
+                asset={cut.asset}
+                selected={selectedIds.has(cut.asset.id)}
+                primary={primaryId === cut.asset.id}
+                onClick={(a, e) => onAssetClick(a, e, allAssets)}
+                onMenuClick={onMenuClick ? () => onMenuClick(cut.asset) : undefined}
+                restricted={cut.visibility === 'discoverable'}
+                onRequestAccess={onRequestAccess}
+                showTags={showTags}
+                metadataFields={metadataFields}
+              />
+              {count > 1 && (
+                <span className="text-label-0-regular text-foreground-subtle block">
+                  {count} versions
+                </span>
+              )}
+            </div>
+          )
+        })}
       </CardGrid>
     </div>
   )
@@ -81,7 +91,7 @@ export function LibraryView() {
   }, [isEditorialMember, isAdmin])
 
   // Deduplicate: keep only the latest version per episode+stage, track older versions
-  const { latestCuts, olderVersionsMap } = useMemo(() => {
+  const { latestCuts, olderVersionsMap, versionCounts } = useMemo(() => {
     // Group by versionGroupId (episode+stage)
     const groups = new Map<string, VisibleCutEntry[]>()
     for (const cut of visibleCuts) {
@@ -102,7 +112,14 @@ export function LibraryView() {
       }
     }
 
-    return { latestCuts: latest, olderVersionsMap: older }
+    // Version counts: total versions per latest cut id
+    const counts = new Map<string, number>()
+    for (const [, entries] of Array.from(groups)) {
+      // entries is already sorted above; entries[0] is the latest
+      counts.set(entries[0].asset.id, entries.length)
+    }
+
+    return { latestCuts: latest, olderVersionsMap: older, versionCounts: counts }
   }, [visibleCuts])
 
   // Group by episode, sort by stage + version (latest first)
@@ -203,6 +220,12 @@ export function LibraryView() {
               </Button>
             </div>
 
+            <ContextualActionBar
+              selectedEntities={selectedEntities}
+              onClearSelection={clearSelection}
+              metadata={visibleCuts.length > 0 ? `${visibleCuts.length} cut${visibleCuts.length !== 1 ? 's' : ''}` : undefined}
+            />
+
             {episodes.length > 0 ? (
               <div className="space-y-8">
                 {episodes.map(([episode, cuts]) => (
@@ -217,6 +240,7 @@ export function LibraryView() {
                     onRequestAccess={handleRequestAccess}
                     showTags={showTags}
                     metadataFields={metadataFields}
+                    versionCounts={versionCounts}
                   />
                 ))}
               </div>
@@ -261,11 +285,6 @@ export function LibraryView() {
           )}
         </ResponsivePanel>
       </div>
-
-      <SelectionBar
-        selectedEntities={selectedEntities}
-        onClear={clearSelection}
-      />
 
       <ReleaseModal
         open={!!releaseTarget}

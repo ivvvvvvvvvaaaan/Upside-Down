@@ -10,10 +10,10 @@ import {
   CollectionsGalleryView,
   CollectionsListView,
   CompactBar,
+  ContextualActionBar,
   EmptyState,
   HawkinsSearch,
   PageHeader,
-  SelectionBar,
   SettingGroup,
   SettingSegmented,
   SettingsPanel,
@@ -340,9 +340,10 @@ export function CollectionBrowserView({
           </SettingGroup>
         </SettingsPanel>
 
-        <SelectionBar
+        <ContextualActionBar
           selectedEntities={activeSelectionEntities}
-          onClear={selectedCollection ? clearAssetSelection : clearCollectionSelection}
+          onClearSelection={selectedCollection ? clearAssetSelection : clearCollectionSelection}
+          className="mx-6"
         />
       </div>
     )
@@ -530,9 +531,10 @@ export function CollectionBrowserView({
         )}
       </SettingsPanel>
 
-      <SelectionBar
+      <ContextualActionBar
         selectedEntities={activeSelectionEntities}
-        onClear={layout === 'grid' ? clearCollectionSelection : clearAssetSelection}
+        onClearSelection={layout === 'grid' ? clearCollectionSelection : clearAssetSelection}
+        className="mx-6 mb-2"
       />
     </div>
   )

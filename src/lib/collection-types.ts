@@ -57,29 +57,30 @@ export function getCollectionCapabilities(c: Collection): CollectionCapabilities
     const isDerived = !!c.parentId
     const ontology = ONTOLOGY_ICON_TO_LABEL[c.icon]
 
-    if (isDerived && ontology) {
-      // Ontology entity — Character, Location, Scene
+    const isUserCreated = !!c.createdBy
+
+    if (ontology) {
       return {
         canRename: false,
         canEditFilter: false,
-        canDelete: true,
+        canDelete: false,
         canAddAssets: false,
-        canShare: false,
+        canShare: !isDerived,
         canMount: true,
-        showAccessTab: false,
+        showAccessTab: !isDerived,
         typeLabel: ontology.label,
         icon: ontology.icon,
       }
     }
 
     return {
-      canRename: true,
-      canEditFilter: true,
-      canDelete: true,
+      canRename: isUserCreated,
+      canEditFilter: isUserCreated,
+      canDelete: isUserCreated,
       canAddAssets: false,
-      canShare: true,
+      canShare: isUserCreated,
       canMount: true,
-      showAccessTab: true,
+      showAccessTab: isUserCreated,
       typeLabel: 'Smart Collection',
       icon: 'smart',
     }

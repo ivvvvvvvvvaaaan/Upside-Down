@@ -15,7 +15,7 @@ import {
   Button,
   FileExplorer,
   CollectionCard,
-  SelectionBar,
+  ContextualActionBar,
   NewFolderModal,
   AccessModal,
   MobileToolbar,
@@ -636,8 +636,8 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
           dividerAfter: true,
         },
         {
-          label: 'Manage Access',
-          icon: <Settings className="w-4 h-4" />,
+          label: 'Share',
+          icon: <Share2 className="w-4 h-4" />,
           onClick: () => setAccessModalNode(contextMenu.node),
         },
         {
@@ -898,6 +898,12 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
                   </div>
                 </div>
 
+                <ContextualActionBar
+                  selectedEntities={selectedEntities}
+                  onClearSelection={clearSelection}
+                  metadata={`${filteredFileCount} item${filteredFileCount !== 1 ? 's' : ''}`}
+                />
+
                 {/* Content */}
                 {isGridView && (
                 <div
@@ -967,7 +973,7 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
                                     }} />
                                     <DropdownMenuItem icon={<RefreshCw className="w-4 h-4" />} label={managedFolderIds.has(node.id) ? 'Disable Sync' : 'Enable Sync'} onClick={() => toggleManagedZone(node.id)} />
                                     <DropdownMenuDivider />
-                                    <DropdownMenuItem icon={<Settings className="w-4 h-4" />} label="Manage Access" onClick={() => setAccessModalNode(node)} />
+                                    <DropdownMenuItem icon={<Share2 className="w-4 h-4" />} label="Share" onClick={() => setAccessModalNode(node)} />
                                     <DropdownMenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete" onClick={() => fileTreeDeleteNode(node.id)} destructive />
                                   </div>
                                 )}
@@ -1077,10 +1083,6 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
         />
       )}
 
-      <SelectionBar
-        selectedEntities={selectedEntities}
-        onClear={clearSelection}
-      />
       <input
         ref={uploadInputRef}
         type="file"
@@ -1132,7 +1134,7 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
               grant,
               fromResourceName,
             }))}
-            title={accessModalNode.name}
+            title={`${accessModalNode.name} folder`}
           />
         )
       })()}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Search } from 'lucide-react'
-import { AssetCard, CardGrid, Stack, SelectionBar, Text, MobileToolbar } from '@/components/ui'
+import { AssetCard, CardGrid, Stack, ContextualActionBar, Text, MobileToolbar } from '@/components/ui'
 import { getGridColumns, matchesFilter, useAccess, useAssetSelection, useSmartCollections, useViewPreferences } from '@/hooks'
 import type { Asset } from '@/lib/data'
 import { assetToSelectionEntity } from '@/lib/selection-actions'
@@ -220,9 +220,10 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
         </div>
       </div>
 
-      <SelectionBar
+      <ContextualActionBar
         selectedEntities={selectedEntities}
-        onClear={clearSelection}
+        onClearSelection={clearSelection}
+        className="mx-6"
       />
     </div>
   )

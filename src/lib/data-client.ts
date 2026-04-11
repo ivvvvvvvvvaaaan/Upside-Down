@@ -3,6 +3,7 @@ import { getFileIdsByCharacter, getFileIdsByLocation, getFileIdsByScene } from '
 import { pick, IMAGE_POOL as allImages, pickForDimension } from '@/lib/images'
 import type { ImageDimension } from '@/lib/images'
 import { getPromotedWorkspaceAssets } from '@/lib/prototype-assets'
+import { getDomainWorkspaceFiles } from '@/lib/workspace-data'
 
 // Asset Types
 export type AssetType = 'shot' | 'video' | 'image' | 'text' | 'audio'
@@ -158,6 +159,8 @@ type CollectionItem = { id: string; name: string; assetCount: number }
 type PreviewableUserCollection = {
   id: string
   assetIds: string[]
+  boundFolderId?: string
+  boundDomainId?: string
 }
 
 export type SharePreviewResource = {
@@ -385,6 +388,20 @@ function getAssetPreviewImages(assetIds: string[], max: number = 6): string[] | 
   return uniquePreviewImages(assetIds.map(assetId => getPrototypeAsset(assetId)?.thumbnail), max)
 }
 
+function resolvePreviewCollectionAssetIds(collection: PreviewableUserCollection): string[] {
+  if (collection.boundFolderId) {
+    if (collection.boundDomainId) {
+      return getAssetIdsForFolderRecursive(
+        collection.boundFolderId,
+        getDomainWorkspaceFiles(collection.boundDomainId as DomainId),
+      )
+    }
+    return getAssetIdsForFolder(collection.boundFolderId)
+  }
+
+  return collection.assetIds
+}
+
 function getCollectionImages(collectionId: string): { mainImage?: string; thumbnails: string[] } {
   return {
     mainImage: pick(allImages, collectionId, 1)[0],
@@ -421,7 +438,7 @@ export function getSharePreviewImages(
   if (resource.resourceType === 'collection') {
     const userCollection = userCollections.find(collection => collection.id === resource.resourceId)
     if (userCollection) {
-      const userCollectionImages = getAssetPreviewImages(userCollection.assetIds)
+      const userCollectionImages = getAssetPreviewImages(resolvePreviewCollectionAssetIds(userCollection))
       if (userCollectionImages) return userCollectionImages
 
       const fallbackImages = getCollectionImages(resource.resourceId)

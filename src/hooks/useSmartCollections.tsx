@@ -1,82 +1,20 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, useMemo, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, useRef, useEffect, type ReactNode } from 'react'
 import type { SmartCollection, SmartCollectionGroupBy, AssetFilter, Asset, SmartCollectionIcon } from '@/lib/data'
 import { mergePrototypeAssets } from '@/lib/prototype-assets'
 import { matchesFilter, slugify, generateChildCollections } from '@/lib/smart-collection-filters'
 import { useAccessCascades } from './useAccessCascades'
 import { useAccess } from './useAccess'
 import { usePersona } from './usePersona'
+import {
+  getSmartCollectionsStorageKey,
+  loadStoredSmartCollections,
+  persistSmartCollections,
+} from '@/lib/smart-collection-store'
 
 // Re-export for existing consumers
 export { matchesFilter } from '@/lib/smart-collection-filters'
-
-// System default smart collections — visible to everyone
-const SYSTEM_DEFAULTS: SmartCollection[] = [
-  {
-    flavor: 'smart',
-    id: 'smart-character',
-    name: 'Character',
-    icon: 'character',
-    filter: { aiHasCharacters: true },
-    visibleToAll: true,
-    createdAt: new Date('2026-01-15'),
-    groupBy: 'characters',
-  },
-  {
-    flavor: 'smart',
-    id: 'smart-scene',
-    name: 'Scene',
-    icon: 'scene',
-    filter: { aiHasScene: true },
-    visibleToAll: true,
-    createdAt: new Date('2026-01-15'),
-    groupBy: 'scenes',
-  },
-  {
-    flavor: 'smart',
-    id: 'smart-location',
-    name: 'Location',
-    icon: 'location',
-    filter: { aiHasLocation: true },
-    visibleToAll: true,
-    createdAt: new Date('2026-01-15'),
-    groupBy: 'locations',
-  },
-]
-
-// Seed user-created smart collections — each owned by a specific persona
-const SEED_USER_COLLECTIONS: SmartCollection[] = [
-  {
-    flavor: 'smart',
-    id: 'smart-finals',
-    name: 'Finals',
-    icon: 'shot',
-    filter: { isFinal: true },
-    createdBy: 'schen@netflix.com',
-    createdAt: new Date('2026-02-05'),
-  },
-  {
-    flavor: 'smart',
-    id: 'smart-key-art',
-    name: 'Key Art',
-    icon: 'scene',
-    filter: { isKeyArt: true },
-    createdBy: 'psharma@netflix.com',
-    createdAt: new Date('2026-02-08'),
-  },
-  {
-    flavor: 'smart',
-    id: 'smart-low-conf',
-    name: 'Needs AI Review',
-    icon: 'filter',
-    filter: { aiConfidenceBelow: 0.7 },
-    createdBy: 'mtorres@netflix.com',
-    createdAt: new Date('2026-02-10'),
-  },
-]
-
-const DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [...SYSTEM_DEFAULTS, ...SEED_USER_COLLECTIONS]
 
 export interface RelatedCollections {
   characters: SmartCollection[]
@@ -106,24 +44,45 @@ interface SmartCollectionsContextValue {
 const SmartCollectionsContext = createContext<SmartCollectionsContextValue | null>(null)
 
 export function SmartCollectionsProvider({ children }: { children: ReactNode }) {
-  const [collections, setCollections] = useState<SmartCollection[]>(DEFAULT_SMART_COLLECTIONS)
+  const [collections, setCollectionsState] = useState<SmartCollection[]>(loadStoredSmartCollections)
   const [allAssets, setAllAssets] = useState<Asset[]>([])
   const [assetLoadState, setAssetLoadState] = useState<'idle' | 'loading' | 'loaded'>('idle')
   const assetLoadPromiseRef = useRef<Promise<void> | null>(null)
   const { filterByAccess } = useAccessCascades()
-  const { canAccess, canEdit, canEditAcl } = useAccess()
+  const { canEdit, canEditAcl } = useAccess()
   const { activePersona } = usePersona()
   const personaEmail = activePersona?.email
 
-  // Collections visible to the active persona: system defaults + own creations + shared with me.
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== getSmartCollectionsStorageKey()) return
+      setCollectionsState(loadStoredSmartCollections())
+    }
+
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
+
+  const setCollections = useCallback((
+    action: SmartCollection[] | ((prev: SmartCollection[]) => SmartCollection[]),
+  ) => {
+    setCollectionsState((prev) => {
+      const next = typeof action === 'function' ? action(prev) : action
+      persistSmartCollections(next)
+      return next
+    })
+  }, [])
+
+  // Smart collections are either global defaults or personal authoring tools.
+  // Sharing snapshots them into curated collections, so recipients should not
+  // gain direct visibility into another user's live smart collection.
   const visibleCollections = useMemo(() => {
     if (!activePersona) return collections
     return collections.filter((collection) =>
       collection.visibleToAll ||
-      collection.createdBy === personaEmail ||
-      canAccess(collection.id),
+      collection.createdBy === personaEmail,
     )
-  }, [collections, activePersona, personaEmail, canAccess])
+  }, [collections, activePersona, personaEmail])
 
   // Scoped assets: filtered by folder access when a persona is active
   const scopedAssets = useMemo(() => {

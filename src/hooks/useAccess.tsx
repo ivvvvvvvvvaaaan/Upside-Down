@@ -49,6 +49,7 @@ import {
 } from '@/lib/workspace-data'
 import { getAssetIdsForFolder } from '@/lib/data-client'
 import { resolveCollectionAssetIds } from '@/lib/data'
+import { getStoredSmartCollectionById } from '@/lib/smart-collection-store'
 import { SCENARIO, buildGuestLinks, SENSITIVE_ASSET_IDS } from '@/lib/scenario'
 import type { GuestLinkSeed } from '@/lib/scenario'
 import { domainConfigs } from '@/lib/domain-configs'
@@ -132,7 +133,7 @@ interface AccessContextValue {
   getCollectionAssetCount: (id: string) => { total: number; accessible: number }
   getCollectionShareCeiling: (collectionId: string, intendedProfile: AccessProfileId) => { total: number; atLevel: number; capped: number; cappedAssetIds: string[] }
   getCurrentUserGrant: (resourceId: string) => Grant | undefined
-  createGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId, options?: { permissions?: Permission[]; shareMode?: ShareMode; snapshotAssetIds?: string[]; allowUpload?: boolean; expiresInDays?: number }) => void
+  createGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId, options?: { permissions?: Permission[]; shareMode?: ShareMode; snapshotAssetIds?: string[]; allowUpload?: boolean; expiresInDays?: number; expiresAt?: string; versionNote?: string }) => void
   getGrantableProfiles: (resource: ResourceRef) => AccessProfileId[]
   revokeGrant: (grantId: string) => void
   revokeUserAccess: (userId: string) => void
@@ -269,6 +270,31 @@ function mergePermissionSets(...sets: EffectivePermissionSet[]): EffectivePermis
     permissions,
     canEdit: permissions.includes('write'),
   }
+}
+
+function getPrincipalKey(principal: PrincipalRef): string {
+  if (principal.type === 'user') return `user:${principal.userId}`
+  if (principal.type === 'team') return `team:${principal.teamId}`
+  return `domain:${principal.domainId}`
+}
+
+function buildSnapshotVersionNote(previousAssetIds?: string[], nextAssetIds?: string[]): string | undefined {
+  const previous = new Set(previousAssetIds ?? [])
+  const next = new Set(nextAssetIds ?? [])
+
+  const added = Array.from(next).filter((assetId) => !previous.has(assetId)).length
+  const removed = Array.from(previous).filter((assetId) => !next.has(assetId)).length
+
+  if (added === 0 && removed === 0) {
+    return previous.size > 0 || next.size > 0
+      ? 'Snapshot refreshed with no asset changes'
+      : undefined
+  }
+
+  const parts: string[] = []
+  if (added > 0) parts.push(`+${added} asset${added === 1 ? '' : 's'}`)
+  if (removed > 0) parts.push(`-${removed} asset${removed === 1 ? '' : 's'}`)
+  return parts.join(', ')
 }
 
 
@@ -516,6 +542,36 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return mergePermissionSets(...layers)
   }, [activePersona, userId, grants, roleGroups, collectionById, ownerPermissionSet, fromResolvedAccess, blocks])
 
+  const getDirectSmartCollectionPermissionSet = useCallback((
+    collectionId: string,
+    currentGrants: Grant[] = grants,
+  ): EffectivePermissionSet => {
+    if (!activePersona) return ownerPermissionSet
+    if (!userId) return EMPTY_PERMISSION_SET
+
+    const layers: EffectivePermissionSet[] = []
+    const collection = getStoredSmartCollectionById(collectionId)
+
+    if (collection?.createdBy === activePersona.email) {
+      layers.push(ownerPermissionSet)
+    }
+
+    layers.push(
+      fromResolvedAccess(
+        resolveAccess(
+          userId,
+          collectionId,
+          currentGrants,
+          roleGroups,
+          undefined,
+          blocks,
+        ),
+      ),
+    )
+
+    return mergePermissionSets(...layers)
+  }, [activePersona, userId, grants, roleGroups, ownerPermissionSet, fromResolvedAccess, blocks])
+
   const collectionAccessById = useMemo(() => {
     const accessById = new Map<string, EffectivePermissionSet>()
     for (const collection of collections) {
@@ -623,6 +679,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
     if (resource.type === 'collection') {
       layers.push(getDirectCollectionPermissionSet(resource.id, currentGrants))
+    } else if (resource.type === 'smart-collection') {
+      layers.push(getDirectSmartCollectionPermissionSet(resource.id, currentGrants))
     } else {
       layers.push(
         fromResolvedAccess(
@@ -669,6 +727,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     ownerPermissionSet,
     getResourceDomainId,
     getDirectCollectionPermissionSet,
+    getDirectSmartCollectionPermissionSet,
     fromResolvedAccess,
     nodeToParent,
     nodeToDomain,
@@ -1013,6 +1072,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       snapshotAssetIds?: string[]
       allowUpload?: boolean
       expiresInDays?: number
+      expiresAt?: string
+      versionNote?: string
     },
   ) => {
     if (activePersona && !userId) return
@@ -1020,28 +1081,105 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     setGrants((prev) => {
       if (!canShareFn(resource, prev)) return prev
 
-      // Duplicate detection: check for existing active grant on same resource + principal
-      const principalKey = principal.type === 'user' ? `user:${principal.userId}`
-        : principal.type === 'team' ? `team:${principal.teamId}`
-        : `domain:${principal.domainId}`
-      const existingGrant = prev.find(g =>
+      const principalKey = getPrincipalKey(principal)
+      const matchingActiveGrants = prev.filter(g =>
         g.resource.id === resource.id &&
         isGrantActive(g) &&
-        (g.principal.type === 'user' ? `user:${g.principal.userId}`
-          : g.principal.type === 'team' ? `team:${g.principal.teamId}`
-          : `domain:${g.principal.domainId}`) === principalKey
+        getPrincipalKey(g.principal) === principalKey
       )
+      const latestExistingGrant = matchingActiveGrants.reduce<Grant | undefined>((latest, current) => {
+        if (!latest) return current
+        const latestVersion = latest.version ?? 0
+        const currentVersion = current.version ?? 0
+        if (currentVersion !== latestVersion) {
+          return currentVersion > latestVersion ? current : latest
+        }
+        return current.grantedAt > latest.grantedAt ? current : latest
+      }, undefined)
 
-      if (existingGrant) {
-        const existingRank = existingGrant.templateId ? (TEMPLATE_RANK[existingGrant.templateId] ?? 0) : 0
+      const isVersionedSnapshot = resource.type === 'collection' && options?.shareMode === 'snapshot'
+
+      // Snapshot collection re-shares create a new version and revoke the prior
+      // active grant so access resolves to the latest frozen asset list.
+      if (isVersionedSnapshot) {
+        const grantPermissions = options?.permissions ?? getPermissionsForProfile(profileId, roleGroups)
+        const now = new Date()
+        const expiresAt = options?.expiresAt ?? (
+          options?.expiresInDays
+            ? new Date(now.getTime() + options.expiresInDays * 86400000).toISOString().slice(0, 10)
+            : undefined
+        )
+        const version = (latestExistingGrant?.version ?? 0) + 1
+        const versionNote = options?.versionNote ?? buildSnapshotVersionNote(
+          latestExistingGrant?.snapshotAssetIds,
+          options?.snapshotAssetIds,
+        )
+
+        const next = prev.map((grant) => (
+          matchingActiveGrants.some((activeGrant) => activeGrant.id === grant.id)
+            ? { ...grant, revokedAt: now.toISOString() }
+            : grant
+        ))
+
+        const newGrant: Grant = {
+          id: `grant-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          resource,
+          principal,
+          templateId: options?.permissions ? undefined : profileId,
+          permissions: grantPermissions,
+          grantedByUserId: grantorUserId,
+          grantedAt: now.toISOString().slice(0, 10),
+          expiresAt,
+          shareMode: options?.shareMode,
+          snapshotAssetIds: options?.snapshotAssetIds,
+          allowUpload: options?.allowUpload,
+          version,
+          versionNote,
+          previousVersionId: latestExistingGrant?.id,
+        }
+
+        let auditTargetName = 'unknown'
+        let auditTargetUserId: string | undefined
+        if (principal.type === 'user') {
+          auditTargetName = PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
+          auditTargetUserId = principal.userId
+        } else if (principal.type === 'team') {
+          auditTargetName = getTeamById(principal.teamId)?.name ?? principal.teamId
+        } else if (principal.type === 'domain') {
+          auditTargetName = principal.domainId
+        }
+        logAuditEvent({
+          type: 'grant',
+          actorId: grantorUserId,
+          actorName: activePersona?.name ?? 'System',
+          targetUserId: auditTargetUserId,
+          targetUserName: auditTargetName,
+          resourceId: resource.id,
+          resourceLabel: getResourceLabel(resource.id),
+          details: `Re-shared snapshot v${version} with ${auditTargetName} on ${getResourceLabel(resource.id)}`,
+        })
+
+        return [...next, newGrant]
+      }
+
+      if (latestExistingGrant) {
+        const existingRank = latestExistingGrant.templateId ? (TEMPLATE_RANK[latestExistingGrant.templateId] ?? 0) : 0
         const newRank = TEMPLATE_RANK[profileId] ?? 0
         if (newRank <= existingRank) {
           // Same or lower level — absorb, no new grant needed
           return prev
         }
         // Higher level — upgrade the existing grant
-        return prev.map(g => g.id === existingGrant.id
-          ? { ...g, templateId: profileId, permissions: getPermissionsForProfile(profileId, roleGroups), grantedByUserId: grantorUserId, grantedAt: new Date().toISOString().slice(0, 10) }
+        return prev.map(g => g.id === latestExistingGrant.id
+          ? {
+              ...g,
+              templateId: profileId,
+              permissions: getPermissionsForProfile(profileId, roleGroups),
+              grantedByUserId: grantorUserId,
+              grantedAt: new Date().toISOString().slice(0, 10),
+              expiresAt: options?.expiresAt ?? g.expiresAt,
+              allowUpload: options?.allowUpload ?? g.allowUpload,
+            }
           : g
         )
       }
@@ -1050,9 +1188,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       const grantPermissions = options?.permissions ?? getPermissionsForProfile(profileId, roleGroups)
 
       const now = new Date()
-      const expiresAt = options?.expiresInDays
-        ? new Date(now.getTime() + options.expiresInDays * 86400000).toISOString().slice(0, 10)
-        : undefined
+      const expiresAt = options?.expiresAt ?? (
+        options?.expiresInDays
+          ? new Date(now.getTime() + options.expiresInDays * 86400000).toISOString().slice(0, 10)
+          : undefined
+      )
 
       const newGrant: Grant = {
         id: `grant-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,

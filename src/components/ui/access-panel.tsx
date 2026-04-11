@@ -37,6 +37,17 @@ import { PERSONAS } from '@/lib/personas'
 import { profileLabel, RELEASE_DOMAINS } from '@/lib/grants'
 import type { DomainId } from '@/components/department/types'
 
+function buildVersionLabel(grant: Grant): string | undefined {
+  const parts: string[] = []
+  if (grant.version) {
+    parts.push(`v${grant.version}${grant.versionNote ? ` \u2014 ${grant.versionNote}` : ''}`)
+  }
+  if (grant.lockedToVersion != null) {
+    parts.push(`Locked to v${grant.lockedToVersion}`)
+  }
+  return parts.length > 0 ? parts.join(' · ') : undefined
+}
+
 interface AccessPanelProps {
   resourceId: string
   resourceRef?: ResourceRef
@@ -52,7 +63,7 @@ interface AccessPanelProps {
 }
 
 
-function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onRemove, onBlock, onUpdateProfile, onUpdateShareMode, name, subtitle, roleLabel, members, domainId, versionLabel }: {
+function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onRemove, onBlock, onUpdateProfile, onUpdateShareMode, onReshareSnapshot, name, subtitle, roleLabel, members, domainId, versionLabel }: {
   grant: Grant
   readOnly: boolean
   roleGroups: RoleGroup[]
@@ -62,6 +73,7 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
   onBlock?: (grantId: string) => void
   onUpdateProfile?: (grantId: string, profileId: AccessProfileId) => void
   onUpdateShareMode?: (grantId: string, mode: ShareMode) => void
+  onReshareSnapshot?: (grant: Grant) => void
   name: string
   subtitle?: string
   roleLabel: string
@@ -132,6 +144,11 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
               onChange={() => {}}
               disabled
             />
+          )}
+          {!readOnly && grant.resource.type === 'collection' && grant.shareMode === 'snapshot' && onReshareSnapshot && (
+            <Button variant="secondary" compact onClick={() => onReshareSnapshot(grant)}>
+              Re-share
+            </Button>
           )}
           {!readOnly && !isOwner && onRemove && (
             <Button variant="secondary" compact onClick={() => onRemove(grant.id)}>
@@ -799,6 +816,23 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     updateGrantShareMode(grantId, mode)
   }
 
+  const handleReshareSnapshot = (grant: Grant) => {
+    if (grant.resource.type !== 'collection' || grant.shareMode !== 'snapshot') return
+
+    const collection = getCollection(grant.resource.id)
+    if (!collection) return
+
+    markDirty()
+    createGrant(grant.resource, grant.principal, grant.templateId ?? 'view', {
+      permissions: grant.templateId ? undefined : grant.permissions,
+      shareMode: 'snapshot',
+      snapshotAssetIds: resolveCollectionAssetIds(collection),
+      allowUpload: grant.allowUpload,
+      expiresAt: grant.expiresAt,
+    })
+    showToast(`Re-shared "${collection.name}" as a new snapshot version.`)
+  }
+
   const handleBlockUser = (grantId: string) => {
     const grant = grants.find(g => g.id === grantId)
     if (!grant || grant.principal.type !== 'user') return
@@ -995,7 +1029,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
             onBlock={!entry.sourceName && !entry.readOnly && isAdmin && entry.grant.principal.type === 'user' ? handleBlockUser : undefined}
             onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
             onUpdateShareMode={!entry.readOnly ? handleUpdateShareMode : undefined}
-            versionLabel={entry.grant.version ? `v${entry.grant.version}${entry.grant.versionNote ? ` \u2014 ${entry.grant.versionNote}` : ''}` : undefined}
+            onReshareSnapshot={!entry.sourceName && !entry.readOnly ? handleReshareSnapshot : undefined}
+            versionLabel={buildVersionLabel(entry.grant)}
           />
         ))}
       </div>
@@ -1053,7 +1088,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
           onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
           onUpdateShareMode={!entry.readOnly ? handleUpdateShareMode : undefined}
-          versionLabel={entry.grant.version ? `v${entry.grant.version}${entry.grant.versionNote ? ` \u2014 ${entry.grant.versionNote}` : ''}` : undefined}
+          onReshareSnapshot={!entry.sourceName && !entry.readOnly ? handleReshareSnapshot : undefined}
+          versionLabel={buildVersionLabel(entry.grant)}
         />
       ))}
     </div>
@@ -1091,6 +1127,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                 domainId={domId}
                 onRemove={canRevoke ? (id) => { markDirty(); revokeGrant(id) } : undefined}
                 onUpdateProfile={canRevoke ? (id, pid) => { markDirty(); updateGrantProfile(id, pid) } : undefined}
+                onReshareSnapshot={canRevoke ? handleReshareSnapshot : undefined}
               />
             )
           })}

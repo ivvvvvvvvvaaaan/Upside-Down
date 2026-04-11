@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_GRANTS, buildSharesReceivedByMe } from '@/lib/grants'
 import { buildSeedCollections } from '@/lib/scenario'
 import { getSharePreviewImages } from '@/lib/data-client'
-import { getAssetsByIds, getRecentAssets } from '@/lib/data'
+import { getAssetsByIds, getRecentAssets, resolveCollectionAssetIds } from '@/lib/data'
 
 describe('getSharePreviewImages', () => {
   it('builds previews for seeded shared collections', () => {
@@ -29,16 +29,36 @@ describe('getSharePreviewImages', () => {
     expect(previews!.length).toBeGreaterThan(0)
   })
 
-  it('builds deterministic previews for smart collection shares', () => {
+  it('builds folder-backed collection previews from resolved collection assets', () => {
+    const collections = buildSeedCollections()
+    const collection = collections.find((entry) => entry.id === 'coll-cam-selects')
+
+    expect(collection).toBeDefined()
+
+    const previews = getSharePreviewImages({
+      resourceId: 'coll-cam-selects',
+      resourceType: 'collection',
+    }, collections)
+
+    const expected = Array.from(new Set(
+      getAssetsByIds(resolveCollectionAssetIds(collection!))
+        .map((asset) => asset.thumbnail)
+        .filter((thumbnail): thumbnail is string => Boolean(thumbnail)),
+    ))
+
+    expect(previews).toEqual(expected)
+  })
+
+  it('builds deterministic previews for snapshotted smart collection shares', () => {
     const entry = buildSharesReceivedByMe('editorial-artist', DEFAULT_GRANTS)
-      .find((share) => share.resourceId === 'smart-finals')
+      .find((share) => share.resourceId === 'coll-smart-finals-shared')
 
     expect(entry).toBeDefined()
 
     const previews = getSharePreviewImages(entry!, buildSeedCollections())
 
     expect(previews).toBeDefined()
-    expect(previews).toHaveLength(3)
+    expect(previews!.length).toBeGreaterThan(0)
     expect(new Set(previews).size).toBe(previews!.length)
   })
 

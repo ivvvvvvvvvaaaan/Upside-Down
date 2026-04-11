@@ -14,6 +14,7 @@ import { getAssetIdVariants } from '@/lib/data'
 import type { ResourceRef, Grant, RoleGroup, PrincipalRef } from '@/lib/grants'
 import { isGrantActive, profileLabel, RELEASE_DOMAINS } from '@/lib/grants'
 import { useAccess, useFileTree, usePersona, useSmartCollections, useCuts } from '@/hooks'
+import { getCutStageLabel } from '@/lib/cuts'
 import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
 import { useUserCollections } from '@/hooks/useUserCollections'
 import { getReviewNoteSummary } from '@/lib/review-notes'
@@ -69,6 +70,9 @@ function CapabilityLabels({ grant, roleGroups }: { grant: Grant; roleGroups: Rol
   const caps = grantCapabilities(grant, roleGroups)
   return (
     <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 justify-end flex-shrink-0">
+      {grant.lockedToVersion != null && (
+        <span className="text-body-0-regular text-foreground-subtle">Locked to v{grant.lockedToVersion}</span>
+      )}
       {caps.map(cap => (
         <span key={cap} className="text-body-0-regular text-foreground-dim">{cap}</span>
       ))}
@@ -83,8 +87,8 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
   resourceName?: string
   currentCollectionId?: string
 }) {
-  const { getResourceGrants, roleGroups, canShare, revokeGrant } = useAccess()
-  const { collections, removeAssetFromCollection } = useUserCollections()
+  const { getResourceGrants, roleGroups, canShare, revokeGrant, getResourceGuestLinks, revokeGuestLink } = useAccess()
+  const { collections, getCollection, removeAssetFromCollection } = useUserCollections()
   const { activePersona, isAdmin } = usePersona()
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -135,7 +139,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
   }, [collections, assetVariants, getResourceGrants, inheritedGrants])
 
   const hasAnything = domainEntries.length > 0 || directGrants.length > 0 || sharedCollections.length > 0
-  const canManageAccess = isAdmin || (resourceRef && canShare(resourceRef))
+  const canManageAccess = isAdmin || (resourceRef ? canShare(resourceRef) : false)
 
   return (
     <section className="space-y-3">
@@ -149,7 +153,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
                 <PrincipalAvatar principal={grant.principal} name={name} />
                 <span className="text-body-0-regular text-foreground truncate">{name}</span>
               </div>
-              {canManageAccess && <CapabilityLabels grant={grant} roleGroups={roleGroups} />}
+              <CapabilityLabels grant={grant} roleGroups={roleGroups} />
             </div>
           ))}
         </div>
@@ -165,14 +169,14 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
                 : <a href={`/nextgen/collections/${collection.id}`} className="text-foreground-dim hover:text-foreground transition-colors">{collection.name}</a>
               }
             </span>
-            {collection.id === currentCollectionId ? null : canManageAccess ? (
+            {collection.id !== currentCollectionId && getCollection(collection.id) && (
               <button
                 onClick={() => removeAssetFromCollection(collection.id, assetId)}
                 className="text-body-0-regular text-foreground-dim hover:text-foreground transition-colors"
               >
                 Remove
               </button>
-            ) : null}
+            )}
           </div>
           {grants.map(grant => {
             const name = resolvePrincipalName(grant.principal)
@@ -182,7 +186,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
                   <PrincipalAvatar principal={grant.principal} name={name} />
                   <span className="text-body-0-regular text-foreground truncate">{name}</span>
                 </div>
-                {canManageAccess && <CapabilityLabels grant={grant} roleGroups={roleGroups} />}
+                <CapabilityLabels grant={grant} roleGroups={roleGroups} />
               </div>
             )
           })}
@@ -202,15 +206,13 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
                   <span className="text-body-0-regular text-foreground truncate">{name}</span>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {canManageAccess && <CapabilityLabels grant={grant} roleGroups={roleGroups} />}
-                  {canManageAccess && (
-                    <button
-                      onClick={() => revokeGrant(grant.id)}
-                      className="text-body-0-regular text-foreground-system-error hover:opacity-80 transition-colors"
-                    >
-                      Revoke
-                    </button>
-                  )}
+                  <CapabilityLabels grant={grant} roleGroups={roleGroups} />
+                  <button
+                    onClick={() => revokeGrant(grant.id)}
+                    className="text-body-0-regular text-foreground-system-error hover:opacity-80 transition-colors"
+                  >
+                    Revoke
+                  </button>
                 </div>
               </div>
             )
@@ -218,7 +220,32 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
         </div>
       )}
 
-      {!hasAnything && (
+      {/* Guest links */}
+      {(() => {
+        const links = getResourceGuestLinks(assetId)
+        if (links.length === 0) return null
+        return (
+          <div className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-2">
+            <span className="text-body-0-regular text-foreground-dim">Guest links</span>
+            {links.map(link => (
+              <div key={link.id} className="flex items-center justify-between gap-2">
+                <span className="text-body-0-regular text-foreground truncate">
+                  {link.allowDownload ? 'View + Download' : 'View only'}
+                  {link.expiresAt && <span className="text-foreground-dim"> · expires {link.expiresAt}</span>}
+                </span>
+                <button
+                  onClick={() => revokeGuestLink(link.id)}
+                  className="text-body-0-regular text-foreground-system-error hover:opacity-80 transition-colors flex-shrink-0"
+                >
+                  Revoke
+                </button>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
+
+      {!hasAnything && getResourceGuestLinks(assetId).length === 0 && (
         <p className="text-body-0-regular text-foreground-dim">Not shared</p>
       )}
 
@@ -227,7 +254,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
           <Button variant="secondary" compact onClick={() => setModalOpen(true)}>
             Share
           </Button>
-          {currentCollectionId && (
+          {currentCollectionId && getCollection(currentCollectionId) && (
             <Button variant="secondary" compact onClick={() => removeAssetFromCollection(currentCollectionId, assetId)}>
               Remove from this collection
             </Button>
@@ -401,11 +428,17 @@ export function AssetDetailPanelContent({
   olderVersions,
   onVersionSelect,
 }: AssetDetailPanelContentProps) {
-  const { getInheritedGrants, getCollectionRippleGrants, visibleCollections, canEdit, canAccess, isSensitiveAsset } = useAccess()
+  const { getInheritedGrants, getCollectionRippleGrants, visibleCollections, canEdit, canAccess, canShare, isSensitiveAsset } = useAccess()
   const { activePersona } = usePersona()
   const { getDomainFiles } = useFileTree()
   const { getCollection, scopedAssets } = useSmartCollections()
-  const { getCutsForAsset } = useCuts()
+  const { getCutsForAsset, getVersionsForGroup } = useCuts()
+
+  // For cuts: all versions in this group for the version switcher
+  const allVersions = useMemo(() => {
+    if (asset.kind !== 'cut' || !asset.versionGroupId) return []
+    return getVersionsForGroup(asset.versionGroupId)
+  }, [asset, getVersionsForGroup])
 
   // Auto-resolve review note summary if not passed as prop
   const resolvedReviewNoteSummary = useMemo(() => {
@@ -645,12 +678,35 @@ export function AssetDetailPanelContent({
         </Button>
       </div>
 
+      {/* Version Switcher (cuts only) */}
+      {asset.kind === 'cut' && allVersions.length > 1 && (
+        <div className="px-4 pb-2">
+          <Dropdown
+            label={`${getCutStageLabel(asset.stage)} (v${asset.version ?? 1})`}
+            size="compact"
+            align="start"
+            width="md"
+            ghost
+          >
+            {allVersions.map(v => (
+              <DropdownMenuItem
+                key={v.id}
+                label={`${getCutStageLabel(v.stage)} (v${v.version ?? 1})${v.created_at ? ` — ${new Date(v.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : ''}${v.id === asset.id ? ' (current)' : ''}`}
+                onClick={() => {
+                  if (v.id !== asset.id) onVersionSelect?.(v)
+                }}
+              />
+            ))}
+          </Dropdown>
+        </div>
+      )}
+
       {/* Tabs */}
       <Tabs defaultValue="details" className="flex-1 min-h-0 flex flex-col">
         <TabsList className="px-4 shrink-0">
           <Tab value="details">Details</Tab>
           <Tab value="connections">Connections{connectionsCount > 0 && <span className="text-foreground-subtle ml-2">{connectionsCount}</span>}</Tab>
-          <Tab value="access">Access</Tab>
+          {(activePersona?.isAdmin || (resourceRef && canShare(resourceRef))) && <Tab value="access">Access</Tab>}
         </TabsList>
 
         <div className="flex-1 overflow-y-auto">
