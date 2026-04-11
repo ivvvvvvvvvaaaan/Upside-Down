@@ -8,7 +8,14 @@ A cut is one thing. EP301 is EP301. It has a version history: LC1 → LC2 → LC
 
 ## Sharing
 
-You share the cut, not a version. "Share EP301 with David" gives David access to the cut and all its versions. The grant is on the cut entity. When a new version is published, everyone who has access to the cut sees it.
+You share the cut, not a version. Two modes, chosen automatically:
+
+- **Internal share** (person in a production department or domain release): grants access to the cut. Recipient sees all versions and receives future versions automatically. This is the default.
+- **External share** (vendor): grants access locked to the current version. Recipient sees only that version. No future versions unless re-shared.
+
+The coordinator doesn't choose -- smart defaults handle it based on who the recipient is. The grant stores a `lockedToVersion` field (null for internal = all versions, set for external = that version only).
+
+To lock an internal recipient later: change their grant from open to version-locked. "VFX, you're done -- locking at LC3."
 
 ## Versioning
 
