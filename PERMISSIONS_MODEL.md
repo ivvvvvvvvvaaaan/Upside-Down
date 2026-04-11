@@ -142,6 +142,63 @@ Revoked grants are NOT deleted -- they're marked as revoked with a timestamp. Th
 
 ---
 
+## Permission levels
+
+Four base levels aligned to CAM. One guest tier for external access.
+
+| Level | CAM mapping | Capabilities | When to use |
+|-------|-------------|-------------|-------------|
+| **Viewer** | Viewer | Open, preview, download | Default for shared content. Marketing receiving a release. |
+| **Contributor** | Editor | Everything in Viewer + comment, upload, annotate | Vendor turnovers (upload deliveries), reviewers (comment on cuts). |
+| **Editor** | Editor | Everything in Contributor + write, modify metadata, reshare | Cross-department collaborator editing assets. |
+| **Manager** | Manager | Everything in Editor + delete, change permissions, add/remove people | Department coordinator managing their workspace. |
+
+Admin is a platform role (CAM-level), not a per-resource grant. Admins inherit Manager on all resources plus audit log access, project lockdown, and block capability.
+
+### Grant modifiers
+
+Orthogonal to the base level. Set per-grant, not per-level:
+
+| Modifier | Effect | Typical use |
+|----------|--------|-------------|
+| **Download off** | Preview-only, no file download | Executive preview of sensitive cuts |
+| **Upload** | Can add new files to the collection | Vendor turnover (on Viewer or Contributor) |
+| **Include new** | Automatically receives newly added assets | Live collection sharing |
+| **Version locked** | Sees only a specific version, not newer ones | Vendor reference (locked to LC3) |
+
+Modifiers appear as `+N` in the UI. Hovering shows the full list.
+
+### Guest links
+
+External reviewers without an account. Fixed capabilities: preview-only (no download unless toggled), optional passcode, expiration date, watermark. Not a level — a separate access path with its own controls.
+
+### CAM alignment
+
+| Our level | CAM level | Notes |
+|-----------|-----------|-------|
+| Viewer | Viewer | 1:1 |
+| Contributor | Editor | CAM "Editor" covers both our Contributor and Editor. Contributor is a restricted Editor — no write/reshare. |
+| Editor | Editor | Full CAM Editor |
+| Manager | Manager | 1:1 |
+| (Admin) | Admin | Platform role, not a per-resource grant |
+
+The Contributor/Editor split within CAM's "Editor" bucket gives us the granularity production needs (vendor uploads vs. full edit access) while staying within CAM's four-level structure. When CAM integration arrives, both map to the same CAM Editor capability — the distinction is enforced at the app level.
+
+### Scenario resolution
+
+| Scenario | Level | Modifiers |
+|----------|-------|-----------|
+| S1: Reviewer (David reviews cuts) | Contributor | — |
+| S2: Vendor turnover (Framestore) | Viewer | +Upload |
+| S3: Executive preview (Alex) | Viewer | Download off |
+| S4: Coordinator (Sarah manages VFX) | Manager | — |
+| S5: Cross-dept collaborator (Maria in VFX) | Editor | — |
+| S6: Marketing receives release | Viewer | — |
+| S7: Admin investigation | (Admin) | Platform role |
+| S8: Per-grant modifiers | Any level | +Upload, +Include new, +Version locked |
+
+---
+
 ## What the industry does
 
 - **Additive is standard** (ShotGrid, Iconik, Frame.io, PIX). Most restrictive is rare in media DAM.
