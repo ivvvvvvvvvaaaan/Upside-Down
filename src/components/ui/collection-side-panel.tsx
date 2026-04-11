@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { X, LayoutGrid, MoreVertical, Pencil, Trash2, MapPin, Film, Zap, Folder, HardDrive, Import } from 'lucide-react'
 import { Button } from './button'
 import { Avatar } from './avatar'
@@ -177,8 +177,8 @@ export function CollectionSidePanel({
     ? (PERSONAS.find(p => p.email === collection.createdBy)?.name ?? collection.createdBy)
     : null
 
-  const grants = useMemo(() => getResourceGrants(collection.id), [collection.id, getResourceGrants])
-  const guestLinks = useMemo(() => getResourceGuestLinks(collection.id), [collection.id, getResourceGuestLinks])
+  const grants = getResourceGrants(collection.id)
+  const guestLinks = getResourceGuestLinks(collection.id)
   const canManageAccess = isAdmin || canShare(resourceRef)
 
   const connectionsCount = relationships

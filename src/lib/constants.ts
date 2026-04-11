@@ -9,7 +9,7 @@
 // ===== SEED DATA VERSION =====
 // Bump when ANY seed data changes (grants, collections, scenario, workspace files).
 // Forces all localStorage caches to reset.
-export const SEED_VERSION = 42
+export const SEED_VERSION = 43
 
 // ===== THEME =====
 export const THEME_STORAGE_KEY = 'theme' as const
