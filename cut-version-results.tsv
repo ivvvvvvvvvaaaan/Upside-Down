@@ -4,3 +4,4 @@ baseline	2.0	kept	No versioning. Each cut version is independent. All 8 scenario
 a891198	4.1	kept	Share-at-version: "Include future versions" toggle. Default on for internal, off for vendors. S3 now clean.
 ece8fba	4.4	kept	S4 resolved: downgrade grant to version-locked. "Lock VFX at LC3." Keep history, no future. 8/8 scenarios.
 e3d4065	4.5	kept	Smart defaults: internal=follow all versions, vendor=locked to current. No toggle needed.
+cc7d37b	4.6	kept	Version switcher UI spec: one card per cut, dropdown history, per-version comments, follow/locked in access tab.

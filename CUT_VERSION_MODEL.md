@@ -67,7 +67,39 @@ Grants are on the cut entity ID (`cut-ep301`), not on version IDs.
 
 ## UI changes
 
-- Cuts view: shows one entry per cut, not per version
-- Cut detail: version switcher (dropdown or timeline) to browse history
-- Share modal: "Share EP301" (the cut, not a version)
-- Release tab: release the cut, latest version is what the audience sees
+### Cuts view
+One card per cut, not per version. Card shows: cut name, latest version stage badge (e.g., "Final Cut"), version count ("5 versions"), thumbnail from latest version.
+
+### Cut detail (side panel or full page)
+- Playback of the current (latest) version
+- Version switcher: dropdown showing the progression with stage labels and dates
+  ```
+  ▾ Final Cut (v4) — Feb 28
+    Locked Cut 3 (v3) — Feb 18
+    Locked Cut 2 (v2) — Feb 13
+    Locked Cut 1 (v1) — Feb 8
+  ```
+- Selecting a version loads that version's playback, constituents, and comments
+- Comments are per-version (you commented on LC2, that comment stays on LC2)
+
+### Share modal
+"Share EP301" -- the cut entity. Status card shows: "Editorial · 4 versions · Released to 3 domains · 8 people." No per-version sharing UI. Smart defaults handle internal vs vendor.
+
+### Access tab
+Shows who has access to the cut and whether they follow all versions or are locked to a specific one:
+```
+Editorial          Follow all
+David Park         Follow all (Comment)
+Studio VFX         Follow all (View)
+Studio Creative    Follow all (View) — since v2
+Framestore         Locked to v3 (View)
+```
+
+### Release tab
+Release the cut (latest version). Release history shows when each domain was added:
+```
+Studio VFX         Released at v1
+Studio Creative    Released at v2
+Studio Post        Released at v3
+All Studio         Released at v4 (Final)
+```
