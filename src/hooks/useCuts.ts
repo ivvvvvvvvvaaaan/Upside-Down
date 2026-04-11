@@ -49,10 +49,15 @@ export function useCuts() {
     })
   }, [allSeedCuts, grants, isAdmin, isEditorialMember, getVisibilityState])
 
+  // Group-level access: if you have access to ANY version in a group, you have access to ALL
   const accessibleCuts = useMemo((): AccessibleCutEntry[] => {
-    return visibleCuts.filter((entry): entry is AccessibleCutEntry & { visibility: 'accessible' } => (
-      entry.visibility === 'accessible'
-    ))
+    const directlyAccessible = new Set(
+      visibleCuts.filter(e => e.visibility === 'accessible').map(e => e.asset.versionGroupId ?? e.asset.id)
+    )
+    return visibleCuts.filter((entry): entry is AccessibleCutEntry & { visibility: 'accessible' } => {
+      const groupId = entry.asset.versionGroupId ?? entry.asset.id
+      return directlyAccessible.has(groupId)
+    })
   }, [visibleCuts])
 
   const allCutAssets = useMemo(() => visibleCuts.map((entry) => entry.asset), [visibleCuts])
@@ -80,6 +85,13 @@ export function useCuts() {
     })
   }, [accessibleCutAssets])
 
+  /** Get all versions in a version group, sorted newest first */
+  const getVersionsForGroup = useCallback((groupId: string): Asset[] => {
+    return accessibleCutAssets
+      .filter(cut => (cut.versionGroupId ?? cut.id) === groupId)
+      .sort(compareCutsByStageAndVersion)
+  }, [accessibleCutAssets])
+
   /** Get constituent file IDs for a cut */
   const getConstituentsForCut = useCallback((cutId: string): string[] => {
     const seed = allSeedCuts.find(c => c.id === cutId)
@@ -105,5 +117,6 @@ export function useCuts() {
     constituentAccessIds,
     getCutsForAsset,
     getConstituentsForCut,
+    getVersionsForGroup,
   }
 }

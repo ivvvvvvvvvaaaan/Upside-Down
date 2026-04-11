@@ -104,6 +104,8 @@ type ScenarioCut = {
   duration: string
   /** What changed in this version */
   note: string
+  /** Override the default version group (for parallel cuts like director's cut vs studio cut) */
+  cutGroupId?: string
 }
 
 type ScenarioDomainAccess = {
@@ -368,13 +370,13 @@ export const SCENARIO: Scenario = {
       ],
     },
     // (Camera selects shared via collection, not per-asset — Alex and David added to Camera Selects collection instead)
-    // Smart collection share: Sarah Chen shares "Finals" with editorial team
+    // Smart collection share: Sarah snapshots "Finals" into a curated collection for editorial
     {
-      resource: { id: 'smart-finals', type: 'smart-collection' },
-      label: 'Finals',
+      resource: { id: 'coll-smart-finals-shared', type: 'collection', domain: 'vfx' },
+      label: 'Finals (shared)',
       by: 'vfx-coordinator',
       date: '2026-02-12',
-      context: 'Sarah shares a smart collection that auto-updates as VFX shots get marked final. Maria can check this anytime to see which shots are locked and ready to conform into the master timeline. No manual curation needed — the filter catches everything tagged "Final" across VFX.',
+      context: 'Sarah shares the Finals smart collection with editorial. The filter snapshots at share time into a fixed collection, so Maria sees the same approved finals every time instead of a live personalized smart collection.',
       grants: [
         { to: 'editorial-artist', as: 'view' },
       ],
@@ -550,6 +552,7 @@ export const SCENARIO: Scenario = {
     // Shared collections (referenced by grants)
     { id: 'ws-vfx-coll-for-editorial', name: 'EP301 VFX Pulls - Edit Review',  createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-020-010'], boundDomainId: 'vfx' },
     { id: 'ws-vfx-coll-for-vendor',    name: 'Framestore Handoff - EP301',     createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-030', 'ws-vfx-020-020', 'ws-vfx-ref-brief'], boundDomainId: 'vfx' },
+    { id: 'coll-smart-finals-shared',  name: 'Finals (shared)',                createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020'], boundDomainId: 'vfx' },
     { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', assetIds: ['ws-edit-cut-1', 'ws-edit-cut-2', 'ws-edit-cut-3'], boundDomainId: 'editorial' },
     // Camera collections
     { id: 'ws-cam-coll-broll', name: 'B-Roll Highlights', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-broll-town', 'ws-cam-broll-forest', 'ws-cam-aerial-dawn', 'ws-cam-aerial-quarry'], boundDomainId: 'camera' },
@@ -877,6 +880,7 @@ export type SeedCut = {
   date: string
   duration: string
   note: string
+  cutGroupId?: string
 }
 
 export function buildCuts(): SeedCut[] {

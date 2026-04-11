@@ -57,7 +57,7 @@ export function seedCutToAsset(cut: SeedCut, releaseInfo?: ReleaseTagInfo): Asse
     kind: 'cut',
     stage: cut.stage as CutStage,
     version: cut.version,
-    versionGroupId: `cut:${cut.episode}:${cut.stage}`,
+    versionGroupId: cut.cutGroupId ?? `cut:${cut.episode}`,
     episode: cut.episode,
     constituents: cut.constituents,
     thumbnail: pickForDepartment('editorial', cut.id)[0],

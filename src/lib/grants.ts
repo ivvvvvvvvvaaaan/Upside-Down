@@ -77,6 +77,8 @@ export type Grant = {
   versionNote?: string
   /** Grant ID of the previous version */
   previousVersionId?: string
+  /** For cut grants: lock recipient to versions up to this number. Null = follow all versions. */
+  lockedToVersion?: number
 }
 
 export type Block = {
