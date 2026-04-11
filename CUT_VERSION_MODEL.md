@@ -53,6 +53,17 @@ Revoke = revoke access to the cut. All versions go. There's no "keep LC1 but rev
 - S7 (re-lock after final): WORKS. LC4 is published after FC. Version history: LC1 → LC2 → LC3 → FC → LC4 → FC2. Non-linear stage names are fine -- the ordering is by date, not by stage label.
 - S8 (different levels per stage): TENSION. The grant is on the cut, not the version. Everyone with access gets the same permission level on all versions. MITIGATION: this is acceptable. The realistic pattern is View for everyone except the director who gets Comment. The director's Comment grant applies to all versions -- that's fine, he might want to comment on historical versions too.
 
+## The rules
+
+1. **A cut is one entity.** EP301 is EP301. Versions are its history, not separate assets.
+2. **Share the cut, not the version.** One grant gives access to all versions.
+3. **Internal = follow.** Department members and domain releases see all versions and receive future ones.
+4. **Vendor = locked.** External shares freeze at the current version. No future versions unless re-shared.
+5. **Lock when done.** Change an internal grant from "follow" to "locked at version N" when they no longer need updates.
+6. **Comments are per-version.** Feedback stays on the version it was given on.
+7. **Release history is informational.** Records when each domain was first included.
+8. **If versions need different audiences, they're different cuts.** Don't use version control for access control.
+
 ## Data model changes
 
 ```

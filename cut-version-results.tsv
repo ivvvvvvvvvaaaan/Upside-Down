@@ -7,3 +7,4 @@ e3d4065	4.5	kept	Smart defaults: internal=follow all versions, vendor=locked to 
 cc7d37b	4.6	kept	Version switcher UI spec: one card per cut, dropdown history, per-version comments, follow/locked in access tab.
 59619b1	4.6	kept	Release history with version floor. Domains see from release point forward. Progressive widening is precise.
 73379c5	4.7	kept	Revert version floor. Pure Model C: all versions visible. Simpler. Hide early versions = different cut entity.
+8545c4d	4.7	kept	8-rule summary. Complete model. All scenarios resolved.
