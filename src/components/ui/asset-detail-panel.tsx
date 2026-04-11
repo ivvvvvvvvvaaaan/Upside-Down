@@ -111,7 +111,6 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
           const key = resolvePrincipalKey(g.principal)
           return !coveredPrincipals.has(key)
         })
-      if (grants.length === 0) continue
       results.push({ collection: { id: collection.id, name: collection.name }, grants })
     }
     return results
