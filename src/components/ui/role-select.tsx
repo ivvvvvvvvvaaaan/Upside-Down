@@ -4,11 +4,9 @@ import { MenuSelect } from './menu-select'
 import type { MenuSelectOption } from './menu-select'
 
 const ROLE_DESCRIPTIONS: Record<string, string> = {
-  view: 'Open and download',
-  comment: 'View + leave review notes',
-  add: 'Upload new files. Cannot modify existing content.',
-  edit: 'Edit + share with others',
-  manage: 'Full control',
+  viewer: 'Open and preview content',
+  editor: 'Edit, reshare, and download',
+  manager: 'Full control — manage people and permissions',
 }
 
 export function RoleSelect({ value, options, onChange, size = 'compact', disabled }: {

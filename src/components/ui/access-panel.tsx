@@ -81,7 +81,7 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
   domainId?: DomainId
   versionLabel?: string
 }) {
-  const isOwner = grant.templateId === 'owner'
+  const isOwner = grant.templateId === 'manager'
   const principal = grant.principal
 
   return (
@@ -129,18 +129,18 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
           )}
           {isOwner ? (
             <span className="text-body-0-regular text-foreground-dim px-2 py-1">
-              {getRoleGroup(roleGroups, grant.templateId ?? 'owner')?.name ?? 'Owner'}
+              {getRoleGroup(roleGroups, grant.templateId ?? 'manager')?.name ?? 'Manager'}
             </span>
           ) : !readOnly && onUpdateProfile ? (
             <RoleSelect
               options={roleGroupOptions(roleGroups)}
-              value={grant.templateId ?? 'view'}
+              value={grant.templateId ?? 'viewer'}
               onChange={(value) => onUpdateProfile(grant.id, value as AccessProfileId)}
             />
           ) : (
             <RoleSelect
               options={roleGroupOptions(roleGroups)}
-              value={grant.templateId ?? 'view'}
+              value={grant.templateId ?? 'viewer'}
               onChange={() => {}}
               disabled
             />
@@ -191,7 +191,7 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
                       ...roleGroupOptions(roleGroups),
                       ...(onRemove ? [{ value: '__remove__', label: 'Remove', destructive: true }] : []),
                     ]}
-                    value={member.roleValue ?? 'view'}
+                    value={member.roleValue ?? 'viewer'}
                     onChange={(value) => {
                       if (value === '__remove__' && onRemove) {
                         onRemove(member.grantId!)
@@ -437,7 +437,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   }
 
   // Role + share mode + expiration
-  const [addAsRole, setAddAsRole] = useState<AccessProfileId>('view')
+  const [addAsRole, setAddAsRole] = useState<AccessProfileId>('viewer')
   const [shareMode, setShareMode] = useState<ShareMode>('snapshot')
   const [expires, setExpires] = useState(false)
   const [expiresInDays, setExpiresInDays] = useState(7)
@@ -612,12 +612,12 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     let defaultAllowUpload = false
 
     if (kind === 'domain') {
-      defaultRole = 'view'
+      defaultRole = 'viewer'
       defaultShareMode = 'live'
     } else if (principal.type === 'user') {
       const persona = PERSONAS.find(p => p.id === principal.userId)
       if (persona?.role === 'vendor') {
-        defaultRole = 'add'
+        defaultRole = 'viewer'
         defaultShareMode = 'snapshot'
         defaultAllowUpload = true
       }
@@ -823,7 +823,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     if (!collection) return
 
     markDirty()
-    createGrant(grant.resource, grant.principal, grant.templateId ?? 'view', {
+    createGrant(grant.resource, grant.principal, grant.templateId ?? 'viewer', {
       permissions: grant.templateId ? undefined : grant.permissions,
       shareMode: 'snapshot',
       snapshotAssetIds: resolveCollectionAssetIds(collection),
@@ -1176,7 +1176,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               )}
               <RoleSelect
                 options={pending.kind === 'domain'
-                  ? addRoleOptions.filter(o => o.value === 'view' || o.value === 'comment')
+                  ? addRoleOptions.filter(o => o.value === 'viewer')
                   : addRoleOptions}
                 value={pending.role}
                 onChange={(value) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, role: value as AccessProfileId } : p))}
@@ -1245,7 +1245,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       group,
       domains: RELEASE_DOMAINS.filter(d => d.group === group),
     })).filter(g => g.domains.length > 0)
-    const domainRoleOptions = addRoleOptions.filter(o => o.value === 'view' || o.value === 'comment')
+    const domainRoleOptions = addRoleOptions.filter(o => o.value === 'viewer')
 
     return (
       <div className="space-y-4">
@@ -1281,7 +1281,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                   <span className="text-body-0-regular text-foreground flex-1 min-w-0">{domain.name}</span>
                   <RoleSelect
                     options={domainRoleOptions}
-                    value={existingEntry.grant.templateId ?? 'view'}
+                    value={existingEntry.grant.templateId ?? 'viewer'}
                     onChange={(value) => handleUpdateProfile(existingEntry.grant.id, value as AccessProfileId)}
                     disabled={existingEntry.readOnly}
                   />
@@ -1299,7 +1299,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                 <span className="text-body-0-regular text-foreground flex-1 min-w-0">{domain.name}</span>
                 <RoleSelect
                   options={domainRoleOptions}
-                  value={pendingGrants.find(p => p.id === domain.id)?.role ?? 'view'}
+                  value={pendingGrants.find(p => p.id === domain.id)?.role ?? 'viewer'}
                   onChange={(value) => setPendingGrants(prev => prev.map(p => p.id === domain.id ? { ...p, role: value as AccessProfileId } : p))}
                 />
                 <Button variant="secondary" compact onClick={() => handleRemovePending(domain.id)}>

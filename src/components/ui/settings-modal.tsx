@@ -931,7 +931,7 @@ function RoleGroupsTab({
   onRemove: (id: string) => void
   readOnly?: boolean
 }) {
-  const visible = roleGroups.filter(rg => rg.id !== 'owner' && rg.id !== 'link-viewer')
+  const visible = roleGroups.filter(rg => rg.id !== 'link-viewer')
 
   return (
     <div className="space-y-4">

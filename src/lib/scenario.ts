@@ -57,6 +57,10 @@ type ScenarioShare = {
   shareMode?: 'live' | 'snapshot'
   /** Frozen asset IDs for snapshot shares */
   snapshotAssetIds?: string[]
+  /** Allow recipient to download source files */
+  allowDownload?: boolean
+  /** Allow recipient to comment and annotate */
+  allowComment?: boolean
   /** Allow recipient to upload into this collection */
   allowUpload?: boolean
   /** Review link ID for direct review access */
@@ -183,28 +187,25 @@ export const SCENARIO: Scenario = {
   // Each domain defines WHO gets grants when content is released to that domain
   releaseDomains: [
     // Studio tier — internal Netflix studio teams
-    { id: 'studio-creative',    name: 'Studio Creative',    group: 'Studio', assetTypes: ['cut', 'asset'], originDepartmentId: 'art-design',  granteeTeamIds: ['studio-leadership'],  defaultProfile: 'view' },
-    { id: 'studio-post',        name: 'Studio Post',        group: 'Studio', assetTypes: ['cut', 'asset'], originDepartmentId: 'editorial',   granteeTeamIds: ['netflix-post'],       defaultProfile: 'view' },
-    { id: 'studio-production',  name: 'Studio Production',  group: 'Studio', assetTypes: ['cut', 'asset'],                                    granteeTeamIds: ['super-prod'],         defaultProfile: 'view' },
-    { id: 'studio-vfx',         name: 'Studio VFX',         group: 'Studio', assetTypes: ['cut'],          originDepartmentId: 'vfx',         granteeTeamIds: ['vfx-core'],           defaultProfile: 'view' },
+    { id: 'studio-creative',    name: 'Studio Creative',    group: 'Studio', assetTypes: ['cut', 'asset'], originDepartmentId: 'art-design',  granteeTeamIds: ['studio-leadership'],  defaultProfile: 'viewer' },
+    { id: 'studio-post',        name: 'Studio Post',        group: 'Studio', assetTypes: ['cut', 'asset'], originDepartmentId: 'editorial',   granteeTeamIds: ['netflix-post'],       defaultProfile: 'viewer' },
+    { id: 'studio-production',  name: 'Studio Production',  group: 'Studio', assetTypes: ['cut', 'asset'],                                    granteeTeamIds: ['super-prod'],         defaultProfile: 'viewer' },
+    { id: 'studio-vfx',         name: 'Studio VFX',         group: 'Studio', assetTypes: ['cut'],          originDepartmentId: 'vfx',         granteeTeamIds: ['vfx-core'],           defaultProfile: 'viewer' },
     // Wide tier — broader Netflix org
-    { id: 'globalization',      name: 'Globalization',       group: 'Wide',   assetTypes: ['cut'],          granteeTeamIds: ['team-globalization'],      defaultProfile: 'view' },
-    { id: 'marketing',          name: 'Marketing',           group: 'Wide',   assetTypes: ['cut', 'asset'], granteeTeamIds: ['team-marketing'],          defaultProfile: 'view' },
-    { id: 'legal',              name: 'Legal',               group: 'Wide',   assetTypes: ['cut'],          granteeTeamIds: ['team-legal'],              defaultProfile: 'view' },
-    { id: 'music',              name: 'Music',               group: 'Wide',   assetTypes: ['cut'],          granteeTeamIds: ['team-music'],              defaultProfile: 'view' },
+    { id: 'globalization',      name: 'Globalization',       group: 'Wide',   assetTypes: ['cut'],          granteeTeamIds: ['team-globalization'],      defaultProfile: 'viewer' },
+    { id: 'marketing',          name: 'Marketing',           group: 'Wide',   assetTypes: ['cut', 'asset'], granteeTeamIds: ['team-marketing'],          defaultProfile: 'viewer' },
+    { id: 'legal',              name: 'Legal',               group: 'Wide',   assetTypes: ['cut'],          granteeTeamIds: ['team-legal'],              defaultProfile: 'viewer' },
+    { id: 'music',              name: 'Music',               group: 'Wide',   assetTypes: ['cut'],          granteeTeamIds: ['team-music'],              defaultProfile: 'viewer' },
     // Other tier
-    { id: 'consumer-insights',  name: 'Consumer Insights',   group: 'Other',  assetTypes: ['cut'],          granteeTeamIds: ['team-consumer-insights'],  defaultProfile: 'view' },
-    { id: 'content-preview',    name: 'Content Preview',     group: 'Other',  assetTypes: ['cut'],          granteeTeamIds: ['team-content-preview'],    defaultProfile: 'view' },
+    { id: 'consumer-insights',  name: 'Consumer Insights',   group: 'Other',  assetTypes: ['cut'],          granteeTeamIds: ['team-consumer-insights'],  defaultProfile: 'viewer' },
+    { id: 'content-preview',    name: 'Content Preview',     group: 'Other',  assetTypes: ['cut'],          granteeTeamIds: ['team-content-preview'],    defaultProfile: 'viewer' },
   ],
 
   roleGroups: [
-    { id: 'owner',       name: 'Owner',           permissions: ['open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl', 'upload'] },
-    { id: 'manage',      name: 'Can Manage',      permissions: ['open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl', 'upload'] },
-    { id: 'edit',        name: 'Can Edit',         permissions: ['open', 'download', 'write', 'comment', 'share'] },
-    { id: 'add',          name: 'Can Add',           permissions: ['open', 'download', 'write', 'comment'] },
-    { id: 'comment',     name: 'Can Comment',      permissions: ['open', 'download', 'comment'] },
-    { id: 'view',        name: 'Can View',         permissions: ['open', 'download'] },
-    { id: 'link-viewer', name: 'Link Viewer',      permissions: ['open', 'download'] },
+    { id: 'manager',     name: 'Manager',      permissions: ['open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl', 'upload'] },
+    { id: 'editor',      name: 'Editor',       permissions: ['open', 'download', 'write', 'comment', 'share'] },
+    { id: 'viewer',      name: 'Viewer',       permissions: ['open'] },
+    { id: 'link-viewer', name: 'Link Viewer',  permissions: ['open'] },
   ],
 
   people: [
@@ -243,27 +244,27 @@ export const SCENARIO: Scenario = {
   ],
 
   domainAccess: [
-    { domain: 'vfx', defaultTeamId: 'vfx-core', defaultProfile: 'manage' },
-    { domain: 'editorial', defaultTeamId: 'editorial', defaultProfile: 'manage' },
-    { domain: 'art-design', defaultTeamId: 'art-design', defaultProfile: 'manage' },
-    { domain: 'camera', defaultTeamId: 'camera-team', defaultProfile: 'manage' },
-    { domain: 'audio-sound', defaultTeamId: 'audio-team', defaultProfile: 'manage' },
+    { domain: 'vfx', defaultTeamId: 'vfx-core', defaultProfile: 'manager' },
+    { domain: 'editorial', defaultTeamId: 'editorial', defaultProfile: 'manager' },
+    { domain: 'art-design', defaultTeamId: 'art-design', defaultProfile: 'manager' },
+    { domain: 'camera', defaultTeamId: 'camera-team', defaultProfile: 'manager' },
+    { domain: 'audio-sound', defaultTeamId: 'audio-team', defaultProfile: 'manager' },
   ],
 
   projectRoles: {
     people: {
-      'studio-alex':           'view',
-      'creative-david':        'comment',
-      'vfx-supervisor':        'edit',
-      'vfx-coordinator':       'edit',
-      'editorial-coordinator': 'add',
-      'editorial-artist':      'add',
-      'art-artist':            'add',
-      'vendor-framestore':     'view',
-      'camera-dit':            'add',
-      'audio-supervisor':      'add',
-      'marketing-coordinator': 'view',
-      'legal-reviewer':        'view',
+      'studio-alex':           'viewer',
+      'creative-david':        'viewer',
+      'vfx-supervisor':        'editor',
+      'vfx-coordinator':       'editor',
+      'editorial-coordinator': 'editor',
+      'editorial-artist':      'editor',
+      'art-artist':            'editor',
+      'vendor-framestore':     'viewer',
+      'camera-dit':            'editor',
+      'audio-supervisor':      'editor',
+      'marketing-coordinator': 'viewer',
+      'legal-reviewer':        'viewer',
     },
     teams: {},
   },
@@ -276,8 +277,8 @@ export const SCENARIO: Scenario = {
       date: '2026-01-28',
       context: 'Sarah packages the latest VFX comps for editorial. These are the approved plates from SEQ010 (pit lane crash) and SEQ020 (podium celebration) that Maria and Lisa need to cut into the EP301 timeline. View-only so editorial sees the work but can\'t modify source files.',
       grants: [
-        { to: 'editorial-coordinator', as: 'view' },
-        { to: 'editorial-artist',      as: 'view' },
+        { to: 'editorial-coordinator', as: 'viewer' },
+        { to: 'editorial-artist',      as: 'viewer' },
       ],
     },
     {
@@ -288,7 +289,7 @@ export const SCENARIO: Scenario = {
       expiresAt: '2026-06-15',
       context: 'Sarah sends Framestore the approved comp direction for EP301. James needs to see the internal shot breakdown and reference comps before starting his team\'s delivery pass. Time-boxed to the delivery window.',
       grants: [
-        { to: 'vendor-framestore', as: 'view' },
+        { to: 'vendor-framestore', as: 'viewer' },
       ],
     },
     // --- Cut shares (composite entities, not raw files) ---
@@ -300,8 +301,8 @@ export const SCENARIO: Scenario = {
       date: '2026-02-08',
       context: 'Maria releases the first picture lock to Studio VFX for timing reference. Mike and Sarah need exact in/out points so their comps match the edit duration. David gets direct share for review notes.',
       grants: [
-        { toDomain: 'studio-vfx', as: 'view' },
-        { to: 'creative-david', as: 'comment' },
+        { toDomain: 'studio-vfx', as: 'viewer' },
+        { to: 'creative-david', as: 'viewer' },
       ],
     },
     // Locked Cut 2: Lisa releases to Studio Creative + Studio VFX, shares with David
@@ -312,9 +313,9 @@ export const SCENARIO: Scenario = {
       date: '2026-02-13',
       context: 'Lisa releases the second lock — David\'s pacing notes from the last review session are incorporated. Released to Studio Creative for leadership visibility and Studio VFX for continued timing work.',
       grants: [
-        { toDomain: 'studio-creative', as: 'view' },
-        { toDomain: 'studio-vfx', as: 'view' },
-        { to: 'creative-david', as: 'comment' },
+        { toDomain: 'studio-creative', as: 'viewer' },
+        { toDomain: 'studio-vfx', as: 'viewer' },
+        { to: 'creative-david', as: 'viewer' },
       ],
     },
     // Locked Cut 3: released to Studio Post, Studio Creative, Studio VFX + direct share to audio
@@ -325,10 +326,10 @@ export const SCENARIO: Scenario = {
       date: '2026-02-18',
       context: 'Lisa releases the third lock. Audio supervisor gets a direct share for spotting. Released to Studio Post for cross-domain oversight, Studio Creative for leadership, and Studio VFX for final comp timing.',
       grants: [
-        { to: 'audio-supervisor', as: 'view' },
-        { toDomain: 'studio-post', as: 'view' },
-        { toDomain: 'studio-creative', as: 'view' },
-        { toDomain: 'studio-vfx', as: 'view' },
+        { to: 'audio-supervisor', as: 'viewer' },
+        { toDomain: 'studio-post', as: 'viewer' },
+        { toDomain: 'studio-creative', as: 'viewer' },
+        { toDomain: 'studio-vfx', as: 'viewer' },
       ],
     },
     // Final Cut: released to Studio Production, Studio Post, Studio Creative, Studio VFX + Alex direct
@@ -339,11 +340,11 @@ export const SCENARIO: Scenario = {
       date: '2026-02-28',
       context: 'Final picture and sound — all VFX final, approved for delivery. Released to Studio Production for delivery sign-off, Studio Post for oversight, and all Studio domains for visibility.',
       grants: [
-        { toDomain: 'studio-production', as: 'view' },
-        { toDomain: 'studio-post', as: 'view' },
-        { toDomain: 'studio-creative', as: 'view' },
-        { toDomain: 'studio-vfx', as: 'view' },
-        { to: 'studio-alex', as: 'view' },
+        { toDomain: 'studio-production', as: 'viewer' },
+        { toDomain: 'studio-post', as: 'viewer' },
+        { toDomain: 'studio-creative', as: 'viewer' },
+        { toDomain: 'studio-vfx', as: 'viewer' },
+        { to: 'studio-alex', as: 'viewer' },
       ],
     },
     // EP302 Locked Cut 1: early stage — released to Studio VFX, shared with David
@@ -354,8 +355,8 @@ export const SCENARIO: Scenario = {
       date: '2026-02-20',
       context: 'Maria releases the first EP302 lock to Studio VFX. Early stage — temp sound only, no VFX yet. David gets direct share for review.',
       grants: [
-        { to: 'creative-david', as: 'comment' },
-        { toDomain: 'studio-vfx', as: 'view' },
+        { to: 'creative-david', as: 'viewer' },
+        { toDomain: 'studio-vfx', as: 'viewer' },
       ],
     },
     {
@@ -365,8 +366,8 @@ export const SCENARIO: Scenario = {
       date: '2026-02-08',
       context: 'Priya shares her latest hero concept with the revised AR-24 livery design. David wants to see how the new color scheme reads at small sizes for social media. Alex needs sign-off authority before the art department sends to print production.',
       grants: [
-        { to: 'studio-alex',    as: 'view' },
-        { to: 'creative-david', as: 'view' },
+        { to: 'studio-alex',    as: 'viewer' },
+        { to: 'creative-david', as: 'viewer' },
       ],
     },
     // (Camera selects shared via collection, not per-asset — Alex and David added to Camera Selects collection instead)
@@ -378,7 +379,7 @@ export const SCENARIO: Scenario = {
       date: '2026-02-12',
       context: 'Sarah shares the Finals smart collection with editorial. The filter snapshots at share time into a fixed collection, so Maria sees the same approved finals every time instead of a live personalized smart collection.',
       grants: [
-        { to: 'editorial-artist', as: 'view' },
+        { to: 'editorial-artist', as: 'viewer' },
       ],
     },
     // Revoked: vendor had an earlier comp share that was superseded
@@ -390,7 +391,7 @@ export const SCENARIO: Scenario = {
       context: 'Sarah had shared an earlier comp version with Framestore for reference. After David\'s review session changed the creative direction on this shot, the v5 comp became invalid. Sarah revokes the share to prevent James from working against outdated direction. The replacement v8 will be shared once approved.',
       revoked: true,
       grants: [
-        { to: 'vendor-framestore', as: 'view' },
+        { to: 'vendor-framestore', as: 'viewer' },
       ],
     },
     // Dailies Review channel — standing review access for the core creative team
@@ -401,8 +402,8 @@ export const SCENARIO: Scenario = {
       date: '2026-01-20',
       context: 'Lisa sets up the daily review channel for the core creative team. As Maria publishes new cuts, the team sees updates here. David and Sarah use it to stay aligned on the edit — new locks land here automatically.',
       grants: [
-        { to: 'creative-david', as: 'comment' },
-        { toTeam: 'vfx-core', as: 'view' },
+        { to: 'creative-david', as: 'viewer' },
+        { toTeam: 'vfx-core', as: 'viewer' },
       ],
     },
     // Vendor drop collection: VFX coordinator gives Framestore a scoped upload point
@@ -416,7 +417,7 @@ export const SCENARIO: Scenario = {
       shareMode: 'snapshot',
       version: 1,
       grants: [
-        { to: 'vendor-framestore', as: 'add' },
+        { to: 'vendor-framestore', as: 'viewer' },
       ],
     },
     // Vendor drop v2: re-turnover after locked cut 2
@@ -431,7 +432,7 @@ export const SCENARIO: Scenario = {
       version: 2,
       versionNote: 're-turnover: +3 shots from LC2, dropped SQ03_SH0020',
       grants: [
-        { to: 'vendor-framestore', as: 'add' },
+        { to: 'vendor-framestore', as: 'viewer' },
       ],
     },
     // (Stale cut shares removed — VFX timing now via cut-ep301-lc-1 share)
@@ -445,9 +446,9 @@ export const SCENARIO: Scenario = {
       shareMode: 'live',
       context: 'Tom shares camera selects as a live collection with editorial, plus David and Alex for review. New selects appear automatically as Tom adds them.',
       grants: [
-        { toTeam: 'editorial', as: 'view' },
-        { to: 'creative-david', as: 'view' },
-        { to: 'studio-alex', as: 'view' },
+        { toTeam: 'editorial', as: 'viewer' },
+        { to: 'creative-david', as: 'viewer' },
+        { to: 'studio-alex', as: 'viewer' },
       ],
     },
     // Camera DIT shares lens distortion data with VFX for comp accuracy
@@ -459,8 +460,8 @@ export const SCENARIO: Scenario = {
       shareMode: 'live',
       context: 'Tom shares lens distortion maps and test charts as a live collection with VFX. Mike and Sarah need these for accurate lens-matching in Nuke — new lens data auto-syncs as Tom adds it.',
       grants: [
-        { to: 'vfx-supervisor', as: 'view' },
-        { to: 'vfx-coordinator', as: 'view' },
+        { to: 'vfx-supervisor', as: 'viewer' },
+        { to: 'vfx-coordinator', as: 'viewer' },
       ],
     },
     // Camera DIT shares curated B-roll highlights with art + editorial
@@ -471,8 +472,8 @@ export const SCENARIO: Scenario = {
       date: '2026-02-11',
       context: 'Tom curates the best B-roll from location shoots — aerial circuits, paddock atmosphere, and forest drone footage. Priya uses these as reference for environment concepts, and Maria pulls them for montage sequences.',
       grants: [
-        { to: 'art-artist', as: 'view' },
-        { to: 'editorial-artist', as: 'view' },
+        { to: 'art-artist', as: 'viewer' },
+        { to: 'editorial-artist', as: 'viewer' },
       ],
     },
     // --- Audio department shares ---
@@ -484,8 +485,8 @@ export const SCENARIO: Scenario = {
       date: '2026-02-07',
       context: 'Rachel packages engine sounds, pit lane ambience, and score cues so Maria can lay a temp mix under the Director Cut. Cutting in silence makes it impossible to evaluate pacing — the temp mix helps David and Alex feel the energy of the race sequences.',
       grants: [
-        { to: 'editorial-coordinator', as: 'view' },
-        { to: 'editorial-artist', as: 'view' },
+        { to: 'editorial-coordinator', as: 'viewer' },
+        { to: 'editorial-artist', as: 'viewer' },
       ],
     },
     // (Audio handoff now via cut-ep301-lc-3 share above)
@@ -501,7 +502,7 @@ export const SCENARIO: Scenario = {
       snapshotAssetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'],
       context: 'Tom gives Priya a two-week snapshot of raw dailies for concept painting reference. Snapshot mode — Priya sees exactly these 5 takes, not future dailies. Time-boxed because ungraded footage shouldn\'t circulate long-term.',
       grants: [
-        { to: 'art-artist', as: 'view' },
+        { to: 'art-artist', as: 'viewer' },
       ],
     },
 
@@ -518,7 +519,7 @@ export const SCENARIO: Scenario = {
       context: 'Maria sends David a review link for the EP301 assembly. He gets a focused review surface — playback, comments, ontology. No workspace, no filing. Link expires after one week.',
       reviewLinkId: 'review-ep301-assembly-david',
       grants: [
-        { to: 'creative-david', as: 'comment' },
+        { to: 'creative-david', as: 'viewer' },
       ],
     },
   ],
@@ -707,8 +708,8 @@ export function buildGrants(): Grant[] {
         id: grantId(),
         resource,
         principal: { type: 'user', userId: share.by },
-        templateId: 'manage',
-        permissions: permissionsForTemplate('manage'),
+        templateId: 'manager',
+        permissions: permissionsForTemplate('manager'),
         grantedByUserId: share.by,
         grantedAt: share.date,
       })
@@ -729,6 +730,17 @@ export function buildGrants(): Grant[] {
         grantedByUserId: share.by,
         grantedAt: share.date,
       }
+      // Smart defaults for viewer grants: persons get +Download +Comment, domains get +Download
+      if (g.as === 'viewer' && !share.allowDownload && !share.allowComment && !share.allowUpload) {
+        if (principal.type === 'user' || principal.type === 'team') {
+          grant.allowDownload = true
+          grant.allowComment = true
+          grant.permissions = [...grant.permissions, 'download', 'comment']
+        } else if (principal.type === 'domain') {
+          grant.allowDownload = true
+          grant.permissions = [...grant.permissions, 'download']
+        }
+      }
       if (share.revoked) {
         grant.revokedAt = share.date
       }
@@ -741,9 +753,19 @@ export function buildGrants(): Grant[] {
       if (share.snapshotAssetIds) {
         grant.snapshotAssetIds = share.snapshotAssetIds
       }
+      if (share.allowDownload) {
+        grant.allowDownload = true
+        if (!grant.permissions.includes('download')) grant.permissions = [...grant.permissions, 'download']
+      }
+      if (share.allowComment) {
+        grant.allowComment = true
+        if (!grant.permissions.includes('comment')) grant.permissions = [...grant.permissions, 'comment']
+      }
       if (share.allowUpload) {
         grant.allowUpload = true
-        grant.permissions = [...grant.permissions, 'upload']
+        grant.allowDownload = grant.allowDownload ?? true
+        if (!grant.permissions.includes('upload')) grant.permissions = [...grant.permissions, 'upload']
+        if (!grant.permissions.includes('download')) grant.permissions = [...grant.permissions, 'download']
       }
       if (share.reviewLinkId) {
         grant.reviewLinkId = share.reviewLinkId
@@ -822,7 +844,7 @@ export type GuestLinkSeed = {
   resource: { id: string; type: ResourceType; domainId?: DomainId }
   label: string
   permissions: Permission[]
-  templateId?: 'link-viewer' | 'comment'
+  templateId?: 'link-viewer' | 'viewer'
   createdByUserId: string
   createdAt: string
   expiresAt: string

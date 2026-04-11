@@ -482,8 +482,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [nodeToDomain])
 
   const ownerPermissionSet = useMemo<EffectivePermissionSet>(() => ({
-    templateId: 'owner',
-    permissions: getPermissionsForProfile('owner', roleGroups),
+    templateId: 'manager',
+    permissions: getPermissionsForProfile('manager', roleGroups),
     canEdit: true,
   }), [roleGroups])
 
@@ -647,7 +647,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
             variantId,
             mergePermissionSets(
               current,
-              toPermissionSet(cappedPermissions, 'view'),
+              toPermissionSet(cappedPermissions, 'viewer'),
             ),
           )
         }
@@ -769,7 +769,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     profileId: AccessProfileId,
     currentGrants: Grant[] = grants,
   ): boolean => {
-    if (profileId === 'owner' || profileId === 'link-viewer') return false
+    if (profileId === 'link-viewer') return false
 
     if (!activePersona) return true
     if (!userId) return false
@@ -1040,8 +1040,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       id: `grant-review-${Date.now()}`,
       resource,
       principal,
-      templateId: 'comment',
-      permissions: getPermissionsForProfile('comment', roleGroups),
+      templateId: 'viewer',
+      permissions: getPermissionsForProfile('viewer', roleGroups),
+      allowComment: true,
       grantedByUserId: activePersona.id,
       grantedAt: now.toISOString().slice(0, 10),
       expiresAt: expires.toISOString().slice(0, 10),
@@ -1064,7 +1065,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
   // New API
   const getPermission = useCallback((id: string): AccessProfileId | null => {
-    if (!activePersona) return 'owner'
+    if (!activePersona) return 'manager'
     return getEffectivePermissionSet({
       id,
       type: collectionById.has(id) ? 'collection' : 'asset',
@@ -1087,7 +1088,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
   const getGrantableProfiles = useCallback((resource: ResourceRef): AccessProfileId[] => {
     return roleGroups
-      .filter((roleGroup) => roleGroup.id !== 'owner' && roleGroup.id !== 'link-viewer')
+      .filter((roleGroup) => roleGroup.id !== 'link-viewer')
       .map((roleGroup) => roleGroup.id)
       .filter((profileId) => canGrantProfileForResourceFn(resource, profileId))
   }, [roleGroups, canGrantProfileForResourceFn])
@@ -1100,6 +1101,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       permissions?: Permission[]
       shareMode?: ShareMode
       snapshotAssetIds?: string[]
+      allowDownload?: boolean
+      allowComment?: boolean
       allowUpload?: boolean
       expiresInDays?: number
       expiresAt?: string
@@ -1162,6 +1165,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
           expiresAt,
           shareMode: options?.shareMode,
           snapshotAssetIds: options?.snapshotAssetIds,
+          allowDownload: options?.allowDownload,
+          allowComment: options?.allowComment,
           allowUpload: options?.allowUpload,
           version,
           versionNote,
@@ -1199,6 +1204,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
               grantedByUserId: grantorUserId,
               grantedAt: new Date().toISOString().slice(0, 10),
               expiresAt: options?.expiresAt ?? g.expiresAt,
+              allowDownload: options?.allowDownload ?? g.allowDownload,
+              allowComment: options?.allowComment ?? g.allowComment,
               allowUpload: options?.allowUpload ?? g.allowUpload,
             }
           : g
@@ -1226,6 +1233,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         expiresAt,
         shareMode: options?.shareMode,
         snapshotAssetIds: options?.snapshotAssetIds,
+        allowDownload: options?.allowDownload,
+        allowComment: options?.allowComment,
         allowUpload: options?.allowUpload,
       }
 

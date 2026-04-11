@@ -26,12 +26,9 @@ export type PrincipalRef =
   | { type: 'domain'; domainId: string }
 
 export type AccessProfileId =
-  | 'owner'
-  | 'manage'
-  | 'edit'
-  | 'add'
-  | 'comment'
-  | 'view'
+  | 'viewer'
+  | 'editor'
+  | 'manager'
   | 'link-viewer'
 
 export type Permission =
@@ -67,6 +64,10 @@ export type Grant = {
   shareMode?: ShareMode
   /** Frozen asset IDs for snapshot mode — overrides collection.assetIds for this recipient */
   snapshotAssetIds?: string[]
+  /** Recipient can download source files */
+  allowDownload?: boolean
+  /** Recipient can leave feedback, annotations, timecoded notes */
+  allowComment?: boolean
   /** Dropbox mode — recipient can upload deliveries into this collection */
   allowUpload?: boolean
   /** Review link ID — when set, this grant is accessible via /nextgen/review/[linkId] */
@@ -107,12 +108,9 @@ export const RELEASE_DOMAINS: ReleaseDomain[] = buildReleaseDomains()
 const SEED_LABELS = buildLabels()
 
 export const TEMPLATE_RANK: Record<AccessProfileId, number> = {
-  owner: 7,
-  manage: 6,
-  edit: 5,
-  add: 4,
-  comment: 3,
-  view: 2,
+  manager: 4,
+  editor: 3,
+  viewer: 2,
   'link-viewer': 1,
 }
 
@@ -146,7 +144,7 @@ export function getPermissionsForProfile(
 
 export function roleGroupOptions(roleGroups: RoleGroup[]) {
   return roleGroups
-    .filter((rg) => rg.id !== 'owner' && rg.id !== 'link-viewer')
+    .filter((rg) => rg.id !== 'link-viewer')
     .map((rg) => ({ value: rg.id, label: rg.name }))
 }
 
@@ -327,7 +325,7 @@ export function resolveAccess(
   if (user.isAdmin) {
     return {
       hasAccess: true,
-      effectiveProfile: 'owner',
+      effectiveProfile: 'manager',
       canEdit: true,
       permissions: [...ALL_PERMISSIONS],
       source: 'admin',

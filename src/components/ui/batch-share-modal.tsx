@@ -24,7 +24,7 @@ interface BatchShareModalProps {
 
 function roleOptions(allowedProfiles: AccessProfileId[], allProfiles: ReturnType<typeof useAccess>['roleGroups']) {
   return allowedProfiles
-    .filter((profileId) => profileId !== 'owner' && profileId !== 'link-viewer')
+    .filter((profileId) => profileId !== 'link-viewer')
     .map((profileId) => ({
       value: profileId,
       label: getRoleGroup(allProfiles, profileId)?.name ?? profileId,
@@ -41,7 +41,7 @@ export function BatchShareModal({
   const { roleGroups, getResourceGrants, createGrant } = useAccess()
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
-  const [addAsRole, setAddAsRole] = useState<AccessProfileId>('view')
+  const [addAsRole, setAddAsRole] = useState<AccessProfileId>('viewer')
   const [appliedRecipients, setAppliedRecipients] = useState<string[]>([])
   const dropdownRef = useRef<HTMLDivElement>(null)
 
