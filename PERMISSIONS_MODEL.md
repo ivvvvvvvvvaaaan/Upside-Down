@@ -166,13 +166,21 @@ Additive capabilities toggled per-grant. Every modifier adds something — none 
 | **Include new** | Automatically receives newly added assets | Live collection sharing. |
 | **Version locked** | Sees only a specific version, not newer ones | Vendor reference (locked to LC3). |
 
-The share dialog pre-selects smart defaults based on context:
-- **Share with a person** → Viewer + Download + Comment (the common "review this" action)
-- **Share with a vendor** → Viewer + Download + Upload (turnover: get plates, send deliveries)
-- **Release to a domain** → Viewer + Download (broadcast, no feedback loop)
-- **Executive preview** → Viewer only (no download, no comment)
+The share dialog shows a single dropdown with named presets. Each preset maps to a level + modifiers. An "Customize" link reveals the raw toggles for power users.
 
-Coordinators can always override the defaults. Modifiers appear as `+N` in the UI. Hovering shows the full list.
+| Preset | Level | Modifiers | When shown |
+|--------|-------|-----------|------------|
+| **Reviewer** | Viewer | +Download +Comment | Default for sharing with a person |
+| **Preview only** | Viewer | — | Sensitive content, executives |
+| **Turnover** | Viewer | +Download +Upload | Sharing with a vendor/external team |
+| **Collaborator** | Editor | +Download | Cross-department working access |
+| **Full access** | Manager | +Download | Department coordinator handoff |
+
+The coordinator picks one preset. One click, done. If they need something unusual (Viewer + Comment but no Download), they click "Customize" and toggle individually.
+
+For releases: always Viewer + Download. No preset picker — releases are broadcast, not targeted.
+
+Modifiers appear as `+N` in the access tab UI. Hovering shows the full list.
 
 ### Guest links
 
