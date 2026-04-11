@@ -86,35 +86,19 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
     return getResourceGrants(assetId).filter(g => isGrantActive(g))
   }, [assetId, getResourceGrants])
 
-  // Collection-mediated access — exclude principals already shown in domain/inherited section
+  // Collection-mediated access — every collection containing this asset, with its grants
   const sharedCollections = useMemo(() => {
-    const coveredPrincipals = new Set<string>()
-    for (const { grant } of inheritedGrants) {
-      const p = grant.principal
-      coveredPrincipals.add(resolvePrincipalKey(p))
-      if (p.type === 'team') {
-        const team = TEAMS.find(t => t.id === p.teamId)
-        if (team) {
-          for (const uid of team.memberUserIds) coveredPrincipals.add(`user:${uid}`)
-        }
-      }
-    }
-
     const results: { collection: { id: string; name: string }; grants: Grant[] }[] = []
     for (const collection of collections) {
       const collectionAssetIds = new Set(resolveCollectionAssetIds(collection))
       const hasAsset = Array.from(assetVariants).some(v => collectionAssetIds.has(v))
       if (!hasAsset) continue
-      const grants = getResourceGrants(collection.id)
-        .filter(g => isGrantActive(g))
-        .filter(g => {
-          const key = resolvePrincipalKey(g.principal)
-          return !coveredPrincipals.has(key)
-        })
+      const grants = getResourceGrants(collection.id).filter(g => isGrantActive(g))
+      if (grants.length === 0) continue
       results.push({ collection: { id: collection.id, name: collection.name }, grants })
     }
     return results
-  }, [collections, assetVariants, getResourceGrants, inheritedGrants])
+  }, [collections, assetVariants, getResourceGrants])
 
   const hasAnything = domainEntries.length > 0 || directGrants.length > 0 || sharedCollections.length > 0
   const canManageAccess = isAdmin || (resourceRef ? canShare(resourceRef) : false)
