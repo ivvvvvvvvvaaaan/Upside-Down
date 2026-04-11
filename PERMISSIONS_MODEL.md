@@ -144,58 +144,63 @@ Revoked grants are NOT deleted -- they're marked as revoked with a timestamp. Th
 
 ## Permission levels
 
-Three base levels aligned 1:1 to CAM. One guest tier for external access.
+Three base levels aligned 1:1 to CAM. Modifiers are strictly additive. One guest tier for external access.
 
 | Level | CAM mapping | Capabilities | When to use |
 |-------|-------------|-------------|-------------|
-| **Viewer** | Viewer | Open, preview, download, comment | Default for shares, releases, reviews. The "read + react" level. |
-| **Editor** | Editor | Everything in Viewer + write, modify metadata, reshare, upload | Cross-department collaborators, anyone trusted to change content. |
-| **Manager** | Manager | Everything in Editor + delete, change permissions, add/remove people | Department coordinators managing their workspace and access. |
+| **Viewer** | Viewer | Open, preview | Minimum access. See the content. |
+| **Editor** | Editor | Everything in Viewer + write, modify metadata, reshare | Trusted collaborators who change content. |
+| **Manager** | Manager | Everything in Editor + delete, change permissions, add/remove people | Department coordinators. |
 
 Admin is a platform role (CAM-level), not a per-resource grant. Admins inherit Manager on all resources plus audit log access, project lockdown, and block capability.
 
-Comment is bundled into Viewer because reviewers — the most common share recipients — always need to comment. A viewer who cannot comment has no reason to be in the tool.
-
 ### Grant modifiers
 
-Orthogonal to the base level. Set per-grant, not per-level:
+Additive capabilities toggled per-grant. Every modifier adds something — none subtract.
 
 | Modifier | Effect | Typical use |
 |----------|--------|-------------|
-| **No download** | Preview-only, no file download | Executive preview of sensitive cuts |
-| **Upload** | Can add new files to the collection | Vendor turnover (Viewer + Upload) |
-| **Include new** | Automatically receives newly added assets | Live collection sharing |
-| **Version locked** | Sees only a specific version, not newer ones | Vendor reference (locked to LC3) |
+| **Download** | Can download source files | Anyone who needs offline access. Off by default for Viewer. |
+| **Comment** | Can leave feedback, annotations, timecoded notes | Reviewers, directors, stakeholders. |
+| **Upload** | Can add new files to the collection | Vendor turnover deliveries. |
+| **Include new** | Automatically receives newly added assets | Live collection sharing. |
+| **Version locked** | Sees only a specific version, not newer ones | Vendor reference (locked to LC3). |
 
-Modifiers appear as `+N` in the UI. Hovering shows the full list.
+The share dialog pre-selects smart defaults based on context:
+- **Share with a person** → Viewer + Download + Comment (the common "review this" action)
+- **Share with a vendor** → Viewer + Download + Upload (turnover: get plates, send deliveries)
+- **Release to a domain** → Viewer + Download (broadcast, no feedback loop)
+- **Executive preview** → Viewer only (no download, no comment)
+
+Coordinators can always override the defaults. Modifiers appear as `+N` in the UI. Hovering shows the full list.
 
 ### Guest links
 
-External reviewers without an account. Fixed capabilities: preview-only (no download unless toggled), optional passcode, expiration date, watermark. Not a level — a separate access path with its own controls.
+External reviewers without an account. Preview-only by default (Viewer, no modifiers). Optional toggles: allow download, allow comment, passcode, expiration date, watermark.
 
 ### CAM alignment
 
 | Our level | CAM level | Notes |
 |-----------|-----------|-------|
-| Viewer | Viewer | 1:1. Includes comment — CAM Viewer + comment capability. |
+| Viewer | Viewer | 1:1. Pure preview. No divergence. |
 | Editor | Editor | 1:1 |
 | Manager | Manager | 1:1 |
 | (Admin) | Admin | Platform role, not a per-resource grant |
 
-Three levels, three CAM mappings, zero translation logic. The only nuance: CAM Viewer may not include comment by default — we request the comment capability as part of our CAM integration. This is a capability request, not a model divergence.
+True 1:1. No capability bolted onto a CAM level that doesn't naturally belong there. Download and Comment are modifiers that exist at the app level, orthogonal to CAM's identity model.
 
 ### Scenario resolution
 
-| Scenario | Level | Modifiers |
-|----------|-------|-----------|
-| S1: Reviewer (David reviews cuts) | Viewer | — |
-| S2: Vendor turnover (Framestore) | Viewer | +Upload |
-| S3: Executive preview (Alex) | Viewer | +No download |
-| S4: Coordinator (Sarah manages VFX) | Manager | — |
-| S5: Cross-dept collaborator (Maria in VFX) | Editor | — |
-| S6: Marketing receives release | Viewer | — |
-| S7: Admin investigation | (Admin) | Platform role |
-| S8: Per-grant modifiers | Any level | +Upload, +Include new, +Version locked, +No download |
+| Scenario | Level | Modifiers | Smart default? |
+|----------|-------|-----------|----------------|
+| S1: Reviewer (David reviews cuts) | Viewer | +Download +Comment | Yes (share with person) |
+| S2: Vendor turnover (Framestore) | Viewer | +Download +Upload | Yes (share with vendor) |
+| S3: Executive preview (Alex) | Viewer | — | Yes (no defaults) |
+| S4: Coordinator (Sarah manages VFX) | Manager | — | N/A (department role) |
+| S5: Cross-dept collaborator (Maria in VFX) | Editor | — | — |
+| S6: Marketing receives release | Viewer | +Download | Yes (release default) |
+| S7: Admin investigation | (Admin) | — | Platform role |
+| S8: Per-grant modifiers | Any level | Any combination | Override defaults |
 
 ---
 
