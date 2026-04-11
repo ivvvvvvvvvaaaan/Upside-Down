@@ -36,7 +36,7 @@ Feb 28  Released to all Studio        (at Final Cut)
 
 This answers: "When did Marketing first get access to this cut?" and "Which version was current when we released to Studio Post?" -- critical for leak investigation and compliance.
 
-Each domain release grant stores the version number that was current at release time. The domain sees all versions from that point forward (not earlier). This means Studio Post sees LC3, FC, EMF but not LC1-2. Studio VFX sees everything from LC1. The progressive widening is baked into the grant model.
+The release history is informational -- it records when each domain was first included. But all domains with access see all versions of the cut. Studio Post, released at LC3, can browse back to LC1 if they want. The cut is one thing; the version history is shared context, not a security boundary. If earlier versions needed to be hidden, they wouldn't be in the same cut -- they'd be a different creative stream (S5).
 
 ## Revocation
 
