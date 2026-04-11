@@ -122,22 +122,32 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
       )}
 
       {/* Collection-mediated access — each in its own card */}
-      {sharedCollections.map(({ collection, grants }) => (
+      {sharedCollections.map(({ collection, grants }) => {
+        const sharedByGrant = grants[0]
+        const sharedByName = sharedByGrant ? (PERSONAS.find(p => p.id === sharedByGrant.grantedByUserId)?.name ?? null) : null
+        return (
         <div key={collection.id} className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-body-0-regular text-foreground">
-              {collection.id === currentCollectionId
-                ? <span className="text-foreground-dim">This collection</span>
-                : <a href={`/nextgen/collections/${collection.id}`} className="text-foreground-dim hover:text-foreground transition-colors">{collection.name}</a>
-              }
-            </span>
-            {collection.id !== currentCollectionId && getCollection(collection.id) && (
-              <button
-                onClick={() => removeAssetFromCollection(collection.id, assetId)}
-                className="text-body-0-regular text-foreground-dim hover:text-foreground transition-colors"
-              >
-                Remove
-              </button>
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-body-0-regular text-foreground">
+                {collection.id === currentCollectionId
+                  ? <span className="text-foreground-dim">This collection</span>
+                  : <a href={`/nextgen/collections/${collection.id}`} className="text-foreground-dim hover:text-foreground transition-colors">{collection.name}</a>
+                }
+              </span>
+              {collection.id !== currentCollectionId && getCollection(collection.id) && (
+                <button
+                  onClick={() => removeAssetFromCollection(collection.id, assetId)}
+                  className="text-body-0-regular text-foreground-dim hover:text-foreground transition-colors"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            {sharedByName && (
+              <span className="text-label-0-regular text-foreground-subtle">
+                Shared by {sharedByName}{sharedByGrant?.grantedAt ? ` on ${sharedByGrant.grantedAt}` : ''}
+              </span>
             )}
           </div>
           {grants.map(grant => {
@@ -153,7 +163,8 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
             )
           })}
         </div>
-      ))}
+        )
+      })}
 
       {/* Direct grants on this asset */}
       {directGrants.length > 0 && (
@@ -161,14 +172,16 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
           <span className="text-body-0-regular text-foreground-dim">Shared directly</span>
           {directGrants.map(grant => {
             const name = resolvePrincipalName(grant.principal)
+            const grantSharedBy = PERSONAS.find(p => p.id === grant.grantedByUserId)?.name
             return (
-              <div key={grant.id} className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <PrincipalAvatar principal={grant.principal} />
-                  <span className="text-body-0-regular text-foreground truncate">{name}</span>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <CapabilityLabels grant={grant} roleGroups={roleGroups} />
+              <div key={grant.id} className="space-y-0.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <PrincipalAvatar principal={grant.principal} />
+                    <span className="text-body-0-regular text-foreground truncate">{name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <CapabilityLabels grant={grant} roleGroups={roleGroups} />
                   <button
                     onClick={() => revokeGrant(grant.id)}
                     className="text-body-0-regular text-foreground-system-error hover:opacity-80 transition-colors"
@@ -176,6 +189,12 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
                     Revoke
                   </button>
                 </div>
+              </div>
+              {grantSharedBy && (
+                <span className="text-label-0-regular text-foreground-subtle pl-8">
+                  by {grantSharedBy}{grant.grantedAt ? ` on ${grant.grantedAt}` : ''}
+                </span>
+              )}
               </div>
             )
           })}
