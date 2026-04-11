@@ -168,16 +168,15 @@ Additive capabilities toggled per-grant. Every modifier adds something — none 
 
 The share dialog shows a single dropdown with named presets. Each preset maps to a level + modifiers. An "Customize" link reveals the raw toggles for power users.
 
-| Preset | Level | Modifiers | When to pick |
+| Preset | Level | Modifiers | When shown |
 |--------|-------|-----------|------------|
-| **Reviewer** | Viewer | +Download +Comment | "Look at this and tell me what you think" |
-| **Preview only** | Viewer | — | "Eyes only — no download, no feedback" |
-| **Turnover** | Viewer | +Download +Upload | "Here's the brief, send back deliveries" |
-| **Collaborator** | Editor | +Download | "Work on this with me" |
+| **Reviewer** | Viewer | +Download +Comment | Default for sharing with a person |
+| **Preview only** | Viewer | — | Sensitive content, executives |
+| **Turnover** | Viewer | +Download +Upload | Sharing with a vendor/external team |
+| **Collaborator** | Editor | +Download | Cross-department working access |
+| **Full access** | Manager | +Download | Department coordinator handoff |
 
-Four presets cover the four sharing intentions. The coordinator picks one. One click.
-
-For Manager-level access or unusual combinations (Viewer + Comment, no Download), click "Customize" to reveal raw level + modifier toggles.
+The coordinator picks one preset. One click, done. If they need something unusual (Viewer + Comment but no Download), they click "Customize" and toggle individually.
 
 For releases: always Viewer + Download. No preset picker — releases are broadcast, not targeted.
 
