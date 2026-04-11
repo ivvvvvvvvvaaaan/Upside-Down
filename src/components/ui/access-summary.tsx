@@ -5,6 +5,7 @@ import { Button } from './button'
 import { Avatar } from './avatar'
 import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
 import { AccessModal } from './access-modal'
+import { GrantBadge } from './grant-badge'
 import { useAccess, usePersona } from '@/hooks'
 import { useShareAsCollection } from '@/hooks/useShareAsCollection'
 import type { ResourceRef, Grant } from '@/lib/grants'
@@ -82,10 +83,8 @@ export function AccessSummary({
                   )}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-x-1.5 justify-end flex-shrink-0 text-body-0-regular text-foreground-dim">
-                <span>{row.roleLabel}</span>
-                {row.grant.allowUpload && <span>Uploads</span>}
-                {row.grant.shareMode === 'live' && <span>Include new</span>}
+              <div className="flex-shrink-0">
+                <GrantBadge grant={row.grant} roleGroups={roleGroups} />
               </div>
             </div>
           ))}

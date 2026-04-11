@@ -22,6 +22,10 @@ export { PersonaProvider, usePersona } from './usePersona'
 
 export { AccessProvider, useAccess } from './useAccess'
 export { useAccessCascades } from './useAccessCascades'
+export { useBlocks } from './useBlocks'
+export { useProjectLock } from './useProjectLock'
+export type { ProjectLockInfo } from './useProjectLock'
+export { useGuestLinks } from './useGuestLinks'
 
 export { useMobilePanel } from './useMobilePanel'
 

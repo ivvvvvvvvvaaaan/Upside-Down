@@ -10,7 +10,6 @@ import type { DomainId, ProductionDomainId } from '@/components/department/types
 import {
   DEFAULT_GRANTS,
   DEFAULT_ROLE_GROUPS,
-  DEFAULT_BLOCKS,
   PROJECT_RESOURCE,
   getResourceGrants as getResourceGrantsFromList,
   buildSharesCreatedByMe,
@@ -50,11 +49,15 @@ import {
 import { getAssetIdsForFolder } from '@/lib/data-client'
 import { resolveCollectionAssetIds } from '@/lib/data'
 import { getStoredSmartCollectionById } from '@/lib/smart-collection-store'
-import { SCENARIO, buildGuestLinks, SENSITIVE_ASSET_IDS } from '@/lib/scenario'
+import { SCENARIO, SENSITIVE_ASSET_IDS } from '@/lib/scenario'
 import type { GuestLinkSeed } from '@/lib/scenario'
 import { domainConfigs } from '@/lib/domain-configs'
 import { logAuditEvent, getAuditLog, type AuditEventType, type AuditEvent } from '@/lib/audit-log'
 import { resolveCollectionAssets } from '@/lib/data'
+import { useBlocks } from './useBlocks'
+import { useProjectLock } from './useProjectLock'
+import type { ProjectLockInfo } from './useProjectLock'
+import { useGuestLinks } from './useGuestLinks'
 
 export type AccessRequest = {
   id: string
@@ -99,11 +102,7 @@ export type UserAccessSummary = {
   totalUniqueAssets: number
 }
 
-export type ProjectLockInfo = {
-  locked: boolean
-  lockedBy?: string
-  lockedAt?: string
-}
+export type { ProjectLockInfo } from './useProjectLock'
 
 export type VisibilityState = 'accessible' | 'discoverable' | 'hidden'
 export type DiscoveryResourceType = 'asset' | 'cut'
@@ -278,6 +277,18 @@ function getPrincipalKey(principal: PrincipalRef): string {
   return `domain:${principal.domainId}`
 }
 
+function principalMatchesUser(principal: PrincipalRef, userId: string): boolean {
+  if (principal.type === 'user') return principal.userId === userId
+  if (principal.type === 'team') return isUserInTeam(userId, principal.teamId)
+  if (principal.type === 'domain') {
+    const domain = RELEASE_DOMAINS.find(d => d.id === principal.domainId)
+    if (!domain) return false
+    if (domain.granteeUserIds?.includes(userId)) return true
+    return domain.granteeTeamIds.some(teamId => isUserInTeam(userId, teamId))
+  }
+  return false
+}
+
 function buildSnapshotVersionNote(previousAssetIds?: string[], nextAssetIds?: string[]): string | undefined {
   const previous = new Set(previousAssetIds ?? [])
   const next = new Set(nextAssetIds ?? [])
@@ -341,11 +352,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       return next
     })
   }, [])
-  const [guestLinks, setGuestLinks] = useState<GuestLinkSeed[]>(() => buildGuestLinks())
-  const getResourceGuestLinks = useCallback((resourceId: string) =>
-    guestLinks.filter(l => l.resource.id === resourceId),
-  [guestLinks])
-
   const [roleGroups, setRoleGroupsState] = useState<RoleGroup[]>(() => structuredClone(DEFAULT_ROLE_GROUPS))
   const setRoleGroups: typeof setRoleGroupsState = useCallback((action) => {
     setRoleGroupsState((prev) => {
@@ -366,17 +372,10 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     },
   }))
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([])
-  const [blocks, setBlocks] = useState<Block[]>(DEFAULT_BLOCKS)
 
-  // Project lockdown state (Phase 4)
-  const [projectLockInfo, setProjectLockInfo] = useState<ProjectLockInfo>(() => {
-    if (typeof window === 'undefined') return { locked: false }
-    try {
-      const stored = localStorage.getItem('project-locked')
-      if (stored) return JSON.parse(stored) as ProjectLockInfo
-    } catch { /* fall through */ }
-    return { locked: false }
-  })
+  // Extracted hooks
+  const { blocks, blockUser, unblockUser, isBlocked: isBlockedFn, getBlocksForResource } = useBlocks(activePersona)
+  const { projectLocked, projectLockInfo, lockProject: lockProjectBase, unlockProject } = useProjectLock(activePersona)
 
   useEffect(() => {
     setGrantsState(loadStoredGrants())
@@ -466,6 +465,18 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   // Resolve user for grant operations
   const userId = activePersona?.id ?? null
   const grantorUserId = activePersona?.id ?? 'system-admin'
+
+  function resolveAuditTarget(principal: PrincipalRef): { name: string; userId?: string } {
+    if (principal.type === 'user') {
+      const persona = PERSONAS.find(p => p.id === principal.userId)
+      return { name: persona?.name ?? principal.userId, userId: principal.userId }
+    }
+    if (principal.type === 'team') {
+      return { name: getTeamById(principal.teamId)?.name ?? principal.teamId }
+    }
+    return { name: principal.domainId }
+  }
+
   const getResourceDomainId = useCallback((resourceId: string): DomainId | undefined => {
     return nodeToDomain.get(resourceId) ?? ROOT_ID_TO_DOMAIN[resourceId]
   }, [nodeToDomain])
@@ -477,6 +488,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }), [roleGroups])
 
   const collectionById = useMemo(() => new Map(collections.map((collection) => [collection.id, collection])), [collections])
+
+  const activeGrants = useMemo(() => grants.filter(isGrantActive), [grants])
 
   const toPermissionSet = useCallback((
     permissions: Permission[],
@@ -589,9 +602,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
     if (!activePersona || !userId) return accessById
 
-    const matchingCollectionGrants = grants.filter((grant) =>
+    const matchingCollectionGrants = activeGrants.filter((grant) =>
       grant.resource.type === 'collection' &&
-      isGrantActive(grant) &&
       (
         (grant.principal.type === 'user' && grant.principal.userId === userId) ||
         (grant.principal.type === 'team' && isUserInTeam(userId, grant.principal.teamId))
@@ -643,7 +655,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
 
     return accessById
-  }, [activePersona, userId, grants, roleGroups, collectionById, getResourceDomainId, toPermissionSet, blocks])
+  }, [activePersona, userId, activeGrants, grants, roleGroups, collectionById, getResourceDomainId, toPermissionSet, blocks])
 
   const visibleCollections = useMemo(() => {
     return collections.filter((collection) => collectionAccessById.has(collection.id))
@@ -773,6 +785,24 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return getEffectivePermissionSet(resource, currentGrants).permissions.includes('edit-acl')
   }, [activePersona, userId, grants, getEffectivePermissionSet])
 
+  // Guest links hook (depends on canShareFn and canEditAclFn)
+  const {
+    guestLinks,
+    getResourceGuestLinks,
+    canManageGuestLink,
+    createGuestLink,
+    updateGuestLink,
+    revokeGuestLink,
+    restoreResourceGuestLinks,
+    expireAllGuestLinks,
+  } = useGuestLinks(grants, canShareFn, canEditAclFn, activePersona)
+
+  // Wrap lockProject to also expire all guest links (cross-hook side effect)
+  const lockProject = useCallback(() => {
+    lockProjectBase()
+    expireAllGuestLinks()
+  }, [lockProjectBase, expireAllGuestLinks])
+
   const requestAccess = useCallback((resourceId: string, resourceRef: ResourceRef) => {
     if (!userId) return
     setAccessRequests((prev) => {
@@ -824,7 +854,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     if (!userId) return false
 
     // Project lockdown: deny access for non-production users
-    if (projectLockInfo.locked) {
+    if (projectLocked) {
       const personaDomainId = activePersona.domainId
       if (!personaDomainId) return false
       const domainConfig = domainConfigs[personaDomainId]
@@ -850,7 +880,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [
     activePersona,
     userId,
-    projectLockInfo.locked,
+    projectLocked,
     nodeById,
     nodeToDomain,
     nodeToParent,
@@ -1138,25 +1168,16 @@ export function AccessProvider({ children }: { children: ReactNode }) {
           previousVersionId: latestExistingGrant?.id,
         }
 
-        let auditTargetName = 'unknown'
-        let auditTargetUserId: string | undefined
-        if (principal.type === 'user') {
-          auditTargetName = PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
-          auditTargetUserId = principal.userId
-        } else if (principal.type === 'team') {
-          auditTargetName = getTeamById(principal.teamId)?.name ?? principal.teamId
-        } else if (principal.type === 'domain') {
-          auditTargetName = principal.domainId
-        }
+        const auditTarget = resolveAuditTarget(principal)
         logAuditEvent({
           type: 'grant',
           actorId: grantorUserId,
           actorName: activePersona?.name ?? 'System',
-          targetUserId: auditTargetUserId,
-          targetUserName: auditTargetName,
+          targetUserId: auditTarget.userId,
+          targetUserName: auditTarget.name,
           resourceId: resource.id,
           resourceLabel: getResourceLabel(resource.id),
-          details: `Re-shared snapshot v${version} with ${auditTargetName} on ${getResourceLabel(resource.id)}`,
+          details: `Re-shared snapshot v${version} with ${auditTarget.name} on ${getResourceLabel(resource.id)}`,
         })
 
         return [...next, newGrant]
@@ -1209,25 +1230,16 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       }
 
       // Audit log
-      let auditTargetName = 'unknown'
-      let auditTargetUserId: string | undefined
-      if (principal.type === 'user') {
-        auditTargetName = PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
-        auditTargetUserId = principal.userId
-      } else if (principal.type === 'team') {
-        auditTargetName = getTeamById(principal.teamId)?.name ?? principal.teamId
-      } else if (principal.type === 'domain') {
-        auditTargetName = principal.domainId
-      }
+      const auditTarget = resolveAuditTarget(principal)
       logAuditEvent({
         type: 'grant',
         actorId: grantorUserId,
         actorName: activePersona?.name ?? 'System',
-        targetUserId: auditTargetUserId,
-        targetUserName: auditTargetName,
+        targetUserId: auditTarget.userId,
+        targetUserName: auditTarget.name,
         resourceId: resource.id,
         resourceLabel: getResourceLabel(resource.id),
-        details: `Granted ${profileId} access to ${auditTargetName} on ${getResourceLabel(resource.id)}`,
+        details: `Granted ${profileId} access to ${auditTarget.name} on ${getResourceLabel(resource.id)}`,
       })
 
       return [...prev, newGrant]
@@ -1249,26 +1261,16 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       const grant = prev.find((candidate) => candidate.id === grantId && isGrantActive(candidate))
       if (!grant || !canManageGrantForState(grant, prev)) return prev
 
-      let revokeTargetName = 'unknown'
-      let revokeTargetUserId: string | undefined
-      const revokePrincipal = grant.principal
-      if (revokePrincipal.type === 'user') {
-        revokeTargetName = PERSONAS.find(p => p.id === revokePrincipal.userId)?.name ?? revokePrincipal.userId
-        revokeTargetUserId = revokePrincipal.userId
-      } else if (revokePrincipal.type === 'team') {
-        revokeTargetName = getTeamById(revokePrincipal.teamId)?.name ?? revokePrincipal.teamId
-      } else if (revokePrincipal.type === 'domain') {
-        revokeTargetName = revokePrincipal.domainId
-      }
+      const auditTarget = resolveAuditTarget(grant.principal)
       logAuditEvent({
         type: 'revoke',
         actorId: grantorUserId,
         actorName: activePersona?.name ?? 'System',
-        targetUserId: revokeTargetUserId,
-        targetUserName: revokeTargetName,
+        targetUserId: auditTarget.userId,
+        targetUserName: auditTarget.name,
         resourceId: grant.resource.id,
         resourceLabel: getResourceLabel(grant.resource.id),
-        details: `Revoked access for ${revokeTargetName} on ${getResourceLabel(grant.resource.id)}`,
+        details: `Revoked access for ${auditTarget.name} on ${getResourceLabel(grant.resource.id)}`,
       })
 
       return prev.map((candidate) =>
@@ -1304,64 +1306,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     setAccessRequests((prev) => prev.filter((request) => request.requestedByUserId !== targetUserId))
   }, [canEditAclFn, setGrants])
 
-  const canManageGuestLinkForState = useCallback((link: GuestLinkSeed, currentGrants: Grant[]): boolean => {
-    if (!activePersona) return true
-    const resource: ResourceRef = {
-      id: link.resource.id,
-      type: link.resource.type as ResourceType,
-      domainId: link.resource.domainId,
-    }
-    if (canEditAclFn(resource, currentGrants)) return true
-    return Boolean(userId && canShareFn(resource, currentGrants) && link.createdByUserId === userId)
-  }, [activePersona, canEditAclFn, canShareFn, userId])
-
-  const canManageGuestLink = useCallback((link: GuestLinkSeed): boolean => {
-    return canManageGuestLinkForState(link, grants)
-  }, [canManageGuestLinkForState, grants])
-
-  const createGuestLink = useCallback((resource: ResourceRef, options: { allowDownload: boolean; passcode: boolean; expiresInDays: number }) => {
-    if (!activePersona) return
-    if (!canShareFn(resource, grants)) return
-
-    const now = new Date()
-    const expires = new Date(now)
-    expires.setDate(expires.getDate() + options.expiresInDays)
-    const link: GuestLinkSeed = {
-      id: `link-${Date.now()}`,
-      resource: { id: resource.id, type: resource.type, domainId: resource.domainId },
-      label: resource.id,
-      permissions: options.allowDownload ? ['open', 'download'] : ['open'],
-      templateId: 'link-viewer',
-      createdByUserId: activePersona.id,
-      createdAt: now.toISOString().slice(0, 10),
-      expiresAt: expires.toISOString().slice(0, 10),
-      allowDownload: options.allowDownload,
-      passcode: options.passcode,
-    }
-    setGuestLinks((prev) => [...prev, link])
-    return link
-  }, [activePersona, grants, canShareFn])
-
-  const updateGuestLink = useCallback((linkId: string, updates: Partial<Pick<GuestLinkSeed, 'allowDownload' | 'passcode' | 'expiresAt'>>) => {
-    setGuestLinks((prev) => prev.map((link) => {
-      if (link.id !== linkId) return link
-      if (!canManageGuestLinkForState(link, grants)) return link
-      return {
-        ...link,
-        ...updates,
-        permissions: (updates.allowDownload ?? link.allowDownload) ? ['open' as const, 'download' as const] : ['open' as const],
-      }
-    }))
-  }, [grants, canManageGuestLinkForState])
-
-  const revokeGuestLink = useCallback((linkId: string) => {
-    setGuestLinks((prev) => {
-      const link = prev.find((candidate) => candidate.id === linkId)
-      if (!link || !canManageGuestLinkForState(link, grants)) return prev
-      return prev.filter((candidate) => candidate.id !== linkId)
-    })
-  }, [grants, canManageGuestLinkForState])
-
   const updateGrantProfile = useCallback((grantId: string, profileId: AccessProfileId) => {
     setGrants((prev) => {
       const grant = prev.find((candidate) => candidate.id === grantId)
@@ -1391,29 +1335,22 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     })
   }, [setGrants])
 
-  const restoreResourceGuestLinks = useCallback((resourceId: string, snapshot: GuestLinkSeed[]) => {
-    setGuestLinks((prev) => {
-      const otherLinks = prev.filter((link) => link.resource.id !== resourceId)
-      return [...otherLinks, ...snapshot]
-    })
-  }, [])
-
   // Inherited grants display — walks parent chain for folder inheritance
   const getInheritedGrants = useCallback((resourceId: string) => {
     const inherited: { grant: Grant; fromResourceId: string; fromResourceName: string }[] = []
     let parentId = nodeToParent.get(resourceId)
     while (parentId) {
-      const parentGrants = grants.filter(g => g.resource.id === parentId && isGrantActive(g))
-      if (parentGrants.length > 0) {
+      const parentActiveGrants = activeGrants.filter(g => g.resource.id === parentId)
+      if (parentActiveGrants.length > 0) {
         const name = findNodeInTree(fileTree, parentId)?.name ?? parentId
-        for (const g of parentGrants) {
+        for (const g of parentActiveGrants) {
           inherited.push({ grant: g, fromResourceId: parentId, fromResourceName: name })
         }
       }
       parentId = nodeToParent.get(parentId)
     }
     return inherited
-  }, [nodeToParent, grants, fileTree])
+  }, [nodeToParent, activeGrants, fileTree])
 
   // Collection ripple grants display — finds grants that reach an asset through collection membership
   const getCollectionRippleGrants = useCallback((assetId: string) => {
@@ -1423,13 +1360,13 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       if (!canAccess(collection.id)) continue
       const collectionAssetIds = new Set(resolveCollectionAssetIds(collection).flatMap(getAssetIdVariants))
       if (!collectionAssetIds.has(assetId)) continue
-      const collGrants = grants.filter(g => g.resource.id === collection.id && isGrantActive(g))
+      const collGrants = activeGrants.filter(g => g.resource.id === collection.id)
       for (const g of collGrants) {
         rippled.push({ grant: g, fromResourceId: collection.id, fromResourceName: collection.name })
       }
     }
     return rippled
-  }, [collections, grants, canAccess])
+  }, [collections, activeGrants, canAccess])
 
   // Compute remaining access paths for a user on a resource, excluding specific grants
   const getRemainingAccessPaths = useCallback((
@@ -1441,10 +1378,10 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     const excludeSet = new Set(excludeGrantIds ?? [])
 
     // Filter grants: active and not in the exclude list
-    const activeGrants = grants.filter(g => isGrantActive(g) && !excludeSet.has(g.id))
+    const remainingGrants = activeGrants.filter(g => !excludeSet.has(g.id))
 
     // 1. Direct user grants on this resource
-    const directUserGrants = activeGrants.filter(
+    const directUserGrants = remainingGrants.filter(
       g => g.resource.id === resourceId &&
         g.principal.type === 'user' &&
         g.principal.userId === targetUserId,
@@ -1458,7 +1395,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
 
     // 2. Team grants on this resource where user is a member
-    const teamGrants = activeGrants.filter(
+    const teamGrants = remainingGrants.filter(
       g => g.resource.id === resourceId &&
         g.principal.type === 'team' &&
         isUserInTeam(targetUserId, g.principal.teamId),
@@ -1474,7 +1411,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
 
     // 3. Domain/release grants on this resource where user is in the domain
-    for (const g of activeGrants) {
+    for (const g of remainingGrants) {
       if (g.resource.id !== resourceId) continue
       const p = g.principal
       if (p.type !== 'domain') continue
@@ -1494,20 +1431,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     let parentId = nodeToParent.get(resourceId)
     while (parentId) {
       const currentParentId = parentId
-      const parentGrants = activeGrants.filter(g => g.resource.id === currentParentId)
+      const parentGrants = remainingGrants.filter(g => g.resource.id === currentParentId)
       for (const g of parentGrants) {
-        const p = g.principal
-        let matchesUser = false
-        if (p.type === 'user') matchesUser = p.userId === targetUserId
-        else if (p.type === 'team') matchesUser = isUserInTeam(targetUserId, p.teamId)
-        else if (p.type === 'domain') {
-          const domain = RELEASE_DOMAINS.find(d => d.id === p.domainId)
-          matchesUser = !!(domain && (
-            (domain.granteeUserIds?.includes(targetUserId)) ||
-            domain.granteeTeamIds.some(teamId => isUserInTeam(targetUserId, teamId))
-          ))
-        }
-        if (matchesUser) {
+        if (principalMatchesUser(g.principal, targetUserId)) {
           const node = findNodeInTree(fileTree, currentParentId)
           paths.push({
             path: 'folder',
@@ -1523,12 +1449,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     if (resourceDomain) {
       const domainRootId = DOMAIN_FOLDER_MAP[resourceDomain]?.id
       if (domainRootId && domainRootId !== resourceId) {
-        const domainRootGrants = activeGrants.filter(g => g.resource.id === domainRootId)
+        const domainRootGrants = remainingGrants.filter(g => g.resource.id === domainRootId)
         for (const g of domainRootGrants) {
-          const matchesUser =
-            (g.principal.type === 'user' && g.principal.userId === targetUserId) ||
-            (g.principal.type === 'team' && isUserInTeam(targetUserId, g.principal.teamId))
-          if (matchesUser) {
+          if (principalMatchesUser(g.principal, targetUserId)) {
             const domainMeta = DOMAIN_FOLDER_MAP[resourceDomain]
             paths.push({
               path: 'department',
@@ -1543,12 +1466,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     for (const collection of collections) {
       const collectionAssetIds = new Set(resolveCollectionAssetIds(collection).flatMap(getAssetIdVariants))
       if (!collectionAssetIds.has(resourceId)) continue
-      const collGrants = activeGrants.filter(g => g.resource.id === collection.id)
+      const collGrants = remainingGrants.filter(g => g.resource.id === collection.id)
       for (const g of collGrants) {
-        const matchesUser =
-          (g.principal.type === 'user' && g.principal.userId === targetUserId) ||
-          (g.principal.type === 'team' && isUserInTeam(targetUserId, g.principal.teamId))
-        if (matchesUser) {
+        if (principalMatchesUser(g.principal, targetUserId)) {
           paths.push({
             path: 'collection',
             source: collection.name,
@@ -1558,7 +1478,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
 
     return paths
-  }, [grants, nodeToParent, nodeToDomain, fileTree, collections])
+  }, [activeGrants, nodeToParent, nodeToDomain, fileTree, collections])
 
   const getVersionHistory = useCallback((resourceId: string, principalKey?: string): { version: number; note: string; date: string; grantId: string }[] => {
     return grants
@@ -1582,59 +1502,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       .sort((a, b) => b.version - a.version)
   }, [grants])
 
-  const blockUser = useCallback((targetUserId: string, resourceId: string, reason?: string) => {
-    if (!userId) return
-    const targetPersona = PERSONAS.find(p => p.id === targetUserId)
-    logAuditEvent({
-      type: 'block',
-      actorId: userId,
-      actorName: activePersona?.name ?? 'System',
-      targetUserId,
-      targetUserName: targetPersona?.name ?? targetUserId,
-      resourceId,
-      resourceLabel: getResourceLabel(resourceId),
-      details: `Blocked ${targetPersona?.name ?? targetUserId} on ${getResourceLabel(resourceId)}${reason ? `: ${reason}` : ''}`,
-    })
-    setBlocks((prev) => {
-      if (prev.some(b => b.userId === targetUserId && b.resourceId === resourceId)) return prev
-      return [...prev, {
-        id: `block-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        userId: targetUserId,
-        resourceId,
-        blockedByUserId: userId,
-        blockedAt: new Date().toISOString(),
-        reason,
-      }]
-    })
-  }, [userId, activePersona])
-
-  const unblockUser = useCallback((targetUserId: string, resourceId: string) => {
-    const targetPersona = PERSONAS.find(p => p.id === targetUserId)
-    logAuditEvent({
-      type: 'unblock',
-      actorId: userId ?? 'system',
-      actorName: activePersona?.name ?? 'System',
-      targetUserId,
-      targetUserName: targetPersona?.name ?? targetUserId,
-      resourceId,
-      resourceLabel: getResourceLabel(resourceId),
-      details: `Unblocked ${targetPersona?.name ?? targetUserId} on ${getResourceLabel(resourceId)}`,
-    })
-    setBlocks((prev) => prev.filter(b => !(b.userId === targetUserId && b.resourceId === resourceId)))
-  }, [userId, activePersona])
-
-  const isBlockedFn = useCallback((targetUserId: string, resourceId: string): boolean => {
-    return blocks.some(b => b.userId === targetUserId && b.resourceId === resourceId)
-  }, [blocks])
-
-  const getBlocksForResource = useCallback((resourceId: string): Block[] => {
-    return blocks.filter(b => b.resourceId === resourceId)
-  }, [blocks])
-
   // --- Per-user access summary (Phase 3) ---
   const getUserAccessSummary = useCallback((targetUserId: string): UserAccessSummary => {
     const uniqueAssetIds = new Set<string>()
-    const activeGrants = grants.filter(g => isGrantActive(g))
 
     // 1. Department assets: check which domains the user belongs to
     const targetPersona = PERSONAS.find(p => p.id === targetUserId)
@@ -1725,49 +1595,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       domainReleases,
       totalUniqueAssets: uniqueAssetIds.size,
     }
-  }, [grants, roleGroups, collectionById])
-
-  // --- Project lockdown (Phase 4) ---
-  const lockProject = useCallback(() => {
-    const info: ProjectLockInfo = {
-      locked: true,
-      lockedBy: activePersona?.name ?? 'Unknown',
-      lockedAt: new Date().toISOString().slice(0, 10),
-    }
-    setProjectLockInfo(info)
-    try { localStorage.setItem('project-locked', JSON.stringify(info)) } catch { /* ignore */ }
-
-    logAuditEvent({
-      type: 'lock',
-      actorId: activePersona?.id ?? 'system',
-      actorName: activePersona?.name ?? 'System',
-      resourceId: 'project',
-      resourceLabel: 'Project',
-      details: `Project locked by ${activePersona?.name ?? 'System'}`,
-    })
-
-    // Expire all guest links
-    const today = new Date().toISOString().slice(0, 10)
-    setGuestLinks(prev => prev.map(link => ({
-      ...link,
-      expiresAt: today,
-    })))
-  }, [activePersona])
-
-  const unlockProject = useCallback(() => {
-    const info: ProjectLockInfo = { locked: false }
-    setProjectLockInfo(info)
-    try { localStorage.setItem('project-locked', JSON.stringify(info)) } catch { /* ignore */ }
-
-    logAuditEvent({
-      type: 'unlock',
-      actorId: activePersona?.id ?? 'system',
-      actorName: activePersona?.name ?? 'System',
-      resourceId: 'project',
-      resourceLabel: 'Project',
-      details: `Project unlocked by ${activePersona?.name ?? 'System'}`,
-    })
-  }, [activePersona])
+  }, [activeGrants, roleGroups, collectionById])
 
   // --- Collection governance (Phase 5) ---
   const getCollectionsContainingDepartmentAssets = useCallback((domainId: DomainId): DepartmentCollectionInfo[] => {
@@ -1787,8 +1615,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       if (deptAssets.length === 0) continue
 
       // Count shares on this collection
-      const sharedWithCount = grants.filter(
-        g => g.resource.id === collection.id && isGrantActive(g)
+      const sharedWithCount = activeGrants.filter(
+        g => g.resource.id === collection.id
       ).length
 
       results.push({
@@ -1801,7 +1629,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
 
     return results
-  }, [collections, grants])
+  }, [collections, activeGrants])
 
   // --- Audit log accessor (Phase 6) ---
   const getAuditLogFn = useCallback((filters?: { resourceId?: string; userId?: string; type?: AuditEventType }) => {
@@ -1870,7 +1698,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     isBlocked: isBlockedFn,
     getBlocksForResource,
     getUserAccessSummary,
-    projectLocked: projectLockInfo.locked,
+    projectLocked,
     projectLockInfo,
     lockProject,
     unlockProject,
@@ -1938,6 +1766,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     isBlockedFn,
     getBlocksForResource,
     getUserAccessSummary,
+    projectLocked,
     projectLockInfo,
     lockProject,
     unlockProject,

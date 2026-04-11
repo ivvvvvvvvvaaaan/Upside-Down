@@ -12,7 +12,8 @@ import { CreativeReviewCard } from './creative-review-card'
 import type { Asset, DomainId } from '@/lib/data'
 import { getAssetIdVariants } from '@/lib/data'
 import type { ResourceRef, Grant, RoleGroup, PrincipalRef } from '@/lib/grants'
-import { isGrantActive, profileLabel, RELEASE_DOMAINS } from '@/lib/grants'
+import { isGrantActive, RELEASE_DOMAINS } from '@/lib/grants'
+import { GrantBadge } from './grant-badge'
 import { useAccess, useFileTree, usePersona, useSmartCollections, useCuts } from '@/hooks'
 import { getCutStageLabel } from '@/lib/cuts'
 import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
@@ -50,25 +51,10 @@ function resolvePrincipalKey(principal: Grant['principal']): string {
   return `domain:${principal.domainId}`
 }
 
-function grantCapabilities(grant: Grant, roleGroups: RoleGroup[]): string[] {
-  const caps: string[] = []
-  caps.push(profileLabel(grant.templateId, roleGroups))
-  if (grant.shareMode === 'live') caps.push('Include new')
-  if (grant.permissions.includes('upload') && grant.templateId !== 'add' && grant.templateId !== 'edit' && grant.templateId !== 'manage') caps.push('Upload')
-  return caps
-}
-
-
 function CapabilityLabels({ grant, roleGroups }: { grant: Grant; roleGroups: RoleGroup[] }) {
-  const caps = grantCapabilities(grant, roleGroups)
   return (
-    <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 justify-end flex-shrink-0">
-      {grant.lockedToVersion != null && (
-        <span className="text-body-0-regular text-foreground-subtle">Locked to v{grant.lockedToVersion}</span>
-      )}
-      {caps.map(cap => (
-        <span key={cap} className="text-body-0-regular text-foreground-dim">{cap}</span>
-      ))}
+    <div className="flex-shrink-0">
+      <GrantBadge grant={grant} roleGroups={roleGroups} />
     </div>
   )
 }

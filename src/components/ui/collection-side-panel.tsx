@@ -6,6 +6,7 @@ import { Button } from './button'
 import { Avatar } from './avatar'
 import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
 import { PrincipalAvatar } from './principal-avatar'
+import { GrantBadge } from './grant-badge'
 import { Dropdown, DropdownMenuItem, DropdownMenuDivider } from './dropdown'
 import { Modal } from './modal'
 import { Card } from './card'
@@ -20,7 +21,6 @@ import type { Collection } from '@/lib/collection-types'
 import { isSmart, isCollection, getCollectionCapabilities } from '@/lib/collection-types'
 import { getCollectionReviewSummary } from '@/lib/review-notes'
 import type { ResourceRef, Grant } from '@/lib/grants'
-import { profileLabel } from '@/lib/grants'
 import type { AssetFilter, SmartCollectionGroupBy } from '@/lib/data'
 import type { RelatedCollections } from '@/hooks/useSmartCollections'
 import { useAccess, usePersona } from '@/hooks'
@@ -325,10 +325,8 @@ export function CollectionSidePanel({
                           <PrincipalAvatar principal={grant.principal} />
                           <span className="text-body-0-regular text-foreground truncate">{name}</span>
                         </div>
-                        <div className="flex flex-wrap gap-x-1.5 justify-end flex-shrink-0">
-                          <span className="text-body-0-regular text-foreground-dim">{profileLabel(grant.templateId, roleGroups)}</span>
-                          {grant.allowUpload && <span className="text-body-0-regular text-foreground-dim">Uploads</span>}
-                          {grant.shareMode === 'live' && <span className="text-body-0-regular text-foreground-dim">Include new</span>}
+                        <div className="flex-shrink-0">
+                          <GrantBadge grant={grant} roleGroups={roleGroups} />
                         </div>
                       </div>
                     )
