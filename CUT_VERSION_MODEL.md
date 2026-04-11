@@ -23,7 +23,20 @@ Versions are ordered entries in the cut's history. Each has: version number, sta
 
 ## Release
 
-Releasing a cut to a domain releases the cut entity. The domain sees the latest version. As new versions are published, the domain sees those too. The release widens over time (LC1 released to Studio VFX only, then FC released to all Studio domains) -- each release is a separate grant on the same cut entity.
+Releasing a cut to a domain releases the cut entity. The domain sees the latest version. As new versions are published, the domain sees those too.
+
+The release history is the provenance trail. Each release is timestamped and tied to the version that was current at release time:
+
+```
+Feb 8   Released to Studio VFX        (at Locked Cut 1)
+Feb 13  Released to Studio Creative   (at Locked Cut 2)
+Feb 18  Released to Studio Post       (at Locked Cut 3)
+Feb 28  Released to all Studio        (at Final Cut)
+```
+
+This answers: "When did Marketing first get access to this cut?" and "Which version was current when we released to Studio Post?" -- critical for leak investigation and compliance.
+
+Each domain release grant stores the version number that was current at release time. The domain sees all versions from that point forward (not earlier). This means Studio Post sees LC3, FC, EMF but not LC1-2. Studio VFX sees everything from LC1. The progressive widening is baked into the grant model.
 
 ## Revocation
 
