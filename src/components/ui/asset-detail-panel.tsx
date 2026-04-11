@@ -93,7 +93,9 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
       const collectionAssetIds = new Set(resolveCollectionAssetIds(collection))
       const hasAsset = Array.from(assetVariants).some(v => collectionAssetIds.has(v))
       if (!hasAsset) continue
-      const grants = getResourceGrants(collection.id).filter(g => isGrantActive(g))
+      const grants = getResourceGrants(collection.id)
+        .filter(g => isGrantActive(g))
+        .filter(g => !(g.principal.type === 'user' && g.principal.userId === g.grantedByUserId))
       if (grants.length === 0) continue
       results.push({ collection: { id: collection.id, name: collection.name }, grants })
     }
