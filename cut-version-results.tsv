@@ -1,2 +1,3 @@
 commit	score	status	description
 baseline	2.0	kept	No versioning. Each cut version is independent. All 8 scenarios work but UX is tedious. 5 entries for one cut.
+2c0e9d6	4.1	kept	Model C: cut is one entity. Share the cut, not the version. S3 via snapshot, S4 acceptable (all-or-nothing revoke).
