@@ -30,6 +30,7 @@ import type { RelatedAssetGroup } from '@/lib/context-relationships'
 import { Modal } from './modal'
 import { Avatar } from './avatar'
 import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
+import { PrincipalAvatar } from './principal-avatar'
 import type { AssetTag } from '@/lib/data'
 
 function resolvePrincipalName(principal: Grant['principal']): string {
@@ -57,14 +58,6 @@ function grantCapabilities(grant: Grant, roleGroups: RoleGroup[]): string[] {
   return caps
 }
 
-function PrincipalAvatar({ principal, name }: { principal: PrincipalRef; name: string }) {
-  if (principal.type === 'team') {
-    const team = TEAMS.find(t => t.id === principal.teamId)
-    return <DepartmentAvatar domainId={team?.domainId} size="compact" />
-  }
-  if (principal.type === 'domain') return <ReleaseDomainAvatar size="compact" />
-  return <Avatar name={name} size="compact" />
-}
 
 function CapabilityLabels({ grant, roleGroups }: { grant: Grant; roleGroups: RoleGroup[] }) {
   const caps = grantCapabilities(grant, roleGroups)
@@ -150,7 +143,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
           {domainEntries.map(({ grant, name }) => (
             <div key={grant.id} className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                <PrincipalAvatar principal={grant.principal} name={name} />
+                <PrincipalAvatar principal={grant.principal} />
                 <span className="text-body-0-regular text-foreground truncate">{name}</span>
               </div>
               <CapabilityLabels grant={grant} roleGroups={roleGroups} />
@@ -183,7 +176,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
             return (
               <div key={grant.id} className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <PrincipalAvatar principal={grant.principal} name={name} />
+                  <PrincipalAvatar principal={grant.principal} />
                   <span className="text-body-0-regular text-foreground truncate">{name}</span>
                 </div>
                 <CapabilityLabels grant={grant} roleGroups={roleGroups} />
@@ -202,7 +195,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
             return (
               <div key={grant.id} className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <PrincipalAvatar principal={grant.principal} name={name} />
+                  <PrincipalAvatar principal={grant.principal} />
                   <span className="text-body-0-regular text-foreground truncate">{name}</span>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">

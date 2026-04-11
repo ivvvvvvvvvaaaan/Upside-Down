@@ -5,6 +5,7 @@ import { X, LayoutGrid, MoreVertical, Pencil, Trash2, MapPin, Film, Zap, Folder,
 import { Button } from './button'
 import { Avatar } from './avatar'
 import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
+import { PrincipalAvatar } from './principal-avatar'
 import { Dropdown, DropdownMenuItem, DropdownMenuDivider } from './dropdown'
 import { Modal } from './modal'
 import { Card } from './card'
@@ -46,15 +47,6 @@ function resolvePrincipalName(principal: Grant['principal']): string {
   if (principal.type === 'user') return PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
   if (principal.type === 'team') return TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
   return principal.domainId
-}
-
-function PrincipalAvatar({ principal, name }: { principal: Grant['principal']; name: string }) {
-  if (principal.type === 'team') {
-    const team = TEAMS.find(t => t.id === principal.teamId)
-    return <DepartmentAvatar domainId={team?.domainId} size="compact" />
-  }
-  if (principal.type === 'domain') return <ReleaseDomainAvatar size="compact" />
-  return <Avatar name={name} size="compact" />
 }
 
 function MetaField({ label, value }: { label: string; value: string }) {
@@ -330,7 +322,7 @@ export function CollectionSidePanel({
                     return (
                       <div key={grant.id} className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
-                          <PrincipalAvatar principal={grant.principal} name={name} />
+                          <PrincipalAvatar principal={grant.principal} />
                           <span className="text-body-0-regular text-foreground truncate">{name}</span>
                         </div>
                         <div className="flex flex-wrap gap-x-1.5 justify-end flex-shrink-0">

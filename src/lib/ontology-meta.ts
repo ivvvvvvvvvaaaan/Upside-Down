@@ -70,6 +70,12 @@ const CHARACTERS: Record<string, CharacterMeta> = {
     role: 'recurring',
     episodes: ['EP302', 'EP305', 'EP306'],
   },
+  'AR-24': {
+    bio: 'Apex Racing\'s 2024 challenger — the car itself, designated AR-24. A carbon fiber protagonist in its own right, tagged by the AI pipeline whenever the livery is identifiable on screen regardless of driver.',
+    role: 'recurring',
+    episodes: ['EP301', 'EP302', 'EP303', 'EP305', 'EP306'],
+    notes: 'AI identifies car by livery pattern, not driver. Multiple hero car builds exist — confirm which chassis for continuity.',
+  },
 }
 
 // ---------------------------------------------------------------------------

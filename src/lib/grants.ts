@@ -427,7 +427,7 @@ export type GrantView = {
   principalLabel: string
 }
 
-function principalLabel(principal: PrincipalRef): string {
+export function principalLabel(principal: PrincipalRef): string {
   if (principal.type === 'user') {
     const user = PERSONAS.find((persona) => persona.id === principal.userId)
     return user?.name ?? principal.userId
