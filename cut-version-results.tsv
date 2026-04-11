@@ -1,0 +1,2 @@
+commit	score	status	description
+baseline	2.0	kept	No versioning. Each cut version is independent. All 8 scenarios work but UX is tedious. 5 entries for one cut.
