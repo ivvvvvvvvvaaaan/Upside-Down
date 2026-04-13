@@ -775,6 +775,11 @@ export function buildGrants(): Grant[] {
       const previousId = grantsByResourcePrincipal.get(versionKey)
       if (previousId && share.version && share.version > 1) {
         grant.previousVersionId = previousId
+        // Revoke the previous version grant
+        const prev = grants.find(g => g.id === previousId)
+        if (prev && !prev.revokedAt) {
+          prev.revokedAt = share.date
+        }
       }
       grantsByResourcePrincipal.set(versionKey, grant.id)
       grants.push(grant)
