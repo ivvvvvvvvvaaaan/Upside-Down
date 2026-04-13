@@ -625,21 +625,29 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         ? grant.snapshotAssetIds
         : resolveCollectionAssetIds(collection)
 
-      for (const assetId of assetIds) {
-        const sharerAssetAccess = resolveAccess(
-          grant.grantedByUserId,
-          assetId,
-          grants,
-          roleGroups,
-          getResourceDomainId(assetId),
-          blocks,
-        )
-        if (!sharerAssetAccess.permissions.includes('open')) continue
+      // For folder-bound collections, the sharer's access to the folder
+      // implies access to all contents — skip per-asset sharer verification
+      const isFolderBound = !!collection.boundFolderId
 
-        const cappedPermissions = grantedPermissions.filter((permission) =>
-          sharerAssetAccess.permissions.includes(permission),
-        )
-        if (cappedPermissions.length === 0) continue
+      for (const assetId of assetIds) {
+        let cappedPermissions = grantedPermissions
+
+        if (!isFolderBound) {
+          const sharerAssetAccess = resolveAccess(
+            grant.grantedByUserId,
+            assetId,
+            grants,
+            roleGroups,
+            getResourceDomainId(assetId),
+            blocks,
+          )
+          if (!sharerAssetAccess.permissions.includes('open')) continue
+
+          cappedPermissions = grantedPermissions.filter((permission) =>
+            sharerAssetAccess.permissions.includes(permission),
+          )
+          if (cappedPermissions.length === 0) continue
+        }
 
         for (const variantId of getAssetIdVariants(assetId)) {
           const current = accessById.get(variantId) ?? EMPTY_PERMISSION_SET
