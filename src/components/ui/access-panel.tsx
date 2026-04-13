@@ -12,6 +12,7 @@ import { MenuSelect } from './menu-select'
 import { Avatar } from './avatar'
 import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
 import { Toggle } from './switch'
+import { GrantBadge } from './grant-badge'
 import { Modal } from './modal'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import { Checkbox } from './checkbox'
@@ -83,9 +84,10 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
 }) {
   const isOwner = grant.templateId === 'manager'
   const principal = grant.principal
+  const canEdit = !readOnly && !isOwner
 
   return (
-    <div className="py-1">
+    <div className="py-1 space-y-1">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           {principal.type === 'user' ? (
@@ -110,58 +112,94 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {grant.allowUpload && (
-            <span className="text-label-0-regular text-foreground-dim mr-1">Uploads</span>
-          )}
-          {grant.shareMode !== undefined && (
-            <Tooltip label="Show new assets as they're added">
-              <label className="flex items-center gap-1.5 mr-1 text-label-0-regular text-foreground-dim cursor-pointer">
-                <span>Include new</span>
-                <Info className="w-3 h-3" />
-                <Toggle
-                  checked={grant.shareMode === 'live'}
-                  onChange={() => { if (onUpdateShareMode) onUpdateShareMode(grant.id, grant.shareMode === 'live' ? 'snapshot' : 'live') }}
-                  aria-label="Include new"
-                />
-              </label>
-            </Tooltip>
-          )}
-          {isOwner ? (
-            <span className="text-body-0-regular text-foreground-dim px-2 py-1">
-              {getRoleGroup(roleGroups, grant.templateId ?? 'manager')?.name ?? 'Manager'}
-            </span>
-          ) : !readOnly && onUpdateProfile ? (
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {canEdit && onUpdateProfile ? (() => {
+            const roleName = getRoleGroup(roleGroups, grant.templateId ?? 'viewer')?.name ?? 'Viewer'
+            let extras = 0
+            if (grant.allowUpload) extras++
+            if (grant.shareMode === 'live') extras++
+            if (grant.allowDownload) extras++
+            if (grant.allowComment) extras++
+            if (grant.lockedToVersion != null) extras++
+            const label = extras > 0 ? `${roleName} +${extras}` : roleName
+            return (
             <RoleSelect
               options={roleGroupOptions(roleGroups)}
               value={grant.templateId ?? 'viewer'}
               onChange={(value) => onUpdateProfile(grant.id, value as AccessProfileId)}
+              triggerLabel={label}
+              footer={(grant.allowUpload !== undefined || grant.shareMode !== undefined) ? (
+                <div className="space-y-2">
+                  {grant.allowUpload !== undefined && (
+                    <label className="flex items-center justify-between text-body-0-regular text-foreground-dim cursor-pointer">
+                      Uploads
+                      <Toggle
+                        checked={!!grant.allowUpload}
+                        onChange={() => {}}
+                        aria-label="Uploads"
+                      />
+                    </label>
+                  )}
+                  {grant.shareMode !== undefined && (
+                    <label className="flex items-center justify-between text-body-0-regular text-foreground-dim cursor-pointer">
+                      Include new
+                      <Toggle
+                        checked={grant.shareMode === 'live'}
+                        onChange={() => { if (onUpdateShareMode) onUpdateShareMode(grant.id, grant.shareMode === 'live' ? 'snapshot' : 'live') }}
+                        aria-label="Include new"
+                      />
+                    </label>
+                  )}
+                </div>
+              ) : undefined}
             />
-          ) : (
-            <RoleSelect
-              options={roleGroupOptions(roleGroups)}
-              value={grant.templateId ?? 'viewer'}
-              onChange={() => {}}
-              disabled
-            />
+            )
+          })() : (
+            <GrantBadge grant={grant} roleGroups={roleGroups} />
           )}
-          {!readOnly && grant.resource.type === 'collection' && grant.shareMode === 'snapshot' && onReshareSnapshot && (
-            <Button variant="secondary" compact onClick={() => onReshareSnapshot(grant)}>
-              Re-share
-            </Button>
-          )}
-          {!readOnly && !isOwner && onRemove && (
+          {canEdit && onRemove && (
             <Button variant="secondary" compact onClick={() => onRemove(grant.id)}>
               Remove
             </Button>
           )}
         </div>
       </div>
-      {versionLabel && (
-        <div className="pl-9">
-          <span className="text-label-0-regular text-foreground-subtle">{versionLabel}</span>
-        </div>
-      )}
+      {(() => {
+        const lines: { label: string; value?: string }[] = []
+        if (grant.allowDownload) lines.push({ label: 'Download', value: 'Yes' })
+        if (grant.allowComment) lines.push({ label: 'Comment', value: 'Yes' })
+        if (grant.allowUpload) lines.push({ label: 'Upload', value: 'Yes' })
+        if (grant.shareMode) lines.push({ label: 'New assets', value: grant.shareMode === 'live' ? 'Included' : 'Snapshot' })
+        if (grant.lockedToVersion != null) lines.push({ label: 'Version', value: `Locked to v${grant.lockedToVersion}` })
+        const showReshare = canEdit && grant.resource.type === 'collection' && grant.shareMode === 'snapshot' && onReshareSnapshot
+        if (lines.length === 0 && !versionLabel) return null
+        return (
+          <div className="pl-8 space-y-0.5">
+            {lines.map((line) => (
+              <div key={line.label} className="flex justify-between text-label-0-regular gap-4">
+                <span className="text-foreground-dim whitespace-nowrap">{line.label}</span>
+                <span className="text-foreground-subtle text-right truncate">{line.value}</span>
+              </div>
+            ))}
+            {versionLabel && (
+              <div className="flex justify-between text-label-0-regular gap-4">
+                <span className="text-foreground-dim whitespace-nowrap">Version</span>
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className="text-foreground-subtle truncate">{versionLabel}</span>
+                  {showReshare && (
+                    <button
+                      onClick={() => onReshareSnapshot!(grant)}
+                      className="text-foreground-dim hover:text-foreground transition-colors whitespace-nowrap"
+                    >
+                      Re-share
+                    </button>
+                  )}
+                </span>
+              </div>
+            )}
+          </div>
+        )
+      })()}
       {principal.type === 'team' && members && members.length > 0 && expanded && (
         <div className="relative ml-1">
           {members.map((member, i) => (

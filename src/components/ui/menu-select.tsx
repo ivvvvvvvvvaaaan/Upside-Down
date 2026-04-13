@@ -46,6 +46,10 @@ export interface MenuSelectProps {
   width?: 'auto' | 'sm' | 'md' | 'lg' | 'xl'
   disabled?: boolean
   className?: string
+  /** Content rendered below the options inside the dropdown */
+  footer?: React.ReactNode
+  /** Override the trigger label (defaults to selected option's label) */
+  triggerLabel?: string
 }
 
 export function MenuSelect({
@@ -57,9 +61,11 @@ export function MenuSelect({
   width = 'lg',
   disabled = false,
   className,
+  footer,
+  triggerLabel,
 }: MenuSelectProps) {
   const [open, setOpen] = useState(false)
-  const selectedLabel = options.find(o => o.value === value)?.label ?? value
+  const selectedLabel = triggerLabel ?? options.find(o => o.value === value)?.label ?? value
   const hasDescriptions = options.some(o => o.description)
   const triggerClasses = cn(
     size === 'compact' ? 'text-label-0-regular min-w-28' : 'text-body-0-regular min-w-36',
@@ -124,6 +130,12 @@ export function MenuSelect({
             </div>
           )
         })}
+        {footer && (
+          <>
+            <div className="my-1 border-t border-border-dim" />
+            <div className="px-3 py-2">{footer}</div>
+          </>
+        )}
       </div>
     </Dropdown>
   )

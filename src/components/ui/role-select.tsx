@@ -9,12 +9,14 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
   manager: 'Full control, manage people and permissions',
 }
 
-export function RoleSelect({ value, options, onChange, size = 'compact', disabled }: {
+export function RoleSelect({ value, options, onChange, size = 'compact', disabled, footer, triggerLabel }: {
   value: string
   options: MenuSelectOption[]
   onChange: (value: string) => void
   size?: 'compact' | 'standard'
   disabled?: boolean
+  footer?: React.ReactNode
+  triggerLabel?: string
 }) {
   const enrichedOptions: MenuSelectOption[] = options.map(o => ({
     ...o,
@@ -28,6 +30,8 @@ export function RoleSelect({ value, options, onChange, size = 'compact', disable
       onChange={onChange}
       size={size}
       disabled={disabled}
+      footer={footer}
+      triggerLabel={triggerLabel}
     />
   )
 }
