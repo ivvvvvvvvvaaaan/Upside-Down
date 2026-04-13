@@ -271,6 +271,35 @@ function mergePermissionSets(...sets: EffectivePermissionSet[]): EffectivePermis
   }
 }
 
+/**
+ * Pure function: resolve a user's access to a resource by checking direct grants
+ * AND walking up the folder parent chain. This is the single access resolution path.
+ */
+function resolveAccessWithInheritance(
+  userId: string,
+  resourceId: string,
+  currentGrants: Grant[],
+  roleGroups: RoleGroup[],
+  nodeToParent: Map<string, string>,
+  nodeToDomain: Map<string, DomainId>,
+  blocks: Block[],
+  getResourceDomainIdFn: (id: string) => DomainId | undefined,
+): Permission[] {
+  const direct = resolveAccess(userId, resourceId, currentGrants, roleGroups, getResourceDomainIdFn(resourceId), blocks)
+  const allPermissions = [...direct.permissions]
+
+  let parentId = nodeToParent.get(resourceId)
+  while (parentId) {
+    const parentAccess = resolveAccess(userId, parentId, currentGrants, roleGroups, nodeToDomain.get(parentId), blocks)
+    for (const perm of parentAccess.permissions) {
+      if (!allPermissions.includes(perm)) allPermissions.push(perm)
+    }
+    parentId = nodeToParent.get(parentId)
+  }
+
+  return allPermissions
+}
+
 function getPrincipalKey(principal: PrincipalRef): string {
   if (principal.type === 'user') return `user:${principal.userId}`
   if (principal.type === 'team') return `team:${principal.teamId}`
@@ -625,29 +654,23 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         ? grant.snapshotAssetIds
         : resolveCollectionAssetIds(collection)
 
-      // For folder-bound collections, the sharer's access to the folder
-      // implies access to all contents — skip per-asset sharer verification
-      const isFolderBound = !!collection.boundFolderId
-
       for (const assetId of assetIds) {
-        let cappedPermissions = grantedPermissions
+        const sharerPermissions = resolveAccessWithInheritance(
+          grant.grantedByUserId,
+          assetId,
+          grants,
+          roleGroups,
+          nodeToParent,
+          nodeToDomain,
+          blocks,
+          getResourceDomainId,
+        )
+        if (!sharerPermissions.includes('open')) continue
 
-        if (!isFolderBound) {
-          const sharerAssetAccess = resolveAccess(
-            grant.grantedByUserId,
-            assetId,
-            grants,
-            roleGroups,
-            getResourceDomainId(assetId),
-            blocks,
-          )
-          if (!sharerAssetAccess.permissions.includes('open')) continue
-
-          cappedPermissions = grantedPermissions.filter((permission) =>
-            sharerAssetAccess.permissions.includes(permission),
-          )
-          if (cappedPermissions.length === 0) continue
-        }
+        const cappedPermissions = grantedPermissions.filter((permission) =>
+          sharerPermissions.includes(permission),
+        )
+        if (cappedPermissions.length === 0) continue
 
         for (const variantId of getAssetIdVariants(assetId)) {
           const current = accessById.get(variantId) ?? EMPTY_PERMISSION_SET
@@ -663,7 +686,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
 
     return accessById
-  }, [activePersona, userId, activeGrants, grants, roleGroups, collectionById, getResourceDomainId, toPermissionSet, blocks])
+  }, [activePersona, userId, activeGrants, grants, roleGroups, collectionById, getResourceDomainId, toPermissionSet, blocks, nodeToParent, nodeToDomain])
 
   const visibleCollections = useMemo(() => {
     return collections.filter((collection) => collectionAccessById.has(collection.id))
