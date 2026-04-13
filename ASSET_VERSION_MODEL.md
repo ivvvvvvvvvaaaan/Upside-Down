@@ -92,7 +92,7 @@ A cut is assembled from constituent assets (plates, comps, audio). The cut detai
 3. If the constituent asset's collection has "include version history" on, the supervisor can switch versions.
 4. If not, they see the latest version only.
 
-The cut is the navigation context. The asset is where versioning lives. No re-assembly, no per-constituent toggling within the cut. The supervisor navigates to the asset, switches versions there, and compares.
+The cut is the navigation context. The asset is where versioning lives. At minimum, the supervisor navigates to the constituent asset and switches versions there. Whether per-constituent version toggling within the cut itself (e.g., "swap the comp on shot 3 without leaving the cut view") is also supported is an open question -- see below.
 
 **Coordinator workflow for this use case:** Create a collection containing the cuts AND the relevant source assets. Share with "include version history" on. The supervisor can review the cut, drill into any constituent, and flip through versions with the director.
 
@@ -140,3 +140,4 @@ None of these systems provide version-aware access control at the collection lev
 2. **Ungrouping:** Can a user break a version group? If `comp_v002` was wrongly grouped, can they remove it?
 3. **Cross-department version groups:** Can assets from different departments be versions of the same logical asset? (Probably not -- version groups should be within a single workspace.)
 4. **Version deletion:** If `comp_v002` is deleted from the workspace, does the version group renumber (v001, v003) or maintain gaps? Maintaining gaps preserves the "v3" badge meaning.
+5. **Per-constituent version toggling in cuts:** Can a reviewer swap a constituent's version directly within the cut view (e.g., "show me this cut but with the previous comp on shot 3")? This would be more powerful than navigating away to the asset -- but implies dynamic re-assembly or at least a split-view experience within the cut. Needs UX exploration.
