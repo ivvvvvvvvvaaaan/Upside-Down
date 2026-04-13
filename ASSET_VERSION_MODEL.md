@@ -44,14 +44,13 @@ The `versionGroupId` is intrinsic to the asset. It travels with the asset wherev
 
 ## Versioning vs. cuts
 
-Cuts and assets both have version histories, but with different mechanics:
+Cuts and assets both have version histories. The ingestion process is the same -- a file is uploaded/ingested and the system detects or establishes a version relationship. The differences are structural, not mechanical:
 
 | | Cuts | Assets |
 |---|---|---|
-| **How versions are created** | Editor explicitly publishes ("Publish LC3") | File ingested with version pattern or manually stacked |
-| **Version stages** | Named stages (locked-cut, final-cut, emf) | Sequential numbers only (v001, v002, v003) |
+| **Version labeling** | Named stages (locked-cut, final-cut, emf) | Sequential numbers only (v001, v002, v003) |
 | **Constituents** | A cut is assembled from source assets | An asset is a single file |
-| **Who creates versions** | Editor | Artist, DIT, pipeline, vendor |
+| **Ingestion** | Same upload/ingest process | Same upload/ingest process |
 
 The version access model is the same for both: in-department sees all, outside-department sees what the collection provides.
 
