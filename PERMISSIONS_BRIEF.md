@@ -1,8 +1,8 @@
 # Permission Levels: Research Brief
 
-*April 10, 2026. Input for autoresearch loop on permission role structure.*
+*April 10, 2026*
 
-*Status: First pass resolved in PERMISSIONS_MODEL.md. May be revisited in future autoresearch runs.*
+*Status: First pass resolved in PERMISSIONS_MODEL.md. May be revisited.*
 
 ## The problem
 

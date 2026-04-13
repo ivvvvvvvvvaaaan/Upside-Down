@@ -1,8 +1,8 @@
 # Cut Versioning: Research Brief
 
-*April 10, 2026. Input for autoresearch loop on cut version model.*
+*April 10, 2026*
 
-*Status: First pass resolved in CUT_VERSION_MODEL.md. May be revisited in future autoresearch runs.*
+*Status: First pass resolved in CUT_VERSION_MODEL.md. May be revisited.*
 
 ## The problem
 

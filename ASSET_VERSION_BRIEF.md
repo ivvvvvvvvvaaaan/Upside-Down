@@ -1,6 +1,8 @@
 # Asset Versioning: Research Brief
 
-*Early draft -- April 13, 2026. This brief is exploratory and will change as open questions are resolved.*
+*April 13, 2026*
+
+*Status: Early draft. Open questions unresolved.*
 
 ## Model: versioning is intrinsic to the asset, not the folder
 
