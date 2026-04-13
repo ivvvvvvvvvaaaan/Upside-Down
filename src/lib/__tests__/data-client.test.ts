@@ -49,6 +49,28 @@ describe('getSharePreviewImages', () => {
     expect(previews).toEqual(expected)
   })
 
+  it('resolves vendor folder-backed collections from their actual folder contents', () => {
+    const collections = buildSeedCollections()
+    const collection = collections.find((entry) => entry.id === 'coll-vfx-vendor-drop')
+
+    expect(collection).toBeDefined()
+    expect(resolveCollectionAssetIds(collection!)).toEqual([
+      'ws-vfx-fs-brief',
+      'ws-vfx-fs-del-1',
+      'ws-vfx-fs-del-2',
+      'ws-vfx-fs-del-3',
+      'ws-vfx-fs-notes',
+    ])
+
+    const previews = getSharePreviewImages({
+      resourceId: 'coll-vfx-vendor-drop',
+      resourceType: 'collection',
+    }, collections)
+
+    expect(previews).toBeDefined()
+    expect(previews!.length).toBeGreaterThan(0)
+  })
+
   it('builds deterministic previews for snapshotted smart collection shares', () => {
     const entry = buildSharesReceivedByMe('editorial-artist', DEFAULT_GRANTS)
       .find((share) => share.resourceId === 'coll-smart-finals-shared')

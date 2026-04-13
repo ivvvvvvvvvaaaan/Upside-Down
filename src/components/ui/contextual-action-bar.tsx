@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { X } from 'lucide-react'
+import { Download, X } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
@@ -25,6 +25,13 @@ interface ContextualActionBarProps {
   selectedEntities: SelectionEntity[]
   /** Callback to clear the selection */
   onClearSelection: () => void
+  /** Optional download action for the current selection */
+  downloadAction?: {
+    enabled: boolean
+    onClick: () => void
+    reason?: string
+    label?: string
+  }
   /** Left-side metadata shown when nothing is selected (e.g. "3 assets") */
   metadata?: string
   className?: string
@@ -33,6 +40,7 @@ interface ContextualActionBarProps {
 export function ContextualActionBar({
   selectedEntities,
   onClearSelection,
+  downloadAction,
   metadata,
   className,
 }: ContextualActionBarProps) {
@@ -88,6 +96,19 @@ export function ContextualActionBar({
 
             <div className="flex-1" />
 
+            {downloadAction && (
+              <DisabledTooltip reason={!downloadAction.enabled ? downloadAction.reason : undefined}>
+                <Button
+                  variant="secondary"
+                  compact
+                  icon={<Download className="w-4 h-4" />}
+                  onClick={downloadAction.onClick}
+                  disabled={!downloadAction.enabled}
+                >
+                  {downloadAction.label ?? 'Download'}
+                </Button>
+              </DisabledTooltip>
+            )}
             {evaluation.actions.addToCollection.visible && (
               <DisabledTooltip reason={!evaluation.actions.addToCollection.enabled ? evaluation.actions.addToCollection.reason : undefined}>
                 <Button

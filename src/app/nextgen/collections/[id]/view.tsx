@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { PanelRight, Info, HardDrive, MoreVertical } from 'lucide-react'
+import { Download, PanelRight, Info } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
@@ -20,6 +20,7 @@ import {
   DropdownMenuItem,
   SortDropdown,
   AppearanceDropdown,
+  Tooltip,
 } from '@/components/ui'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import { Upload } from 'lucide-react'
@@ -58,6 +59,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     getVisibleCollection,
     getCurrentUserGrant,
     canShare,
+    canDownload,
     canUploadToCollection,
   } = useAccess()
   const { getCollection, deleteCollection, addAssetsToCollection } = useUserCollections()
@@ -80,6 +82,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const collectionResourceRef: ResourceRef = { id: collectionId, type: 'collection' }
   const showShareButton = hasCollectionAccess && canShare(collectionResourceRef)
+  const canDownloadCollection = hasCollectionAccess && canDownload(collectionResourceRef)
 
   // Upload (dropbox) state
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -214,6 +217,11 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const handleMenuClick = (asset: Asset) => {
     console.log('Menu clicked for:', asset.name)
   }
+  const toAssetResourceRef = useCallback((asset: Asset): ResourceRef => ({
+    id: asset.id,
+    type: asset.kind === 'cut' ? 'cut' : 'asset',
+    domainId: asset.department,
+  }), [])
   const handlePanelAssetSwitch = (nextAsset: Asset) => {
     if (assets.some((asset) => asset.id === nextAsset.id)) {
       selectOnly(nextAsset)
@@ -227,6 +235,22 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     return assets.filter((asset) => selectedIds.has(asset.id))
   }, [assets, selectedIds])
   const selectedEntities = useMemo(() => selectedAssets.map((asset) => assetToSelectionEntity(asset)), [selectedAssets])
+  const canDownloadSelectedAssets = useMemo(() => {
+    if (selectedAssets.length === 0) return false
+    return selectedAssets.every((asset) => canDownload(toAssetResourceRef(asset)))
+  }, [selectedAssets, canDownload, toAssetResourceRef])
+  const handleDownloadCollection = useCallback(() => {
+    if (!collection) return
+    showToast(`Download started for "${collection.name}".`)
+  }, [collection, showToast])
+  const handleDownloadSelectedAssets = useCallback(() => {
+    if (selectedAssets.length === 0) return
+    if (selectedAssets.length === 1) {
+      showToast(`Download started for "${selectedAssets[0].name}".`)
+      return
+    }
+    showToast(`Download started for ${selectedAssets.length} assets.`)
+  }, [selectedAssets, showToast])
   const primaryAsset = useMemo(() => {
     if (!primaryId) return null
     return assets.find(a => a.id === primaryId) ?? null
@@ -340,6 +364,17 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         metadataFields={metadataFields}
                         onMetadataFieldChange={setMetadataField}
                       />
+                      {canDownloadCollection && (
+                        <Tooltip label="Download collection">
+                          <Button
+                            variant="icon"
+                            onClick={handleDownloadCollection}
+                            aria-label="Download collection"
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </Tooltip>
+                      )}
                       {showUpload && (
                         <Button
                           variant="secondary"
@@ -373,6 +408,11 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                 <ContextualActionBar
                   selectedEntities={selectedEntities}
                   onClearSelection={clearSelection}
+                  downloadAction={selectedAssets.length > 0 ? {
+                    enabled: canDownloadSelectedAssets,
+                    onClick: handleDownloadSelectedAssets,
+                    reason: canDownloadSelectedAssets ? undefined : "You don't have permission to download all selected assets.",
+                  } : undefined}
                   metadata={loading ? undefined : `${assets.length} asset${assets.length !== 1 ? 's' : ''}`}
                 />
 

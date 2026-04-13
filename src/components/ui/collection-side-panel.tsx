@@ -170,7 +170,7 @@ export function CollectionSidePanel({
 
   const { collections: userCollections } = useUserCollections()
   const { sharesReceivedByMe, allProjectShares, getResourceGrants, getResourceGuestLinks, roleGroups, canShare } = useAccess()
-  const { isAdmin } = usePersona()
+  const { isAdmin, activePersona } = usePersona()
   const [accessModalOpen, setAccessModalOpen] = useState(false)
 
   const linkedSnapshotCollections = useMemo(() => {
@@ -334,70 +334,114 @@ export function CollectionSidePanel({
 
           {caps.showAccessTab && (
             <TabsContent value="access" className="p-4 space-y-3">
-              {/* Created by */}
-              {createdByName && (
-                <div className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-2">
-                  <span className="text-body-0-regular text-foreground-dim">Created by</span>
-                  <div className="flex items-center gap-2">
-                    <Avatar name={createdByName} size="compact" />
-                    <span className="text-body-0-regular text-foreground">{createdByName}</span>
-                  </div>
-                </div>
-              )}
+              {canManageAccess ? (
+                /* ── Coordinator/owner view: full grant list ── */
+                <>
+                  {createdByName && (
+                    <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
+                      <span className="text-body-0-regular text-foreground-dim">Created by</span>
+                      <div className="flex items-center gap-2">
+                        <Avatar name={createdByName} size="compact" />
+                        <span className="text-body-0-regular text-foreground">{createdByName}</span>
+                      </div>
+                    </div>
+                  )}
 
-              {/* Shared with */}
-              {smart && linkedSnapshotCollections.length > 1 && (
-                <div className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-1">
-                  <span className="text-body-0-regular text-foreground-dim">Sharing</span>
-                  <p className="text-body-0-regular text-foreground">
-                    Shared as {linkedSnapshotCollections.length} separate snapshot collections. Open a generated shared collection to manage or version a specific handoff.
-                  </p>
-                </div>
-              )}
+                  {smart && linkedSnapshotCollections.length > 1 && (
+                    <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-1">
+                      <span className="text-body-0-regular text-foreground-dim">Sharing</span>
+                      <p className="text-body-0-regular text-foreground">
+                        Shared as {linkedSnapshotCollections.length} separate snapshot collections. Open a generated shared collection to manage or version a specific handoff.
+                      </p>
+                    </div>
+                  )}
 
-              {grants.length > 0 && (
-                <div className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-2">
-                  <span className="text-body-0-regular text-foreground-dim">Shared with</span>
-                  {grants.map(grant => {
-                    const name = resolvePrincipalName(grant.principal)
+                  {grants.length > 0 && (
+                    <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
+                      <span className="text-body-0-regular text-foreground-dim">Shared with</span>
+                      {grants.map(grant => {
+                        const name = resolvePrincipalName(grant.principal)
+                        return (
+                          <div key={grant.id} className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <PrincipalAvatar principal={grant.principal} />
+                              <span className="text-body-0-regular text-foreground truncate">{name}</span>
+                            </div>
+                            <div className="flex-shrink-0">
+                              <GrantBadge grant={grant} roleGroups={roleGroups} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {guestLinks.length > 0 && (
+                    <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
+                      <span className="text-body-0-regular text-foreground-dim">Guest links</span>
+                      {guestLinks.map(link => (
+                        <div key={link.id} className="flex items-center justify-between gap-2">
+                          <span className="text-body-0-regular text-foreground truncate">
+                            {link.allowDownload ? 'View + Download' : 'View only'}
+                            {link.expiresAt && <span className="text-foreground-dim"> · expires {link.expiresAt}</span>}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {grants.length === 0 && guestLinks.length === 0 && !createdByName && (
+                    <p className="text-body-0-regular text-foreground-dim">Not shared</p>
+                  )}
+
+                  <Button variant="secondary" compact onClick={() => setAccessModalOpen(true)}>
+                    Manage Access
+                  </Button>
+                </>
+              ) : (
+                /* ── Recipient view: your access + sharer info ── */
+                <>
+                  {sharedBy && (
+                    <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
+                      <span className="text-body-0-regular text-foreground-dim">Shared by</span>
+                      <div className="flex items-center gap-2">
+                        <Avatar name={sharedBy} size="compact" />
+                        <span className="text-body-0-regular text-foreground">{sharedBy}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {(() => {
+                    const myGrant = grants.find(g =>
+                      g.principal.type === 'user' && g.principal.userId === activePersona?.id
+                    )
+                    if (!myGrant) return null
+                    const capabilities: string[] = []
+                    capabilities.push('Preview')
+                    if (myGrant.allowDownload) capabilities.push('Download')
+                    if (myGrant.allowComment) capabilities.push('Comment')
+                    if (myGrant.allowUpload) capabilities.push('Upload')
                     return (
-                      <div key={grant.id} className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <PrincipalAvatar principal={grant.principal} />
-                          <span className="text-body-0-regular text-foreground truncate">{name}</span>
-                        </div>
-                        <div className="flex-shrink-0">
-                          <GrantBadge grant={grant} roleGroups={roleGroups} />
-                        </div>
+                      <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-1">
+                        <span className="text-body-0-regular text-foreground-dim">Your access</span>
+                        <p className="text-body-0-regular text-foreground">{capabilities.join(', ')}</p>
                       </div>
                     )
-                  })}
-                </div>
-              )}
+                  })()}
 
-              {/* Guest links */}
-              {guestLinks.length > 0 && (
-                <div className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-2">
-                  <span className="text-body-0-regular text-foreground-dim">Guest links</span>
-                  {guestLinks.map(link => (
-                    <div key={link.id} className="flex items-center justify-between gap-2">
-                      <span className="text-body-0-regular text-foreground truncate">
-                        {link.allowDownload ? 'View + Download' : 'View only'}
-                        {link.expiresAt && <span className="text-foreground-dim"> · expires {link.expiresAt}</span>}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {grants.length === 0 && guestLinks.length === 0 && !createdByName && (
-                <p className="text-body-0-regular text-foreground-dim">Not shared</p>
-              )}
-
-              {canManageAccess && (
-                <Button variant="secondary" compact onClick={() => setAccessModalOpen(true)}>
-                  Manage Access
-                </Button>
+                  {(() => {
+                    const myGrant = grants.find(g =>
+                      (g.principal.type === 'user' && g.principal.userId === activePersona?.id)
+                    )
+                    if (!myGrant?.note) return null
+                    return (
+                      <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-1">
+                        <span className="text-body-0-regular text-foreground-dim">Note</span>
+                        <p className="text-body-0-regular text-foreground">{myGrant.note}</p>
+                      </div>
+                    )
+                  })()}
+                </>
               )}
             </TabsContent>
           )}

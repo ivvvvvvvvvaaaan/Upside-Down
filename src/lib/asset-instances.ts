@@ -103,14 +103,19 @@ function inferAssetType(ext?: string, filename?: string): AssetType {
   return baseType
 }
 
-/** Walk managed zones and generate instances for all files within */
+/** Walk workspace folders and generate instances for all files within */
 export function generateAssetInstances(
   files: WorkspaceFileNode[],
   domainId: DomainId,
 ): AssetInstance[] {
   const instances: AssetInstance[] = []
 
-  function walk(nodes: WorkspaceFileNode[], pathParts: string[], category: string, managedZoneFolderId?: string) {
+  function walk(
+    nodes: WorkspaceFileNode[],
+    pathParts: string[],
+    category: string,
+    containingFolderId?: string,
+  ) {
     for (const node of nodes) {
       if (node.type === 'file') {
         const name = node.name.replace(/\.[^.]+$/, '')
@@ -131,14 +136,14 @@ export function generateAssetInstances(
           modifiedAt: node.modifiedAt,
           modifiedBy: node.modifiedBy,
           aiTags: getAITagsForFile(node.id),
-          sourceFolderId: managedZoneFolderId,
+          // Track the immediate containing folder so folder-backed collections
+          // can resolve membership for any shared workspace folder.
+          sourceFolderId: containingFolderId,
         })
       }
       if (node.type === 'folder' && node.children) {
         const nextCategory = node.name
-        // If this folder is a managed zone, track its ID for all children
-        const zoneId = node.zone === 'managed' ? node.id : managedZoneFolderId
-        walk(node.children, [...pathParts, node.name], nextCategory, zoneId)
+        walk(node.children, [...pathParts, node.name], nextCategory, node.id)
       }
     }
   }

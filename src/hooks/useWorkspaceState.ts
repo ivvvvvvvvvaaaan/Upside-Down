@@ -12,12 +12,16 @@ function getStorageKey(domainId: DomainId) {
   return `workspace-${domainId}`
 }
 
+const WORKSPACE_STATE_VERSION = 2
+
 interface StoredState {
-  managedFolderIds: string[]
+  version: number
+  disabledFolderIds: string[]
 }
 
 const DEFAULT_STATE: StoredState = {
-  managedFolderIds: [],
+  version: WORKSPACE_STATE_VERSION,
+  disabledFolderIds: [],
 }
 
 function getStoredState(domainId: DomainId): StoredState {
@@ -26,8 +30,10 @@ function getStoredState(domainId: DomainId): StoredState {
     const stored = localStorage.getItem(getStorageKey(domainId))
     if (!stored) return DEFAULT_STATE
     const parsed = JSON.parse(stored)
+    if (parsed.version !== WORKSPACE_STATE_VERSION) return DEFAULT_STATE
     return {
-      managedFolderIds: Array.isArray(parsed.managedFolderIds) ? parsed.managedFolderIds : DEFAULT_STATE.managedFolderIds,
+      version: WORKSPACE_STATE_VERSION,
+      disabledFolderIds: Array.isArray(parsed.disabledFolderIds) ? parsed.disabledFolderIds : DEFAULT_STATE.disabledFolderIds,
     }
   } catch {
     return DEFAULT_STATE
@@ -43,49 +49,46 @@ function saveState(domainId: DomainId, state: StoredState): void {
   }
 }
 
-/** Collect default managed zone folder IDs from mock data */
-function getDefaultManagedIds(files: WorkspaceFileNode[]): string[] {
-  const ids: string[] = []
-  function walk(nodes: WorkspaceFileNode[]) {
-    for (const node of nodes) {
-      if (node.zone === 'managed') ids.push(node.id)
-      if (node.children) walk(node.children)
-    }
-  }
-  walk(files)
-  return ids
-}
-
-/** Walk tree and mark managedZone on nodes whose parent folder is managed */
-function markManagedZones(nodes: WorkspaceFileNode[], managedIds: Set<string>): WorkspaceFileNode[] {
-  return nodes.map((node) => {
-    const isManaged = managedIds.has(node.id)
-    if (node.type === 'folder') {
-      const children = node.children
-        ? markManagedChildren(node.children, managedIds, isManaged)
-        : undefined
-      return { ...node, zone: isManaged ? 'managed' as const : undefined, managedZone: isManaged || undefined, children }
-    }
-    return node
-  })
-}
-
+/** Walk tree and mark sync as enabled by default, with explicit folder opt-outs. */
 function markManagedChildren(
   nodes: WorkspaceFileNode[],
-  managedIds: Set<string>,
+  disabledIds: Set<string>,
   parentIsManaged: boolean,
 ): WorkspaceFileNode[] {
   return nodes.map((node) => {
     if (node.type === 'file') {
       return { ...node, managedZone: parentIsManaged || undefined }
     }
-    const isManaged = managedIds.has(node.id)
-    const effectiveManaged = isManaged || parentIsManaged
+    const explicitlyDisabled = disabledIds.has(node.id)
+    const effectiveManaged = parentIsManaged && !explicitlyDisabled
     const children = node.children
-      ? markManagedChildren(node.children, managedIds, effectiveManaged)
+      ? markManagedChildren(node.children, disabledIds, effectiveManaged)
       : undefined
-    return { ...node, zone: isManaged ? 'managed' as const : undefined, managedZone: effectiveManaged || undefined, children }
+    return {
+      ...node,
+      zone: effectiveManaged ? 'managed' as const : 'wip' as const,
+      managedZone: effectiveManaged || undefined,
+      children,
+    }
   })
+}
+
+function markManagedZones(nodes: WorkspaceFileNode[], disabledIds: Set<string>): WorkspaceFileNode[] {
+  return markManagedChildren(nodes, disabledIds, true)
+}
+
+function collectManagedFolderIds(nodes: WorkspaceFileNode[]): Set<string> {
+  const ids = new Set<string>()
+  function walk(children: WorkspaceFileNode[]) {
+    for (const node of children) {
+      if (node.type === 'folder') {
+        if (node.managedZone) ids.add(node.id)
+        if (node.children) walk(node.children)
+      }
+    }
+  }
+  walk(nodes)
+  return ids
 }
 
 /** Map asset type to a representative file extension */
@@ -133,7 +136,7 @@ export interface UseWorkspaceStateReturn {
 
 export function useWorkspaceState(domainId: DomainId): UseWorkspaceStateReturn {
   const [mounted, setMounted] = useState(false)
-  const [managedFolderIds, setManagedFolderIds] = useState<Set<string>>(new Set())
+  const [disabledFolderIds, setDisabledFolderIds] = useState<Set<string>>(new Set())
   const [curatedAssetNodes, setCuratedAssetNodes] = useState<WorkspaceFileNode[]>([])
   const [loading, setLoading] = useState(true)
   const fileTree = useFileTree()
@@ -147,13 +150,8 @@ export function useWorkspaceState(domainId: DomainId): UseWorkspaceStateReturn {
   // Load state on mount
   useEffect(() => {
     setMounted(true)
-    const domainFiles = fileTree.getDomainFiles(domainId)
     const stored = getStoredState(domainId)
-
-    const defaultIds = getDefaultManagedIds(domainFiles)
-    const storedIds = stored.managedFolderIds
-    const ids = storedIds.length > 0 ? storedIds : defaultIds
-    setManagedFolderIds(new Set(ids))
+    setDisabledFolderIds(new Set(stored.disabledFolderIds))
   }, [domainId, fileTree])
 
   // Fetch curated assets and convert to file nodes
@@ -177,7 +175,7 @@ export function useWorkspaceState(domainId: DomainId): UseWorkspaceStateReturn {
   }, [domainId])
 
   const toggleManagedZone = useCallback((folderId: string) => {
-    setManagedFolderIds((prev) => {
+    setDisabledFolderIds((prev) => {
       const next = new Set(prev)
       if (next.has(folderId)) {
         next.delete(folderId)
@@ -185,7 +183,10 @@ export function useWorkspaceState(domainId: DomainId): UseWorkspaceStateReturn {
         next.add(folderId)
       }
       if (mounted) {
-        saveState(domainId, { managedFolderIds: Array.from(next) })
+        saveState(domainId, {
+          version: WORKSPACE_STATE_VERSION,
+          disabledFolderIds: Array.from(next),
+        })
       }
       return next
     })
@@ -197,7 +198,7 @@ export function useWorkspaceState(domainId: DomainId): UseWorkspaceStateReturn {
   )
 
   const processedFiles = useMemo(() => {
-    const marked = markManagedZones(rawFiles, managedFolderIds)
+    const marked = markManagedZones(rawFiles, disabledFolderIds)
     // Merge curated assets as top-level loose files, deduplicating by ID
     const existingIds = new Set<string>()
     function collectIds(nodes: WorkspaceFileNode[]) {
@@ -209,7 +210,12 @@ export function useWorkspaceState(domainId: DomainId): UseWorkspaceStateReturn {
     collectIds(marked)
     const newNodes = curatedAssetNodes.filter((n) => !existingIds.has(n.id))
     return [...marked, ...newNodes]
-  }, [rawFiles, managedFolderIds, curatedAssetNodes])
+  }, [rawFiles, disabledFolderIds, curatedAssetNodes])
+
+  const managedFolderIds = useMemo(
+    () => collectManagedFolderIds(processedFiles),
+    [processedFiles],
+  )
 
   const totalFileCount = useMemo(() => countFiles(processedFiles), [processedFiles])
 

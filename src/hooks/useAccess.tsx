@@ -155,6 +155,7 @@ interface AccessContextValue {
   // Resource-scoped ACL authority
   canShare: (resource: ResourceRef) => boolean
   canEditAcl: (resource: ResourceRef) => boolean
+  canDownload: (resource: ResourceRef) => boolean
 
   // Discovery
   getDiscoverySettings: (resourceType: DiscoveryResourceType) => DiscoverySettings
@@ -1113,6 +1114,20 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }).canEdit
   }, [activePersona, collectionById, getEffectivePermissionSet, getResourceDomainId])
 
+  const canDownloadFn = useCallback((resource: ResourceRef): boolean => {
+    if (!activePersona) return true
+
+    const permissions = getEffectivePermissionSet(resource).permissions
+    if (permissions.includes('download')) return true
+    if (!userId) return false
+
+    return activeGrants.some((grant) =>
+      grant.resource.id === resource.id
+      && principalMatchesUser(grant.principal, userId)
+      && (grant.allowDownload || grant.allowUpload)
+    )
+  }, [activePersona, userId, activeGrants, getEffectivePermissionSet])
+
   const getResourceGrants = useCallback((id: string): Grant[] => {
     return getResourceGrantsFromList(id, grants)
   }, [grants])
@@ -1714,6 +1729,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     getVersionHistory,
     canShare: canShareFn,
     canEditAcl: canEditAclFn,
+    canDownload: canDownloadFn,
     getDiscoverySettings,
     setDiscoveryEnabledForType,
     toggleDomainDiscoveryForType,
@@ -1782,6 +1798,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     getVersionHistory,
     canShareFn,
     canEditAclFn,
+    canDownloadFn,
     getDiscoverySettings,
     setDiscoveryEnabledForType,
     toggleDomainDiscoveryForType,

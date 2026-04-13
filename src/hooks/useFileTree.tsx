@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react'
+import { usePersona } from './usePersona'
 import type { DomainId, ProductionDomainId } from '@/components/department/types'
 import {
   getFinderWorkspaceTree,
@@ -9,23 +10,30 @@ import {
   type WorkspaceFileNode,
 } from '@/lib/workspace-data'
 import { SEED_VERSION } from '@/lib/constants'
+import { assignSharedMountOwner, filterSharedMountsForViewer } from '@/lib/shared-mount-utils'
 
 const STORAGE_KEY = 'unified-workspace-files'
 const VERSION_KEY = 'unified-workspace-files-version'
 
-function loadTree(): UnifiedFileNode[] {
-  if (typeof window === 'undefined') return getFinderWorkspaceTree()
+function loadTree(mountedByUserId: string | null): { tree: UnifiedFileNode[]; didMigrate: boolean } {
+  if (typeof window === 'undefined') {
+    return { tree: getFinderWorkspaceTree(), didMigrate: false }
+  }
   try {
     const storedVersion = localStorage.getItem(VERSION_KEY)
     if (storedVersion === String(SEED_VERSION)) {
       const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) return JSON.parse(saved)
+      if (saved) {
+        const parsed = JSON.parse(saved) as UnifiedFileNode[]
+        const migrated = assignSharedMountOwner(parsed, mountedByUserId)
+        return { tree: migrated.nodes, didMigrate: migrated.didChange }
+      }
     } else {
       localStorage.removeItem(STORAGE_KEY)
       localStorage.setItem(VERSION_KEY, String(SEED_VERSION))
     }
   } catch {}
-  return getFinderWorkspaceTree()
+  return { tree: getFinderWorkspaceTree(), didMigrate: false }
 }
 
 function persistTree(tree: UnifiedFileNode[]) {
@@ -175,11 +183,13 @@ function findReferenceFolder(
   nodes: UnifiedFileNode[],
   parentId: string | null,
   reference: ReferenceFolderSource,
+  mountedByUserId: string | null,
 ): UnifiedFileNode | null {
   const matchesReference = (node: UnifiedFileNode) =>
     node.type === 'folder'
     && node.reference?.resourceId === reference.resourceId
     && node.reference?.resourceType === reference.resourceType
+    && (node.mountedByUserId ?? null) === mountedByUserId
 
   if (parentId === null) {
     return nodes.find(matchesReference) ?? null
@@ -190,7 +200,7 @@ function findReferenceFolder(
       return (node.children ?? []).find(matchesReference) ?? null
     }
     if (node.children) {
-      const found = findReferenceFolder(node.children, parentId, reference)
+      const found = findReferenceFolder(node.children, parentId, reference, mountedByUserId)
       if (found) return found
     }
   }
@@ -223,34 +233,53 @@ interface FileTreeContextValue {
 const FileTreeContext = createContext<FileTreeContextValue | null>(null)
 
 export function FileTreeProvider({ children }: { children: ReactNode }) {
-  const [tree, setTree] = useState<UnifiedFileNode[]>(getFinderWorkspaceTree)
+  const { activePersona, hydrated } = usePersona()
+  const [rawTree, setRawTree] = useState<UnifiedFileNode[]>(getFinderWorkspaceTree)
 
   useEffect(() => {
-    setTree(loadTree())
+    if (!hydrated) return
+
+    const loaded = loadTree(activePersona?.id ?? null)
+    setRawTree(loaded.tree)
+    if (loaded.didMigrate) {
+      persistTree(loaded.tree)
+    }
 
     // Sync across windows/iframes (desktop Finder ↔ browser)
     const handleStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY && e.newValue) {
-        try { setTree(JSON.parse(e.newValue)) } catch {}
+        try {
+          const parsed = JSON.parse(e.newValue) as UnifiedFileNode[]
+          const migrated = assignSharedMountOwner(parsed, activePersona?.id ?? null)
+          setRawTree(migrated.nodes)
+          if (migrated.didChange) {
+            persistTree(migrated.nodes)
+          }
+        } catch {}
       }
     }
     window.addEventListener('storage', handleStorage)
     return () => window.removeEventListener('storage', handleStorage)
-  }, [])
+  }, [hydrated, activePersona?.id])
 
   const updateTree = useCallback((updater: (prev: UnifiedFileNode[]) => UnifiedFileNode[]) => {
-    setTree((prev) => {
+    setRawTree((prev) => {
       const next = updater(prev)
       persistTree(next)
       return next
     })
   }, [])
 
+  const tree = useMemo(
+    () => filterSharedMountsForViewer(rawTree, activePersona?.id ?? null),
+    [rawTree, activePersona?.id],
+  )
+
   const getDomainFiles = useCallback((id: DomainId): WorkspaceFileNode[] => {
     const folderId = (DOMAIN_TO_FOLDER_ID as Partial<Record<DomainId, string>>)[id]
     if (!folderId) return []
-    return (findSubtree(tree, folderId) ?? []) as WorkspaceFileNode[]
-  }, [tree])
+    return (findSubtree(rawTree, folderId) ?? []) as WorkspaceFileNode[]
+  }, [rawTree])
 
   const createFolder = useCallback((parentId: string | null, name: string, initialChildren?: UnifiedFileNode[]): string => {
     const id = generateId()
@@ -285,13 +314,15 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     name: string,
     reference: ReferenceFolderSource,
   ): string => {
-    const existing = findReferenceFolder(tree, parentId, reference)
+    const mountedByUserId = activePersona?.id ?? null
+    const existing = findReferenceFolder(rawTree, parentId, reference, mountedByUserId)
     const id = existing?.id ?? generateId()
     const newFolder: UnifiedFileNode = {
       id,
       name,
       type: 'folder',
       modifiedAt: new Date().toISOString().split('T')[0],
+      mountedByUserId,
       reference,
       children: [],
     }
@@ -304,7 +335,7 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     ))
 
     return id
-  }, [tree, updateTree])
+  }, [activePersona, rawTree, updateTree])
 
   const renameNode = useCallback((nodeId: string, newName: string) => {
     updateTree((prev) => renameNodeInTree(prev, nodeId, newName))

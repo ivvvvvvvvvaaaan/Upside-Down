@@ -19,13 +19,15 @@ export interface UnifiedFileNode {
   modifiedAt?: string
   modifiedBy?: string
   domainId?: DomainId
+  /** Local mount owner for reference folders shown in the Shared drive view */
+  mountedByUserId?: string | null
   reference?: ReferenceFolderSource
   children?: UnifiedFileNode[]
 }
 
 export interface WorkspaceFileNode extends UnifiedFileNode {
   children?: WorkspaceFileNode[]
-  /** Folder-level: zone designation (default: wip) */
+  /** Folder-level: zone designation after sync rules are applied (default: managed) */
   zone?: 'managed' | 'wip'
   /** Computed: true if this node is inside a managed zone */
   managedZone?: boolean
@@ -576,7 +578,7 @@ export const DOMAIN_FOLDER_MAP: Record<ProductionDomainId, { id: string; name: s
  * Build the full Finder workspace tree:
  *   Single project root > [domain folders wrapping domainFileMap arrays]
  */
-/** Well-known folder ID for mounted shared collections */
+/** Well-known folder ID for per-persona mounted shared collections */
 export const SHARED_MOUNT_FOLDER_ID = 'ws-shared-mounts'
 
 export function getFinderWorkspaceTree(): UnifiedFileNode[] {
@@ -591,7 +593,7 @@ export function getFinderWorkspaceTree(): UnifiedFileNode[] {
     }
   })
 
-  // "Shared" folder — mount point for collections added via "Mount to Drive"
+  // "Shared" folder — mount point for collections added into the local drive view
   const sharedFolder: UnifiedFileNode = {
     id: SHARED_MOUNT_FOLDER_ID,
     name: 'Shared',
