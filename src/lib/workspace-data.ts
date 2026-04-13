@@ -283,6 +283,7 @@ const vfxFiles: WorkspaceFileNode[] = [
         type: 'folder',
         modifiedAt: '2026-02-13',
         children: [
+          { id: 'ws-vfx-fs-brief', name: 'Framestore_Brief_EP301.pdf', type: 'file', extension: 'pdf', size: 4194304, modifiedAt: '2026-01-15' },
           { id: 'ws-vfx-fs-del-1', name: 'SEQ010_SH010_comp_v14_FS.exr', type: 'file', extension: 'exr', size: 167772160, modifiedAt: '2026-02-13' },
           { id: 'ws-vfx-fs-del-2', name: 'SEQ010_SH020_comp_v10_FS.exr', type: 'file', extension: 'exr', size: 146800640, modifiedAt: '2026-02-12' },
           { id: 'ws-vfx-fs-del-3', name: 'SEQ020_SH010_comp_v05_FS.exr', type: 'file', extension: 'exr', size: 157286400, modifiedAt: '2026-02-11' },

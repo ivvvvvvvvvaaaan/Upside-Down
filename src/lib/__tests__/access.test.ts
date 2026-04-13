@@ -66,7 +66,7 @@ describe('grant-based access model', () => {
 
   it('keeps vendor access explicit-share only', () => {
     expect(userHasAccess('vendor-framestore', 'vfx', DEFAULT_GRANTS)).toBe(false)
-    expect(userHasAccess('vendor-framestore', 'ws-vfx-coll-for-vendor', DEFAULT_GRANTS)).toBe(true)
+    expect(userHasAccess('vendor-framestore', 'coll-vfx-vendor-drop', DEFAULT_GRANTS)).toBe(true)
   })
 
   it('resolves direct resource shares correctly', () => {
@@ -147,7 +147,7 @@ describe('capability decomposition', () => {
   })
 
   it('resolveAccess merges explicit permissions from all active matching grants', () => {
-    const result = resolveAccess('vendor-framestore', 'ws-vfx-coll-for-vendor', DEFAULT_GRANTS)
+    const result = resolveAccess('vendor-framestore', 'coll-vfx-vendor-drop', DEFAULT_GRANTS)
     expect(result.hasAccess).toBe(true)
     expect(result.effectiveProfile).toBe('viewer')
     expect(result.permissions).toContain('open')

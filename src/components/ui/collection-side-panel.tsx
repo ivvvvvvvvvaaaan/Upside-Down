@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, LayoutGrid, MoreVertical, Pencil, Trash2, MapPin, Film, Zap, Folder, HardDrive, Import } from 'lucide-react'
+import { X, LayoutGrid, MoreVertical, Pencil, Trash2, MapPin, Film, Zap, Folder, HardDrive, Import, Users } from 'lucide-react'
 import { Button } from './button'
 import { Avatar } from './avatar'
 import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
@@ -37,9 +37,9 @@ const PANEL_ICONS: Record<string, typeof LayoutGrid> = {
   folder: Folder,
 }
 
-function PanelHeaderIcon({ icon, name }: { icon: string; name: string }) {
-  if (icon === 'character') return <Avatar name={name} size="lg" />
-  const Icon = PANEL_ICONS[icon] ?? LayoutGrid
+function PanelHeaderIcon({ icon, name, isEntity, avatarSrc }: { icon: string; name: string; isEntity?: boolean; avatarSrc?: string }) {
+  if (icon === 'character' && isEntity) return <Avatar name={name} src={avatarSrc} size="lg" />
+  const Icon = icon === 'character' ? Users : (PANEL_ICONS[icon] ?? LayoutGrid)
   return <Icon className="w-8 h-8 text-foreground flex-shrink-0" />
 }
 
@@ -133,6 +133,7 @@ interface CollectionSidePanelProps {
   relationships?: RelatedCollections
   suppressDimension?: SmartCollectionGroupBy
   matchingCount?: number
+  avatarSrc?: string
 }
 
 function filtersEqual(a: AssetFilter, b: AssetFilter): boolean {
@@ -148,6 +149,7 @@ export function CollectionSidePanel({
   relationships,
   suppressDimension,
   matchingCount,
+  avatarSrc,
 }: CollectionSidePanelProps) {
   const smart = isSmart(collection) ? collection : null
   const curated = isCollection(collection) ? collection : null
@@ -211,7 +213,7 @@ export function CollectionSidePanel({
     <ResponsivePanel open={open} onClose={onClose}>
       <div className="flex items-center justify-between gap-3 p-4">
         <div className="flex items-center gap-3 min-w-0">
-          <PanelHeaderIcon icon={caps.icon} name={collection.name} />
+          <PanelHeaderIcon icon={caps.icon} name={collection.name} isEntity={!!smart?.parentId} avatarSrc={avatarSrc} />
           <div className="min-w-0">
             <p className="text-body-0-bold text-foreground truncate flex items-center gap-1.5">
               {collection.name}

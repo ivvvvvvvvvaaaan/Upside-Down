@@ -5,6 +5,7 @@ import { X } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
+import { Tooltip } from './tooltip'
 import { AccessModal } from './access-modal'
 import { CollectionMembershipModal } from './collection-membership-modal'
 import { useAccess } from '@/hooks'
@@ -14,19 +15,12 @@ import type { SelectionEntity } from '@/lib/selection-actions'
 import type { ResourceRef } from '@/lib/grants'
 import { evaluateSelectionActions, getSelectionCountLabel } from '@/lib/selection-actions'
 
-export interface ActionBarAction {
-  id: string
-  label: string
-  icon: React.ReactNode
-  onClick: () => void
-  disabled?: boolean
-  disabledReason?: string
-  variant?: 'primary' | 'secondary' | 'tertiary'
+function DisabledTooltip({ reason, children }: { reason?: string; children: React.ReactNode }) {
+  if (!reason) return <>{children}</>
+  return <Tooltip label={reason} position="top">{children}</Tooltip>
 }
 
 interface ContextualActionBarProps {
-  /** Actions shown when nothing is selected (parent resource actions) */
-  parentActions?: ActionBarAction[]
   /** Currently selected entities */
   selectedEntities: SelectionEntity[]
   /** Callback to clear the selection */
@@ -36,23 +30,7 @@ interface ContextualActionBarProps {
   className?: string
 }
 
-function ParentActionButton({ action }: { action: ActionBarAction }) {
-  return (
-    <Button
-      variant={action.variant ?? 'tertiary'}
-      compact
-      icon={action.icon}
-      onClick={action.onClick}
-      disabled={action.disabled}
-      title={action.disabled ? action.disabledReason : undefined}
-    >
-      {action.label}
-    </Button>
-  )
-}
-
 export function ContextualActionBar({
-  parentActions,
   selectedEntities,
   onClearSelection,
   metadata,
@@ -66,7 +44,6 @@ export function ContextualActionBar({
   const [batchResourceRefs, setBatchResourceRefs] = useState<ResourceRef[]>([])
 
   const hasSelection = selectedEntities.length > 0
-  const hasParentActions = parentActions && parentActions.length > 0
 
   const evaluation = useMemo(() => evaluateSelectionActions({
     selectedEntities,
@@ -112,40 +89,34 @@ export function ContextualActionBar({
             <div className="flex-1" />
 
             {evaluation.actions.addToCollection.visible && (
-              <Button
-                variant="secondary"
-                compact
-                icon={<Image src="/Icons/Icon-new.svg" alt="" width={16} height={16} />}
-                onClick={() => setShowCollectionModal(true)}
-                disabled={!evaluation.actions.addToCollection.enabled}
-                title={!evaluation.actions.addToCollection.enabled ? evaluation.actions.addToCollection.reason : undefined}
-              >
-                {evaluation.actions.addToCollection.label}
-              </Button>
+              <DisabledTooltip reason={!evaluation.actions.addToCollection.enabled ? evaluation.actions.addToCollection.reason : undefined}>
+                <Button
+                  variant="secondary"
+                  compact
+                  icon={<Image src="/Icons/Icon-new.svg" alt="" width={16} height={16} />}
+                  onClick={() => setShowCollectionModal(true)}
+                  disabled={!evaluation.actions.addToCollection.enabled}
+                >
+                  {evaluation.actions.addToCollection.label}
+                </Button>
+              </DisabledTooltip>
             )}
             {evaluation.actions.share.visible && (
-              <Button
-                variant="primary"
-                compact
-                icon={<Image src="/Icons/Icons-share.svg" alt="" width={16} height={16} />}
-                onClick={handleShare}
-                disabled={!evaluation.actions.share.enabled}
-                title={!evaluation.actions.share.enabled ? evaluation.actions.share.reason : undefined}
-              >
-                {evaluation.actions.share.label}
-              </Button>
+              <DisabledTooltip reason={!evaluation.actions.share.enabled ? evaluation.actions.share.reason : undefined}>
+                <Button
+                  variant="secondary"
+                  compact
+                  icon={<Image src="/Icons/Icons-share.svg" alt="" width={16} height={16} />}
+                  onClick={handleShare}
+                  disabled={!evaluation.actions.share.enabled}
+                >
+                  {evaluation.actions.share.label}
+                </Button>
+              </DisabledTooltip>
             )}
           </>
         ) : (
-          <>
-            {metadata && (
-              <span className="text-body-0-regular text-foreground-subtle whitespace-nowrap">{metadata}</span>
-            )}
-            <div className="flex-1" />
-            {hasParentActions && parentActions!.map((action) => (
-              <ParentActionButton key={action.id} action={action} />
-            ))}
-          </>
+          <span className="text-body-0-regular text-foreground-subtle whitespace-nowrap">{metadata}</span>
         )}
       </div>
 

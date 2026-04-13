@@ -282,12 +282,15 @@ export const SCENARIO: Scenario = {
       ],
     },
     {
-      resource: { id: 'ws-vfx-coll-for-vendor', type: 'collection', domain: 'vfx' },
-      label: 'EP301 comp package',
+      resource: { id: 'coll-vfx-vendor-drop', type: 'collection', domain: 'vfx' },
+      label: 'Framestore',
       by: 'vfx-coordinator',
-      date: '2026-01-20',
+      date: '2026-01-15',
       expiresAt: '2026-06-15',
-      context: 'Sarah sends Framestore the approved comp direction for EP301. James needs to see the internal shot breakdown and reference comps before starting his team\'s delivery pass. Time-boxed to the delivery window.',
+      allowUpload: true,
+      shareMode: 'snapshot',
+      version: 1,
+      context: 'Sarah shares the Framestore workspace folder. James can see the brief, download plates, and upload comp deliveries. Time-boxed to the delivery window.',
       grants: [
         { to: 'vendor-framestore', as: 'viewer' },
       ],
@@ -406,24 +409,10 @@ export const SCENARIO: Scenario = {
         { toTeam: 'vfx-core', as: 'viewer' },
       ],
     },
-    // Vendor drop collection: VFX coordinator gives Framestore a scoped upload point
-    {
-      resource: { id: 'coll-vfx-vendor-drop', type: 'collection', domain: 'vfx' },
-      label: 'Framestore Drop',
-      by: 'vfx-coordinator',
-      date: '2026-01-15',
-      context: 'Sarah creates a collection for Framestore deliveries. James can see the brief and upload comp deliveries — he cannot browse the rest of the VFX workspace.',
-      allowUpload: true,
-      shareMode: 'snapshot',
-      version: 1,
-      grants: [
-        { to: 'vendor-framestore', as: 'viewer' },
-      ],
-    },
     // Vendor drop v2: re-turnover after locked cut 2
     {
       resource: { id: 'coll-vfx-vendor-drop', type: 'collection', domain: 'vfx' },
-      label: 'Framestore Drop',
+      label: 'Framestore',
       by: 'vfx-coordinator',
       date: '2026-02-15',
       context: 'Sarah re-shares after locked cut 2. Three new shots added from the updated edit, one dropped (client approved alternate take).',
@@ -552,7 +541,6 @@ export const SCENARIO: Scenario = {
   collections: [
     // Shared collections (referenced by grants)
     { id: 'ws-vfx-coll-for-editorial', name: 'EP301 VFX Pulls - Edit Review',  createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-020-010'], boundDomainId: 'vfx' },
-    { id: 'ws-vfx-coll-for-vendor',    name: 'Framestore Handoff - EP301',     createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-030', 'ws-vfx-020-020', 'ws-vfx-ref-brief'], boundDomainId: 'vfx' },
     { id: 'coll-smart-finals-shared',  name: 'Finals (shared)',                createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020'], boundDomainId: 'vfx' },
     { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', assetIds: ['ws-edit-cut-1', 'ws-edit-cut-2', 'ws-edit-cut-3'], boundDomainId: 'editorial' },
     // Camera collections
@@ -568,7 +556,7 @@ export const SCENARIO: Scenario = {
     { id: 'coll-cam-lens-data',    name: 'Lens Data',        createdBy: 'tnakamura@netflix.com', assetIds: [], boundFolderId: 'ws-cam-lensmaps', boundDomainId: 'camera' },
     // Curated collections (snapshot shares — discrete handoffs)
     { id: 'coll-cam-dailies',      name: 'Dailies (concept reference)', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'], boundDomainId: 'camera' },
-    { id: 'coll-vfx-vendor-drop',  name: 'Framestore Drop',  createdBy: 'schen@netflix.com', assetIds: ['ws-vfx-010-030', 'ws-vfx-ref-brief'], boundDomainId: 'vfx' },
+    { id: 'coll-vfx-vendor-drop',  name: 'Framestore',  createdBy: 'schen@netflix.com', assetIds: [], boundFolderId: 'ws-vfx-vendor-framestore', boundDomainId: 'vfx' },
   ],
 
   sensitiveAssetIds: ['ws-edit-cut-1', 'ws-edit-cut-2'],

@@ -21,7 +21,6 @@ import {
   SortDropdown,
   AppearanceDropdown,
 } from '@/components/ui'
-import type { ActionBarAction } from '@/components/ui/contextual-action-bar'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import { Upload } from 'lucide-react'
 import { getGridColumns, useAccess, useAssetSelection, usePersona, useViewPreferences, useUserCollections, useSmartCollections, useMobilePanel, useFileTree } from '@/hooks'
@@ -238,29 +237,6 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     return getRelatedCollectionsForAssets(assets)
   }, [assets, getRelatedCollectionsForAssets])
 
-  const parentActions = useMemo(() => {
-    const actions: ActionBarAction[] = []
-    if (showShareButton) {
-      actions.push({
-        id: 'share',
-        label: 'Share',
-        icon: <Image src="/Icons/Icons-share.svg" alt="" width={16} height={16} />,
-        onClick: () => setShareModalOpen(true),
-        variant: 'primary',
-      })
-    }
-    if (showUpload) {
-      actions.push({
-        id: 'upload',
-        label: 'Upload',
-        icon: <Upload className="w-4 h-4" />,
-        onClick: () => fileInputRef.current?.click(),
-        variant: 'secondary',
-      })
-    }
-    return actions
-  }, [showShareButton, showUpload])
-
   // Collection not found
   if ((!collection || !hasCollectionAccess) && !loading) {
     return (
@@ -360,6 +336,24 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         metadataFields={metadataFields}
                         onMetadataFieldChange={setMetadataField}
                       />
+                      {showUpload && (
+                        <Button
+                          variant="secondary"
+                          icon={<Upload className="w-4 h-4" />}
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          Upload
+                        </Button>
+                      )}
+                      {showShareButton && (
+                        <Button
+                          variant="primary"
+                          icon={<Image src="/Icons/Icons-share.svg" alt="" width={16} height={16} />}
+                          onClick={() => setShareModalOpen(true)}
+                        >
+                          Share
+                        </Button>
+                      )}
                       <Button
                         variant="icon"
                         onClick={togglePanel}
@@ -373,7 +367,6 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                 </div>
 
                 <ContextualActionBar
-                  parentActions={parentActions}
                   selectedEntities={selectedEntities}
                   onClearSelection={clearSelection}
                   metadata={loading ? undefined : `${assets.length} asset${assets.length !== 1 ? 's' : ''}`}

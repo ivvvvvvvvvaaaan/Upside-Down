@@ -24,7 +24,6 @@ import {
   Dropdown,
   DropdownMenuItem,
 } from '@/components/ui'
-import type { ActionBarAction } from '@/components/ui/contextual-action-bar'
 import type { CollectionCardType } from '@/components/ui/collection-card'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import { getGridColumns, useAssetSelection, useViewPreferences, useCompactBar, useResourceSelection, useSmartCollections, usePersona, useMobilePanel } from '@/hooks'
@@ -286,19 +285,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     : filteredAssets.length
   const countLabel = isParentWithChildren ? 'collection' : 'asset'
 
-  const parentActions = useMemo(() => {
-    const actions: ActionBarAction[] = []
-    if (showShareButton) {
-      actions.push({
-        id: 'share',
-        label: 'Share',
-        icon: <Image src="/Icons/Icons-share.svg" alt="" width={16} height={16} />,
-        onClick: () => setShareModalOpen(true),
-        variant: 'primary',
-      })
-    }
-    return actions
-  }, [showShareButton])
+
 
   // Collection not found
   if (!collection && !loading) {
@@ -416,6 +403,15 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                           metadataFields={metadataFields}
                           onMetadataFieldChange={setMetadataField}
                         />
+                        {showShareButton && (
+                          <Button
+                            variant="primary"
+                            icon={<Image src="/Icons/Icons-share.svg" alt="" width={16} height={16} />}
+                            onClick={() => setShareModalOpen(true)}
+                          >
+                            Share
+                          </Button>
+                        )}
                         <Button
                           variant="icon"
                           onClick={togglePanel}
@@ -436,7 +432,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                   </div>
 
                   <ContextualActionBar
-                    parentActions={parentActions}
                     selectedEntities={activeSelectionEntities}
                     onClearSelection={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
                     metadata={loading ? undefined : `${itemCount} ${countLabel}${itemCount !== 1 ? 's' : ''}`}
@@ -542,6 +537,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
           matchingCount={childData.find(c => c.collection.id === selectedCollectionId)?.assetCount}
           relationships={selectedChildRelationships}
           suppressDimension={collection?.groupBy}
+          avatarSrc={childData.find(c => c.collection.id === selectedCollectionId)?.avatarSrc}
         />
       )}
       {collection && (
