@@ -75,4 +75,24 @@ describe('shared mount utils', () => {
     expect(jamesTree[1].children?.map((child) => child.id)).toEqual(['mount-james'])
     expect(sarahTree[1].children?.map((child) => child.id)).toEqual(['mount-sarah'])
   })
+
+  it('hides the shared root entirely when the viewer has no visible mounts', () => {
+    const tree = makeTree([
+      {
+        id: 'mount-james',
+        name: 'Framestore',
+        type: 'folder',
+        mountedByUserId: 'vendor-framestore',
+        reference: {
+          resourceId: 'coll-vfx-vendor-drop',
+          resourceType: 'collection',
+        },
+        children: [],
+      },
+    ])
+
+    const mikeTree = filterSharedMountsForViewer(tree, 'vfx-supervisor')
+
+    expect(mikeTree.find((node) => node.id === 'ws-shared-mounts')).toBeUndefined()
+  })
 })

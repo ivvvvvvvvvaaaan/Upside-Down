@@ -40,17 +40,23 @@ export function filterSharedMountsForViewer(
   nodes: UnifiedFileNode[],
   viewerUserId: string | null,
 ): UnifiedFileNode[] {
-  return nodes.map((node) => {
+  return nodes.flatMap((node) => {
     if (node.id !== SHARED_MOUNT_FOLDER_ID || node.type !== 'folder' || !node.children) {
-      return node
+      return [node]
     }
 
-    return {
-      ...node,
-      children: node.children.filter((child) => {
-        if (!isReferenceFolder(child)) return true
-        return (child.mountedByUserId ?? null) === viewerUserId
-      }),
+    const visibleChildren = node.children.filter((child) => {
+      if (!isReferenceFolder(child)) return true
+      return (child.mountedByUserId ?? null) === viewerUserId
+    })
+
+    if (visibleChildren.length === 0) {
+      return []
     }
+
+    return [{
+      ...node,
+      children: visibleChildren,
+    }]
   })
 }

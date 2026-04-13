@@ -219,7 +219,7 @@ export const SCENARIO: Scenario = {
     { id: 'editorial-coordinator', name: 'Lisa Kim',      email: 'lkim@netflix.com',     role: 'manager',     title: 'Editorial Coordinator',  domain: 'editorial',  teams: ['editorial'], sensitiveMediaCapability: true },
     { id: 'editorial-artist',      name: 'Maria Santos',  email: 'msantos@netflix.com',  role: 'artist',      title: 'Editor',                 domain: 'editorial',  teams: ['editorial'], sensitiveMediaCapability: true },
     { id: 'art-artist',            name: 'Priya Sharma',  email: 'psharma@netflix.com',  role: 'artist',      title: 'Concept Artist',         domain: 'art-design', teams: ['art-design'] },
-    { id: 'vendor-framestore',     name: 'James Liu',     email: 'jliu@framestore.com',  role: 'vendor',      title: 'Lead Compositor',        domain: undefined,    teams: [] },
+    { id: 'vendor-framestore',     name: 'James Liu',     email: 'jliu@framestore.com',  role: 'vendor',      title: 'Lead Compositor',        domain: undefined,    teams: ['framestore-io'] },
     { id: 'camera-dit',            name: 'Tom Nakamura',  email: 'tnakamura@netflix.com', role: 'manager',     title: 'DIT',                    domain: 'camera',     teams: ['camera-team'] },
     { id: 'audio-supervisor',      name: 'Rachel Obi',    email: 'robi@netflix.com',      role: 'manager',     title: 'Sound Supervisor',       domain: 'audio-sound', teams: ['audio-team'] },
     { id: 'marketing-coordinator', name: 'Nina Garcia',   email: 'ngarcia@netflix.com',   role: 'manager',     title: 'Marketing Coordinator',  domain: 'marketing',   teams: ['team-marketing'] },
@@ -232,6 +232,8 @@ export const SCENARIO: Scenario = {
     { id: 'art-design',     name: 'Art & Design',   members: ['art-artist'],                                               domain: 'art-design' },
     { id: 'camera-team',    name: 'Camera',         members: ['camera-dit'],                                                domain: 'camera' },
     { id: 'audio-team',     name: 'Audio & Sound',  members: ['audio-supervisor'],                                           domain: 'audio-sound' },
+    // Vendor teams
+    { id: 'framestore-io',  name: 'Framestore',     members: ['vendor-framestore'] },
     // Cross-department teams (referenced by release domains as grantees)
     { id: 'studio-leadership', name: 'Studio Leadership', members: ['studio-alex', 'creative-david'] },
     { id: 'netflix-studio',    name: 'Netflix Studio',    members: ['studio-alex'] },
@@ -296,7 +298,7 @@ export const SCENARIO: Scenario = {
       note: 'EP301 plates, first turnover. Smoke reference still coming in a follow-up.',
       context: 'Sarah shares the Framestore workspace folder. James can see the brief, download plates, and upload comp deliveries. Time-boxed to the delivery window.',
       grants: [
-        { to: 'vendor-framestore', as: 'viewer' },
+        { toTeam: 'framestore-io', as: 'viewer' },
       ],
     },
     // --- Cut shares (composite entities, not raw files) ---
@@ -398,7 +400,7 @@ export const SCENARIO: Scenario = {
       context: 'Sarah had shared an earlier comp version with Framestore for reference. After David\'s review session changed the creative direction on this shot, the v5 comp became invalid. Sarah revokes the share to prevent James from working against outdated direction. The replacement v8 will be shared once approved.',
       revoked: true,
       grants: [
-        { to: 'vendor-framestore', as: 'viewer' },
+        { toTeam: 'framestore-io', as: 'viewer' },
       ],
     },
     // Dailies Review channel — standing review access for the core creative team
@@ -425,7 +427,7 @@ export const SCENARIO: Scenario = {
       version: 2,
       versionNote: 're-turnover: +3 shots from LC2, dropped SQ03_SH0020',
       grants: [
-        { to: 'vendor-framestore', as: 'viewer' },
+        { toTeam: 'framestore-io', as: 'viewer' },
       ],
     },
     // (Stale cut shares removed — VFX timing now via cut-ep301-lc-1 share)
