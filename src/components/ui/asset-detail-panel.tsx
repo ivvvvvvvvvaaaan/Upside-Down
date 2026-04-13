@@ -109,8 +109,10 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
     <section className="space-y-3">
       {/* Department access */}
       {domainEntries.length > 0 && (
-        <div className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-2">
-          <span className="text-body-0-regular text-foreground-dim">Department</span>
+        <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-body-0-regular text-foreground-dim">Workspace</span>
+          </div>
           {domainEntries.map(({ grant, name }) => (
             <div key={grant.id} className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
@@ -128,28 +130,21 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
         const sharedByGrant = grants[0]
         const sharedByName = sharedByGrant ? (PERSONAS.find(p => p.id === sharedByGrant.grantedByUserId)?.name ?? null) : null
         return (
-        <div key={collection.id} className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-2">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-body-0-regular text-foreground">
-                {collection.id === currentCollectionId
-                  ? <span className="text-foreground-dim">This collection</span>
-                  : <a href={`/nextgen/collections/${collection.id}`} className="text-foreground-dim hover:text-foreground transition-colors">{collection.name}</a>
-                }
-              </span>
-              {collection.id !== currentCollectionId && getCollection(collection.id) && (
-                <button
-                  onClick={() => removeAssetFromCollection(collection.id, assetId)}
-                  className="text-body-0-regular text-foreground-dim hover:text-foreground transition-colors"
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-            {sharedByName && (
-              <span className="text-label-0-regular text-foreground-subtle">
-                Shared by {sharedByName}{sharedByGrant?.grantedAt ? ` on ${sharedByGrant.grantedAt}` : ''}
-              </span>
+        <div key={collection.id} className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-body-0-regular text-foreground">
+              {collection.id === currentCollectionId
+                ? <span className="text-foreground-dim">This collection</span>
+                : <a href={`/nextgen/collections/${collection.id}`} className="text-foreground hover:text-foreground-subtle transition-colors">{collection.name}</a>
+              }
+            </span>
+            {collection.id !== currentCollectionId && getCollection(collection.id) && (
+              <button
+                onClick={() => removeAssetFromCollection(collection.id, assetId)}
+                className="text-body-0-regular text-foreground-system-error hover:opacity-80 transition-colors"
+              >
+                Remove
+              </button>
             )}
           </div>
           {grants.map(grant => {
@@ -164,13 +159,18 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
               </div>
             )
           })}
+          {sharedByName && (
+            <span className="text-label-0-regular text-foreground-dim">
+              Shared by {sharedByName}{sharedByGrant?.grantedAt ? ` on ${sharedByGrant.grantedAt}` : ''}
+            </span>
+          )}
         </div>
         )
       })}
 
       {/* Direct grants on this asset */}
       {directGrants.length > 0 && (
-        <div className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-2">
+        <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
           <span className="text-body-0-regular text-foreground-dim">Shared directly</span>
           {directGrants.map(grant => {
             const name = resolvePrincipalName(grant.principal)
@@ -208,7 +208,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
         const links = getResourceGuestLinks(assetId)
         if (links.length === 0) return null
         return (
-          <div className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-2">
+          <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
             <span className="text-body-0-regular text-foreground-dim">Guest links</span>
             {links.map(link => (
               <div key={link.id} className="flex items-center justify-between gap-2">

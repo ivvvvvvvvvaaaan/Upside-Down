@@ -40,7 +40,7 @@ export function GrantBadge({ grant, roleGroups }: { grant: Grant; roleGroups: Ro
       position="top"
     >
       <span className="text-body-0-regular text-foreground-dim cursor-default">
-        {role} <span className="text-foreground-subtle">+{extraCount}</span>
+        {role} +{extraCount}
       </span>
     </Tooltip>
   )
