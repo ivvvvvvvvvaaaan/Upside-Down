@@ -199,7 +199,11 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     setLoading(true)
     try {
       const resolved = resolveCollectionAssets(collection)
-      setAssets(filterByAccess(resolved))
+      // Collection grant is the access path — assets inside are accessible.
+      // Pass asset IDs as additionalIds so filterByAccess allows them through
+      // while still applying sensitive media filtering.
+      const collectionAssetIds = new Set(resolved.map(a => a.id))
+      setAssets(filterByAccess(resolved, collectionAssetIds))
     } catch (error) {
       console.error('Failed to resolve collection assets:', error)
       setAssets([])
