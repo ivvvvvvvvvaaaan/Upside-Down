@@ -17,6 +17,8 @@ export type UserCollection = {
   assetIds: string[]
   createdAt: Date
   createdBy?: string
+  /** If set, this collection is a share snapshot created from a smart collection */
+  sourceSmartCollectionId?: string
   /** If set, this collection resolves assets from a folder at query time */
   boundFolderId?: string
   boundDomainId?: string
@@ -53,7 +55,11 @@ function persistCollections(collections: UserCollection[]) {
 
 interface UserCollectionsContextValue {
   collections: UserCollection[]
-  createCollection: (name: string, assetIds: string[]) => UserCollection
+  createCollection: (
+    name: string,
+    assetIds: string[],
+    options?: { sourceSmartCollectionId?: string },
+  ) => UserCollection
   createWorkspaceCollection: (name: string, folderId: string, domainId: string) => UserCollection
   addAssetsToCollection: (id: string, assetIds: string[]) => void
   removeAssetFromCollection: (collectionId: string, assetId: string) => void
@@ -87,7 +93,11 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const createCollection = useCallback((name: string, assetIds: string[]): UserCollection => {
+  const createCollection = useCallback((
+    name: string,
+    assetIds: string[],
+    options?: { sourceSmartCollectionId?: string },
+  ): UserCollection => {
     const newCollection: UserCollection = {
       flavor: 'collection',
       id: `user-col-${Date.now()}`,
@@ -95,6 +105,7 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
       assetIds,
       createdAt: new Date(),
       createdBy: activePersona?.email,
+      sourceSmartCollectionId: options?.sourceSmartCollectionId,
     }
     setCollections(prev => [...prev, newCollection])
     return newCollection

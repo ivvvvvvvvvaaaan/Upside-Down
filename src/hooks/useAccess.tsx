@@ -132,7 +132,7 @@ interface AccessContextValue {
   getCollectionAssetCount: (id: string) => { total: number; accessible: number }
   getCollectionShareCeiling: (collectionId: string, intendedProfile: AccessProfileId) => { total: number; atLevel: number; capped: number; cappedAssetIds: string[] }
   getCurrentUserGrant: (resourceId: string) => Grant | undefined
-  createGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId, options?: { permissions?: Permission[]; shareMode?: ShareMode; snapshotAssetIds?: string[]; allowUpload?: boolean; expiresInDays?: number; expiresAt?: string; versionNote?: string }) => void
+  createGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId, options?: { permissions?: Permission[]; shareMode?: ShareMode; snapshotAssetIds?: string[]; allowDownload?: boolean; allowComment?: boolean; allowUpload?: boolean; expiresInDays?: number; expiresAt?: string; versionNote?: string; note?: string }) => void
   getGrantableProfiles: (resource: ResourceRef) => AccessProfileId[]
   revokeGrant: (grantId: string) => void
   revokeUserAccess: (userId: string) => void
@@ -626,7 +626,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [collections, getDirectCollectionPermissionSet])
 
   const collectionAssetAccessById = useMemo(() => {
-    const VIEW_ONLY_CAP: Permission[] = ['open', 'download']
     const accessById = new Map<string, EffectivePermissionSet>()
 
     if (!activePersona || !userId) return accessById
@@ -643,10 +642,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       const collection = collectionById.get(grant.resource.id)
       if (!collection) continue
 
-      const grantedPermissions = (grant.permissions.length > 0
+      // Full grant permissions flow through to assets — no cap.
+      // The sharer's own access on each asset is the ceiling.
+      const grantedPermissions = grant.permissions.length > 0
         ? grant.permissions
         : getPermissionsForProfile(grant.templateId, roleGroups)
-      ).filter((permission) => VIEW_ONLY_CAP.includes(permission))
 
       if (grantedPermissions.length === 0) continue
 
@@ -678,7 +678,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
             variantId,
             mergePermissionSets(
               current,
-              toPermissionSet(cappedPermissions, 'viewer'),
+              toPermissionSet(cappedPermissions, grant.templateId ?? 'viewer'),
             ),
           )
         }
@@ -1138,6 +1138,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       expiresInDays?: number
       expiresAt?: string
       versionNote?: string
+      note?: string
     },
   ) => {
     if (activePersona && !userId) return
@@ -1202,6 +1203,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
           version,
           versionNote,
           previousVersionId: latestExistingGrant?.id,
+          note: options?.note,
         }
 
         const auditTarget = resolveAuditTarget(principal)
@@ -1238,6 +1240,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
               allowDownload: options?.allowDownload ?? g.allowDownload,
               allowComment: options?.allowComment ?? g.allowComment,
               allowUpload: options?.allowUpload ?? g.allowUpload,
+              note: options?.note ?? g.note,
             }
           : g
         )
@@ -1267,6 +1270,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         allowDownload: options?.allowDownload,
         allowComment: options?.allowComment,
         allowUpload: options?.allowUpload,
+        note: options?.note,
       }
 
       // Audit log

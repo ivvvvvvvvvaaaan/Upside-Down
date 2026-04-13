@@ -80,6 +80,8 @@ export type Grant = {
   previousVersionId?: string
   /** For cut grants: lock recipient to versions up to this number. Null = follow all versions. */
   lockedToVersion?: number
+  /** Optional note from the sharer (e.g., "smoke reference still coming, turnover 1 of 3") */
+  note?: string
 }
 
 export type Block = {
@@ -423,6 +425,7 @@ export type GrantView = {
   grantedByUserId: string
   grantedAt: string
   principalLabel: string
+  note?: string
 }
 
 export function principalLabel(principal: PrincipalRef): string {
@@ -453,6 +456,7 @@ function grantToView(grant: Grant): GrantView {
     grantedByUserId: grant.grantedByUserId,
     grantedAt: grant.grantedAt,
     principalLabel: principalLabel(grant.principal),
+    note: grant.note,
   }
 }
 

@@ -69,6 +69,8 @@ type ScenarioShare = {
   version?: number
   /** Note describing what changed in this version */
   versionNote?: string
+  /** Optional note from the sharer */
+  note?: string
 }
 
 type ScenarioGuestLink = {
@@ -87,6 +89,7 @@ type ScenarioCollection = {
   name: string
   createdBy: string
   assetIds: string[]
+  sourceSmartCollectionId?: string
   /** If set, this collection resolves assets from a folder at query time */
   boundFolderId?: string
   boundDomainId?: string
@@ -290,6 +293,7 @@ export const SCENARIO: Scenario = {
       allowUpload: true,
       shareMode: 'snapshot',
       version: 1,
+      note: 'EP301 plates, first turnover. Smoke reference still coming in a follow-up.',
       context: 'Sarah shares the Framestore workspace folder. James can see the brief, download plates, and upload comp deliveries. Time-boxed to the delivery window.',
       grants: [
         { to: 'vendor-framestore', as: 'viewer' },
@@ -541,7 +545,7 @@ export const SCENARIO: Scenario = {
   collections: [
     // Shared collections (referenced by grants)
     { id: 'ws-vfx-coll-for-editorial', name: 'EP301 VFX Pulls - Edit Review',  createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-020-010'], boundDomainId: 'vfx' },
-    { id: 'coll-smart-finals-shared',  name: 'Finals (shared)',                createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020'], boundDomainId: 'vfx' },
+    { id: 'coll-smart-finals-shared',  name: 'Finals (shared)',                createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020'], sourceSmartCollectionId: 'smart-finals', boundDomainId: 'vfx' },
     { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', assetIds: ['ws-edit-cut-1', 'ws-edit-cut-2', 'ws-edit-cut-3'], boundDomainId: 'editorial' },
     // Camera collections
     { id: 'ws-cam-coll-broll', name: 'B-Roll Highlights', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-broll-town', 'ws-cam-broll-forest', 'ws-cam-aerial-dawn', 'ws-cam-aerial-quarry'], boundDomainId: 'camera' },
@@ -758,6 +762,9 @@ export function buildGrants(): Grant[] {
       if (share.reviewLinkId) {
         grant.reviewLinkId = share.reviewLinkId
       }
+      if (share.note) {
+        grant.note = share.note
+      }
       // Version tracking for turnovers
       if (share.version !== undefined) {
         grant.version = share.version
@@ -910,6 +917,7 @@ export function buildSeedCollections(): UserCollection[] {
     assetIds: c.assetIds,
     createdAt: new Date('2026-02-14'),
     createdBy: c.createdBy,
+    sourceSmartCollectionId: c.sourceSmartCollectionId,
     boundFolderId: c.boundFolderId,
     boundDomainId: c.boundDomainId,
   }))

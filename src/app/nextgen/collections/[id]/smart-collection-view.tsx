@@ -26,7 +26,7 @@ import {
 } from '@/components/ui'
 import type { CollectionCardType } from '@/components/ui/collection-card'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
-import { getGridColumns, useAssetSelection, useViewPreferences, useCompactBar, useResourceSelection, useSmartCollections, usePersona, useMobilePanel } from '@/hooks'
+import { getGridColumns, useAssetSelection, useViewPreferences, useCompactBar, useResourceSelection, useSmartCollections, usePersona, useMobilePanel, useUserCollections } from '@/hooks'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { matchesFilter } from '@/hooks/useSmartCollections'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
@@ -38,6 +38,7 @@ import { AccessModal } from '@/components/ui/access-modal'
 import type { ResourceRef } from '@/lib/grants'
 import { SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
 import { useToast } from '@/components/ui/toast'
+import { getSmartShareSnapshotCollections } from '@/lib/smart-collection-share-utils'
 
 interface SmartCollectionDetailViewProps {
   collectionId: string
@@ -57,6 +58,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     assetsLoading,
     ensureAssetsLoaded,
   } = useSmartCollections()
+  const { collections: userCollections } = useUserCollections()
   const { activePersona, isAdmin } = usePersona()
   const {
     selectedIds: selectedAssetIds,
@@ -76,13 +78,11 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
   const isMobile = useIsMobile()
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
-  const { canShare, canEdit, canEditAcl, sharesReceivedByMe, getCurrentUserGrant } = useAccess()
+  const { canShare, canEditAcl, getCurrentUserGrant } = useAccess()
   const { createReferenceFolder } = useFileTree()
   const { showToast } = useToast()
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const collectionResourceRef: ResourceRef = { id: collectionId, type: 'smart-collection' }
-  const showShareButton = canShare(collectionResourceRef)
-  const isSharedToMe = sharesReceivedByMe.some(s => s.resourceId === collectionId)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
@@ -90,8 +90,19 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   ])
 
   const collection = getCollection(collectionId)
+  const linkedSnapshotCollections = useMemo(() => {
+    if (!collection) return []
+    return getSmartShareSnapshotCollections(userCollections, collection)
+  }, [collection, userCollections])
+  const shareTargetCollection = linkedSnapshotCollections.length === 1
+    ? linkedSnapshotCollections[0]
+    : null
+  const shareResourceRef: ResourceRef = shareTargetCollection
+    ? { id: shareTargetCollection.id, type: 'collection' }
+    : collectionResourceRef
+  const showShareButton = Boolean(collection) && canShare(shareResourceRef)
   const isOwner = collection?.createdBy === activePersona?.email
-  const canManageCurrentCollection = Boolean(collection && (isOwner || isAdmin || canEdit(collection.id) || canEditAcl(collectionResourceRef)))
+  const canManageCurrentCollection = Boolean(collection && (isOwner || isAdmin || canEditAcl(collectionResourceRef)))
   const canDeleteCurrentCollection = Boolean(collection && (isOwner || isAdmin))
 
   useEffect(() => {
@@ -564,9 +575,9 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
       <AccessModal
         open={shareModalOpen}
         onClose={() => setShareModalOpen(false)}
-        resourceId={collectionId}
-        resourceRef={collectionResourceRef}
-        title={collection?.name}
+        resourceId={shareResourceRef.id}
+        resourceRef={shareResourceRef}
+        title={shareTargetCollection?.name ?? collection?.name}
       />
     </div>
   )

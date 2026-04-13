@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { X, LayoutGrid, MoreVertical, Pencil, Trash2, MapPin, Film, Zap, Folder, HardDrive, Import, Users } from 'lucide-react'
 import { Button } from './button'
 import { Avatar } from './avatar'
@@ -19,15 +19,17 @@ import { Tag } from './tag'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import type { Collection } from '@/lib/collection-types'
 import { isSmart, isCollection, getCollectionCapabilities } from '@/lib/collection-types'
+import { resolveCollectionAssetIds } from '@/lib/data'
 import { getCollectionReviewSummary } from '@/lib/review-notes'
 import type { ResourceRef, Grant } from '@/lib/grants'
 import type { AssetFilter, SmartCollectionGroupBy } from '@/lib/data'
 import type { RelatedCollections } from '@/hooks/useSmartCollections'
-import { useAccess, usePersona } from '@/hooks'
+import { useAccess, usePersona, useUserCollections } from '@/hooks'
 import { PERSONAS } from '@/lib/personas'
 import { TEAMS } from '@/lib/teams'
 import { getOntologyMeta } from '@/lib/ontology-meta'
 import type { OntologyMeta } from '@/lib/ontology-meta'
+import { getSmartShareSnapshotCollections } from '@/lib/smart-collection-share-utils'
 
 const PANEL_ICONS: Record<string, typeof LayoutGrid> = {
   collection: LayoutGrid,
@@ -159,29 +161,57 @@ export function CollectionSidePanel({
   const canMount = Boolean(onAction && (actionPermissions?.canMount ?? true) && caps.canMount)
 
   const ontologyMeta = smart ? getOntologyMeta(collection.name, smart.icon) : null
-  const assetCount = matchingCount ?? (curated ? curated.assetIds.length : 0)
-  const assetIds = curated ? curated.assetIds : []
+  const resolvedAssetIds = useMemo(() => (
+    curated ? resolveCollectionAssetIds(curated) : []
+  ), [curated])
+  const assetCount = matchingCount ?? resolvedAssetIds.length
+  const assetIds = resolvedAssetIds
   const reviewNoteSummary = curated ? getCollectionReviewSummary(collection.id, assetIds) : null
 
+  const { collections: userCollections } = useUserCollections()
   const { sharesReceivedByMe, allProjectShares, getResourceGrants, getResourceGuestLinks, roleGroups, canShare } = useAccess()
   const { isAdmin } = usePersona()
   const [accessModalOpen, setAccessModalOpen] = useState(false)
 
-  const resourceRef: ResourceRef = {
-    id: collection.id,
-    type: smart ? 'smart-collection' : 'collection',
-  }
+  const linkedSnapshotCollections = useMemo(() => {
+    if (!smart) return []
+    return getSmartShareSnapshotCollections(userCollections, smart)
+  }, [smart, userCollections])
+
+  const accessCollection = smart && linkedSnapshotCollections.length === 1
+    ? linkedSnapshotCollections[0]
+    : curated
+  const accessResourceRef: ResourceRef = accessCollection
+    ? { id: accessCollection.id, type: 'collection' }
+    : { id: collection.id, type: smart ? 'smart-collection' : 'collection' }
+  const accessResourceId = accessCollection?.id ?? collection.id
 
   const shares = isAdmin ? allProjectShares : sharesReceivedByMe
-  const share = shares.find(s => s.resourceId === collection.id)
+  const share = linkedSnapshotCollections.length <= 1
+    ? shares.find(s => s.resourceId === accessResourceId)
+    : undefined
   const sharedBy = share ? (PERSONAS.find(p => p.id === share.grantedByUserId)?.name ?? null) : null
   const createdByName = collection.createdBy
     ? (PERSONAS.find(p => p.email === collection.createdBy)?.name ?? collection.createdBy)
     : null
 
-  const grants = getResourceGrants(collection.id)
-  const guestLinks = getResourceGuestLinks(collection.id)
-  const canManageAccess = isAdmin || canShare(resourceRef)
+  const grants = useMemo(() => {
+    if (!smart || linkedSnapshotCollections.length <= 1) {
+      return getResourceGrants(accessResourceId)
+    }
+    return linkedSnapshotCollections.flatMap((snapshotCollection) => getResourceGrants(snapshotCollection.id))
+  }, [smart, linkedSnapshotCollections, getResourceGrants, accessResourceId])
+
+  const guestLinks = useMemo(() => {
+    if (!smart || linkedSnapshotCollections.length <= 1) {
+      return getResourceGuestLinks(accessResourceId)
+    }
+    return linkedSnapshotCollections.flatMap((snapshotCollection) => getResourceGuestLinks(snapshotCollection.id))
+  }, [smart, linkedSnapshotCollections, getResourceGuestLinks, accessResourceId])
+
+  const canManageAccess = linkedSnapshotCollections.length > 1
+    ? false
+    : (isAdmin || canShare(accessResourceRef))
 
   const connectionsCount = relationships
     ? relationships.characters.length + relationships.scenes.length + relationships.locations.length
@@ -316,6 +346,15 @@ export function CollectionSidePanel({
               )}
 
               {/* Shared with */}
+              {smart && linkedSnapshotCollections.length > 1 && (
+                <div className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-1">
+                  <span className="text-body-0-regular text-foreground-dim">Sharing</span>
+                  <p className="text-body-0-regular text-foreground">
+                    Shared as {linkedSnapshotCollections.length} separate snapshot collections. Open a generated shared collection to manage or version a specific handoff.
+                  </p>
+                </div>
+              )}
+
               {grants.length > 0 && (
                 <div className="bg-surface-low rounded-lg px-3 pt-1.5 pb-3 hover:bg-surface-mid transition-colors space-y-2">
                   <span className="text-body-0-regular text-foreground-dim">Shared with</span>
@@ -368,9 +407,9 @@ export function CollectionSidePanel({
       <AccessModal
         open={accessModalOpen}
         onClose={() => setAccessModalOpen(false)}
-        resourceId={collection.id}
-        resourceRef={resourceRef}
-        title={collection.name}
+        resourceId={accessResourceId}
+        resourceRef={accessResourceRef}
+        title={accessCollection?.name ?? collection.name}
       />
 
       {/* Edit modal */}

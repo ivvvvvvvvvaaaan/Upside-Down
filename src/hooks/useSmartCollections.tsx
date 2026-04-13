@@ -49,7 +49,7 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
   const [assetLoadState, setAssetLoadState] = useState<'idle' | 'loading' | 'loaded'>('idle')
   const assetLoadPromiseRef = useRef<Promise<void> | null>(null)
   const { filterByAccess } = useAccessCascades()
-  const { canEdit, canEditAcl } = useAccess()
+  const { canEditAcl } = useAccess()
   const { activePersona } = usePersona()
   const personaEmail = activePersona?.email
 
@@ -153,12 +153,12 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
 
       const resourceRef = { id, type: 'smart-collection' as const }
       const isOwner = !activePersona || collection.createdBy === personaEmail
-      const canManage = isOwner || canEdit(id) || canEditAcl(resourceRef)
+      const canManage = isOwner || canEditAcl(resourceRef)
       if (!canManage) return collection
 
       return { ...collection, ...updates }
     }))
-  }, [activePersona, personaEmail, canEdit, canEditAcl])
+  }, [activePersona, personaEmail, canEditAcl])
 
   const deleteCollection = useCallback((id: string): boolean => {
     const target = collections.find(c => c.id === id)

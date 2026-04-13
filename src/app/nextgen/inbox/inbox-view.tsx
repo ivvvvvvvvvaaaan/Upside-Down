@@ -151,6 +151,11 @@ export function InboxView() {
                           {entry.label}
                         </span>
                       </div>
+                      {entry.note && (
+                        <p className="text-label-0-regular text-foreground-dim truncate pl-5">
+                          {entry.note}
+                        </p>
+                      )}
                     </div>
 
                     {/* Date + unread dot */}

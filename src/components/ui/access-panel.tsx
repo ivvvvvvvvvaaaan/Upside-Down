@@ -428,7 +428,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   })
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
-  type PendingGrant = { id: string; principal: PrincipalRef; name: string; kind: 'user' | 'team' | 'domain'; role: AccessProfileId; shareMode: ShareMode; expires: boolean; expiresInDays: number; allowUpload: boolean }
+  type PendingGrant = { id: string; principal: PrincipalRef; name: string; kind: 'user' | 'team' | 'domain'; role: AccessProfileId; shareMode: ShareMode; expires: boolean; expiresInDays: number; allowUpload: boolean; note: string }
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
   const [showCrossDomainWarning, setShowCrossDomainWarning] = useState(false)
   const [flaggedRecipients, setFlaggedRecipients] = useState<{ name: string; reason: string }[]>([])
@@ -671,6 +671,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       expires,
       expiresInDays,
       allowUpload: defaultAllowUpload,
+      note: '',
     }])
     setQuery('')
     setShowDropdown(false)
@@ -709,7 +710,9 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           if (smartColl) {
             const assets = filterAssets(scopedAssets, smartColl.id)
             const assetIds = assets.map(a => a.id)
-            const curated = createCollection(`${smartColl.name} (shared)`, assetIds)
+            const curated = createCollection(`${smartColl.name} (shared)`, assetIds, {
+              sourceSmartCollectionId: smartColl.id,
+            })
             target = { id: curated.id, type: 'collection' }
           }
         }
@@ -728,6 +731,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           shareMode: isCollection ? pending.shareMode : undefined,
           snapshotAssetIds,
           allowUpload: pending.allowUpload || undefined,
+          note: pending.note || undefined,
         })
       }
     }
@@ -1224,6 +1228,13 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               </Button>
             </div>
           </div>
+          <input
+            type="text"
+            value={pending.note}
+            onChange={(e) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, note: e.target.value } : p))}
+            placeholder="Add a note (optional)"
+            className="w-full px-3 py-1.5 bg-surface-low border border-border-dim rounded text-body-0-regular text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-subtle transition-colors"
+          />
           {isCollectionResource && resourceRef && (() => {
             const ceiling = getCollectionShareCeiling(resourceRef.id, pending.role)
             if (ceiling.total === 0 || ceiling.capped === 0) return null
