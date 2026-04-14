@@ -232,7 +232,7 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
   // Workspace-level folders: top-level folders created by user (exclude domain folders already rendered via domainNodes)
   const landingFolders = useMemo(() => {
     return resolveReferenceNodes(
-      fileTree.filter((f) => f.type === 'folder' && !DOMAIN_FOLDER_IDS.has(f.id)) as WorkspaceFileNode[],
+      fileTree.filter((f) => f.type === 'folder' && !DOMAIN_FOLDER_IDS.has(f.id) && f.id !== SHARED_MOUNT_FOLDER_ID) as WorkspaceFileNode[],
     )
   }, [fileTree, resolveReferenceNodes])
 

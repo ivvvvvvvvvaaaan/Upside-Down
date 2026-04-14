@@ -235,11 +235,12 @@ export const SCENARIO: Scenario = {
     { id: 'audio-team',     name: 'Audio & Sound',  kind: 'department', members: ['audio-supervisor'],                                           domain: 'audio-sound' },
     // Vendor teams
     { id: 'framestore-io',  name: 'Framestore',     kind: 'team',    members: ['vendor-framestore'] },
-    // Release domain groups (managed by CAM, not editable in-app)
-    { id: 'studio-leadership', name: 'Studio Leadership', kind: 'domain', members: ['studio-alex', 'creative-david'] },
-    { id: 'netflix-studio',    name: 'Netflix Studio',    kind: 'domain', members: ['studio-alex'] },
-    { id: 'netflix-post',      name: 'Netflix Post',      kind: 'domain', members: ['vfx-supervisor', 'editorial-coordinator', 'audio-supervisor'] },
-    { id: 'super-prod',        name: 'Super Prod',        kind: 'domain', members: ['studio-alex', 'creative-david', 'vfx-coordinator', 'editorial-coordinator'] },
+    // Internal cross-department teams
+    { id: 'studio-leadership', name: 'Studio Leadership', kind: 'team', members: ['studio-alex', 'creative-david'] },
+    { id: 'netflix-studio',    name: 'Netflix Studio',    kind: 'team', members: ['studio-alex'] },
+    { id: 'netflix-post',      name: 'Netflix Post',      kind: 'team', members: ['vfx-supervisor', 'editorial-coordinator', 'audio-supervisor'] },
+    { id: 'super-prod',        name: 'Super Prod',        kind: 'team', members: ['studio-alex', 'creative-david', 'vfx-coordinator', 'editorial-coordinator'] },
+    // Release domain groups (managed by CAM)
     { id: 'team-globalization',     name: 'Globalization',      kind: 'domain', members: [] },
     { id: 'team-marketing',         name: 'Marketing',          kind: 'domain', members: ['marketing-coordinator'] },
     { id: 'team-legal',             name: 'Legal',              kind: 'domain', members: ['legal-reviewer'] },
