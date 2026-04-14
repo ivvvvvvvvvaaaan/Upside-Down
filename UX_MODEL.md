@@ -57,7 +57,7 @@ That's it. Two modes.
 
 Filtered collections show personalized results: "47 assets (you can access 23)."
 
-**Sharing a filtered collection snapshots it.** When you share a filtered (smart) collection, the filter runs against your access at share time and produces a concrete list of assets. The recipient receives a curated collection -- fixed contents, same for everyone. If you re-share later, it snapshots again (new version, potentially different assets if the filter results changed). This eliminates the "shared smart collection" edge case: share = snapshot. The sharer keeps their dynamic filter; the recipient gets a stable list.
+**Live or snapshot is a per-share choice.** When sharing any collection, the sharer picks: live (recipient sees updates as assets are added) or snapshot (recipient gets a frozen list at share time). Default is live for internal shares, snapshot for vendor handoffs. Filtered collections default to snapshot because the filter results are personalized — the recipient gets a concrete list, not a dynamic filter.
 
 ### Asset
 
