@@ -9,7 +9,7 @@
 3. To send content outside your department, you **share** it (with a person or team) or **release** it (to an audience like Marketing or Studio Creative).
 4. Sharing uses **collections** -- named groups of assets. You control what goes in, who sees it, and what they can do with it.
 5. Releasing is a broadcast. You toggle audience groups on/off. Released content travels across apps.
-6. What someone can do depends on their **permission level**: view, comment, add, edit, or manage.
+6. What someone can do depends on their **permission level**: viewer, editor, or manager -- plus modifiers like download, comment, and upload.
 7. Content stays in your department until you share or release it. Every permission is traceable and revocable.
 8. Release is the formal publication step. Releasing to "Studio VFX" makes the asset visible to the Studio VFX audience -- which is broader than the VFX workspace. Department membership and release audience membership overlap but are not the same.
 
@@ -67,12 +67,18 @@ A cut is a composite asset assembled from files across departments. Sharing a cu
 
 ### Permission level
 
-What you can do with what you received. Each level includes everything above it:
-- **View** -- open, preview, download.
-- **Comment** -- leave feedback, annotations, timecoded notes.
-- **Add** -- upload new files. Cannot modify or delete existing content.
-- **Edit** -- modify existing content, reshare with others.
-- **Manage** -- change permissions, remove people, delete.
+What you can do with what you received. Three levels, aligned to CAM:
+- **Viewer** -- open and preview.
+- **Editor** -- write, modify metadata, reshare.
+- **Manager** -- delete, change permissions, manage people.
+
+Extra capabilities are modifiers toggled per-share, not separate levels:
+- **Download** -- can download source files.
+- **Comment** -- can leave feedback and annotations.
+- **Upload** -- can add new files (vendor turnovers).
+- **Include new** -- automatically receives newly added assets.
+
+The share dialog shows presets for common combinations (Reviewer = Viewer + Download + Comment, Turnover = Viewer + Download + Upload). One dropdown, one click for 90% of shares.
 
 ---
 
