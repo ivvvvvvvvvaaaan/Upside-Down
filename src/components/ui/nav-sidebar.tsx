@@ -735,7 +735,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
         })()}
         <button
           onClick={onNewCollection}
-          className="flex items-center gap-2 pr-3 py-2 text-body-0-regular text-foreground-dim hover:text-foreground transition-colors min-w-0" style={{ paddingLeft: '32px' }}
+          className="flex items-center gap-2 pl-8 pr-3 py-2 text-body-0-regular text-foreground-dim hover:text-foreground transition-colors min-w-0"
         >
           <Plus className="w-4 h-4 flex-shrink-0" />
           <span className="truncate">New Collection</span>

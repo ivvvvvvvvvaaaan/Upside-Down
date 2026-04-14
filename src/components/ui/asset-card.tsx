@@ -269,6 +269,14 @@ export function AssetCard({
         const ids = isSelected && allSelectedIds ? Array.from(allSelectedIds) : [asset.id]
         e.dataTransfer.setData('application/x-asset-ids', JSON.stringify(ids))
         e.dataTransfer.effectAllowed = 'copyMove'
+
+        // Custom drag image: compact pill with count
+        const ghost = document.createElement('div')
+        ghost.style.cssText = 'position:fixed;top:-1000px;left:-1000px;display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:6px;background:#4338ca;color:white;font-size:13px;font-weight:600;white-space:nowrap;pointer-events:none;'
+        ghost.textContent = ids.length === 1 ? asset.name : `${ids.length} assets`
+        document.body.appendChild(ghost)
+        e.dataTransfer.setDragImage(ghost, 0, 0)
+        requestAnimationFrame(() => document.body.removeChild(ghost))
       }}
       onClick={(e) => {
         if (restricted) { onRequestAccess?.(asset); return }
