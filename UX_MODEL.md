@@ -51,7 +51,9 @@ A named group of assets. How assets get in:
 - **You pick them** -- drag assets in, or select and add.
 - **A filter picks them** -- automatically matches assets by metadata (e.g., all assets tagged "final").
 
-That's it. Two modes. A workspace folder is not a third type of collection. Sharing a folder creates a collection containing the folder's assets. The folder remains a folder in the workspace. The collection is the thing that gets shared.
+That's it. Two modes.
+
+**Folders and collections are different things with different jobs.** A folder is how you organize your workspace (spatial, hierarchical, like a filing cabinet). A collection is how you share and group for a purpose (semantic, flat, like a playlist). An asset can be in a folder AND in a collection. Neither owns the asset. The user never needs to decide "is this a folder or a collection?" because they do different things: folders organize, collections share.
 
 Filtered collections show personalized results: "47 assets (you can access 23)."
 
