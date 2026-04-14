@@ -1001,6 +1001,7 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
                                   handleSelectionClick(selectionEntry.entity, e, currentGridSelectionEntities)
                                 }
                               }}
+                              allSelectedIds={selectedIds}
                             />
                           )
                         })}

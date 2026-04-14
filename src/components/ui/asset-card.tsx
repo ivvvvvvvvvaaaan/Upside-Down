@@ -266,7 +266,9 @@ export function AssetCard({
       draggable={!restricted}
       onDragStart={(e) => {
         if (restricted) return
-        const ids = isSelected && allSelectedIds ? Array.from(allSelectedIds) : [asset.id]
+        // If this card is selected OR part of the selection set, drag all selected
+        const inSelection = allSelectedIds && (isSelected || allSelectedIds.has(asset.id))
+        const ids = inSelection && allSelectedIds.size > 0 ? Array.from(allSelectedIds) : [asset.id]
         e.dataTransfer.setData('application/x-asset-ids', JSON.stringify(ids))
         e.dataTransfer.effectAllowed = 'copyMove'
 

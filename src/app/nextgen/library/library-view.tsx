@@ -53,6 +53,7 @@ function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, o
                 onRequestAccess={onRequestAccess}
                 showTags={showTags}
                 metadataFields={metadataFields}
+                allSelectedIds={selectedIds}
               />
               {count > 1 && (
                 <span className="text-label-0-regular text-foreground-subtle block">
