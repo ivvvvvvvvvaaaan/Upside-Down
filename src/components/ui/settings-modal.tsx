@@ -1345,6 +1345,87 @@ function AuditLogTab({
   )
 }
 
+// --- Teams tab ---
+
+function TeamsTab() {
+  const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredTeams = useMemo(() => {
+    if (!searchQuery.trim()) return TEAMS
+    const q = searchQuery.toLowerCase()
+    return TEAMS.filter(t =>
+      t.name.toLowerCase().includes(q) ||
+      t.memberUserIds.some(uid => {
+        const p = PERSONAS.find(u => u.id === uid)
+        return p?.name.toLowerCase().includes(q) || p?.email?.toLowerCase().includes(q)
+      })
+    )
+  }, [searchQuery])
+
+  return (
+    <div className="space-y-4 pt-4">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-dim" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder="Search teams..."
+          className="w-full h-9 pl-9 pr-3 bg-surface-low border border-border-dim rounded text-body-0-regular text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-subtle transition-colors"
+        />
+      </div>
+      <div className="space-y-1">
+        {filteredTeams.map(team => {
+          const isExpanded = expandedTeamId === team.id
+          const members = team.memberUserIds
+            .map(uid => PERSONAS.find(u => u.id === uid))
+            .filter(Boolean) as User[]
+          const domainLabel = team.domainId ? domainConfigs[team.domainId]?.name : undefined
+          return (
+            <div key={team.id}>
+              <button
+                onClick={() => setExpandedTeamId(isExpanded ? null : team.id)}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded hover:bg-surface-highlight transition-colors text-left"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {isExpanded ? <ChevronDown className="w-4 h-4 text-foreground-dim flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-foreground-dim flex-shrink-0" />}
+                  <span className="text-body-0-regular text-foreground truncate">{team.name}</span>
+                  {domainLabel && <span className="text-label-0-regular text-foreground-dim">{domainLabel}</span>}
+                </div>
+                <span className="text-label-0-regular text-foreground-dim flex-shrink-0">
+                  {members.length} {members.length === 1 ? 'member' : 'members'}
+                </span>
+              </button>
+              {isExpanded && (
+                <div className="pl-9 pb-2 space-y-1">
+                  {members.length === 0 ? (
+                    <p className="text-body-0-regular text-foreground-dim py-1">No members</p>
+                  ) : members.map(member => (
+                    <div key={member.id} className="flex items-center justify-between gap-2 py-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Avatar name={member.name} size="sm" />
+                        <div className="min-w-0">
+                          <span className="text-body-0-regular text-foreground truncate block">{member.name}</span>
+                          {member.email && <span className="text-label-0-regular text-foreground-dim truncate block">{member.email}</span>}
+                        </div>
+                      </div>
+                      {member.title && <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{member.title}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+        {filteredTeams.length === 0 && (
+          <p className="text-body-0-regular text-foreground-dim py-4 text-center">No teams match your search.</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // --- Main modal ---
 
 interface SettingsModalProps {
@@ -1501,6 +1582,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             <TabsList>
               <Tab value="departments">Departments</Tab>
               <Tab value="people">People</Tab>
+              <Tab value="teams">Teams</Tab>
               {canManageProject && <Tab value="role-groups">Role Groups</Tab>}
               {canManageProject && <Tab value="settings">Settings</Tab>}
               {canManageProject && <Tab value="security">Security</Tab>}
@@ -1527,6 +1609,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     setDirectoryVersion((prev) => prev + 1)
                   }}
                 />
+              </TabsContent>
+              <TabsContent value="teams">
+                <TeamsTab />
               </TabsContent>
               <TabsContent value="departments">
                 <DomainsTab
