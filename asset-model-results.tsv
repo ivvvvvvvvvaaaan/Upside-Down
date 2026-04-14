@@ -1,2 +1,3 @@
 commit	composite	delta	status	description
 a72c008	3.5	+0.0	keep	baseline: current UX_MODEL.md
+3044633	3.8	+0.3	keep	asset independence + vendor upload gating in turnovers section

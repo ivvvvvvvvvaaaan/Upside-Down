@@ -58,7 +58,11 @@ One concept. Same share model regardless of how contents are populated. Filtered
 
 ### Asset
 
-An individual file -- shot, video, image, audio, text. A cut is a composite asset assembled from files across departments. Sharing a cut grants playback access, not constituent access: the recipient can watch it but can't browse or download the individual source files unless those were shared separately. Each department controls when their source material is ready to share.
+An individual file -- shot, video, image, audio, text. An asset exists the moment it enters the system. It does not need a workspace folder. It can be created by dropping a file into a workspace (automatic), uploading to a collection (vendor delivery), or assembling from other assets (cut).
+
+An asset can appear in zero folders, one folder, or many collections. Its identity, metadata, and version history are independent of where it appears.
+
+A cut is a composite asset assembled from files across departments. Sharing a cut grants playback access, not constituent access: the recipient can watch it but can't browse or download the individual source files unless those were shared separately. Each department controls when their source material is ready to share.
 
 ### Permission level
 
@@ -137,6 +141,8 @@ Asset-level flag set by the creating department. Even with collection access, yo
 A turnover is a collection pattern, not a separate entity.
 
 The coordinator creates a collection, adds the scoped set of plates, reference cuts, and notes, then shares it as a snapshot with upload enabled. The vendor receives the frozen brief and uploads deliveries into the same collection.
+
+Vendor uploads become assets in the collection. They do not automatically appear in the coordinator's workspace. The coordinator reviews deliveries in the collection and files approved ones into their workspace when ready. This gives the coordinator a gate: the team sees only what the coordinator has reviewed and approved.
 
 When the cut changes, the coordinator updates the collection and re-shares. The system records this as a new version with a change delta. The vendor sees "Version 2: +3 assets, -1 asset" with a note from the coordinator.
 
