@@ -278,14 +278,17 @@ function TreeNavLink({
   return (
     <div>
       <div
-        onDragOver={onAssetDrop ? (e) => {
-          if (e.dataTransfer.types.includes('application/x-asset-ids')) {
-            e.preventDefault()
+        onDragOver={(e) => {
+          if (!e.dataTransfer.types.includes('application/x-asset-ids')) return
+          e.preventDefault()
+          if (onAssetDrop) {
             e.dataTransfer.dropEffect = 'copy'
             setIsDragOver(true)
+          } else {
+            e.dataTransfer.dropEffect = 'none'
           }
-        } : undefined}
-        onDragLeave={onAssetDrop ? () => setIsDragOver(false) : undefined}
+        }}
+        onDragLeave={() => setIsDragOver(false)}
         onDrop={onAssetDrop ? (e) => {
           e.preventDefault()
           setIsDragOver(false)
@@ -432,7 +435,7 @@ function SectionHeader({ title }: { title: string }) {
 }
 
 /** Recursively render workspace folders as nav tree items, filtering by access */
-function FolderNavTree({ nodes, basePath, sharedFolderIds }: { nodes: WorkspaceFileNode[]; basePath: string; sharedFolderIds?: Set<string> }) {
+function FolderNavTree({ nodes, basePath, sharedFolderIds, onAssetDropToFolder }: { nodes: WorkspaceFileNode[]; basePath: string; sharedFolderIds?: Set<string>; onAssetDropToFolder?: (folderId: string, folderName: string, assetIds: string[]) => void }) {
   const { canAccess } = useAccess()
   const { activePersona } = usePersona()
   const folders = nodes.filter((n) => n.type === 'folder')
@@ -458,14 +461,19 @@ function FolderNavTree({ nodes, basePath, sharedFolderIds }: { nodes: WorkspaceF
         const isShared = sharedFolderIds?.has(folder.id)
         const sharedIcon = isShared ? <Share2 className="w-3 h-3 text-foreground-dim" /> : undefined
         const subfolders = (folder.children ?? []).filter((n) => n.type === 'folder')
+        const folderDrop = onAssetDropToFolder
+          ? (assetIds: string[]) => onAssetDropToFolder(folder.id, folder.name, assetIds)
+          : undefined
         if (subfolders.length > 0) {
           return (
-            <TreeNavLink key={folder.id} href={href} label={folder.name} defaultExpanded={false} trailingIcon={sharedIcon}>
-              <FolderNavTree nodes={folder.children ?? []} basePath={href} sharedFolderIds={sharedFolderIds} />
+            <TreeNavLink key={folder.id} href={href} label={folder.name} defaultExpanded={false} trailingIcon={sharedIcon} onAssetDrop={folderDrop}>
+              <FolderNavTree nodes={folder.children ?? []} basePath={href} sharedFolderIds={sharedFolderIds} onAssetDropToFolder={onAssetDropToFolder} />
             </TreeNavLink>
           )
         }
-        return <NavLink key={folder.id} href={href} label={folder.name} matchSubpaths />
+        return (
+          <TreeNavLink key={folder.id} href={href} label={folder.name} indent onAssetDrop={folderDrop} />
+        )
       })}
     </>
   )
@@ -483,11 +491,19 @@ const DOMAIN_NAV_ITEMS: { href: string; label: string; id: ProductionDomainId }[
 
 /** Renders a single domain nav item, using files from the shared file tree */
 function DomainNavItem({ item }: { item: typeof DOMAIN_NAV_ITEMS[number] }) {
-  const { getDomainFiles } = useFileTree()
+  const { getDomainFiles, confirmMove } = useFileTree()
   const { getResourceGrants } = useAccess()
   const { collections } = useUserCollections()
+  const { showToast } = useToast()
   const files = getDomainFiles(item.id) as WorkspaceFileNode[]
   const hasFolders = files.some((n) => n.type === 'folder')
+
+  const handleFolderDrop = useCallback((folderId: string, folderName: string, assetIds: string[]) => {
+    for (const assetId of assetIds) {
+      confirmMove(assetId, folderId)
+    }
+    showToast(`Moved ${assetIds.length} item${assetIds.length !== 1 ? 's' : ''} to ${folderName}`)
+  }, [confirmMove, showToast])
 
   // Folders that have a workspace-bound collection with active outgoing grants
   const sharedFolderIds = useMemo(() => {
@@ -508,7 +524,7 @@ function DomainNavItem({ item }: { item: typeof DOMAIN_NAV_ITEMS[number] }) {
         label={item.label}
         defaultExpanded={false}
       >
-        <FolderNavTree nodes={files} basePath={item.href} sharedFolderIds={sharedFolderIds} />
+        <FolderNavTree nodes={files} basePath={item.href} sharedFolderIds={sharedFolderIds} onAssetDropToFolder={handleFolderDrop} />
       </TreeNavLink>
     )
   }
@@ -721,7 +737,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
         })()}
         <button
           onClick={onNewCollection}
-          className="flex items-center gap-2 px-3 py-2 text-body-0-bold text-foreground-dim hover:text-foreground-subtle transition-colors min-w-0"
+          className="flex items-center gap-2 pl-8 pr-3 py-2 text-body-0-regular text-foreground-dim hover:text-foreground transition-colors min-w-0"
         >
           <Plus className="w-4 h-4 flex-shrink-0" />
           <span className="truncate">New Collection</span>
