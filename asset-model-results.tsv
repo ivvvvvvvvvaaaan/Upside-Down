@@ -12,3 +12,4 @@ f0e1387	4.4	+0.0	keep	live/snapshot is per-share toggle not collection-type rule
 e594866	4.4	+0.0	keep	compress model summary from 8 points to 5 (simpler)
 b269865	4.4	+0.0	keep	simplify permission capping: invisible in most cases (simpler prose)
 f1a62a6	4.5	+0.1	keep	concrete workspace: folders to organize, search to discover, same files
+6610163	4.5	+0.0	keep	filterable shared page + cross-department collection visibility

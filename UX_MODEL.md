@@ -134,11 +134,11 @@ Three access paths, each traceable:
 ### Coordinator visibility
 
 Department coordinators see a complete picture of what's shared:
-- **Shared page**: every active share involving their department's assets. Who shared, who received, when, what permission level.
-- **Per-asset access tab**: every path someone has to a specific asset (department, collection, release). One view, complete trail.
-- **Per-collection access tab**: who has access, what they can do, when the share was created.
+- **Shared page**: every active share involving their department's assets. Who shared, who received, when, what permission level. Filterable by outgoing (shares I created), incoming (shares to my department), and all (admin view).
+- **Per-asset access tab**: every path someone has to a specific asset (department, collection, release). One view, complete trail. Shows "Shared by [name] on [date]" for each path.
+- **Per-collection access tab**: who has access, what they can do. For recipients: simplified view showing only their own access and the share note.
 
-A coordinator can answer "who has access to this?" in one click. They can revoke any share with one action. The shared page is their control surface.
+A coordinator can answer "who has access to this?" in one click. They can revoke any share with one action. They can see every collection containing their department's assets, even collections created by other departments.
 
 ### Safety mechanisms
 
