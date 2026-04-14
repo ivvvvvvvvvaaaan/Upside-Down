@@ -591,24 +591,12 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
   // Workspace-level folders: top-level folders created by user (exclude domain folders already rendered above)
   const DOMAIN_FOLDER_IDS = new Set(Object.values(DOMAIN_FOLDER_MAP).map(d => d.id))
   const workspaceFolders = fileTree.filter((f) => f.type === 'folder' && !DOMAIN_FOLDER_IDS.has(f.id) && f.id !== SHARED_MOUNT_FOLDER_ID) as WorkspaceFileNode[]
-  const sharedMountFolder = useMemo(
-    () => fileTree.find((node) => node.type === 'folder' && node.id === SHARED_MOUNT_FOLDER_ID) as WorkspaceFileNode | undefined,
-    [fileTree],
-  )
-  const mountedSharedFolders = useMemo(
-    () => ((sharedMountFolder?.children ?? []).filter((node) => node.type === 'folder') as WorkspaceFileNode[]),
-    [sharedMountFolder],
-  )
   const accessibleDomains = DOMAIN_NAV_ITEMS.filter((item) => canAccess(DOMAIN_FOLDER_MAP[item.id].id))
   // Distribution domains don't have workspaces — they receive content via releases/shares
   const isDistributionDomain = activePersona?.domainId
     ? domainConfigs[activePersona.domainId]?.kind === 'distribution'
     : false
-  const showWorkspaceLink = !isDistributionDomain && (
-    accessibleDomains.length > 0
-    || workspaceFolders.length > 0
-    || mountedSharedFolders.length > 0
-  )
+  const showWorkspaceLink = !isDistributionDomain && (accessibleDomains.length > 0 || workspaceFolders.length > 0)
   const sharedCollectionIds = new Set(
     (isAdmin ? allProjectShares : sharesReceivedByMe)
       .filter((entry) => entry.resourceType === 'collection')
@@ -642,19 +630,6 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
               {accessibleDomains.map((item) => (
                 <DomainNavItem key={item.href} item={item} />
               ))}
-              {mountedSharedFolders.length > 0 && (
-                <TreeNavLink
-                  href={`/nextgen/workspace/${SHARED_MOUNT_FOLDER_ID}`}
-                  label="Shared"
-                  defaultExpanded={false}
-                  trailingIcon={<Share2 className="w-3 h-3 text-foreground-dim" />}
-                >
-                  <FolderNavTree
-                    nodes={mountedSharedFolders}
-                    basePath={`/nextgen/workspace/${SHARED_MOUNT_FOLDER_ID}`}
-                  />
-                </TreeNavLink>
-              )}
               {workspaceFolders.map((folder) => {
                 const href = `/nextgen/workspace/${folder.id}`
                 const childFolders = (folder.children ?? []).filter((node) => node.type === 'folder') as WorkspaceFileNode[]

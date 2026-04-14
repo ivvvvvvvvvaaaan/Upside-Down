@@ -31,6 +31,7 @@ type ScenarioPerson = {
 type ScenarioTeam = {
   id: string
   name: string
+  kind: 'department' | 'domain' | 'team'
   members: string[]
   domain?: DomainId
 }
@@ -227,25 +228,24 @@ export const SCENARIO: Scenario = {
   ],
 
   teams: [
-    { id: 'vfx-core',       name: 'VFX',            members: ['vfx-supervisor', 'vfx-coordinator'],                        domain: 'vfx' },
-    { id: 'editorial',      name: 'Editorial',      members: ['editorial-coordinator', 'editorial-artist'],                 domain: 'editorial' },
-    { id: 'art-design',     name: 'Art & Design',   members: ['art-artist'],                                               domain: 'art-design' },
-    { id: 'camera-team',    name: 'Camera',         members: ['camera-dit'],                                                domain: 'camera' },
-    { id: 'audio-team',     name: 'Audio & Sound',  members: ['audio-supervisor'],                                           domain: 'audio-sound' },
+    { id: 'vfx-core',       name: 'VFX',            kind: 'department', members: ['vfx-supervisor', 'vfx-coordinator'],                        domain: 'vfx' },
+    { id: 'editorial',      name: 'Editorial',      kind: 'department', members: ['editorial-coordinator', 'editorial-artist'],                 domain: 'editorial' },
+    { id: 'art-design',     name: 'Art & Design',   kind: 'department', members: ['art-artist'],                                               domain: 'art-design' },
+    { id: 'camera-team',    name: 'Camera',         kind: 'department', members: ['camera-dit'],                                                domain: 'camera' },
+    { id: 'audio-team',     name: 'Audio & Sound',  kind: 'department', members: ['audio-supervisor'],                                           domain: 'audio-sound' },
     // Vendor teams
-    { id: 'framestore-io',  name: 'Framestore',     members: ['vendor-framestore'] },
-    // Cross-department teams (referenced by release domains as grantees)
-    { id: 'studio-leadership', name: 'Studio Leadership', members: ['studio-alex', 'creative-david'] },
-    { id: 'netflix-studio',    name: 'Netflix Studio',    members: ['studio-alex'] },
-    { id: 'netflix-post',      name: 'Netflix Post',      members: ['vfx-supervisor', 'editorial-coordinator', 'audio-supervisor'] },
-    { id: 'super-prod',        name: 'Super Prod',        members: ['studio-alex', 'creative-david', 'vfx-coordinator', 'editorial-coordinator'] },
-    // Wide/Other org teams — exist in the broader Netflix org, no prototype personas
-    { id: 'team-globalization',     name: 'Globalization',      members: [] },
-    { id: 'team-marketing',         name: 'Marketing',          members: ['marketing-coordinator'] },
-    { id: 'team-legal',             name: 'Legal',              members: ['legal-reviewer'] },
-    { id: 'team-music',             name: 'Music',              members: [] },
-    { id: 'team-consumer-insights', name: 'Consumer Insights',  members: [] },
-    { id: 'team-content-preview',   name: 'Content Preview',    members: [] },
+    { id: 'framestore-io',  name: 'Framestore',     kind: 'team',    members: ['vendor-framestore'] },
+    // Release domain groups (managed by CAM, not editable in-app)
+    { id: 'studio-leadership', name: 'Studio Leadership', kind: 'domain', members: ['studio-alex', 'creative-david'] },
+    { id: 'netflix-studio',    name: 'Netflix Studio',    kind: 'domain', members: ['studio-alex'] },
+    { id: 'netflix-post',      name: 'Netflix Post',      kind: 'domain', members: ['vfx-supervisor', 'editorial-coordinator', 'audio-supervisor'] },
+    { id: 'super-prod',        name: 'Super Prod',        kind: 'domain', members: ['studio-alex', 'creative-david', 'vfx-coordinator', 'editorial-coordinator'] },
+    { id: 'team-globalization',     name: 'Globalization',      kind: 'domain', members: [] },
+    { id: 'team-marketing',         name: 'Marketing',          kind: 'domain', members: ['marketing-coordinator'] },
+    { id: 'team-legal',             name: 'Legal',              kind: 'domain', members: ['legal-reviewer'] },
+    { id: 'team-music',             name: 'Music',              kind: 'domain', members: [] },
+    { id: 'team-consumer-insights', name: 'Consumer Insights',  kind: 'domain', members: [] },
+    { id: 'team-content-preview',   name: 'Content Preview',    kind: 'domain', members: [] },
   ],
 
   domainAccess: [
@@ -619,6 +619,7 @@ export function buildTeams(): Team[] {
   return SCENARIO.teams.map((t) => ({
     id: t.id,
     name: t.name,
+    kind: t.kind,
     memberUserIds: t.members,
     domainId: t.domain,
   }))

@@ -187,3 +187,17 @@ Not every department releases. Some distribute exclusively via collections. The 
 | Release channel | (audience groups) | Domain | Domain | Domain |
 | Broadcast | Release | Release | -- | -- |
 | Targeted share | Share | Share | Share | -- |
+
+---
+
+## Amendment — 2026-04-13 17:18 PDT
+
+Working note only. This is an amendment to the current model, not a rewrite.
+
+- In the app, there should be one cross-team concept: **collection**.
+- Shared handoffs should live in one consistent in-app place: **Inbox** as the entry point, then **Collections** as the source of truth.
+- **Workspaces** remain for department-owned file trees. They should not become a second primary home for shared handoffs inside the app.
+- A mounted drive folder is not a separate product concept. It is a **projection of a collection** into LucidLink / the mounted project drive.
+- If a collection is available in the mounted drive, the app should describe that as **Mounted in Drive**, **Open in Drive**, or **Available in Drive**.
+- Adding files in the collection and dropping files into the mounted folder should update the same underlying collection.
+- The user should not have to reason about whether they are looking at a collection or a folder in the app. In the app, it is the collection.

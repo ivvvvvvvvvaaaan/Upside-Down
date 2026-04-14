@@ -1355,18 +1355,20 @@ function TeamsTab({ canManage }: { canManage: boolean }) {
   const [version, setVersion] = useState(0)
   const { showToast } = useToast()
 
-  const nonDepartmentTeams = useMemo(() => TEAMS.filter(t => !t.domainId), [version]) // eslint-disable-line react-hooks/exhaustive-deps
+  const manageableTeams = useMemo(() => {
+    return TEAMS.filter(t => t.kind === 'team')
+  }, [version])
   const filteredTeams = useMemo(() => {
-    if (!searchQuery.trim()) return nonDepartmentTeams
+    if (!searchQuery.trim()) return manageableTeams
     const q = searchQuery.toLowerCase()
-    return nonDepartmentTeams.filter(t =>
+    return manageableTeams.filter(t =>
       t.name.toLowerCase().includes(q) ||
       t.memberUserIds.some(uid => {
         const p = PERSONAS.find(u => u.id === uid)
         return p?.name.toLowerCase().includes(q) || p?.email?.toLowerCase().includes(q)
       })
     )
-  }, [searchQuery, nonDepartmentTeams])
+  }, [searchQuery, manageableTeams])
 
   const handleAddMember = (teamId: string, userId: string) => {
     if (addUserToTeam(userId, teamId)) {

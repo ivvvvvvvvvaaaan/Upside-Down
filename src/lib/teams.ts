@@ -1,9 +1,12 @@
 import type { DomainId } from '@/components/department/types'
 import { buildTeams } from '@/lib/scenario'
 
+export type TeamKind = 'department' | 'domain' | 'team'
+
 export type Team = {
   id: string
   name: string
+  kind: TeamKind
   memberUserIds: string[]
   domainId?: DomainId
 }
@@ -37,9 +40,9 @@ export function removeUserFromTeam(userId: string, teamId: string): boolean {
   return true
 }
 
-export function createTeam(name: string, memberUserIds: string[] = []): Team {
+export function createTeam(name: string, memberUserIds: string[] = [], kind: TeamKind = 'team'): Team {
   const id = `team-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-  const team: Team = { id, name, memberUserIds }
+  const team: Team = { id, name, kind, memberUserIds }
   TEAMS.push(team)
   return team
 }
