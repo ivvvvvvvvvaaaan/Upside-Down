@@ -107,7 +107,7 @@ For collections and folders: People tab only. Release applies to individual asse
 
 - **Single asset**: direct grant on the asset. The sharer picks the permission level.
 - **Collection**: the sharer picks a permission level for the collection. This is the *intent* -- what the recipient should be able to do. But the actual permission per asset is capped by what the sharer has. If the sharer picks "Comment" but only has "View" on some assets, those assets are limited to "View" for the recipient. The share dialog shows this honestly: "David can comment on 8 of 12 assets. 4 assets limited to View." No invisible downgrades.
-- **Folder**: sharing a workspace folder creates a collection containing the folder's current assets. The folder and collection are separate: the folder is how you organize in your workspace, the collection is what gets shared. Adding more files to the folder later does not automatically add them to the collection (you re-share to update).
+- **Folder**: right-click a folder, click Share. The system snapshots the folder's current assets into a collection and shares that. The sender never sees the word "collection" — they shared a folder. The recipient sees a collection in their inbox. If the sender wants to update what's shared, they re-share the folder (new snapshot).
 
 Shares are app-specific -- Creative Review doesn't automatically see them. Releases are CAM-backed -- any app that reads domain grants can honor them.
 
