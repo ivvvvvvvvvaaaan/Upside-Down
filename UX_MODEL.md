@@ -91,7 +91,8 @@ For assets and cuts, the share dialog has two tabs:
 **People** -- targeted sharing.
 - Search for people and teams.
 - Per-recipient settings: live or snapshot, upload enabled, expiration, permission level.
-- Smart defaults: vendor gets snapshot + add + upload. Person gets live + view.
+- Smart defaults: vendor gets snapshot + upload. Person gets Reviewer (view + download + comment).
+- **Share note**: optional message attached to the share ("EP301 plates, smoke ref coming Thursday. This is turnover 1 of 3."). The note appears in the recipient's inbox and on the collection. The file alone doesn't tell the recipient anything — the note makes it actionable.
 - Guest links for external reviewers (expiring, passcode-optional, watermarkable).
 
 **Release** -- broadcast distribution.
