@@ -9,6 +9,12 @@ export interface ReferenceFolderSource {
   snapshotAssetIds?: string[]
 }
 
+/** File-level reference: this node is a pointer to a file in another location */
+export interface FileReference {
+  sourceFileId: string
+  sourceDomainId?: DomainId
+}
+
 /** Base file node shared by both Finder and Workspace views */
 export interface UnifiedFileNode {
   id: string
@@ -21,8 +27,17 @@ export interface UnifiedFileNode {
   domainId?: DomainId
   /** Local mount owner for reference folders shown in the Shared drive view */
   mountedByUserId?: string | null
+  /** Folder-level: reference to a collection */
   reference?: ReferenceFolderSource
+  /** File-level: this node is a reference to another file (same asset, different location) */
+  fileRef?: FileReference
   children?: UnifiedFileNode[]
+}
+
+export function isFileReference(
+  node: Pick<UnifiedFileNode, 'type' | 'fileRef'> | null | undefined,
+): node is UnifiedFileNode & { type: 'file'; fileRef: FileReference } {
+  return !!node && node.type === 'file' && !!node.fileRef
 }
 
 export interface WorkspaceFileNode extends UnifiedFileNode {

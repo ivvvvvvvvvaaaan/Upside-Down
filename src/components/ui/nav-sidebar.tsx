@@ -489,7 +489,7 @@ const DOMAIN_NAV_ITEMS: { href: string; label: string; id: ProductionDomainId }[
 
 /** Renders a single domain nav item, using files from the shared file tree */
 function DomainNavItem({ item }: { item: typeof DOMAIN_NAV_ITEMS[number] }) {
-  const { getDomainFiles, confirmMove } = useFileTree()
+  const { getDomainFiles, confirmMove, createFileReference } = useFileTree()
   const { getResourceGrants } = useAccess()
   const { collections } = useUserCollections()
   const { showToast } = useToast()
@@ -497,8 +497,10 @@ function DomainNavItem({ item }: { item: typeof DOMAIN_NAV_ITEMS[number] }) {
   const hasFolders = files.some((n) => n.type === 'folder')
 
   const handleFolderDrop = useCallback((folderId: string, folderName: string, assetIds: string[]) => {
-    // Default: reference (non-destructive). "Move instead" removes from source.
-    // For now, add to the target collection. TODO: create file-level references.
+    // Default: create file references (non-destructive)
+    for (const assetId of assetIds) {
+      createFileReference(assetId, folderId)
+    }
     const count = assetIds.length
     showToast(
       `Added to ${folderName}`,
@@ -513,7 +515,7 @@ function DomainNavItem({ item }: { item: typeof DOMAIN_NAV_ITEMS[number] }) {
         },
       },
     )
-  }, [confirmMove, showToast])
+  }, [createFileReference, confirmMove, showToast])
 
   // Folders that have a workspace-bound collection with active outgoing grants
   const sharedFolderIds = useMemo(() => {

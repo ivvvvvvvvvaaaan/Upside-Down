@@ -6,6 +6,7 @@ import type { DomainId, ProductionDomainId } from '@/components/department/types
 import {
   getFinderWorkspaceTree,
   type ReferenceFolderSource,
+  type FileReference,
   type UnifiedFileNode,
   type WorkspaceFileNode,
 } from '@/lib/workspace-data'
@@ -228,6 +229,8 @@ interface FileTreeContextValue {
   getMoveImpact: (nodeId: string, collections: { id: string; name: string; boundFolderId?: string }[], getGrantCount: (collectionId: string) => number) => MoveImpact
   /** Execute a move operation */
   confirmMove: (nodeId: string, targetParentId: string) => void
+  /** Create a file reference (same asset, different location) */
+  createFileReference: (sourceFileId: string, targetParentId: string) => string | null
 }
 
 const FileTreeContext = createContext<FileTreeContextValue | null>(null)
@@ -372,6 +375,33 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     updateTree((prev) => moveNodeInTree(prev, nodeId, targetParentId))
   }, [updateTree])
 
+  const createFileReference = useCallback((sourceFileId: string, targetParentId: string): string | null => {
+    const sourceNode = findNodeInUnifiedTree(rawTree, sourceFileId)
+    if (!sourceNode || sourceNode.type !== 'file') return null
+    const refId = `ref-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    const refNode: UnifiedFileNode = {
+      id: refId,
+      name: sourceNode.name,
+      type: 'file',
+      extension: sourceNode.extension,
+      size: sourceNode.size,
+      modifiedAt: sourceNode.modifiedAt,
+      modifiedBy: sourceNode.modifiedBy,
+      fileRef: {
+        sourceFileId: sourceNode.fileRef?.sourceFileId ?? sourceNode.id,
+        sourceDomainId: sourceNode.domainId,
+      },
+    }
+    const srcId = refNode.fileRef!.sourceFileId
+    updateTree((prev) => upsertNodeInTree(
+      prev,
+      targetParentId,
+      refNode,
+      (node) => node.fileRef?.sourceFileId === srcId,
+    ))
+    return refId
+  }, [rawTree, updateTree])
+
   const value = useMemo<FileTreeContextValue>(() => ({
     tree,
     getDomainFiles,
@@ -382,7 +412,8 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     deleteNode,
     getMoveImpact,
     confirmMove,
-  }), [tree, getDomainFiles, createFolder, createFile, createReferenceFolder, renameNode, deleteNode, getMoveImpact, confirmMove])
+    createFileReference,
+  }), [tree, getDomainFiles, createFolder, createFile, createReferenceFolder, renameNode, deleteNode, getMoveImpact, confirmMove, createFileReference])
 
   return (
     <FileTreeContext.Provider value={value}>
