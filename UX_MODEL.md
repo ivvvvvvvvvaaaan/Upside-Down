@@ -47,12 +47,13 @@ The default action is always non-destructive: adding a file to another location 
 
 ### Collection
 
-A named group of assets. How assets get in is a setting:
-- **Manual** -- you pick them.
-- **Filtered** -- a filter picks them automatically (e.g., all assets tagged "final").
-- **Folder-linked** -- mirrors a workspace folder's contents.
+A named group of assets. How assets get in:
+- **You pick them** -- drag assets in, or select and add.
+- **A filter picks them** -- automatically matches assets by metadata (e.g., all assets tagged "final").
 
-One concept. Same share model regardless of how contents are populated. Filtered collections show personalized results: "47 assets (you can access 23)."
+That's it. Two modes. A workspace folder is not a third type of collection. Sharing a folder creates a collection containing the folder's assets. The folder remains a folder in the workspace. The collection is the thing that gets shared.
+
+Filtered collections show personalized results: "47 assets (you can access 23)."
 
 **Sharing a filtered collection snapshots it.** When you share a filtered (smart) collection, the filter runs against your access at share time and produces a concrete list of assets. The recipient receives a curated collection -- fixed contents, same for everyone. If you re-share later, it snapshots again (new version, potentially different assets if the filter results changed). This eliminates the "shared smart collection" edge case: share = snapshot. The sharer keeps their dynamic filter; the recipient gets a stable list.
 
@@ -100,7 +101,7 @@ For collections and folders: People tab only. Release applies to individual asse
 
 - **Single asset**: direct grant on the asset. The sharer picks the permission level.
 - **Collection**: the sharer picks a permission level for the collection. This is the *intent* -- what the recipient should be able to do. But the actual permission per asset is capped by what the sharer has. If the sharer picks "Comment" but only has "View" on some assets, those assets are limited to "View" for the recipient. The share dialog shows this honestly: "David can comment on 8 of 12 assets. 4 assets limited to View." No invisible downgrades.
-- **Folder**: creates a collection behind the scenes; same rules apply.
+- **Folder**: sharing a workspace folder creates a collection containing the folder's current assets. The folder and collection are separate: the folder is how you organize in your workspace, the collection is what gets shared. Adding more files to the folder later does not automatically add them to the collection (you re-share to update).
 
 Shares are app-specific -- Creative Review doesn't automatically see them. Releases are CAM-backed -- any app that reads domain grants can honor them.
 
@@ -206,16 +207,3 @@ Not every department releases. Some distribute exclusively via collections. The 
 | Broadcast | Release | Release | -- | -- |
 | Targeted share | Share | Share | Share | -- |
 
----
-
-## Amendment — 2026-04-13 17:18 PDT
-
-Working note only. This is an amendment to the current model, not a rewrite.
-
-- In the app, there should be one cross-team concept: **collection**.
-- Shared handoffs should live in one consistent in-app place: **Inbox** as the entry point, then **Collections** as the source of truth.
-- **Workspaces** remain for department-owned file trees. They should not become a second primary home for shared handoffs inside the app.
-- A mounted drive folder is not a separate product concept. It is a **projection of a collection** into LucidLink / the mounted project drive.
-- If a collection is available in the mounted drive, the app should describe that as **Mounted in Drive**, **Open in Drive**, or **Available in Drive**.
-- Adding files in the collection and dropping files into the mounted folder should update the same underlying collection.
-- The user should not have to reason about whether they are looking at a collection or a folder in the app. In the app, it is the collection.
