@@ -24,11 +24,13 @@ Membership is seeded from project onboarding and managed in-app by coordinators.
 
 Your department's files. Every file in the workspace is an asset -- no promotion step, no toggle. Drop a file in, it gets a thumbnail, it's searchable, taggable, shareable. The system handles metadata extraction and AI tagging in the background.
 
-Two views of the same data:
-- **Workspace view** -- folder tree. How you organize.
-- **Library view** -- search, metadata, smart collections. How you discover.
+Your workspace has two views:
+- **Folders** -- how you organize. A familiar file tree. DITs and editors live here.
+- **Search** -- how you discover. Search by name, filter by metadata, browse smart collections (characters, scenes, locations). Directors and supervisors live here.
 
-DITs and editors work in the workspace view. Directors and supervisors browse the library view. Both see the same files. Production departments have workspaces. Distribution audiences (Marketing, Legal) don't -- they receive content via releases.
+Both show the same files. Drop a file in a folder and it's immediately searchable. Search for a file and its folder path is shown. One set of files, two ways to navigate.
+
+Production departments have workspaces. Distribution audiences (Marketing, Legal) don't -- they receive content via shares and releases.
 
 ### File Identity
 
