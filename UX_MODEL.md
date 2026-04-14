@@ -126,10 +126,12 @@ These are features within sharing, not standalone concepts:
 
 Access is additive. No deny rules. The sum of all grants determines what you can see. To restrict, remove the share.
 
-Three access paths, each traceable:
-1. **Department membership** -- "You're in VFX, so you see VFX workspace files."
-2. **Share** -- "Lisa shared this collection with you on Feb 13."
+Three access paths, each traceable and displayed in the access tab of every asset:
+1. **Department** -- "You're in VFX, so you see VFX workspace files."
+2. **Share** -- "Lisa shared this collection with you on Feb 13." Shows the sharer, date, and note.
 3. **Release** -- "This was released to Studio Creative on Feb 18."
+
+Any user can open the access tab on any asset they can see and understand exactly why they have access. No ambiguity.
 
 ### Coordinator visibility
 
