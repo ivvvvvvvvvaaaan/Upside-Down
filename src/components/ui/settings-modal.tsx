@@ -17,7 +17,7 @@ import { useToast } from './toast'
 import { cn } from '@/lib/utils'
 import { PERSONAS, DIRECTORY_UPDATED_EVENT } from '@/lib/personas'
 import type { User } from '@/lib/personas'
-import { TEAMS } from '@/lib/teams'
+import { TEAMS, addUserToTeam, removeUserFromTeam, createTeam } from '@/lib/teams'
 import { PROJECT_RESOURCE, profileLabel, isGrantActive, roleGroupOptions } from '@/lib/grants'
 import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef, ResourceRef } from '@/lib/grants'
 import type { DomainId, ProductionDomainId } from '@/components/department/types'
@@ -1347,11 +1347,15 @@ function AuditLogTab({
 
 // --- Teams tab ---
 
-function TeamsTab() {
+function TeamsTab({ canManage }: { canManage: boolean }) {
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [addMemberQuery, setAddMemberQuery] = useState('')
+  const [newTeamName, setNewTeamName] = useState('')
+  const [version, setVersion] = useState(0)
+  const { showToast } = useToast()
 
-  const nonDepartmentTeams = useMemo(() => TEAMS.filter(t => !t.domainId), [])
+  const nonDepartmentTeams = useMemo(() => TEAMS.filter(t => !t.domainId), [version]) // eslint-disable-line react-hooks/exhaustive-deps
   const filteredTeams = useMemo(() => {
     if (!searchQuery.trim()) return nonDepartmentTeams
     const q = searchQuery.toLowerCase()
@@ -1363,6 +1367,30 @@ function TeamsTab() {
       })
     )
   }, [searchQuery, nonDepartmentTeams])
+
+  const handleAddMember = (teamId: string, userId: string) => {
+    if (addUserToTeam(userId, teamId)) {
+      const persona = PERSONAS.find(p => p.id === userId)
+      const team = TEAMS.find(t => t.id === teamId)
+      showToast(`Added ${persona?.name ?? userId} to ${team?.name ?? 'team'}`)
+      setAddMemberQuery('')
+      setVersion(v => v + 1)
+    }
+  }
+
+  const handleRemoveMember = (teamId: string, userId: string) => {
+    if (removeUserFromTeam(userId, teamId)) {
+      setVersion(v => v + 1)
+    }
+  }
+
+  const handleCreateTeam = () => {
+    if (!newTeamName.trim()) return
+    createTeam(newTeamName.trim())
+    showToast(`Created team "${newTeamName.trim()}"`)
+    setNewTeamName('')
+    setVersion(v => v + 1)
+  }
 
   return (
     <div className="space-y-4 pt-4">
@@ -1382,17 +1410,22 @@ function TeamsTab() {
           const members = team.memberUserIds
             .map(uid => PERSONAS.find(u => u.id === uid))
             .filter(Boolean) as User[]
-          const domainLabel = team.domainId ? domainConfigs[team.domainId]?.name : undefined
+          const addCandidates = addMemberQuery.trim() && isExpanded
+            ? PERSONAS.filter(p =>
+                !team.memberUserIds.includes(p.id) &&
+                (p.name.toLowerCase().includes(addMemberQuery.toLowerCase()) ||
+                 p.email?.toLowerCase().includes(addMemberQuery.toLowerCase()))
+              ).slice(0, 5)
+            : []
           return (
             <div key={team.id}>
               <button
-                onClick={() => setExpandedTeamId(isExpanded ? null : team.id)}
+                onClick={() => { setExpandedTeamId(isExpanded ? null : team.id); setAddMemberQuery('') }}
                 className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded hover:bg-surface-highlight transition-colors text-left"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   {isExpanded ? <ChevronDown className="w-4 h-4 text-foreground-dim flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-foreground-dim flex-shrink-0" />}
                   <span className="text-body-0-regular text-foreground truncate">{team.name}</span>
-                  {domainLabel && <span className="text-label-0-regular text-foreground-dim">{domainLabel}</span>}
                 </div>
                 <span className="text-label-0-regular text-foreground-dim flex-shrink-0">
                   {members.length} {members.length === 1 ? 'member' : 'members'}
@@ -1400,9 +1433,7 @@ function TeamsTab() {
               </button>
               {isExpanded && (
                 <div className="pl-9 pb-2 space-y-1">
-                  {members.length === 0 ? (
-                    <p className="text-body-0-regular text-foreground-dim py-1">No members</p>
-                  ) : members.map(member => (
+                  {members.map(member => (
                     <div key={member.id} className="flex items-center justify-between gap-2 py-1">
                       <div className="flex items-center gap-2 min-w-0">
                         <Avatar name={member.name} size="sm" />
@@ -1411,9 +1442,48 @@ function TeamsTab() {
                           {member.email && <span className="text-label-0-regular text-foreground-dim truncate block">{member.email}</span>}
                         </div>
                       </div>
-                      {member.title && <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{member.title}</span>}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {member.title && <span className="text-label-0-regular text-foreground-dim">{member.title}</span>}
+                        {canManage && (
+                          <button
+                            onClick={() => handleRemoveMember(team.id, member.id)}
+                            className="text-label-0-regular text-foreground-dim hover:text-foreground-system-error transition-colors"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
+                  {members.length === 0 && (
+                    <p className="text-body-0-regular text-foreground-dim py-1">No members</p>
+                  )}
+                  {canManage && (
+                    <div className="pt-1">
+                      <input
+                        type="text"
+                        value={addMemberQuery}
+                        onChange={e => setAddMemberQuery(e.target.value)}
+                        placeholder="Add member by name or email..."
+                        className="w-full h-8 px-3 bg-surface-low border border-border-dim rounded text-body-0-regular text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-subtle transition-colors"
+                      />
+                      {addCandidates.length > 0 && (
+                        <div className="mt-1 border border-border-dim rounded bg-surface-low">
+                          {addCandidates.map(p => (
+                            <button
+                              key={p.id}
+                              onClick={() => handleAddMember(team.id, p.id)}
+                              className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-surface-highlight transition-colors"
+                            >
+                              <Avatar name={p.name} size="sm" />
+                              <span className="text-body-0-regular text-foreground">{p.name}</span>
+                              {p.email && <span className="text-label-0-regular text-foreground-dim">{p.email}</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1423,6 +1493,21 @@ function TeamsTab() {
           <p className="text-body-0-regular text-foreground-dim py-4 text-center">No teams match your search.</p>
         )}
       </div>
+      {canManage && (
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={newTeamName}
+            onChange={e => setNewTeamName(e.target.value)}
+            placeholder="New team name"
+            className="flex-1 h-9 px-3 bg-surface-low border border-border-dim rounded text-body-0-regular text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-subtle transition-colors"
+            onKeyDown={e => { if (e.key === 'Enter') handleCreateTeam() }}
+          />
+          <Button variant="secondary" compact onClick={handleCreateTeam} disabled={!newTeamName.trim()}>
+            Create
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
@@ -1612,7 +1697,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 />
               </TabsContent>
               <TabsContent value="teams">
-                <TeamsTab />
+                <TeamsTab canManage={canManageProject} />
               </TabsContent>
               <TabsContent value="departments">
                 <DomainsTab

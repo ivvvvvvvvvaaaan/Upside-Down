@@ -20,3 +20,26 @@ export function isUserInTeam(userId: string, teamId: string): boolean {
   const team = getTeamById(teamId)
   return team ? team.memberUserIds.includes(userId) : false
 }
+
+export function addUserToTeam(userId: string, teamId: string): boolean {
+  const team = getTeamById(teamId)
+  if (!team || team.memberUserIds.includes(userId)) return false
+  team.memberUserIds.push(userId)
+  return true
+}
+
+export function removeUserFromTeam(userId: string, teamId: string): boolean {
+  const team = getTeamById(teamId)
+  if (!team) return false
+  const index = team.memberUserIds.indexOf(userId)
+  if (index === -1) return false
+  team.memberUserIds.splice(index, 1)
+  return true
+}
+
+export function createTeam(name: string, memberUserIds: string[] = []): Team {
+  const id = `team-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+  const team: Team = { id, name, memberUserIds }
+  TEAMS.push(team)
+  return team
+}
