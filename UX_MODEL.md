@@ -33,6 +33,18 @@ Two views of the same data:
 
 DITs and editors work in the workspace view. Directors and supervisors browse the library view. Both see the same files. Production departments have workspaces. Distribution audiences (Marketing, Legal) don't -- they receive content via releases.
 
+### File Identity
+
+A file has one identity regardless of how many places it appears. When you drag a VFX comp from your shots folder into the Framestore delivery folder, the system creates a **reference**, not a copy. The original file stays in place. The reference appears in the target folder. Both point to the same asset.
+
+This matters because:
+- No storage duplication. One file, one set of bytes.
+- One version history. Updating the comp updates it everywhere.
+- One metadata set. Tags, AI analysis, review notes stay unified.
+- Independent access paths. The original is accessible via the VFX workspace. The reference is accessible via the Framestore share. Revoking the share removes the reference without touching the original.
+
+When you "move" a file within your own workspace, it physically relocates (one location changes to another). When you "copy" a file to a shared folder or a different department's collection, it creates a reference. The distinction is automatic: same workspace = move, cross-boundary = reference.
+
 ### Collection
 
 A named group of assets. How assets get in is a setting:

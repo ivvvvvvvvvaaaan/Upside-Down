@@ -312,7 +312,7 @@ function TreeNavLink({
         {hasChevron ? (
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center justify-center pl-3 py-2 flex-shrink-0"
+            className="w-7 flex items-center justify-center py-2 flex-shrink-0"
           >
             {isExpanded ? (
               <ChevronDown className="w-4 h-4 text-foreground-dim" />
@@ -321,9 +321,7 @@ function TreeNavLink({
             )}
           </button>
         ) : reserveChevronSpace ? (
-          <span className="flex items-center justify-center pl-3 py-2 flex-shrink-0">
-            <span className="w-4 h-4" />
-          </span>
+          <span className="w-7 flex-shrink-0" />
         ) : null}
         {href ? (
           <Link href={href} className={linkClassName}>
@@ -737,7 +735,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
         })()}
         <button
           onClick={onNewCollection}
-          className="flex items-center gap-2 pl-8 pr-3 py-2 text-body-0-regular text-foreground-dim hover:text-foreground transition-colors min-w-0"
+          className="flex items-center gap-2 pr-3 py-2 text-body-0-regular text-foreground-dim hover:text-foreground transition-colors min-w-0" style={{ paddingLeft: '32px' }}
         >
           <Plus className="w-4 h-4 flex-shrink-0" />
           <span className="truncate">New Collection</span>
