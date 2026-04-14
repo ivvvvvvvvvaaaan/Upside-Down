@@ -343,13 +343,15 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                     </div>
                     <div className="hidden md:flex items-center gap-2">
                       {showUpload && (
-                        <Button
-                          variant="secondary"
-                          icon={<Upload className="w-4 h-4" />}
-                          onClick={() => fileInputRef.current?.click()}
-                        >
-                          Upload
-                        </Button>
+                        <Tooltip label="Upload">
+                          <Button
+                            variant="icon"
+                            onClick={() => fileInputRef.current?.click()}
+                            aria-label="Upload"
+                          >
+                            <Upload className="w-4 h-4" />
+                          </Button>
+                        </Tooltip>
                       )}
                       {canDownloadCollection && (
                         <Tooltip label="Download collection">
@@ -370,10 +372,10 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         ]}
                         value={sortCriteria}
                         onChange={setSortCriteria}
-                        iconOnly={panelOpen}
+                        iconOnly
                       />
                       <AppearanceDropdown
-                        iconOnly={panelOpen}
+                        iconOnly
                         layout="grid"
                         onLayoutChange={() => {}}
                         cardSize={cardSize}

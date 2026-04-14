@@ -400,7 +400,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                           fields={sortFields}
                           value={sortCriteria}
                           onChange={setSortCriteria}
-                          iconOnly={sidePanelOpen}
+                          iconOnly
                         />
                         <AppearanceDropdown
                           layout={layout}
@@ -408,7 +408,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                           cardSize={cardSize}
                           onCardSizeChange={setCardSize}
                           showLayoutOptions={false}
-                          iconOnly={sidePanelOpen}
+                          iconOnly
                           showTags={showTags}
                           onShowTagsChange={setShowTags}
                           metadataFields={metadataFields}

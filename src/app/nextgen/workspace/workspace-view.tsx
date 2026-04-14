@@ -851,7 +851,7 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
                         fields={sortFields}
                         value={sortCriteria}
                         onChange={setSortCriteria}
-                        iconOnly={showPanel}
+                        iconOnly
                       />
                       <AppearanceDropdown
                         layout={layout}
@@ -862,7 +862,7 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
                         viewModeOptions={VIEW_MODE_OPTIONS}
                         viewMode={viewMode}
                         onViewModeChange={setViewMode}
-                        iconOnly={showPanel}
+                        iconOnly
                         showTags={showTags}
                         onShowTagsChange={setShowTags}
                         metadataFields={metadataFields}

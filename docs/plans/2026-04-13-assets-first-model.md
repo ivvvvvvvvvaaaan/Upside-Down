@@ -1,140 +1,109 @@
-# Assets-First Model
+# Assets Exist Independently
 
-*April 13, 2026. Architectural plan for decoupling assets from workspace folders.*
+*April 13, 2026. Product and UX spec.*
 
-## Problem
+## The question
 
-When a vendor uploads to a shared collection, the files have nowhere to go unless the collection is folder-bound to a workspace directory. This forces every shared collection to have a workspace folder, which is artificial. The current model treats workspace files as the source of truth for assets. No file = no asset.
+When a VFX coordinator drags a comp into a shared collection for Framestore, and Framestore uploads a delivery back into that collection, where do those files live? What happens when the coordinator wants to see the delivery in their workspace? What if the collection gets deleted?
 
-This creates three problems:
-1. Vendor uploads to non-folder-bound collections don't persist
-2. Every shared collection needs a folder, even when a folder doesn't make sense
-3. The "where do the bytes go?" question has no clean answer
+The answer to these questions determines whether users trust the system or buy a hard drive.
 
-## Principle
+## The model
 
-Assets are first-class entities that exist independently of folders. A folder is optional organization, not a requirement for existence. A collection is a group of asset references. An asset can exist in zero folders, one folder, or many collections.
+An asset exists the moment it enters the system. It doesn't need a folder. It doesn't need a collection. It has an identity, metadata, and access rules. Everything else is optional organization.
 
-## Current architecture
+### Three layers, each independent
 
-```
-Workspace files (source of truth)
-  └── generateAssetInstances() → Asset objects (computed on every load)
-        └── Collections reference asset IDs
-              └── getAssetsByIds() looks up computed assets
-```
+**Assets** are the atoms. A VFX comp, a PDF brief, a cut, a delivery from Framestore. Each has a unique identity, a type, metadata, and an access trail. An asset can exist in zero folders and zero collections and still be findable via search.
 
-Assets are ephemeral. They're recomputed from workspace files on every page load. Upload to a collection creates a temporary in-memory asset that vanishes on reload.
+**Folders** are spatial organization. Your VFX workspace has a folder tree: Shots, Reference, Vendor Deliveries. This is how you arrange your desk. Every file you drop into a workspace folder becomes an asset automatically. Folders are a view into assets filtered by location.
 
-## Target architecture
+**Collections** are semantic organization. "Framestore Deliveries," "EP301 VFX Pulls," "Finals." This is how you group work for a purpose. A collection references assets. Adding an asset to a collection doesn't move it. Removing it from a collection doesn't delete it.
 
-```
-Asset Store (persistent, localStorage)     Workspace files (optional organization)
-  └── Stored assets (uploads, vendor         └── generateAssetInstances() → promoted assets
-      deliveries, any user-created)
-        \                                      /
-         └── getAllAssets() merges both sources ─┘
-               └── Collections reference asset IDs
-                     └── getAssetsByIds() finds assets from either source
-```
+### What this means for users
 
-Two sources, one merged view. Workspace-promoted assets and stored assets coexist. Collections don't care which source an asset came from.
+| Action | What happens |
+|--------|-------------|
+| Drop a file into VFX workspace | File becomes an asset. Visible to VFX team via workspace and search. Invisible to everyone else. |
+| Add an asset to a collection | Asset now appears in the collection too. Still in its original folder. No duplication. |
+| Share a collection with Framestore | Framestore sees the assets in the collection. Can't see the VFX workspace. |
+| Framestore uploads a delivery | Delivery becomes an asset in the collection. No workspace folder needed. Coordinator sees it in the collection. |
+| Coordinator drags delivery into workspace folder | Asset now also appears in the workspace folder. Still in the collection too. One asset, two views. |
+| Delete the collection | Collection goes away. Assets remain wherever else they exist. |
+| Delete an asset from a folder | Removed from that folder. If it's in other folders or collections, still there. |
 
-## Implementation
+## Why this is better
 
-### 1. Asset Store (`src/hooks/useAssetStore.tsx`)
+### For the VFX coordinator (sender)
 
-New React context + localStorage persistence. Same pattern as `useUserCollections`:
+Today: "I shared this folder, but when the vendor uploads back, where does it go? Do I need a special folder for that? What if I move the folder?"
 
-```typescript
-type StoredAsset = {
-  id: string
-  name: string
-  type: AssetType
-  extension?: string
-  thumbnail?: string
-  department?: DomainId
-  uploadedAt: string
-  uploadedBy?: string
-  size?: number
-}
-```
+With this model: "I shared a collection. Everything the vendor uploads appears there. I can file it into my workspace when I'm ready, or leave it in the collection. Moving my workspace folders doesn't break anything."
 
-- `addAsset(asset)` -- persist a new asset to localStorage
-- `getAsset(id)` -- look up by ID
-- `allAssets` -- all stored assets
-- `getStoredAssets()` -- static function (no hook) for use in `getAllAssets()`
+### For the vendor (receiver)
 
-Respects `SEED_VERSION` for cache invalidation, same as collections.
+Today: "I can see some files but I don't know if I'm allowed to download them. When I upload, I don't know if it worked."
 
-### 2. Merge stored assets into `getAllAssets()` (`src/lib/data.ts`)
+With this model: "I see exactly what was shared with me. I upload my delivery. It's there permanently. The coordinator's note tells me what's expected."
 
-```typescript
-function getAllAssets(): Asset[] {
-  const workspace = mergePrototypeAssets(getAssets())
-  const cuts = buildCuts().map(seedCutToAsset)
-  const stored = getStoredAssets()  // reads localStorage directly
-  return [...workspace, ...cuts, ...stored]
-}
-```
+### For the production coordinator (oversight)
 
-`getAssetsByIds()` automatically finds stored assets because it calls `getAllAssets()`.
+Today: "I can't tell who has access to what. If a folder moves, access breaks."
 
-### 3. Upload creates stored assets (`src/app/nextgen/collections/[id]/view.tsx`)
+With this model: "Every asset has an access trail. Collections don't depend on folder positions. I can see every path someone has to an asset and revoke any of them."
 
-Current upload flow creates temporary in-memory assets. Change to:
-1. Create a `StoredAsset` with a persistent ID
-2. Add the ID to the collection's `assetIds` via `addAssetsToCollection()`
-3. Asset persists across page reloads
+## The privacy guarantee
 
-### 4. Collection resolution unchanged
+The department workspace is a privacy boundary. Everything inside is visible to the department. Nothing leaks out without an explicit share or release.
 
-`resolveCollectionAssets()` has two paths:
-- Folder-bound: resolves from folder contents (unchanged)
-- Curated: returns `assetIds` (unchanged)
+Assets uploaded by external parties (vendors) into shared collections exist inside the collection, not inside the department workspace. The department coordinator decides when and whether to pull them into the workspace. The vendor's uploads are scoped to the collection.
 
-Both call `getAssetsByIds()` which now finds stored assets. No changes needed.
+## User scenarios
 
-## What this enables
+### Scenario 1: VFX turnover to vendor
 
-### Demo Scene 5 (vendor upload)
-1. Sarah creates "Framestore Deliveries" as a manual collection (no folder)
-2. Shares with Framestore team + upload enabled + note
-3. James uploads a comp
-4. Comp persists as a stored asset
-5. Sarah sees it in the collection immediately
-6. She can drag it to her workspace folder later if she wants
+1. Sarah creates collection "Framestore EP301"
+2. Drags 5 VFX comps from her workspace into the collection
+3. Shares with Framestore team, upload enabled, adds note: "First turnover, smoke ref coming Thursday"
+4. James (Framestore) sees 5 assets. Downloads plates. Uploads 3 comps back.
+5. Sarah sees 3 new assets in "Framestore EP301." Drags them into her VFX/Vendor Deliveries folder when ready.
+6. The comps are now in both the collection and the workspace folder. One asset, two views.
 
-### Independent asset lifecycle
-- Assets created by upload exist without workspace files
-- Deleting a workspace file doesn't delete the asset (it was never tied to one)
-- Same asset can appear in multiple collections via `assetIds` references
-- No folder binding required for any collection
+### Scenario 2: Editorial shares cut with VFX
 
-## What stays the same
+1. Lisa adds locked cut to "Editorial-to-VFX" collection
+2. VFX team gets notification. Cut appears in collection.
+3. Mike can preview and download from the collection.
+4. Mike does NOT see the cut in the Editorial workspace. Only in the collection.
+5. If Mike wants it in his VFX workspace, he drags it into a folder.
 
-- Workspace file tree and folder navigation
-- Smart collections and filter-based resolution
-- Sharing, permissions, grants
-- Drag and drop
-- Collection management (create, rename, delete)
-- Access control and permission cascading
+### Scenario 3: Director reviews character designs
 
-## Files changed
+1. Priya adds approved designs to "Character Concepts" collection
+2. Shares with David, view only
+3. David sees designs in the collection and via smart collection search.
+4. David cannot see the Art & Design workspace.
 
-| File | Change |
-|------|--------|
-| `src/hooks/useAssetStore.tsx` | **New** -- localStorage-backed asset store |
-| `src/lib/data.ts` | `getAllAssets()` merges stored assets |
-| `src/app/nextgen/collections/[id]/view.tsx` | Upload creates stored assets instead of temp state |
-| `src/hooks/index.ts` | Export new hook |
+### Scenario 4: Vendor uploads without workspace
 
-## Risks and open questions
+1. James uploads a delivery to "Framestore EP301" collection
+2. The delivery is an asset. It has no workspace folder.
+3. It's findable by anyone with access to the collection.
+4. Sarah can drag it into her VFX workspace later. Or not.
+5. If the collection is deleted, the asset still exists. An admin can find it via search.
 
-1. **Deduplication**: If a user uploads a file that already exists as a workspace asset, do we detect and merge? For the prototype, no. Two separate assets with the same name is fine.
+## How this relates to real Content Hub
 
-2. **Storage limits**: localStorage has a ~5MB limit. Stored assets don't include the actual bytes (thumbnails are URLs, not blobs), so this is metadata only. Thousands of assets fit comfortably.
+The production Content Hub (CDrive + Dublin) already separates files from assets. CDrive handles file storage. Dublin handles asset metadata and collections. An ingestion pipeline connects them.
 
-3. **Workspace sync**: If a stored asset gets dragged into a workspace folder, should the stored asset be removed and replaced by the workspace-promoted version? For the prototype, both coexist. The workspace version wins in resolution scoring (it has `workspacePath`).
+Our model simplifies the pipeline: every workspace file is automatically an asset (no manual ingestion step). But the separation of concerns is the same: folders are organization, assets are identity, collections are sharing.
 
-4. **Smart collection visibility**: Stored assets need department and type metadata to be filterable by smart collections. The upload flow should capture these.
+## Open questions
+
+1. **Orphaned assets**: If an asset is removed from all collections and folders, should there be an "Unfiled" view? Or is search sufficient?
+
+2. **Storage attribution**: If Framestore uploads 500GB of deliveries, who pays for storage? Platform question, not UX, but affects whether we show storage usage per collection.
+
+3. **Bulk filing**: When Sarah drags 50 vendor deliveries into her workspace, the reference-first model (toast with "Move instead") applies. Is the toast sufficient at scale, or do we need a batch filing view?
+
+4. **Version identity**: If Framestore uploads v2 of a comp that already exists as v1, should the system detect and link them as versions of the same asset? Or are they separate assets the coordinator merges manually?
