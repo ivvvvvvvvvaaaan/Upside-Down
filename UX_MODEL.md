@@ -101,10 +101,11 @@ For collections and folders: People tab only. Release applies to individual asse
 
 ### How sharing works
 
-- **Single asset**: direct grant. No collection needed.
-- **Multi-select**: open question. Auto-creating a collection is convenient but introduces naming and visibility questions. The alternative is two intentional steps: create a collection, then share it.
-- **Collection**: the sharer picks a permission level. That level applies to every asset in the collection. The system caps per-asset permissions by what the sharer actually has -- if the sharer picks Editor but only has Viewer on some assets, those are limited to Viewer for the recipient. This is invisible in most cases (the sharer usually has full access to their own content). When it matters, the share dialog warns honestly.
-- **Folder**: right-click a folder, click Share. The system snapshots the folder's current assets into a collection and shares that. The sender never sees the word "collection" — they shared a folder. The recipient sees a collection in their inbox. If the sender wants to update what's shared, they re-share the folder (new snapshot).
+A single asset is shared as-is. A folder creates a collection when shared. The folder stays in the department; the collection mirrors its contents and is what the recipient sees. The department can reorganize, rename, or restructure the folder without breaking the share. When new content lands in the folder, it appears in the collection automatically. This is how department work reaches people outside the department without giving them access to the whole workspace.
+
+How multi-select sharing works (selecting several assets and clicking Share) is an open question. The system could auto-create a collection, but that introduces naming and visibility questions. The alternative is two intentional steps: create a collection, then share it.
+
+The permission level applies to every asset in the collection. The system caps per-asset permissions by what the sharer actually has. This is invisible in most cases.
 
 Shares are app-specific -- Creative Review doesn't automatically see them. Releases are CAM-backed -- any app that reads domain grants can honor them.
 
