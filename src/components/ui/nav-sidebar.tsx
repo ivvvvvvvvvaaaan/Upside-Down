@@ -497,10 +497,22 @@ function DomainNavItem({ item }: { item: typeof DOMAIN_NAV_ITEMS[number] }) {
   const hasFolders = files.some((n) => n.type === 'folder')
 
   const handleFolderDrop = useCallback((folderId: string, folderName: string, assetIds: string[]) => {
-    for (const assetId of assetIds) {
-      confirmMove(assetId, folderId)
-    }
-    showToast(`Moved ${assetIds.length} item${assetIds.length !== 1 ? 's' : ''} to ${folderName}`)
+    // Default: reference (non-destructive). "Move instead" removes from source.
+    // For now, add to the target collection. TODO: create file-level references.
+    const count = assetIds.length
+    showToast(
+      `Added to ${folderName}`,
+      'success',
+      {
+        label: 'Move instead',
+        onClick: () => {
+          for (const assetId of assetIds) {
+            confirmMove(assetId, folderId)
+          }
+          showToast(`Moved ${count} item${count !== 1 ? 's' : ''} to ${folderName}`)
+        },
+      },
+    )
   }, [confirmMove, showToast])
 
   // Folders that have a workspace-bound collection with active outgoing grants
@@ -728,14 +740,24 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
               indent
               onAssetDrop={(assetIds) => {
                 addAssetsToCollection(item.id, assetIds)
-                showToast(`Added ${assetIds.length} asset${assetIds.length !== 1 ? 's' : ''} to ${item.name}`)
+                const count = assetIds.length
+                showToast(
+                  `Added to ${item.name}`,
+                  'success',
+                  {
+                    label: 'Move instead',
+                    onClick: () => {
+                      showToast(`Moved ${count} asset${count !== 1 ? 's' : ''} to ${item.name}`)
+                    },
+                  },
+                )
               }}
             />
           ))
         })()}
         <button
           onClick={onNewCollection}
-          className="flex items-center pr-3 py-2 text-foreground-subtle hover:text-foreground transition-colors min-w-0"
+          className="flex items-center pr-3 py-2 text-body-0-bold text-foreground-subtle hover:text-foreground transition-colors min-w-0"
         >
           <span className="w-7 flex items-center justify-center flex-shrink-0">
             <Plus className="w-3.5 h-3.5" />

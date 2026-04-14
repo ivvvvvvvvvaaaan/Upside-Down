@@ -43,7 +43,7 @@ This matters because:
 - One metadata set. Tags, AI analysis, review notes stay unified.
 - Independent access paths. The original is accessible via the VFX workspace. The reference is accessible via the Framestore share. Revoking the share removes the reference without touching the original.
 
-When you "move" a file within your own workspace, it physically relocates (one location changes to another). When you "copy" a file to a shared folder or a different department's collection, it creates a reference. The distinction is automatic: same workspace = move, cross-boundary = reference.
+The default action is always non-destructive: adding a file to another location creates a reference. The original stays in place. A toast confirms: "Added to Framestore. Keep original. [Move instead]." One click to convert to a move if that's what the user intended. No modal, no interruption, safe default.
 
 ### Collection
 
