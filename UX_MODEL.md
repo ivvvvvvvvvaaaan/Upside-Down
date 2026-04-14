@@ -123,6 +123,15 @@ Three access paths, each traceable:
 2. **Share** -- "Lisa shared this collection with you on Feb 13."
 3. **Release** -- "This was released to Studio Creative on Feb 18."
 
+### Coordinator visibility
+
+Department coordinators see a complete picture of what's shared:
+- **Shared page**: every active share involving their department's assets. Who shared, who received, when, what permission level.
+- **Per-asset access tab**: every path someone has to a specific asset (department, collection, release). One view, complete trail.
+- **Per-collection access tab**: who has access, what they can do, when the share was created.
+
+A coordinator can answer "who has access to this?" in one click. They can revoke any share with one action. The shared page is their control surface.
+
 ### Safety mechanisms
 
 - **Cross-department warning**: "Sarah Chen is not in your department. This share will give her access to N assets."

@@ -2,3 +2,4 @@ commit	composite	delta	status	description
 a72c008	3.5	+0.0	keep	baseline: current UX_MODEL.md
 3044633	3.8	+0.3	keep	asset independence + vendor upload gating in turnovers section
 660a48a	3.9	+0.1	keep	eliminate folder-linked collection type, folders and collections are separate
+c15b6e0	4.0	+0.1	keep	add coordinator visibility section with shared page and access tabs
