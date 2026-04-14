@@ -237,14 +237,11 @@ function TreeNavLink({
     : false
   const shouldAutoExpandOnActiveChild = autoExpandOnActiveChild && isChildActive
   const storageKey = href || `tree:${label}`
-  const [isExpanded, setIsExpanded] = usePersistedExpand(storageKey, defaultExpanded || shouldAutoExpandOnActiveChild)
+  const [userExpanded, setUserExpanded] = usePersistedExpand(storageKey, defaultExpanded)
 
-  // Auto-expand when a child becomes active (e.g. navigating from relationship panel)
-  useEffect(() => {
-    if ((shouldAutoExpandOnActiveChild || forceExpand) && !isExpanded) {
-      setIsExpanded(true)
-    }
-  }, [forceExpand, isExpanded, setIsExpanded, shouldAutoExpandOnActiveChild])
+  // Effective state: user preference OR active child forces open
+  const isExpanded = userExpanded || shouldAutoExpandOnActiveChild || forceExpand
+  const setIsExpanded = setUserExpanded
 
   const hasChevron = !!children
   const reserveChevronSpace = indent && !hasChevron
@@ -804,6 +801,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
         )
       })()}
 
+      <div className="pb-8" />
     </>
   )
 }
