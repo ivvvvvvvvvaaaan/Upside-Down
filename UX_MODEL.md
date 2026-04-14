@@ -142,7 +142,8 @@ A coordinator can answer "who has access to this?" in one click. They can revoke
 
 ### Safety mechanisms
 
-- **Cross-department warning**: "Sarah Chen is not in your department. This share will give her access to N assets."
+- **Cross-department warning**: sharing outside your department triggers a confirmation: "Sarah Chen is not in your department. This share will give her access to N assets." Names the recipients and their departments.
+- **Vendor warning**: sharing with a vendor team triggers: "This is an external vendor. N assets will be accessible outside Netflix."
 - **Release blast radius**: "Release to Wide makes this visible to Marketing, Legal, Globalization... (~N people)."
 - **File move warning**: "Moving this file removes it from 2 shared collections. 5 people lose access."
 - **Leave action**: recipients can leave a shared collection. Their grant is removed; the collection stays for everyone else.

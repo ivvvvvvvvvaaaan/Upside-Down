@@ -15,3 +15,4 @@ f1a62a6	4.5	+0.1	keep	concrete workspace: folders to organize, search to discove
 6610163	4.5	+0.0	keep	filterable shared page + cross-department collection visibility
 60d31a5	4.5	+0.0	keep	coordinator notification on vendor upload (closes control loop)
 0e8aab3	4.6	+0.1	keep	multi-select share auto-creates collection, sharing is one action
+21d5a28	4.7	+0.1	keep	vendor-specific warning prevents accidental external exposure
