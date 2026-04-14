@@ -4,3 +4,4 @@ a72c008	3.5	+0.0	keep	baseline: current UX_MODEL.md
 660a48a	3.9	+0.1	keep	eliminate folder-linked collection type, folders and collections are separate
 c15b6e0	4.0	+0.1	keep	add coordinator visibility section with shared page and access tabs
 87eecce	4.0	+0.0	keep	3 permission levels + modifiers with presets (simpler, same score)
+e10f0e2	4.2	+0.2	keep	explicit reviewer experience: notification, click, play, comment, close

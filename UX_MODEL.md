@@ -164,6 +164,20 @@ When the cut changes, the coordinator updates the collection and re-shares. The 
 
 ---
 
+## The reviewer experience
+
+Directors, VPs, and other reviewers don't manage files. Their entire experience:
+
+1. A notification arrives (email, Slack, or in-app inbox): "Lisa shared EP301 Locked Cut 2."
+2. They click. The content plays. They comment. They close the tab.
+3. They never see a workspace, a folder tree, or a permission dialog.
+
+If the reviewer was added to a collection, they see the collection contents — not the sender's workspace structure. If they received a review link, they see one asset. The tool is invisible.
+
+For reviewers who want to browse: the library view shows everything they have access to, organized by smart collections (characters, scenes, locations). They search and discover. They never manage.
+
+---
+
 ## Distribution audiences
 
 Users in distribution domains (Marketing, Legal, Globalization) don't have workspaces. Their experience:
