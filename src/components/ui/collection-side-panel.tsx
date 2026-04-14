@@ -26,7 +26,7 @@ import type { AssetFilter, SmartCollectionGroupBy } from '@/lib/data'
 import type { RelatedCollections } from '@/hooks/useSmartCollections'
 import { useAccess, usePersona, useUserCollections } from '@/hooks'
 import { PERSONAS } from '@/lib/personas'
-import { TEAMS } from '@/lib/teams'
+import { TEAMS, isUserInTeam } from '@/lib/teams'
 import { getOntologyMeta } from '@/lib/ontology-meta'
 import type { OntologyMeta } from '@/lib/ontology-meta'
 import { getSmartShareSnapshotCollections } from '@/lib/smart-collection-share-utils'
@@ -412,9 +412,10 @@ export function CollectionSidePanel({
                   )}
 
                   {(() => {
-                    const myGrant = grants.find(g =>
-                      g.principal.type === 'user' && g.principal.userId === activePersona?.id
-                    )
+                    const myGrant = activePersona ? grants.find(g =>
+                      (g.principal.type === 'user' && g.principal.userId === activePersona.id) ||
+                      (g.principal.type === 'team' && isUserInTeam(activePersona.id, g.principal.teamId))
+                    ) : undefined
                     if (!myGrant) return null
                     const capabilities: string[] = []
                     capabilities.push('Preview')

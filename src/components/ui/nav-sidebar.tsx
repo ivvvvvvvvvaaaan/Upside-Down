@@ -79,12 +79,13 @@ function writeStoredNavScrollTop(scrollTop: number) {
   } catch {}
 }
 
-function usePersistedExpand(key: string, fallback: boolean): [boolean, (v: boolean) => void] {
+function usePersistedExpand(key: string, fallback: boolean, skipRestore = false): [boolean, (v: boolean) => void] {
   // Start with fallback to match server render and avoid hydration mismatch
   const [value, setValue] = useState(fallback)
 
   // Sync from localStorage after mount
   useEffect(() => {
+    if (skipRestore) return
     try {
       const stored = localStorage.getItem(NAV_STORAGE_KEY)
       if (stored) {
@@ -92,7 +93,7 @@ function usePersistedExpand(key: string, fallback: boolean): [boolean, (v: boole
         if (key in map) setValue(map[key] as boolean)
       }
     } catch {}
-  }, [key])
+  }, [key, skipRestore])
 
   const setPersisted = useCallback((next: boolean) => {
     setValue(next)
@@ -237,15 +238,24 @@ function TreeNavLink({
     : false
   const shouldAutoExpandOnActiveChild = autoExpandOnActiveChild && isChildActive
   const storageKey = href || `tree:${label}`
-  const [userExpanded, setUserExpanded] = usePersistedExpand(storageKey, defaultExpanded)
+  const hasActiveCollapsedPreview = Boolean(collapsedPreview) && isChildActive
+  const [isExpanded, setIsExpanded] = usePersistedExpand(
+    storageKey,
+    hasActiveCollapsedPreview ? false : defaultExpanded,
+    hasActiveCollapsedPreview, // skip localStorage restore when showing collapsed preview
+  )
 
-  // Effective state: user preference OR active child forces open
-  const isExpanded = userExpanded || shouldAutoExpandOnActiveChild || forceExpand
-  const setIsExpanded = setUserExpanded
+  // Force-expand only
+  useEffect(() => {
+    if (forceExpand && !isExpanded) {
+      setIsExpanded(true)
+    }
+  }, [forceExpand, isExpanded, setIsExpanded])
 
   const hasChevron = !!children
   const reserveChevronSpace = indent && !hasChevron
-  const showCollapsedPreview = Boolean(collapsedPreview) && isChildActive && !isExpanded
+  const showCollapsedPreview = hasActiveCollapsedPreview && !isExpanded
+  const effectiveExpanded = isExpanded
 
   const linkClassName = cn(
     'flex-1 flex items-center justify-between pr-3 min-w-0',
@@ -311,7 +321,7 @@ function TreeNavLink({
             onClick={() => setIsExpanded(!isExpanded)}
             className="w-7 flex items-center justify-center py-2 flex-shrink-0"
           >
-            {isExpanded ? (
+            {effectiveExpanded ? (
               <ChevronDown className="w-4 h-4 text-foreground-dim" />
             ) : (
               <ChevronRight className="w-4 h-4 text-foreground-dim" />
@@ -333,9 +343,9 @@ function TreeNavLink({
           </button>
         )}
       </div>
-      {children && (isExpanded || showCollapsedPreview) && (
+      {children && (effectiveExpanded || showCollapsedPreview) && (
         <div className="pl-6 space-y-1 mt-1">
-          {isExpanded ? children : collapsedPreview}
+          {effectiveExpanded ? children : collapsedPreview}
         </div>
       )}
     </div>
@@ -486,6 +496,7 @@ const DOMAIN_NAV_ITEMS: { href: string; label: string; id: ProductionDomainId }[
 
 /** Renders a single domain nav item, using files from the shared file tree */
 function DomainNavItem({ item }: { item: typeof DOMAIN_NAV_ITEMS[number] }) {
+  const pathname = usePathname()
   const { getDomainFiles, confirmMove, createFileReference } = useFileTree()
   const { getResourceGrants } = useAccess()
   const { collections } = useUserCollections()
@@ -527,11 +538,21 @@ function DomainNavItem({ item }: { item: typeof DOMAIN_NAV_ITEMS[number] }) {
   }, [collections, getResourceGrants, item.id])
 
   if (hasFolders) {
+    const folders = files.filter(n => n.type === 'folder')
+    const activeFolder = folders.find(f => pathname.startsWith(`${item.href}/${f.id}`))
     return (
       <TreeNavLink
         href={item.href}
         label={item.label}
         defaultExpanded={false}
+        autoExpandOnActiveChild={false}
+        collapsedPreview={activeFolder ? (
+          <TreeNavLink
+            href={`${item.href}/${activeFolder.id}`}
+            label={activeFolder.name}
+            indent
+          />
+        ) : undefined}
       >
         <FolderNavTree nodes={files} basePath={item.href} sharedFolderIds={sharedFolderIds} onAssetDropToFolder={handleFolderDrop} />
       </TreeNavLink>
