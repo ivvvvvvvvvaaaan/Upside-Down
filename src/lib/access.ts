@@ -6,10 +6,10 @@
 export type AccessEntryKind = 'folder' | 'asset' | 'cut' | 'collection' | 'smart-collection' | 'review-set' | 'project'
 
 export function kindLabel(kind: AccessEntryKind): string {
-  if (kind === 'folder') return 'Folder'
+  if (kind === 'folder') return 'Collection'
   if (kind === 'cut') return 'Cut'
   if (kind === 'collection') return 'Collection'
-  if (kind === 'smart-collection') return 'Smart Collection'
+  if (kind === 'smart-collection') return 'Collection'
   if (kind === 'review-set') return 'Review Set'
   if (kind === 'project') return 'Project'
   return 'Asset'

@@ -459,7 +459,7 @@ export function CollectionSidePanel({
       {/* Edit modal */}
       {canEdit && (
         <Modal open={editModalOpen} onOpenChange={setEditModalOpen} size="sm">
-          <Modal.Header title={`Edit ${smart ? 'Smart Collection' : 'Collection'}`} />
+          <Modal.Header title="Edit Collection" />
           <Modal.Body>
             {smart && caps.canEditFilter ? (
               <SmartCollectionFilterBuilder

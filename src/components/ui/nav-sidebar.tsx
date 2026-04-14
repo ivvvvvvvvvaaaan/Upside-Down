@@ -39,6 +39,7 @@ import { domainConfigs } from '@/lib/domain-configs'
 import { DOMAIN_FOLDER_MAP, SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { cn } from '@/lib/utils'
+import { useToast } from './toast'
 import { Tag } from './tag'
 import type { NavConfig } from '@/types/navigation'
 
@@ -205,6 +206,8 @@ interface TreeNavLinkProps {
   collapsedPreview?: React.ReactNode
   /** Optional icon rendered on the right side, after the badge area */
   trailingIcon?: React.ReactNode
+  /** Called when assets are dropped on this item */
+  onAssetDrop?: (assetIds: string[]) => void
 }
 
 function TreeNavLink({
@@ -220,9 +223,11 @@ function TreeNavLink({
   autoExpandOnActiveChild = true,
   collapsedPreview,
   trailingIcon,
+  onAssetDrop,
 }: TreeNavLinkProps) {
   const pathname = usePathname()
   const mobile = useNavMobile()
+  const [isDragOver, setIsDragOver] = useState(false)
   const isActive = href ? pathname === href : false
   // Check both /parent/ subroutes AND --child smart collection IDs
   const collectionBase = href ? href.replace(/^\/nextgen\/(smart-collections|collections)\//, '') : ''
@@ -273,10 +278,28 @@ function TreeNavLink({
   return (
     <div>
       <div
+        onDragOver={onAssetDrop ? (e) => {
+          if (e.dataTransfer.types.includes('application/x-asset-ids')) {
+            e.preventDefault()
+            e.dataTransfer.dropEffect = 'copy'
+            setIsDragOver(true)
+          }
+        } : undefined}
+        onDragLeave={onAssetDrop ? () => setIsDragOver(false) : undefined}
+        onDrop={onAssetDrop ? (e) => {
+          e.preventDefault()
+          setIsDragOver(false)
+          const data = e.dataTransfer.getData('application/x-asset-ids')
+          if (data) {
+            try { onAssetDrop(JSON.parse(data)) } catch {}
+          }
+        } : undefined}
         className={cn(
           'flex items-center justify-between rounded transition-colors min-w-0',
           mobile ? 'text-body-1-bold' : 'text-body-0-bold',
-          isActive
+          isDragOver
+            ? 'bg-indigo-500/20 text-foreground ring-1 ring-indigo-500/40'
+            : isActive
             ? 'bg-indigo-500/20 text-foreground'
             : isChildActive
             ? 'text-foreground hover:bg-surface-2'
@@ -588,6 +611,8 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
   const { sharesReceivedByMe, allProjectShares, canAccess, visibleCollections: userCollections, getCollectionAssetCount } = useAccess()
   const { activePersona, isAdmin } = usePersona()
   const { visibleCollections: unifiedCollections } = useCollections()
+  const { addAssetsToCollection } = useUserCollections()
+  const { showToast } = useToast()
   // Workspace-level folders: top-level folders created by user (exclude domain folders already rendered above)
   const DOMAIN_FOLDER_IDS = new Set(Object.values(DOMAIN_FOLDER_MAP).map(d => d.id))
   const workspaceFolders = fileTree.filter((f) => f.type === 'folder' && !DOMAIN_FOLDER_IDS.has(f.id) && f.id !== SHARED_MOUNT_FOLDER_ID) as WorkspaceFileNode[]
@@ -656,10 +681,9 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
         </div>
       </div>
 
-      {/* Collections — unified: smart + curated + received */}
+      {/* Collections — owned + smart */}
       <SectionHeader title="Collections" />
       <div className="px-3 space-y-1">
-        {/* Smart collections (system) — keep expandable tree rendering */}
         {unifiedCollections.filter(isSmart).filter(c => !c.parentId).map((collection) => (
           <SmartCollectionNavItem
             key={collection.id}
@@ -669,13 +693,9 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
             badge={smartCollectionCounts.get(collection.id) || undefined}
           />
         ))}
-        {/* All accessible collections — owned, domain, received */}
         {(() => {
-          // Start with smart collection IDs already shown above
           const seen = new Set<string>(unifiedCollections.filter(isSmart).map(c => c.id))
-          const items: { id: string; name: string; count: number; isShared: boolean }[] = []
-
-          // Owned + domain collections (skip workspace-bound — those show under Workspaces)
+          const items: { id: string; name: string; count: number }[] = []
           for (const c of unifiedCollections.filter(isCollection)) {
             if (seen.has(c.id)) continue
             if (c.boundFolderId) continue
@@ -683,26 +703,19 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
             const isDomain = 'boundDomainId' in c && c.boundDomainId === activePersona?.domainId
             if (!isOwned && !isDomain && !isAdmin) continue
             seen.add(c.id)
-            items.push({ id: c.id, name: c.name, count: getCollectionAssetCount(c.id).accessible, isShared: false })
+            items.push({ id: c.id, name: c.name, count: getCollectionAssetCount(c.id).accessible })
           }
-
-          // Received shares (not already shown)
-          const shares = isAdmin ? allProjectShares : sharesReceivedByMe
-          for (const entry of shares) {
-            if (entry.resourceType !== 'collection' && entry.resourceType !== 'smart-collection') continue
-            if (seen.has(entry.resourceId)) continue
-            seen.add(entry.resourceId)
-            items.push({ id: entry.resourceId, name: entry.label, count: getCollectionAssetCount(entry.resourceId).accessible, isShared: true })
-          }
-
           return items.map(item => (
             <TreeNavLink
               key={item.id}
               href={`/nextgen/collections/${item.id}`}
               label={item.name}
               badge={item.count || undefined}
-              trailingIcon={item.isShared ? <Import className="w-3.5 h-3.5 text-foreground-dim" /> : undefined}
               indent
+              onAssetDrop={(assetIds) => {
+                addAssetsToCollection(item.id, assetIds)
+                showToast(`Added ${assetIds.length} asset${assetIds.length !== 1 ? 's' : ''} to ${item.name}`)
+              }}
             />
           ))
         })()}
@@ -714,6 +727,42 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
           <span className="truncate">New Collection</span>
         </button>
       </div>
+
+      {/* Shared with me */}
+      {(() => {
+        const smartIds = new Set(unifiedCollections.filter(isSmart).map(c => c.id))
+        const ownedIds = new Set(
+          unifiedCollections.filter(isCollection)
+            .filter(c => !c.boundFolderId && ((!activePersona || c.createdBy === activePersona.email) || ('boundDomainId' in c && c.boundDomainId === activePersona?.domainId)))
+            .map(c => c.id)
+        )
+        const seen = new Set([...Array.from(smartIds), ...Array.from(ownedIds)])
+        const shares = isAdmin ? allProjectShares : sharesReceivedByMe
+        const sharedItems: { id: string; name: string; count: number }[] = []
+        for (const entry of shares) {
+          if (entry.resourceType !== 'collection' && entry.resourceType !== 'smart-collection') continue
+          if (seen.has(entry.resourceId)) continue
+          seen.add(entry.resourceId)
+          sharedItems.push({ id: entry.resourceId, name: entry.label, count: getCollectionAssetCount(entry.resourceId).accessible })
+        }
+        if (sharedItems.length === 0) return null
+        return (
+          <>
+            <SectionHeader title="Shared with me" />
+            <div className="px-3 space-y-1">
+              {sharedItems.map(item => (
+                <TreeNavLink
+                  key={item.id}
+                  href={`/nextgen/collections/${item.id}`}
+                  label={item.name}
+                  badge={item.count || undefined}
+                  indent
+                />
+              ))}
+            </div>
+          </>
+        )
+      })()}
 
     </>
   )

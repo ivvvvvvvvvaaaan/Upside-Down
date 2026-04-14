@@ -265,7 +265,7 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
                   size="icon"
                   onClick={togglePanel}
                   aria-label={panelOpen ? 'Close panel' : 'Open panel'}
-                  className={cn(panelOpen && 'bg-surface-3')}
+                  
                 >
                   <Info className="w-4 h-4" />
                 </Button>
@@ -282,7 +282,7 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
                   variant="icon"
                   onClick={togglePanel}
                   aria-label={panelOpen ? 'Close panel' : 'Open panel'}
-                  className={cn(panelOpen && 'bg-surface-3')}
+                  
                 >
                   <PanelRight className="w-4 h-4" />
                 </Button>

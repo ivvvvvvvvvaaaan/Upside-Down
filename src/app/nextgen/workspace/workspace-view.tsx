@@ -811,7 +811,7 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
                     size="icon"
                     aria-label={panelOpen ? 'Close panel' : 'Open panel'}
                     onClick={togglePanel}
-                    className={cn(panelOpen && 'bg-surface-3')}
+                    
                   >
                     <Info className="w-4 h-4" />
                   </Button>
@@ -883,7 +883,7 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
                         variant="icon"
                         aria-label={panelOpen ? 'Close panel' : 'Open panel'}
                         onClick={togglePanel}
-                        className={cn(panelOpen && 'bg-surface-3')}
+                        
                       >
                         <PanelRight className="w-4 h-4" />
                       </Button>

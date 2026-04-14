@@ -40,16 +40,16 @@ export interface CollectionCapabilities {
   canShare: boolean
   canMount: boolean
   showAccessTab: boolean
-  /** Display label for the entity type — "Collection", "Character", "Location", etc. */
+  /** Display label for the entity type in panels — keep collection as the primary concept. */
   typeLabel: string
   /** Icon key for the header */
   icon: 'collection' | 'character' | 'location' | 'scene' | 'smart' | 'folder'
 }
 
 const ONTOLOGY_ICON_TO_LABEL: Record<string, { label: string; icon: CollectionCapabilities['icon'] }> = {
-  character: { label: 'Character', icon: 'character' },
-  location: { label: 'Location', icon: 'location' },
-  scene: { label: 'Scene', icon: 'scene' },
+  character: { label: 'Character Collection', icon: 'character' },
+  location: { label: 'Location Collection', icon: 'location' },
+  scene: { label: 'Scene Collection', icon: 'scene' },
 }
 
 export function getCollectionCapabilities(c: Collection): CollectionCapabilities {
@@ -81,7 +81,7 @@ export function getCollectionCapabilities(c: Collection): CollectionCapabilities
       canShare: isUserCreated,
       canMount: true,
       showAccessTab: isUserCreated,
-      typeLabel: 'Smart Collection',
+      typeLabel: 'Collection',
       icon: 'smart',
     }
   }
@@ -95,7 +95,7 @@ export function getCollectionCapabilities(c: Collection): CollectionCapabilities
     canShare: true,
     canMount: true,
     showAccessTab: true,
-    typeLabel: c.boundFolderId ? 'Folder' : 'Collection',
+    typeLabel: 'Collection',
     icon: c.boundFolderId ? 'folder' : 'collection',
   }
 }

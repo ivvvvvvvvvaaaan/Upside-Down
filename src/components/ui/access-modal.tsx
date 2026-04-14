@@ -17,15 +17,6 @@ export interface AccessModalProps {
   title?: string
 }
 
-const KIND_LABELS: Record<string, string> = {
-  asset: 'Asset',
-  folder: 'Workspace',
-  collection: 'Collection',
-  'smart-collection': 'Smart Collection',
-  'review-set': 'Review Set',
-  project: 'Project',
-}
-
 export function AccessModal({
   open,
   onClose,
@@ -36,7 +27,6 @@ export function AccessModal({
   title,
 }: AccessModalProps) {
   const isBatch = batchResourceRefs && batchResourceRefs.length > 1
-  const kindLabel = resourceRef ? KIND_LABELS[resourceRef.type] ?? '' : ''
   const heading = isBatch
     ? `Share ${batchResourceRefs.length} items`
     : title ? `Share ${title}` : 'Share'

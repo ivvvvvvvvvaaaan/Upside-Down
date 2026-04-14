@@ -157,6 +157,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                             showDepartment
                             restricted={isRestricted(asset)}
                             onRequestAccess={handleRequestAccess}
+                            allSelectedIds={selectedIds}
                           />
                         ))}
                       </CardGrid>
@@ -177,6 +178,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                             showDepartment
                             restricted={isRestricted(asset)}
                             onRequestAccess={handleRequestAccess}
+                            allSelectedIds={selectedIds}
                           />
                         ))}
                       </CardGrid>

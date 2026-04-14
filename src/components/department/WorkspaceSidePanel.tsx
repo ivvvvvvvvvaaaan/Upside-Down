@@ -13,7 +13,7 @@ import type { DomainId } from '@/components/department/types'
 import type { ResourceRef } from '@/lib/grants'
 import { formatDate } from '@/lib/utils'
 import { useAccess, useFileTree } from '@/hooks'
-import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
+import { DOMAIN_FOLDER_MAP, isReferenceFolder } from '@/lib/workspace-data'
 import { domainConfigs } from '@/lib/domain-configs'
 
 interface WorkspaceSidePanelProps {
@@ -76,6 +76,7 @@ export function WorkspaceSidePanel({
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [draftName, setDraftName] = useState('')
   const isFolder = node?.type === 'folder'
+  const isCollectionProjection = isReferenceFolder(node)
   const FolderIcon = folderVariant === 'shared' ? FolderSymlink
     : folderVariant === 'restricted' ? FolderLock
     : Folder
@@ -141,7 +142,9 @@ export function WorkspaceSidePanel({
             <div className="min-w-0">
               <p className="text-body-0-bold text-foreground truncate">{node.name}</p>
               <p className="text-body-0-regular text-foreground-dim">
-                {isFolder ? 'Folder' : node.extension?.toUpperCase() || 'File'}
+                {isFolder
+                  ? (isCollectionProjection ? 'Collection' : 'Folder')
+                  : node.extension?.toUpperCase() || 'File'}
               </p>
             </div>
           </div>
@@ -221,7 +224,7 @@ export function WorkspaceSidePanel({
       {/* Edit modal */}
       {node && onRename && (
         <Modal open={editModalOpen} onOpenChange={setEditModalOpen} size="sm">
-          <Modal.Header title="Edit Folder" />
+          <Modal.Header title={isCollectionProjection ? 'Edit Collection' : 'Edit Folder'} />
           <Modal.Body>
             <div>
               <label className="text-label-1-bold text-foreground-dim block mb-1">Name</label>

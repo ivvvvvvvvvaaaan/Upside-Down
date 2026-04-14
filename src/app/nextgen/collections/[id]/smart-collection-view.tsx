@@ -360,7 +360,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                       size="icon"
                       onClick={togglePanel}
                       aria-label={panelOpen ? 'Close panel' : 'Open panel'}
-                      className={cn(panelOpen && 'bg-surface-3')}
+                      
                     >
                       <Info className="w-4 h-4" />
                     </Button>
@@ -427,7 +427,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                           variant="icon"
                           onClick={togglePanel}
                           aria-label={panelOpen ? 'Close panel' : 'Open panel'}
-                          className={cn(panelOpen && 'bg-surface-3')}
+                          
                         >
                           <PanelRight className="w-4 h-4" />
                         </Button>
@@ -503,6 +503,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                             onMenuClick={handleMenuClick}
                             showDepartment
                             shared={asset.department != null && activePersona?.domainId != null && asset.department !== activePersona.domainId}
+                            allSelectedIds={selectedAssetIds}
                           />
                         ))}
                       </CardGrid>

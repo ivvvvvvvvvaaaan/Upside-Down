@@ -85,6 +85,8 @@ export interface AssetCardProps {
   showTags?: boolean
   /** Per-field metadata visibility */
   metadataFields?: MetadataFieldVisibility
+  /** All currently selected asset IDs (for multi-drag) */
+  allSelectedIds?: Set<string>
 }
 
 // Placeholder image for assets without thumbnails
@@ -105,6 +107,7 @@ export function AssetCard({
   onRequestAccess,
   showTags = true,
   metadataFields,
+  allSelectedIds,
 }: AssetCardProps) {
   const router = useRouter()
   // Primary implies selected
@@ -260,6 +263,13 @@ export function AssetCard({
 
   return (
     <div
+      draggable={!restricted}
+      onDragStart={(e) => {
+        if (restricted) return
+        const ids = isSelected && allSelectedIds ? Array.from(allSelectedIds) : [asset.id]
+        e.dataTransfer.setData('application/x-asset-ids', JSON.stringify(ids))
+        e.dataTransfer.effectAllowed = 'copyMove'
+      }}
       onClick={(e) => {
         if (restricted) { onRequestAccess?.(asset); return }
         onClick?.(asset, e)

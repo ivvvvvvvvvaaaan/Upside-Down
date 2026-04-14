@@ -323,7 +323,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                     size="icon"
                     onClick={togglePanel}
                     aria-label={panelOpen ? 'Close info' : 'Open info'}
-                    className={cn(panelOpen && 'bg-surface-3')}
+                    
                   >
                     <Info className="w-4 h-4" />
                   </Button>
@@ -342,6 +342,26 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                       )}
                     </div>
                     <div className="hidden md:flex items-center gap-2">
+                      {showUpload && (
+                        <Button
+                          variant="secondary"
+                          icon={<Upload className="w-4 h-4" />}
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          Upload
+                        </Button>
+                      )}
+                      {canDownloadCollection && (
+                        <Tooltip label="Download collection">
+                          <Button
+                            variant="icon"
+                            onClick={handleDownloadCollection}
+                            aria-label="Download collection"
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </Tooltip>
+                      )}
                       <SortDropdown
                         fields={[
                           { value: 'name', label: 'Name' },
@@ -364,26 +384,6 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         metadataFields={metadataFields}
                         onMetadataFieldChange={setMetadataField}
                       />
-                      {canDownloadCollection && (
-                        <Tooltip label="Download collection">
-                          <Button
-                            variant="icon"
-                            onClick={handleDownloadCollection}
-                            aria-label="Download collection"
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
-                        </Tooltip>
-                      )}
-                      {showUpload && (
-                        <Button
-                          variant="secondary"
-                          icon={<Upload className="w-4 h-4" />}
-                          onClick={() => fileInputRef.current?.click()}
-                        >
-                          Upload
-                        </Button>
-                      )}
                       {showShareButton && (
                         <Button
                           variant="primary"
@@ -397,7 +397,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         variant="icon"
                         onClick={togglePanel}
                         aria-label={panelOpen ? 'Close panel' : 'Open panel'}
-                        className={cn(panelOpen && 'bg-surface-3')}
+                        
                       >
                         <PanelRight className="w-4 h-4" />
                       </Button>
@@ -435,6 +435,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         showDepartment
                         shared={sharedBy ? false : undefined}
                         processing={uploadingAssets.get(asset.id)?.processing}
+                        allSelectedIds={selectedIds}
                       />
                     ))}
                   </CardGrid>

@@ -311,6 +311,7 @@ export function CollectionBrowserView({
                         forceEmptyPreview={forceEmptyPreview}
                         processing={showProcessing}
                         showDepartment
+                        allSelectedIds={selectedAssetIds}
                       />
                     ))}
                   </CardGrid>
