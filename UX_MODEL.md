@@ -160,7 +160,7 @@ A turnover is a collection pattern, not a separate entity.
 
 The coordinator creates a collection, adds the scoped set of plates, reference cuts, and notes, then shares it as a snapshot with upload enabled. The vendor receives the frozen brief and uploads deliveries into the same collection.
 
-Vendor uploads become assets in the collection. They do not automatically appear in the coordinator's workspace. The coordinator reviews deliveries in the collection and files approved ones into their workspace when ready. This gives the coordinator a gate: the team sees only what the coordinator has reviewed and approved.
+Vendor uploads become assets in the collection. They do not automatically appear in the coordinator's workspace. The coordinator gets a notification: "Framestore uploaded 3 assets to Framestore EP301." The coordinator reviews deliveries in the collection and files approved ones into their workspace when ready. This gives the coordinator a gate: the team sees only what the coordinator has reviewed and approved.
 
 When the cut changes, the coordinator updates the collection and re-shares. The system records this as a new version with a change delta. The vendor sees "Version 2: +3 assets, -1 asset" with a note from the coordinator.
 
