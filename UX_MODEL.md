@@ -50,7 +50,7 @@ That's it. Two modes.
 
 Filtered collections show personalized results: "47 assets (you can access 23)."
 
-**Live or snapshot is a per-share choice.** When sharing any collection, the sharer picks: live (recipient sees updates as assets are added) or snapshot (recipient gets a frozen list at share time). Default is live for internal shares, snapshot for vendor handoffs. Filtered collections default to snapshot because the filter results are personalized — the recipient gets a concrete list, not a dynamic filter.
+**Live or snapshot is a per-share choice.** Synced (live): new assets added to the collection appear, updated versions of existing assets are visible. Frozen (snapshot): both the asset list and asset versions are locked at share time. The vendor sees exactly what was shared. To update, the coordinator re-shares, creating a new version with a change delta. Default is live for internal shares, snapshot for vendor handoffs.
 
 ### Asset
 
