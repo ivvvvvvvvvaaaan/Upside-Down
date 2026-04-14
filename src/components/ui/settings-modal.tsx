@@ -1351,17 +1351,18 @@ function TeamsTab() {
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
+  const nonDepartmentTeams = useMemo(() => TEAMS.filter(t => !t.domainId), [])
   const filteredTeams = useMemo(() => {
-    if (!searchQuery.trim()) return TEAMS
+    if (!searchQuery.trim()) return nonDepartmentTeams
     const q = searchQuery.toLowerCase()
-    return TEAMS.filter(t =>
+    return nonDepartmentTeams.filter(t =>
       t.name.toLowerCase().includes(q) ||
       t.memberUserIds.some(uid => {
         const p = PERSONAS.find(u => u.id === uid)
         return p?.name.toLowerCase().includes(q) || p?.email?.toLowerCase().includes(q)
       })
     )
-  }, [searchQuery])
+  }, [searchQuery, nonDepartmentTeams])
 
   return (
     <div className="space-y-4 pt-4">
