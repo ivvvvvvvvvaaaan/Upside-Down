@@ -46,7 +46,7 @@ A named group of assets. How assets get in:
 
 That's it. Two modes.
 
-**Folders and collections are different things with different jobs.** A folder is how you organize your workspace (spatial, hierarchical, like a filing cabinet). A collection is how you share and group for a purpose (semantic, flat, like a playlist). An asset can be in a folder AND in a collection. Neither owns the asset. The user never needs to decide "is this a folder or a collection?" because they do different things: folders organize, collections share.
+**Folders and collections are different things with different jobs.** A folder is how you organize your workspace (spatial, hierarchical, like a filing cabinet). A collection is how you share and group for a purpose (semantic, flat, like a playlist). An asset can be in a folder AND in a collection. The department that created the asset owns it. Folders organize, collections share.
 
 Filtered collections show personalized results: "47 assets (you can access 23)."
 
