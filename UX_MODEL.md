@@ -122,6 +122,8 @@ These are features within sharing, not standalone concepts:
 
 Access is additive. No deny rules. The sum of all grants determines what you can see. To restrict, remove the specific share that gave them access. If they have access through multiple paths (department, collection, direct share), the permissions panel shows every path and lets you revoke each one. Removing one path tells you if others remain.
 
+When content has versions (cuts progressing through locked cut, final cut, EMF), access is to the entity, not the version. Internal recipients see all versions and future versions automatically. Vendors are locked to the version current at share time. A coordinator can downgrade any share to version-locked.
+
 Three access paths, each traceable and displayed in the access tab of every asset:
 1. **Department** -- "You're in VFX, so you see VFX workspace files."
 2. **Share** -- "Lisa shared this collection with you on Feb 13." Shows the sharer, date, and note.
