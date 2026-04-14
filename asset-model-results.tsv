@@ -9,3 +9,4 @@ cb2c092	4.2	+0.0	keep	folder sharing hides collection from sender (simpler langu
 e03c84b	4.3	+0.1	keep	share notes make inbox actionable, not just notification
 1772284	4.4	+0.1	keep	folders organize, collections share -- explicit differentiation with analogies
 f0e1387	4.4	+0.0	keep	live/snapshot is per-share toggle not collection-type rule (simpler)
+e594866	4.4	+0.0	keep	compress model summary from 8 points to 5 (simpler)

@@ -4,14 +4,11 @@
 
 ## The model
 
-1. You belong to a **department**. You see your department's files.
-2. Your files live in a **workspace**. Everyone in the department sees everything in it. The workspace and the library are the same files -- folders to organize, search and metadata to discover.
-3. To send content outside your department, you **share** it (with a person or team) or **release** it (to an audience like Marketing or Studio Creative).
-4. Sharing uses **collections** -- named groups of assets. You control what goes in, who sees it, and what they can do with it.
-5. Releasing is a broadcast. You toggle audience groups on/off. Released content travels across apps.
-6. What someone can do depends on their **permission level**: viewer, editor, or manager -- plus modifiers like download, comment, and upload.
-7. Content stays in your department until you share or release it. Every permission is traceable and revocable.
-8. Release is the formal publication step. Releasing to "Studio VFX" makes the asset visible to the Studio VFX audience -- which is broader than the VFX workspace. Department membership and release audience membership overlap but are not the same.
+1. Your files live in your **department's workspace**. Everyone in the department sees everything. Nothing leaks out.
+2. To send content outside, you **share** a collection (with people or teams) or **release** an asset (to an audience like Marketing).
+3. You control what goes in each **collection**, who sees it, and what they can do. The recipient sees exactly what you gave them.
+4. What someone can do depends on their **permission level** (viewer, editor, manager) plus modifiers (download, comment, upload).
+5. Everything is **traceable and revocable**. Every share, every release, every access path.
 
 ---
 
