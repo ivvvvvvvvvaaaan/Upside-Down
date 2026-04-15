@@ -1,12 +1,6 @@
 import { mergePrototypeAssets } from '@/lib/prototype-assets'
-import {
-  MOCK_COLLECTIONS,
-  getAssetIdsForFolder,
-  getAssetIdsForFolderRecursive,
-} from '@/lib/data-client'
-import { getDomainWorkspaceFiles } from '@/lib/workspace-data'
-import type { DomainId } from '@/components/department/types'
-import type { Asset, Collection } from '@/lib/data-client'
+import { MOCK_COLLECTIONS } from '@/lib/data-client'
+import type { Asset, Collection, DomainId } from '@/lib/data-client'
 import { seedCutToAsset } from '@/lib/cuts'
 import { buildCuts } from '@/lib/scenario'
 import type { UserCollection } from '@/hooks/useUserCollections'
@@ -112,20 +106,10 @@ export function getAssetsByIds(ids: string[]): Asset[] {
 /**
  * Single source of truth for resolving a collection's asset IDs.
  * Handles all collection types:
- * - Workspace (folder-bound): resolves from folder contents
  * - Curated: uses stored assetIds
  * - Smart: caller should use filterAssets instead
  */
 export function resolveCollectionAssetIds(collection: UserCollection): string[] {
-  if (collection.boundFolderId) {
-    if (collection.boundDomainId) {
-      return getAssetIdsForFolderRecursive(
-        collection.boundFolderId,
-        getDomainWorkspaceFiles(collection.boundDomainId as DomainId),
-      )
-    }
-    return getAssetIdsForFolder(collection.boundFolderId)
-  }
   return collection.assetIds
 }
 

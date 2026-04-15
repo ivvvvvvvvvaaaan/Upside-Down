@@ -4,6 +4,7 @@ import { useCollections } from '@/hooks'
 import { isSmart } from '@/lib/collection-types'
 import { UserCollectionDetailView } from './view'
 import { SmartCollectionDetailView } from './smart-collection-view'
+import { SharedFolderView } from './shared-folder-view'
 
 interface Props {
   params: { id: string }
@@ -11,7 +12,7 @@ interface Props {
 
 /**
  * Unified collection route — renders the right view based on collection flavor.
- * Smart collections and curated collections both resolve at /nextgen/collections/[id].
+ * Smart collections, curated collections, and shared folders all resolve at /nextgen/collections/[id].
  */
 export default function CollectionPage({ params }: Props) {
   const { id } = params
@@ -19,11 +20,16 @@ export default function CollectionPage({ params }: Props) {
   const collection = getCollection(id)
   const isLikelySmartCollection = id.startsWith('smart-')
 
-  // Smart collection → use the smart collection detail view
+  // Smart collection
   if ((collection && isSmart(collection)) || isLikelySmartCollection) {
     return <SmartCollectionDetailView collectionId={id} />
   }
 
-  // Curated or unknown → use the user collection detail view
-  return <UserCollectionDetailView collectionId={id} />
+  // Curated collection
+  if (collection) {
+    return <UserCollectionDetailView collectionId={id} />
+  }
+
+  // Shared folder (ID is a workspace folder, not a collection)
+  return <SharedFolderView folderId={id} />
 }

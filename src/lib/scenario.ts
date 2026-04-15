@@ -91,8 +91,6 @@ type ScenarioCollection = {
   createdBy: string
   assetIds: string[]
   sourceSmartCollectionId?: string
-  /** If set, this collection resolves assets from a folder at query time */
-  boundFolderId?: string
   boundDomainId?: string
 }
 
@@ -288,16 +286,14 @@ export const SCENARIO: Scenario = {
       ],
     },
     {
-      resource: { id: 'coll-vfx-vendor-drop', type: 'collection', domain: 'vfx' },
+      resource: { id: 'ws-vfx-vendor-framestore', type: 'folder', domain: 'vfx' },
       label: 'Framestore',
       by: 'vfx-coordinator',
       date: '2026-01-15',
       expiresAt: '2026-06-15',
       allowUpload: true,
-      shareMode: 'snapshot',
-      version: 1,
-      note: 'EP301 plates, first turnover. Smoke reference still coming in a follow-up.',
-      context: 'Sarah shares the Framestore workspace folder. James can see the brief, download plates, and upload comp deliveries. Time-boxed to the delivery window.',
+      note: 'Shared vendor delivery folder for comp turnover and submissions.',
+      context: 'Sarah shares the Framestore workspace folder directly. James can browse the turnover, download plates, and upload comp deliveries in the same folder during the delivery window.',
       grants: [
         { toTeam: 'framestore-io', as: 'viewer' },
       ],
@@ -380,7 +376,7 @@ export const SCENARIO: Scenario = {
         { to: 'creative-david', as: 'viewer' },
       ],
     },
-    // (Camera selects shared via collection, not per-asset — Alex and David added to Camera Selects collection instead)
+    // Camera selects now share from the workspace folder directly, so no per-asset seed entry lives here.
     // Smart collection share: Sarah snapshots "Finals" into a curated collection for editorial
     {
       resource: { id: 'coll-smart-finals-shared', type: 'collection', domain: 'vfx' },
@@ -416,31 +412,15 @@ export const SCENARIO: Scenario = {
         { toTeam: 'vfx-core', as: 'viewer' },
       ],
     },
-    // Vendor drop v2: re-turnover after locked cut 2
-    {
-      resource: { id: 'coll-vfx-vendor-drop', type: 'collection', domain: 'vfx' },
-      label: 'Framestore',
-      by: 'vfx-coordinator',
-      date: '2026-02-15',
-      context: 'Sarah re-shares after locked cut 2. Three new shots added from the updated edit, one dropped (client approved alternate take).',
-      allowUpload: true,
-      shareMode: 'snapshot',
-      version: 2,
-      versionNote: 're-turnover: +3 shots from LC2, dropped SQ03_SH0020',
-      grants: [
-        { toTeam: 'framestore-io', as: 'viewer' },
-      ],
-    },
     // (Stale cut shares removed — VFX timing now via cut-ep301-lc-1 share)
     // --- Camera department shares ---
     // Camera DIT shares selected takes with editorial + director
     {
-      resource: { id: 'coll-cam-selects', type: 'collection', domain: 'camera' },
+      resource: { id: 'ws-cam-selects', type: 'folder', domain: 'camera' },
       label: 'Camera Selects',
       by: 'camera-dit',
       date: '2026-02-05',
-      shareMode: 'live',
-      context: 'Tom shares camera selects as a live collection with editorial, plus David and Alex for review. New selects appear automatically as Tom adds them.',
+      context: 'Tom shares the Camera Selects folder directly with editorial, plus David and Alex for review. New selects appear automatically as he adds them.',
       grants: [
         { toTeam: 'editorial', as: 'viewer' },
         { to: 'creative-david', as: 'viewer' },
@@ -449,12 +429,11 @@ export const SCENARIO: Scenario = {
     },
     // Camera DIT shares lens distortion data with VFX for comp accuracy
     {
-      resource: { id: 'coll-cam-lens-data', type: 'collection', domain: 'camera' },
+      resource: { id: 'ws-cam-lensmaps', type: 'folder', domain: 'camera' },
       label: 'Lens Data',
       by: 'camera-dit',
       date: '2026-01-25',
-      shareMode: 'live',
-      context: 'Tom shares lens distortion maps and test charts as a live collection with VFX. Mike and Sarah need these for accurate lens-matching in Nuke — new lens data auto-syncs as Tom adds it.',
+      context: 'Tom shares the Lens Data folder directly with VFX. Mike and Sarah need new lens maps and charts to show up automatically as camera publishes them.',
       grants: [
         { to: 'vfx-supervisor', as: 'viewer' },
         { to: 'vfx-coordinator', as: 'viewer' },
@@ -558,12 +537,8 @@ export const SCENARIO: Scenario = {
     { id: 'coll-creature-designs',  name: 'Car Designs', createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-demogorgon', 'ws-art-concept-creature', 'ws-art-char-eleven'], boundDomainId: 'art-design' },
     { id: 'coll-key-locations',     name: 'Key Circuits',    createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-ud-env', 'ws-art-concept-lab', 'ws-art-env-byers', 'ws-art-env-starcourt'], boundDomainId: 'art-design' },
     { id: 'coll-hero-shots',        name: 'Hero Shots',       createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-020-010', 'ws-vfx-comp-eleven'], boundDomainId: 'vfx' },
-    // Workspace collections (folder-bound, live sync) — ongoing cross-department workflows
-    { id: 'coll-cam-selects',      name: 'Camera Selects',   createdBy: 'tnakamura@netflix.com', assetIds: [], boundFolderId: 'ws-cam-selects', boundDomainId: 'camera' },
-    { id: 'coll-cam-lens-data',    name: 'Lens Data',        createdBy: 'tnakamura@netflix.com', assetIds: [], boundFolderId: 'ws-cam-lensmaps', boundDomainId: 'camera' },
     // Curated collections (snapshot shares — discrete handoffs)
     { id: 'coll-cam-dailies',      name: 'Dailies (concept reference)', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'], boundDomainId: 'camera' },
-    { id: 'coll-vfx-vendor-drop',  name: 'Framestore',  createdBy: 'schen@netflix.com', assetIds: [], boundFolderId: 'ws-vfx-vendor-framestore', boundDomainId: 'vfx' },
   ],
 
   sensitiveAssetIds: ['ws-edit-cut-1', 'ws-edit-cut-2'],
@@ -922,7 +897,6 @@ export function buildSeedCollections(): UserCollection[] {
     createdAt: new Date('2026-02-14'),
     createdBy: c.createdBy,
     sourceSmartCollectionId: c.sourceSmartCollectionId,
-    boundFolderId: c.boundFolderId,
     boundDomainId: c.boundDomainId,
   }))
 }

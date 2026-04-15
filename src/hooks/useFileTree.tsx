@@ -226,10 +226,10 @@ function findReferenceFolder(
 
 // --- Context ---
 
-export type MoveImpactCollection = { id: string; name: string; grantCount: number }
+export type MoveImpactShare = { id: string; name: string; grantCount: number }
 
 export type MoveImpact = {
-  impactedCollections: MoveImpactCollection[]
+  impactedFolders: MoveImpactShare[]
 }
 
 interface FileTreeContextValue {
@@ -240,8 +240,8 @@ interface FileTreeContextValue {
   createReferenceFolder: (parentId: string | null, name: string, reference: ReferenceFolderSource) => string
   renameNode: (nodeId: string, newName: string) => void
   deleteNode: (nodeId: string) => void
-  /** Analyze impact of moving a node — which shared collections would be affected */
-  getMoveImpact: (nodeId: string, collections: { id: string; name: string; boundFolderId?: string }[], getGrantCount: (collectionId: string) => number) => MoveImpact
+  /** Analyze impact of moving a node — which shared folders would be affected */
+  getMoveImpact: (nodeId: string, sharedFolders: { id: string; name: string }[], getGrantCount: (folderId: string) => number) => MoveImpact
   /** Execute a move operation */
   confirmMove: (nodeId: string, targetParentId: string) => void
   /** Create a file reference (same asset, different location) */
@@ -424,25 +424,23 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
 
   const getMoveImpact = useCallback((
     nodeId: string,
-    collections: { id: string; name: string; boundFolderId?: string }[],
-    getGrantCount: (collectionId: string) => number,
+    sharedFolders: { id: string; name: string }[],
+    getGrantCount: (folderId: string) => number,
   ): MoveImpact => {
-    const impactedCollections: MoveImpactCollection[] = []
-    for (const collection of collections) {
-      if (!collection.boundFolderId) continue
-      // Check if the node lives inside this collection's bound folder
-      if (isDescendantOf(tree, nodeId, collection.boundFolderId)) {
-        const grantCount = getGrantCount(collection.id)
+    const impactedFolders: MoveImpactShare[] = []
+    for (const folder of sharedFolders) {
+      if (isDescendantOf(tree, nodeId, folder.id)) {
+        const grantCount = getGrantCount(folder.id)
         if (grantCount > 0) {
-          impactedCollections.push({
-            id: collection.id,
-            name: collection.name,
+          impactedFolders.push({
+            id: folder.id,
+            name: folder.name,
             grantCount,
           })
         }
       }
     }
-    return { impactedCollections }
+    return { impactedFolders }
   }, [tree])
 
   const confirmMove = useCallback((nodeId: string, targetParentId: string) => {

@@ -477,7 +477,7 @@ function FolderNavTree({ nodes, basePath, sharedFolderIds, onAssetDropToFolder }
           )
         }
         return (
-          <TreeNavLink key={folder.id} href={href} label={folder.name} indent onAssetDrop={folderDrop} />
+          <TreeNavLink key={folder.id} href={href} label={folder.name} indent trailingIcon={sharedIcon} onAssetDrop={folderDrop} />
         )
       })}
     </>
@@ -499,7 +499,6 @@ function DomainNavItem({ item }: { item: typeof DOMAIN_NAV_ITEMS[number] }) {
   const pathname = usePathname()
   const { getDomainFiles, confirmMove, createFileReference } = useFileTree()
   const { getResourceGrants } = useAccess()
-  const { collections } = useUserCollections()
   const { showToast } = useToast()
   const files = getDomainFiles(item.id) as WorkspaceFileNode[]
   const hasFolders = files.some((n) => n.type === 'folder')
@@ -525,17 +524,21 @@ function DomainNavItem({ item }: { item: typeof DOMAIN_NAV_ITEMS[number] }) {
     )
   }, [createFileReference, confirmMove, showToast])
 
-  // Folders that have a workspace-bound collection with active outgoing grants
+  // Folders in this domain with explicit outgoing grants.
   const sharedFolderIds = useMemo(() => {
     const ids = new Set<string>()
-    for (const c of collections) {
-      if (c.boundFolderId && c.boundDomainId === item.id) {
-        const grants = getResourceGrants(c.id)
-        if (grants.length > 0) ids.add(c.boundFolderId)
+    const collect = (nodes: WorkspaceFileNode[]) => {
+      for (const node of nodes) {
+        if (node.type !== 'folder') continue
+        if (getResourceGrants(node.id).some((grant) => grant.templateId !== 'manager')) {
+          ids.add(node.id)
+        }
+        if (node.children) collect(node.children as WorkspaceFileNode[])
       }
     }
+    collect(files)
     return ids
-  }, [collections, getResourceGrants, item.id])
+  }, [files, getResourceGrants])
 
   if (hasFolders) {
     const folders = files.filter(n => n.type === 'folder')
@@ -744,7 +747,6 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
           const items: { id: string; name: string; count: number }[] = []
           for (const c of unifiedCollections.filter(isCollection)) {
             if (seen.has(c.id)) continue
-            if (c.boundFolderId) continue
             const isOwned = !activePersona || c.createdBy === activePersona.email
             const isDomain = 'boundDomainId' in c && c.boundDomainId === activePersona?.domainId
             if (!isOwned && !isDomain && !isAdmin) continue
@@ -791,7 +793,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
         const smartIds = new Set(unifiedCollections.filter(isSmart).map(c => c.id))
         const ownedIds = new Set(
           unifiedCollections.filter(isCollection)
-            .filter(c => !c.boundFolderId && ((!activePersona || c.createdBy === activePersona.email) || ('boundDomainId' in c && c.boundDomainId === activePersona?.domainId)))
+            .filter(c => (!activePersona || c.createdBy === activePersona.email) || ('boundDomainId' in c && c.boundDomainId === activePersona?.domainId))
             .map(c => c.id)
         )
         const seen = new Set([...Array.from(smartIds), ...Array.from(ownedIds)])

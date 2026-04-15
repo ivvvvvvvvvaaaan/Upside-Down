@@ -38,7 +38,6 @@ import { AccessModal } from '@/components/ui/access-modal'
 import type { ResourceRef } from '@/lib/grants'
 import { SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
 import { useToast } from '@/components/ui/toast'
-import { getSmartShareSnapshotCollections } from '@/lib/smart-collection-share-utils'
 
 interface SmartCollectionDetailViewProps {
   collectionId: string
@@ -92,7 +91,9 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const collection = getCollection(collectionId)
   const linkedSnapshotCollections = useMemo(() => {
     if (!collection) return []
-    return getSmartShareSnapshotCollections(userCollections, collection)
+    return userCollections
+      .filter((userCollection) => userCollection.sourceSmartCollectionId === collection.id)
+      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
   }, [collection, userCollections])
   const shareTargetCollection = linkedSnapshotCollections.length === 1
     ? linkedSnapshotCollections[0]

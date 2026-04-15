@@ -26,7 +26,6 @@ import { PERSONAS } from '@/lib/personas'
 import { TEAMS, isUserInTeam } from '@/lib/teams'
 import { getOntologyMeta } from '@/lib/ontology-meta'
 import type { OntologyMeta } from '@/lib/ontology-meta'
-import { getSmartShareSnapshotCollections } from '@/lib/smart-collection-share-utils'
 
 const PANEL_ICONS: Record<string, typeof LayoutGrid> = {
   collection: LayoutGrid,
@@ -189,7 +188,9 @@ export function CollectionSidePanel({
 
   const linkedSnapshotCollections = useMemo(() => {
     if (!smart) return []
-    return getSmartShareSnapshotCollections(userCollections, smart)
+    return userCollections
+      .filter((collection) => collection.sourceSmartCollectionId === smart.id)
+      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
   }, [smart, userCollections])
 
   const accessCollection = smart && linkedSnapshotCollections.length === 1

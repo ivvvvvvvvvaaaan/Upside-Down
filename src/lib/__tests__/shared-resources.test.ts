@@ -23,11 +23,11 @@ describe('getSharedResourceHref', () => {
     })).toBe('/nextgen/collections/smart-finals')
   })
 
-  it('routes folders through domain workspaces', () => {
+  it('routes shared folders to collection view', () => {
     expect(getSharedResourceHref({
       resourceId: 'ws-vfx-shots',
       resourceType: 'folder',
       domainId: 'vfx',
-    })).toBe('/nextgen/workspace/vfx/ws-vfx-shots')
+    })).toBe('/nextgen/collections/ws-vfx-shots')
   })
 })

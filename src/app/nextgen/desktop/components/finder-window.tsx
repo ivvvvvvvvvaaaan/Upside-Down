@@ -486,6 +486,10 @@ export function FinderWindow({
       getCollection,
       filterAssets,
       filterByAccess,
+      getFolderChildren: (resourceId) => {
+        const sourceNode = findNodeById(workspaceFiles, resourceId)
+        return sourceNode?.type === 'folder' ? sourceNode.children : undefined
+      },
       scopedAssets,
       resolveAssets: treeResolveCollectionAssets,
     })

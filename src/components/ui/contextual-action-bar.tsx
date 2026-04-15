@@ -10,8 +10,6 @@ import { Dropdown, DropdownMenuItem } from './dropdown'
 import { AccessModal } from './access-modal'
 import { CollectionMembershipModal } from './collection-membership-modal'
 import { useAccess } from '@/hooks'
-import { useShareAsCollection } from '@/hooks/useShareAsCollection'
-import type { ShareTarget } from '@/hooks/useShareAsCollection'
 import type { SelectionEntity } from '@/lib/selection-actions'
 import type { ResourceRef } from '@/lib/grants'
 import { evaluateSelectionActions, getSelectionCountLabel } from '@/lib/selection-actions'
@@ -53,10 +51,9 @@ export function ContextualActionBar({
   className,
 }: ContextualActionBarProps) {
   const { canShare, getGrantableProfiles } = useAccess()
-  const { resolveShareTarget } = useShareAsCollection()
   const [showCollectionModal, setShowCollectionModal] = useState(false)
   const [showAccessModal, setShowAccessModal] = useState(false)
-  const [shareTarget, setShareTarget] = useState<ShareTarget | null>(null)
+  const [shareTarget, setShareTarget] = useState<{ resourceRef: ResourceRef; title: string } | null>(null)
   const [batchResourceRefs, setBatchResourceRefs] = useState<ResourceRef[]>([])
 
   const hasSelection = selectedEntities.length > 0
@@ -73,8 +70,7 @@ export function ContextualActionBar({
     if (!evaluation.actions.share.enabled) return
     if (evaluation.shareMode === 'single') {
       const entity = selectedEntities[0]
-      const resolved = resolveShareTarget(entity.resourceRef, entity.label)
-      setShareTarget(resolved)
+      setShareTarget({ resourceRef: entity.resourceRef, title: entity.label })
       setBatchResourceRefs([])
       setShowAccessModal(true)
       return
@@ -164,9 +160,9 @@ export function ContextualActionBar({
         open={showAccessModal}
         onClose={() => { setShowAccessModal(false); setShareTarget(null); setBatchResourceRefs([]) }}
         resourceId={shareTarget?.resourceRef.id ?? batchResourceRefs[0]?.id ?? ''}
-        resourceRef={shareTarget ? shareTarget.resourceRef as ResourceRef : batchResourceRefs[0]}
+        resourceRef={shareTarget?.resourceRef ?? batchResourceRefs[0]}
         batchResourceRefs={batchResourceRefs.length > 1 ? batchResourceRefs : undefined}
-        title={shareTarget?.name}
+        title={shareTarget?.title}
       />
     </>
   )

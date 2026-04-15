@@ -7,7 +7,6 @@ import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
 import { AccessModal } from './access-modal'
 import { GrantBadge } from './grant-badge'
 import { useAccess, usePersona } from '@/hooks'
-import { useShareAsCollection } from '@/hooks/useShareAsCollection'
 import type { ResourceRef, Grant } from '@/lib/grants'
 import { buildAccessDisplayEntries } from './access-display'
 
@@ -28,18 +27,11 @@ export function AccessSummary({
   const [modalTarget, setModalTarget] = useState<{ resourceId: string; resourceRef?: ResourceRef; title?: string } | null>(null)
   const { activePersona, isAdmin } = usePersona()
   const { getResourceGrants, roleGroups, canShare } = useAccess()
-  const { resolveShareTarget } = useShareAsCollection()
 
   const grants = getResourceGrants(resourceId)
 
   const openModal = () => {
-    // Resolve folder → collection only when the user clicks, not on render
-    if (resourceRef?.type === 'folder' && resourceName) {
-      const resolved = resolveShareTarget(resourceRef, resourceName)
-      setModalTarget({ resourceId: resolved.resourceRef.id, resourceRef: resolved.resourceRef as ResourceRef, title: resolved.name })
-    } else {
-      setModalTarget({ resourceId, resourceRef, title: resourceName })
-    }
+    setModalTarget({ resourceId, resourceRef, title: resourceName })
     setModalOpen(true)
   }
 
@@ -106,7 +98,7 @@ export function AccessSummary({
           onClose={() => setModalOpen(false)}
           resourceId={modalTarget.resourceId}
           resourceRef={modalTarget.resourceRef}
-          inheritedGrants={resourceRef?.type === 'folder' ? undefined : inheritedGrants}
+          inheritedGrants={inheritedGrants}
           title={modalTarget.title}
         />
       )}

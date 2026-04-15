@@ -126,4 +126,38 @@ describe('reference folder utils', () => {
 
     expect(children?.map((child) => child.id)).toEqual(['allowed-asset'])
   })
+
+  it('resolves folder reference mounts from their source workspace folder', () => {
+    const node: UnifiedFileNode = {
+      id: 'mounted-folder',
+      name: 'Vendor Drop',
+      type: 'folder',
+      reference: {
+        resourceId: 'ws-vfx-vendor-framestore',
+        resourceType: 'folder',
+      },
+    }
+
+    const children = resolveReferenceChildren(node, {
+      getCollection: () => undefined,
+      filterAssets: () => [],
+      filterByAccess: (assets) => assets,
+      getFolderChildren: (resourceId) => resourceId === 'ws-vfx-vendor-framestore'
+        ? [{
+            id: 'ws-vfx-010-010',
+            name: 'seq010_sh010_comp_v8.exr',
+            type: 'file',
+            extension: 'exr',
+          }]
+        : undefined,
+      scopedAssets: [],
+    })
+
+    expect(children).toEqual([{
+      id: 'ws-vfx-010-010',
+      name: 'seq010_sh010_comp_v8.exr',
+      type: 'file',
+      extension: 'exr',
+    }])
+  })
 })

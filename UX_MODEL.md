@@ -101,7 +101,7 @@ For collections and folders: People tab only. Release applies to individual asse
 
 ### How sharing works
 
-A single asset is shared as-is. A folder creates a collection when shared. The folder stays in the department; the collection mirrors its contents and is what the recipient sees. The department can reorganize, rename, or restructure the folder without breaking the share. When new content lands in the folder, it appears in the collection automatically. This is how department work reaches people outside the department without giving them access to the whole workspace.
+A single asset is shared as-is. A folder is shared directly. The recipient sees the folder and its contents. The department can reorganize, rename, or restructure the folder without breaking the share. When new content lands in the folder, it appears for the recipient automatically. This is how department work reaches people outside the department without giving them access to the whole workspace.
 
 How multi-select sharing works (selecting several assets and clicking Share) is an open question. The system could auto-create a collection, but that introduces naming and visibility questions. The alternative is two intentional steps: create a collection, then share it.
 

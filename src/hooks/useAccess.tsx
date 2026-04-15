@@ -1588,6 +1588,18 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   // --- Per-user access summary (Phase 3) ---
   const getUserAccessSummary = useCallback((targetUserId: string): UserAccessSummary => {
     const uniqueAssetIds = new Set<string>()
+    const getResourceAssetIds = (resource: ResourceRef): string[] => {
+      if (resource.type === 'folder') {
+        return getAssetIdsForFolderRecursive(resource.id, fileTree)
+      }
+
+      if (resource.type === 'collection') {
+        const collection = collectionById.get(resource.id)
+        return collection ? resolveCollectionAssetIds(collection) : []
+      }
+
+      return [resource.id]
+    }
 
     // 1. Department assets: check which domains the user belongs to
     const targetPersona = PERSONAS.find(p => p.id === targetUserId)
@@ -1596,7 +1608,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       const domainId = targetPersona.domainId
       const domainMeta = DOMAIN_FOLDER_MAP[domainId]
       if (domainMeta) {
-        const assetIds = getFileNodesForFolder(domainMeta.id).map(n => n.id)
         for (const id of assetIds) uniqueAssetIds.add(id)
         departmentAssets.push({
           domainId,
@@ -1616,7 +1627,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         (grant.principal.type === 'user' && grant.principal.userId === targetUserId) ||
         (grant.principal.type === 'team' && isUserInTeam(targetUserId, grant.principal.teamId))
       if (!isTarget) continue
-      uniqueAssetIds.add(grant.resource.id)
+      for (const assetId of getResourceAssetIds(grant.resource)) {
+        uniqueAssetIds.add(assetId)
+      }
       directShares.push({
         resourceId: grant.resource.id,
         label: getResourceLabel(grant.resource.id),
@@ -1661,8 +1674,10 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       )
       const domainAssetIds = new Set<string>()
       for (const g of domainGrants) {
-        domainAssetIds.add(g.resource.id)
-        uniqueAssetIds.add(g.resource.id)
+        for (const assetId of getResourceAssetIds(g.resource)) {
+          domainAssetIds.add(assetId)
+          uniqueAssetIds.add(assetId)
+        }
       }
       domainReleases.push({
         domainId: releaseDomain.id,
@@ -1678,7 +1693,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       domainReleases,
       totalUniqueAssets: uniqueAssetIds.size,
     }
-  }, [activeGrants, roleGroups, collectionById, resolveCollectionAssetIdsLive])
 
   // --- Collection governance (Phase 5) ---
   const getCollectionsContainingDepartmentAssets = useCallback((domainId: DomainId): DepartmentCollectionInfo[] => {

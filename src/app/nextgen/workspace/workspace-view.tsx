@@ -23,7 +23,6 @@ import {
   DropdownMenuDivider,
   MoveWarningModal,
 } from '@/components/ui'
-import { useShareAsCollection } from '@/hooks/useShareAsCollection'
 import type { ResourceRef } from '@/lib/grants'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
@@ -180,7 +179,7 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
   const isLanding = !domainId
   const { canAccess, sharesReceivedByMe, getInheritedGrants, filterByAccess, getResourceGrants, isSensitiveAsset } = useAccess()
   const { activePersona } = usePersona()
-  const { getCollection, filterAssets: filterCollectionAssets, scopedAssets, ensureAssetsLoaded, allCollections: allCollectionsUnified } = useCollections()
+  const { getCollection, filterAssets: filterCollectionAssets, scopedAssets, ensureAssetsLoaded } = useCollections()
   const { layout, setLayout, cardSize, setCardSize, viewMode, setViewMode, sidePanelOpen: showPanel, setSidePanelOpen: setShowPanel, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(showPanel, setShowPanel)
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
@@ -204,7 +203,6 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
   // Always call hook (React rules); results ignored when isLanding
   } = useWorkspaceState(domainId ?? 'art-design')
 
-  const { resolveShareTarget } = useShareAsCollection()
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [accessModalNode, setAccessModalNode] = useState<WorkspaceFileNode | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -218,7 +216,7 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
     nodeId: string
     fileName: string
     targetParentId: string
-    impactedCollections: { id: string; name: string; grantCount: number }[]
+    impactedFolders: { id: string; name: string; grantCount: number }[]
   } | null>(null)
   const { createFolder: fileTreeCreateFolder, createFile: fileTreeCreateFile, deleteNode: fileTreeDeleteNode, renameNode: fileTreeRenameNode, tree: fileTree, getDomainFiles: getFileTreeDomainFiles, getMoveImpact, confirmMove, resolveCollectionAssets: treeResolveCollectionAssets } = useFileTree()
 
@@ -227,6 +225,10 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
       getCollection,
       filterAssets: filterCollectionAssets,
       filterByAccess,
+      getFolderChildren: (resourceId) => {
+        const sourceNode = findNodeById(fileTree as WorkspaceFileNode[], resourceId)
+        return sourceNode?.type === 'folder' ? sourceNode.children : undefined
+      },
       scopedAssets,
       resolveAssets: treeResolveCollectionAssets,
     }) as WorkspaceFileNode[]
@@ -559,28 +561,35 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
     const rootFolders = fileTree.filter(f => f.type === 'folder' && !DOMAIN_FOLDER_IDS.has(f.id))
     const targetParentId = rootFolders.length > 0 ? rootFolders[0].id : 'ws-vfx' // fallback
 
-    // Build collection data for impact check
-    const collsForImpact = allCollectionsUnified
-      .filter(c => 'boundFolderId' in c)
-      .map(c => ({ id: c.id, name: c.name, boundFolderId: (c as unknown as { boundFolderId?: string }).boundFolderId }))
+    const sharedFoldersForImpact: { id: string; name: string }[] = []
+    const collectSharedFolders = (nodes: WorkspaceFileNode[]) => {
+      for (const candidate of nodes) {
+        if (candidate.type !== 'folder') continue
+        if (!DOMAIN_FOLDER_IDS.has(candidate.id) && getResourceGrants(candidate.id).length > 0) {
+          sharedFoldersForImpact.push({ id: candidate.id, name: candidate.name })
+        }
+        if (candidate.children) collectSharedFolders(candidate.children as WorkspaceFileNode[])
+      }
+    }
+    collectSharedFolders(fileTree as WorkspaceFileNode[])
 
-    const getGrantCount = (collectionId: string) => getResourceGrants(collectionId).length
+    const getGrantCount = (folderId: string) => getResourceGrants(folderId).length
 
-    const impact = getMoveImpact(node.id, collsForImpact, getGrantCount)
+    const impact = getMoveImpact(node.id, sharedFoldersForImpact, getGrantCount)
 
-    if (impact.impactedCollections.length > 0) {
+    if (impact.impactedFolders.length > 0) {
       setMoveWarningState({
         open: true,
         nodeId: node.id,
         fileName: node.name,
         targetParentId,
-        impactedCollections: impact.impactedCollections,
+        impactedFolders: impact.impactedFolders,
       })
     } else {
       // No impact, move directly
       confirmMove(node.id, targetParentId)
     }
-  }, [fileTree, allCollectionsUnified, getResourceGrants, getMoveImpact, confirmMove])
+  }, [fileTree, getResourceGrants, getMoveImpact, confirmMove])
 
   const handleConfirmMove = useCallback(() => {
     if (moveWarningState) {
@@ -1110,7 +1119,7 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
           onClose={() => setMoveWarningState(null)}
           onConfirm={handleConfirmMove}
           fileName={moveWarningState.fileName}
-          impactedCollections={moveWarningState.impactedCollections}
+          impactedFolders={moveWarningState.impactedFolders}
         />
       )}
       {accessModalNode && (() => {
@@ -1120,25 +1129,17 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
           type: accessModalNode.type === 'folder' ? 'folder' : 'asset',
           domainId,
         }
-        // Resolve folders to workspace-bound collections — same path as selection bar Share
-        const resolved = accessModalNode.type === 'folder'
-          ? resolveShareTarget(rawRef, accessModalNode.name)
-          : null
-        const modalRef = resolved
-          ? { id: resolved.resourceRef.id, type: resolved.resourceRef.type, domainId } as ResourceRef
-          : rawRef
-        const modalId = modalRef.id
         return (
           <AccessModal
             open
             onClose={() => setAccessModalNode(null)}
-            resourceId={modalId}
-            resourceRef={modalRef}
-            inheritedGrants={resolved ? undefined : getInheritedGrants(nodeId).map(({ grant, fromResourceName }) => ({
+            resourceId={rawRef.id}
+            resourceRef={rawRef}
+            inheritedGrants={getInheritedGrants(nodeId).map(({ grant, fromResourceName }) => ({
               grant,
               fromResourceName,
             }))}
-            title={`${accessModalNode.name} folder`}
+            title={accessModalNode.type === 'folder' ? `${accessModalNode.name} folder` : accessModalNode.name}
           />
         )
       })()}

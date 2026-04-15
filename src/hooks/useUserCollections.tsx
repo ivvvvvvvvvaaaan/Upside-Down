@@ -5,6 +5,7 @@ import { usePersona } from './usePersona'
 import { buildSeedCollections } from '@/lib/scenario'
 import { mergeCollectionAssetIds } from '@/lib/collection-membership'
 import { PERSONAS } from '@/lib/personas'
+import { SEED_VERSION } from '@/lib/constants'
 
 /**
  * User-created collection (distinct from smart collections)
@@ -19,13 +20,10 @@ export type UserCollection = {
   createdBy?: string
   /** If set, this collection is a share snapshot created from a smart collection */
   sourceSmartCollectionId?: string
-  /** If set, this collection resolves assets from a folder at query time */
-  boundFolderId?: string
   boundDomainId?: string
 }
 
 const COLLECTIONS_STORAGE_KEY = 'user-collections'
-import { SEED_VERSION } from '@/lib/constants'
 const SEED_VERSION_KEY = 'user-collections-version'
 
 function loadStoredCollections(): UserCollection[] {
@@ -60,7 +58,6 @@ interface UserCollectionsContextValue {
     assetIds: string[],
     options?: { sourceSmartCollectionId?: string },
   ) => UserCollection
-  createWorkspaceCollection: (name: string, folderId: string, domainId: string) => UserCollection
   addAssetsToCollection: (id: string, assetIds: string[]) => void
   removeAssetFromCollection: (collectionId: string, assetId: string) => void
   deleteCollection: (id: string) => void
@@ -111,24 +108,6 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
     return newCollection
   }, [activePersona, setCollections])
 
-  const createWorkspaceCollection = useCallback((name: string, folderId: string, domainId: string): UserCollection => {
-    const existing = collections.find(c => c.boundFolderId === folderId)
-    if (existing) return existing
-
-    const newCollection: UserCollection = {
-      flavor: 'collection',
-      id: `ws-col-${Date.now()}`,
-      name,
-      assetIds: [],
-      createdAt: new Date(),
-      createdBy: activePersona?.email,
-      boundFolderId: folderId,
-      boundDomainId: domainId,
-    }
-    setCollections(prev => [...prev, newCollection])
-    return newCollection
-  }, [activePersona, setCollections, collections])
-
   const addAssetsToCollection = useCallback((id: string, assetIds: string[]) => {
     if (assetIds.length === 0) return
     setCollections((prev) => prev.map((collection) => {
@@ -178,14 +157,13 @@ export function UserCollectionsProvider({ children }: { children: ReactNode }) {
     <UserCollectionsContext.Provider value={useMemo(() => ({
       collections,
       createCollection,
-      createWorkspaceCollection,
       addAssetsToCollection,
       removeAssetFromCollection,
       deleteCollection,
       getCollection,
       transferCollectionOwnership,
       orphanedCollections,
-    }), [collections, createCollection, createWorkspaceCollection, addAssetsToCollection, removeAssetFromCollection, deleteCollection, getCollection, transferCollectionOwnership, orphanedCollections])}>
+    }), [collections, createCollection, addAssetsToCollection, removeAssetFromCollection, deleteCollection, getCollection, transferCollectionOwnership, orphanedCollections])}>
       {children}
     </UserCollectionsContext.Provider>
   )

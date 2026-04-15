@@ -10,6 +10,7 @@ interface ReferenceFolderResolutionOptions {
   scopedAssets: Asset[]
   /** Override default collection asset resolution (e.g. to use live file tree) */
   resolveAssets?: (collection: Collection) => Asset[]
+  getFolderChildren?: (resourceId: string) => UnifiedFileNode[] | undefined
 }
 
 function assetToFileNode(asset: Asset): UnifiedFileNode {
@@ -59,6 +60,9 @@ export function resolveReferenceChildren(
   options: ReferenceFolderResolutionOptions,
 ): UnifiedFileNode[] | undefined {
   if (!isReferenceFolder(node)) return node.children
+  if (node.reference.resourceType === 'folder') {
+    return options.getFolderChildren?.(node.reference.resourceId) ?? node.children
+  }
   return resolveReferenceFolderAssets(node, options).map(assetToFileNode)
 }
 
@@ -69,11 +73,12 @@ export function materializeReferenceFolders(
   return nodes.map((node) => {
     if (node.type !== 'folder') return node
 
-    const children = isReferenceFolder(node)
+    const resolvedChildren = isReferenceFolder(node)
       ? resolveReferenceChildren(node, options)
       : node.children
-        ? materializeReferenceFolders(node.children, options)
-        : node.children
+    const children = resolvedChildren
+      ? materializeReferenceFolders(resolvedChildren, options)
+      : resolvedChildren
 
     return { ...node, children }
   })

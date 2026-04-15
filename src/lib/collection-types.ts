@@ -2,7 +2,7 @@
  * Unified Collection Type System
  *
  * Two source types, one union:
- * - UserCollection (flavor: 'collection') — manual or folder-bound asset collections
+ * - UserCollection (flavor: 'collection') — curated asset collections
  * - SmartCollection (flavor: 'smart') — filter/AI-based dynamic collections
  *
  * No conversion layer. The storage types ARE the display types.
@@ -96,6 +96,6 @@ export function getCollectionCapabilities(c: Collection): CollectionCapabilities
     canMount: true,
     showAccessTab: true,
     typeLabel: 'Collection',
-    icon: c.boundFolderId ? 'folder' : 'collection',
+    icon: 'collection',
   }
 }

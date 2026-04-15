@@ -3,7 +3,7 @@ import type { ShareMode } from '@/lib/grants'
 
 export interface ReferenceFolderSource {
   resourceId: string
-  resourceType: 'collection' | 'smart-collection'
+  resourceType: 'folder' | 'collection' | 'smart-collection'
   domainId?: DomainId
   shareMode?: ShareMode
   snapshotAssetIds?: string[]
@@ -27,7 +27,7 @@ export interface UnifiedFileNode {
   domainId?: DomainId
   /** Local mount owner for reference folders shown in the Shared drive view */
   mountedByUserId?: string | null
-  /** Folder-level: reference to a collection */
+  /** Folder-level: reference to a shared folder or collection */
   reference?: ReferenceFolderSource
   /** File-level: this node is a reference to another file (same asset, different location) */
   fileRef?: FileReference

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_GRANTS, buildSharesReceivedByMe } from '@/lib/grants'
 import { buildSeedCollections } from '@/lib/scenario'
 import { getSharePreviewImages } from '@/lib/data-client'
-import { getAssetsByIds, getRecentAssets, resolveCollectionAssetIds } from '@/lib/data'
+import { getAssetsByIds, getRecentAssets } from '@/lib/data'
 
 describe('getSharePreviewImages', () => {
   it('builds previews for seeded shared collections', () => {
@@ -29,43 +29,13 @@ describe('getSharePreviewImages', () => {
     expect(previews!.length).toBeGreaterThan(0)
   })
 
-  it('builds folder-backed collection previews from resolved collection assets', () => {
-    const collections = buildSeedCollections()
-    const collection = collections.find((entry) => entry.id === 'coll-cam-selects')
+  it('builds previews for direct folder shares from their folder contents', () => {
+    const entry = buildSharesReceivedByMe('vendor-framestore', DEFAULT_GRANTS)
+      .find((share) => share.resourceId === 'ws-vfx-vendor-framestore')
 
-    expect(collection).toBeDefined()
+    expect(entry).toBeDefined()
 
-    const previews = getSharePreviewImages({
-      resourceId: 'coll-cam-selects',
-      resourceType: 'collection',
-    }, collections)
-
-    const expected = Array.from(new Set(
-      getAssetsByIds(resolveCollectionAssetIds(collection!))
-        .map((asset) => asset.thumbnail)
-        .filter((thumbnail): thumbnail is string => Boolean(thumbnail)),
-    ))
-
-    expect(previews).toEqual(expected)
-  })
-
-  it('resolves vendor folder-backed collections from their actual folder contents', () => {
-    const collections = buildSeedCollections()
-    const collection = collections.find((entry) => entry.id === 'coll-vfx-vendor-drop')
-
-    expect(collection).toBeDefined()
-    expect(resolveCollectionAssetIds(collection!)).toEqual([
-      'ws-vfx-fs-brief',
-      'ws-vfx-fs-del-1',
-      'ws-vfx-fs-del-2',
-      'ws-vfx-fs-del-3',
-      'ws-vfx-fs-notes',
-    ])
-
-    const previews = getSharePreviewImages({
-      resourceId: 'coll-vfx-vendor-drop',
-      resourceType: 'collection',
-    }, collections)
+    const previews = getSharePreviewImages(entry!, buildSeedCollections())
 
     expect(previews).toBeDefined()
     expect(previews!.length).toBeGreaterThan(0)

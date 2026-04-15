@@ -31,7 +31,6 @@ import { getAssetIdVariants } from '@/lib/data'
 import { isGrantActive } from '@/lib/grants'
 import { useUserCollections } from '@/hooks/useUserCollections'
 import { useSmartCollections } from '@/hooks'
-import { useShareAsCollection } from '@/hooks/useShareAsCollection'
 import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
 import { TEAMS } from '@/lib/teams'
 import { PERSONAS } from '@/lib/personas'
@@ -482,8 +481,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const [expiresInDays, setExpiresInDays] = useState(7)
   const { getCollection, collections, createCollection } = useUserCollections()
   const { getCollection: getSmartCollection, filterAssets, scopedAssets } = useSmartCollections()
-  const { resolveShareTarget } = useShareAsCollection()
   const isCollectionResource = resourceRef?.type === 'collection'
+  const isFolderResource = resourceRef?.type === 'folder'
   const isAssetResource = resourceRef?.type === 'asset' || resourceRef?.type === 'cut'
 
   // Collection-mediated access for assets — "Shared via" section
@@ -525,7 +524,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     return results
   }, [isAssetResource, resourceId, collections, getResourceGrants, inheritedGrants])
 
-  // Domain access context for workspace-bound collections
+  // Domain access context for domain-owned collections
   const domainContext = useMemo(() => {
     if (!isCollectionResource || !resourceRef) return null
     const collection = getCollection(resourceRef.id)
@@ -699,12 +698,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       for (const rawTarget of rawTargets) {
         let target = rawTarget
 
-        // Folders get converted to workspace collections before granting
-        if (rawTarget.type === 'folder') {
-          const resolved = resolveShareTarget(rawTarget, rawTarget.id)
-          target = resolved.resourceRef as ResourceRef
-        }
-
         // Smart collections get snapshotted into curated collections
         if (rawTarget.type === 'smart-collection') {
           const smartColl = getSmartCollection(rawTarget.id)
@@ -721,6 +714,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         const targetGrants = getResourceGrants(target.id)
         if (pending.principal.type === 'user' && targetGrants.some(g => g.principal.type === 'user' && g.principal.userId === (pending.principal as { userId: string }).userId)) continue
         if (pending.principal.type === 'team' && targetGrants.some(g => g.principal.type === 'team' && g.principal.teamId === (pending.principal as { teamId: string }).teamId)) continue
+        if (pending.principal.type === 'domain' && targetGrants.some(g => g.principal.type === 'domain' && g.principal.domainId === (pending.principal as { domainId: string }).domainId)) continue
 
         const isCollection = target.type === 'collection'
         const collection = isCollection ? getCollection(target.id) : undefined
@@ -1194,7 +1188,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               <span className="text-body-0-regular text-foreground truncate">{pending.name}</span>
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
-              {isCollectionResource && pending.kind !== 'domain' && (
+              {(isCollectionResource || isFolderResource) && pending.kind !== 'domain' && (
                 <>
                 <label className="flex items-center gap-1.5 mr-2 text-label-0-regular text-foreground-dim cursor-pointer">
                   <Toggle
@@ -1204,17 +1198,19 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                   />
                   <span>Uploads</span>
                 </label>
-                <label className="flex items-center gap-1.5 mr-2 text-label-0-regular text-foreground-dim cursor-pointer">
-                  <Toggle
-                    checked={pending.shareMode === 'live'}
-                    onChange={(v) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, shareMode: v ? 'live' : 'snapshot' } : p))}
-                    aria-label="Include new"
-                  />
-                  <span>Include new</span>
-                  <Tooltip label="Show new assets as they're added">
-                    <Info className="w-3 h-3 text-foreground-dim" />
-                  </Tooltip>
-                </label>
+                {isCollectionResource && (
+                  <label className="flex items-center gap-1.5 mr-2 text-label-0-regular text-foreground-dim cursor-pointer">
+                    <Toggle
+                      checked={pending.shareMode === 'live'}
+                      onChange={(v) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, shareMode: v ? 'live' : 'snapshot' } : p))}
+                      aria-label="Include new"
+                    />
+                    <span>Include new</span>
+                    <Tooltip label="Show new assets as they're added">
+                      <Info className="w-3 h-3 text-foreground-dim" />
+                    </Tooltip>
+                  </label>
+                )}
                 </>
               )}
               <RoleSelect

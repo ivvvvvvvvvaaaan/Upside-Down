@@ -66,12 +66,12 @@ describe('grant-based access model', () => {
 
   it('keeps vendor access explicit-share only', () => {
     expect(userHasAccess('vendor-framestore', 'vfx', DEFAULT_GRANTS)).toBe(false)
-    expect(userHasAccess('vendor-framestore', 'coll-vfx-vendor-drop', DEFAULT_GRANTS)).toBe(true)
+    expect(userHasAccess('vendor-framestore', 'ws-vfx-vendor-framestore', DEFAULT_GRANTS)).toBe(true)
   })
 
   it('resolves direct resource shares correctly', () => {
-    expect(userHasAccess('vfx-supervisor', 'coll-cam-lens-data', DEFAULT_GRANTS)).toBe(true)
-    expect(userHasAccess('vendor-framestore', 'coll-cam-lens-data', DEFAULT_GRANTS)).toBe(false)
+    expect(userHasAccess('vfx-supervisor', 'ws-cam-lensmaps', DEFAULT_GRANTS)).toBe(true)
+    expect(userHasAccess('vendor-framestore', 'ws-cam-lensmaps', DEFAULT_GRANTS)).toBe(false)
   })
 
   it('lets resource shares target access groups as real ACL principals', () => {
@@ -105,6 +105,7 @@ describe('grant-based access model', () => {
     const received = buildSharesReceivedByMe('editorial-coordinator', DEFAULT_GRANTS)
     const resourceIds = received.map((view) => view.resourceId)
 
+    expect(resourceIds).toContain('ws-cam-selects')
     expect(resourceIds).toContain('ws-vfx-coll-for-editorial')
     expect(resourceIds).not.toContain('ws-editorial')
   })
@@ -147,7 +148,7 @@ describe('capability decomposition', () => {
   })
 
   it('resolveAccess merges explicit permissions from all active matching grants', () => {
-    const result = resolveAccess('vendor-framestore', 'coll-vfx-vendor-drop', DEFAULT_GRANTS)
+    const result = resolveAccess('vendor-framestore', 'ws-vfx-vendor-framestore', DEFAULT_GRANTS)
     expect(result.hasAccess).toBe(true)
     expect(result.effectiveProfile).toBe('viewer')
     expect(result.permissions).toContain('open')
