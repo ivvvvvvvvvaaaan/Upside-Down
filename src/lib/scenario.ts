@@ -384,7 +384,7 @@ export const SCENARIO: Scenario = {
     // Smart collection share: Sarah snapshots "Finals" into a curated collection for editorial
     {
       resource: { id: 'coll-smart-finals-shared', type: 'collection', domain: 'vfx' },
-      label: 'Finals (shared)',
+      label: 'Finals',
       by: 'vfx-coordinator',
       date: '2026-02-12',
       context: 'Sarah shares the Finals smart collection with editorial. The filter snapshots at share time into a fixed collection, so Maria sees the same approved finals every time instead of a live personalized smart collection.',
@@ -548,7 +548,7 @@ export const SCENARIO: Scenario = {
   collections: [
     // Shared collections (referenced by grants)
     { id: 'ws-vfx-coll-for-editorial', name: 'EP301 VFX Pulls - Edit Review',  createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-020-010'], boundDomainId: 'vfx' },
-    { id: 'coll-smart-finals-shared',  name: 'Finals (shared)',                createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020'], sourceSmartCollectionId: 'smart-finals', boundDomainId: 'vfx' },
+    { id: 'coll-smart-finals-shared',  name: 'Finals',                createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020'], sourceSmartCollectionId: 'smart-finals', boundDomainId: 'vfx' },
     { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', assetIds: ['ws-edit-cut-1', 'ws-edit-cut-2', 'ws-edit-cut-3'], boundDomainId: 'editorial' },
     // Camera collections
     { id: 'ws-cam-coll-broll', name: 'B-Roll Highlights', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-broll-town', 'ws-cam-broll-forest', 'ws-cam-aerial-dawn', 'ws-cam-aerial-quarry'], boundDomainId: 'camera' },

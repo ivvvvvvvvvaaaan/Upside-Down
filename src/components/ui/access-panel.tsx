@@ -711,7 +711,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           if (smartColl) {
             const assets = filterAssets(scopedAssets, smartColl.id)
             const assetIds = assets.map(a => a.id)
-            const curated = createCollection(`${smartColl.name} (shared)`, assetIds, {
+            const curated = createCollection(smartColl.name, assetIds, {
               sourceSmartCollectionId: smartColl.id,
             })
             target = { id: curated.id, type: 'collection' }

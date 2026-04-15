@@ -298,7 +298,13 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
 
 
 
-  // Collection not found
+  // No access — redirect to search
+  useEffect(() => {
+    if (!collection && !loading) {
+      router.replace('/nextgen')
+    }
+  }, [collection, loading, router])
+
   if (!collection && !loading) {
     return (
       <div className="h-full flex flex-col">
@@ -366,11 +372,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                     </Button>
                   } />
                   <div className="flex items-center gap-2 md:hidden">
-                    <HawkinsSearch
-                      value={searchQuery}
-                      onValueChange={setSearchQuery}
-                      filters={filterOptions}
-                    />
                     <SortDropdown
                       fields={sortFields}
                       value={sortCriteria}
@@ -432,13 +433,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                           <PanelRight className="w-4 h-4" />
                         </Button>
                       </div>
-                    </div>
-                    <div className="hidden md:block">
-                      <HawkinsSearch
-                        value={searchQuery}
-                        onValueChange={setSearchQuery}
-                        filters={filterOptions}
-                      />
                     </div>
                   </div>
 

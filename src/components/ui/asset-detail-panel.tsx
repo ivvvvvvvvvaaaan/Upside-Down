@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
-import { X, Plus, Lock } from 'lucide-react'
+import { X, Plus, EyeOff } from 'lucide-react'
+import { formatDate } from '@/lib/utils'
 import { Button } from './button'
 import { Dropdown, DropdownMenuItem } from './dropdown'
 import { ResponsivePanel } from './responsive-panel'
@@ -128,7 +129,10 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
       {/* Collection-mediated access — each in its own card */}
       {sharedCollections.map(({ collection, grants }) => {
         const sharedByGrant = grants[0]
-        const sharedByName = sharedByGrant ? (PERSONAS.find(p => p.id === sharedByGrant.grantedByUserId)?.name ?? null) : null
+        const sharedByPersona = sharedByGrant ? PERSONAS.find(p => p.id === sharedByGrant.grantedByUserId) : null
+        const sharedByName = sharedByPersona
+          ? (sharedByPersona.id === activePersona?.id ? 'you' : sharedByPersona.name)
+          : null
         return (
         <div key={collection.id} className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
           <div className="flex items-center justify-between">
@@ -143,7 +147,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
                 onClick={() => removeAssetFromCollection(collection.id, assetId)}
                 className="text-body-0-regular text-foreground-system-error hover:opacity-80 transition-colors"
               >
-                Remove
+                Revoke
               </button>
             )}
           </div>
@@ -161,7 +165,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
           })}
           {sharedByName && (
             <span className="text-label-0-regular text-foreground-dim">
-              Shared by {sharedByName}{sharedByGrant?.grantedAt ? ` on ${sharedByGrant.grantedAt}` : ''}
+              Shared by {sharedByName}{sharedByGrant?.grantedAt ? ` on ${formatDate(sharedByGrant.grantedAt)}` : ''}
             </span>
           )}
         </div>
@@ -232,18 +236,6 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
         <p className="text-body-0-regular text-foreground-dim">Not shared</p>
       )}
 
-      {(isAdmin || (resourceRef && canShare(resourceRef))) && (
-        <div className="flex gap-2">
-          <Button variant="secondary" compact onClick={() => setModalOpen(true)}>
-            Share
-          </Button>
-          {currentCollectionId && getCollection(currentCollectionId) && (
-            <Button variant="secondary" compact onClick={() => removeAssetFromCollection(currentCollectionId, assetId)}>
-              Remove from this collection
-            </Button>
-          )}
-        </div>
-      )}
 
       <AccessModal
         open={modalOpen}
@@ -661,29 +653,6 @@ export function AssetDetailPanelContent({
         </Button>
       </div>
 
-      {/* Version Switcher (cuts only) */}
-      {asset.kind === 'cut' && allVersions.length > 1 && (
-        <div className="px-4 pb-2">
-          <Dropdown
-            label={`${getCutStageLabel(asset.stage)} (v${asset.version ?? 1})`}
-            size="compact"
-            align="start"
-            width="md"
-            ghost
-          >
-            {allVersions.map(v => (
-              <DropdownMenuItem
-                key={v.id}
-                label={`${getCutStageLabel(v.stage)} (v${v.version ?? 1})${v.created_at ? ` — ${new Date(v.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : ''}${v.id === asset.id ? ' (current)' : ''}`}
-                onClick={() => {
-                  if (v.id !== asset.id) onVersionSelect?.(v)
-                }}
-              />
-            ))}
-          </Dropdown>
-        </div>
-      )}
-
       {/* Tabs */}
       <Tabs defaultValue="details" className="flex-1 min-h-0 flex flex-col">
         <TabsList className="px-4 shrink-0">
@@ -707,7 +676,7 @@ export function AssetDetailPanelContent({
                 </div>
                 {isSensitiveAsset(asset.id) && (
                   <div className="flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5 text-foreground-dim" />
+                    <EyeOff className="w-3.5 h-3.5 text-foreground-dim" />
                     <Tag size="compact" type="notice" variant="fill">Sensitive</Tag>
                   </div>
                 )}
@@ -787,23 +756,28 @@ export function AssetDetailPanelContent({
             </section>
 
             {/* Version History */}
-            {olderVersions && olderVersions.length > 0 && (
+            {allVersions.length > 1 && (
               <section className="space-y-2">
                 <h3 className="text-body-0-bold text-foreground-dim">Version History</h3>
                 <div className="space-y-1">
-                  <div className="flex items-center justify-between py-1 text-body-0-regular">
-                    <span className="text-foreground">V{asset.version} <span className="text-foreground-dim">(current)</span></span>
-                  </div>
-                  {olderVersions.map(v => (
-                    <button
-                      key={v.id}
-                      onClick={() => onVersionSelect?.(v)}
-                      className="flex items-center justify-between py-1 text-body-0-regular text-foreground-dim hover:text-foreground-system-link transition-colors w-full text-left"
-                    >
-                      <span>V{v.version}</span>
-                      {v.created_at && <span className="text-label-0-regular">{new Date(v.created_at).toLocaleDateString()}</span>}
-                    </button>
-                  ))}
+                  {allVersions.map(v => {
+                    const isCurrent = v.id === asset.id
+                    return isCurrent ? (
+                      <div key={v.id} className="flex items-center justify-between py-1 text-body-0-regular">
+                        <span className="text-foreground">V{v.version} <span className="text-foreground-dim">(current)</span></span>
+                        {v.created_at && <span className="text-label-0-regular text-foreground-dim">{formatDate(v.created_at)}</span>}
+                      </div>
+                    ) : (
+                      <button
+                        key={v.id}
+                        onClick={() => onVersionSelect?.(v)}
+                        className="flex items-center justify-between py-1 text-body-0-regular text-foreground-dim hover:text-foreground-system-link transition-colors w-full text-left"
+                      >
+                        <span>V{v.version}</span>
+                        {v.created_at && <span className="text-label-0-regular">{formatDate(v.created_at)}</span>}
+                      </button>
+                    )
+                  })}
                 </div>
               </section>
             )}

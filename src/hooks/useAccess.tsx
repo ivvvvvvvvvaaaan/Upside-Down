@@ -906,11 +906,36 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
     // Personal workspace folders (in tree but no domain) are accessible to all project members
     if (nodeById.has(id) && !nodeToDomain.has(id) && !nodeToParent.has(id)) return true
-    return getEffectivePermissionSet({
+
+    const domainId = getResourceDomainId(id)
+    if (getEffectivePermissionSet({
       id,
       type: collectionById.has(id) ? 'collection' : 'asset',
-      domainId: getResourceDomainId(id),
-    }).permissions.includes('open')
+      domainId,
+    }).permissions.includes('open')) return true
+
+    // Domain-level fallback: if the asset's domain root is accessible, the asset is too
+    if (domainId) {
+      const domainRoot = DOMAIN_FOLDER_MAP[domainId]
+      if (domainRoot && getEffectivePermissionSet({
+        id: domainRoot.id,
+        type: 'folder',
+        domainId,
+      }).permissions.includes('open')) return true
+    }
+
+    // Parent folder fallback: walk up the tree
+    let parentId = nodeToParent.get(id)
+    while (parentId) {
+      if (getEffectivePermissionSet({
+        id: parentId,
+        type: 'folder',
+        domainId: nodeToDomain.get(parentId),
+      }).permissions.includes('open')) return true
+      parentId = nodeToParent.get(parentId)
+    }
+
+    return false
   }, [
     activePersona,
     userId,
@@ -956,11 +981,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     if (!activePersona) return assets
     const hasSensitiveCap = activePersona.sensitiveMediaCapability === true
     return assets.filter((asset) => {
-      // Sensitive media gate: exclude if user lacks the capability
       if (!hasSensitiveCap && SENSITIVE_ASSET_IDS.has(asset.id)) return false
       if (canAccess(asset.id)) return true
-      if (asset.sourceFolderIds?.some((fid) => canAccess(fid))) return true
-      if (asset.department && canAccess(DOMAIN_FOLDER_MAP[asset.department].id)) return true
       if (additionalIds?.has(asset.id)) return true
       return false
     })

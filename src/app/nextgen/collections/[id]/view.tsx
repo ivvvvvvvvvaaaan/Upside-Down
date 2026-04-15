@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { Download, PanelRight, Info } from 'lucide-react'
+import { Download, HardDrive, MoreVertical, PanelRight, Info, Trash2 } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
@@ -18,8 +18,11 @@ import {
   MobileToolbar,
   Dropdown,
   DropdownMenuItem,
+  DropdownMenuDivider,
   SortDropdown,
   AppearanceDropdown,
+  HawkinsSearch,
+  PageHeader,
   Tooltip,
 } from '@/components/ui'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
@@ -59,9 +62,10 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     getCurrentUserGrant,
     canShare,
     canDownload,
+    getResourceGrants,
     canUploadToCollection,
   } = useAccess()
-  const { getCollection, deleteCollection, addAssetsToCollection } = useUserCollections()
+  const { getCollection, deleteCollection, addAssetsToCollection, removeAssetFromCollection } = useUserCollections()
   const { createReferenceFolder, resolveCollectionAssets } = useFileTree()
   const { showToast } = useToast()
   const { getRelatedCollectionsForAssets, scopedAssets, ensureAssetsLoaded } = useSmartCollections()
@@ -148,12 +152,17 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     if (dragCounterRef.current === 0) setIsDragging(false)
   }, [])
 
+  const [searchQuery, setSearchQuery] = useState('')
+
   // Merge uploaded assets with resolved collection assets
   const displayAssets = useMemo(() => {
     const uploaded = Array.from(uploadingAssets.values()).map(u => u.asset)
     const uploadedIds = new Set(uploaded.map(a => a.id))
-    return [...uploaded, ...assets.filter(a => !uploadedIds.has(a.id))]
-  }, [assets, uploadingAssets])
+    const merged = [...uploaded, ...assets.filter(a => !uploadedIds.has(a.id))]
+    if (!searchQuery.trim()) return merged
+    const q = searchQuery.toLowerCase()
+    return merged.filter(a => a.name.toLowerCase().includes(q))
+  }, [assets, uploadingAssets, searchQuery])
 
   useEffect(() => {
     void ensureAssetsLoaded()
@@ -171,6 +180,15 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     return PERSONAS.find(p => p.id === share.grantedByUserId)?.name ?? share.grantedByUserId
   }, [collectionId, isOwner, isAdmin, sharesReceivedByMe, allProjectShares])
 
+  // Subtitle: "Shared by X" for received, "Shared with N people" / "Private" for owned
+  const subtitle = useMemo(() => {
+    if (sharedBy) return `Shared by ${sharedBy}`
+    if (!isOwner || !collection) return undefined
+    const grants = getResourceGrants(collectionId)
+    if (grants.length === 0) return 'Private'
+    return `Shared with ${grants.length} ${grants.length === 1 ? 'person' : 'people'}`
+  }, [sharedBy, isOwner, collection, collectionId, getResourceGrants])
+
   // Sync collection name to top-level breadcrumb
   const displayName = hasCollectionAccess ? collection?.name : undefined
   useEffect(() => {
@@ -185,6 +203,18 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
       deleteCollection(collection.id)
       router.push('/nextgen')
     }
+  }
+  const handleMountToDrive = () => {
+    if (!collection) return
+    const grant = getCurrentUserGrant(collection.id)
+    createReferenceFolder(SHARED_MOUNT_FOLDER_ID, collection.name, {
+      resourceId: collection.id,
+      resourceType: 'collection',
+      shareMode: grant?.shareMode ?? 'live',
+      snapshotAssetIds: grant?.snapshotAssetIds,
+      domainId: collection.boundDomainId as DomainId | undefined,
+    })
+    showToast(`Mounted "${collection.name}" to /Shared/${collection.name}`)
   }
 
 
@@ -250,6 +280,18 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     }
     showToast(`Download started for ${selectedAssets.length} assets.`)
   }, [selectedAssets, showToast])
+  const isCurated = !!collection && !collection.boundFolderId
+  const canRemoveFromCollection = isCurated && isOwner
+  const handleRemoveSelectedAssets = useCallback(() => {
+    if (!collection || selectedAssets.length === 0) return
+    for (const asset of selectedAssets) {
+      removeAssetFromCollection(collection.id, asset.id)
+    }
+    showToast(selectedAssets.length === 1
+      ? `Removed "${selectedAssets[0].name}" from ${collection.name}.`
+      : `Removed ${selectedAssets.length} assets from ${collection.name}.`)
+    clearSelection()
+  }, [collection, selectedAssets, removeAssetFromCollection, showToast, clearSelection])
   const primaryAsset = useMemo(() => {
     if (!primaryId) return null
     return assets.find(a => a.id === primaryId) ?? null
@@ -264,7 +306,13 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     return getRelatedCollectionsForAssets(assets)
   }, [assets, getRelatedCollectionsForAssets])
 
-  // Collection not found
+  // No access — redirect to search
+  useEffect(() => {
+    if (hydrated && !loading && (!collection || !hasCollectionAccess)) {
+      router.replace('/nextgen')
+    }
+  }, [hydrated, loading, collection, hasCollectionAccess, router])
+
   if ((!collection || !hasCollectionAccess) && !loading) {
     return (
       <div className="h-full flex flex-col">
@@ -328,18 +376,13 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                   </Button>
                 } />
 
-                <div>
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <Text variant="headline-1" weight="bold" className="mb-2 hidden md:block">
-                        {displayName || 'Loading...'}
-                      </Text>
-                      {sharedBy && (
-                        <Text variant="body-2" color="secondary">
-                          Shared by {sharedBy}
-                        </Text>
-                      )}
-                    </div>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <PageHeader
+                      title={displayName || 'Loading...'}
+                      description={subtitle}
+                      hideTitleOnMobile
+                    />
                     <div className="hidden md:flex items-center gap-2">
                       {showUpload && (
                         <Tooltip label="Upload">
@@ -349,17 +392,6 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                             aria-label="Upload"
                           >
                             <Upload className="w-4 h-4" />
-                          </Button>
-                        </Tooltip>
-                      )}
-                      {canDownloadCollection && (
-                        <Tooltip label="Download collection">
-                          <Button
-                            variant="icon"
-                            onClick={handleDownloadCollection}
-                            aria-label="Download collection"
-                          >
-                            <Download className="w-4 h-4" />
                           </Button>
                         </Tooltip>
                       )}
@@ -385,6 +417,22 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         metadataFields={metadataFields}
                         onMetadataFieldChange={setMetadataField}
                       />
+                      {(isOwner || hasCollectionAccess) && (
+                        <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly align="end" width="sm">
+                          <div className="py-1">
+                            {canDownloadCollection && (
+                              <DropdownMenuItem icon={<Download className="w-4 h-4" />} label="Download" onClick={handleDownloadCollection} />
+                            )}
+                            <DropdownMenuItem icon={<HardDrive className="w-4 h-4" />} label="Mount to Drive" onClick={handleMountToDrive} />
+                            {isOwner && (
+                              <>
+                                <DropdownMenuDivider />
+                                <DropdownMenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete Collection" onClick={handleDeleteCollection} destructive />
+                              </>
+                            )}
+                          </div>
+                        </Dropdown>
+                      )}
                       {showShareButton && (
                         <Button
                           variant="primary"
@@ -398,7 +446,6 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         variant="icon"
                         onClick={togglePanel}
                         aria-label={panelOpen ? 'Close panel' : 'Open panel'}
-                        
                       >
                         <PanelRight className="w-4 h-4" />
                       </Button>
@@ -413,6 +460,11 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                     enabled: canDownloadSelectedAssets,
                     onClick: handleDownloadSelectedAssets,
                     reason: canDownloadSelectedAssets ? undefined : "You don't have permission to download all selected assets.",
+                  } : undefined}
+                  removeAction={selectedAssets.length > 0 && isCurated ? {
+                    enabled: canRemoveFromCollection,
+                    onClick: handleRemoveSelectedAssets,
+                    reason: canRemoveFromCollection ? undefined : "Only the collection owner can remove assets.",
                   } : undefined}
                   metadata={loading ? undefined : `${assets.length} asset${assets.length !== 1 ? 's' : ''}`}
                 />
@@ -479,25 +531,6 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
           collection={collection}
           open={panelOpen && !primaryAsset}
           onClose={closePanel}
-          onAction={(action) => {
-            if (action.type === 'delete') handleDeleteCollection()
-            if (action.type === 'mount') {
-              const grant = getCurrentUserGrant(collection.id)
-              createReferenceFolder(SHARED_MOUNT_FOLDER_ID, collection.name, {
-                resourceId: collection.id,
-                resourceType: 'collection',
-                shareMode: grant?.shareMode ?? 'live',
-                snapshotAssetIds: grant?.snapshotAssetIds,
-                domainId: collection.boundDomainId as DomainId | undefined,
-              })
-              showToast(`Mounted "${collection.name}" to /Shared/${collection.name}`)
-            }
-          }}
-          actionPermissions={{
-            canEdit: false,
-            canDelete: isOwner,
-            canMount: true,
-          }}
           relationships={relationships}
         />
       )}

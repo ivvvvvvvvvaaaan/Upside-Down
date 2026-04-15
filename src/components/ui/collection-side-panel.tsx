@@ -1,13 +1,12 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { X, LayoutGrid, MoreVertical, Pencil, Trash2, MapPin, Film, Zap, Folder, HardDrive, Import, Users } from 'lucide-react'
+import { X, LayoutGrid, Pencil, MapPin, Film, Zap, Folder, Users } from 'lucide-react'
 import { Button } from './button'
 import { Avatar } from './avatar'
 import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
 import { PrincipalAvatar } from './principal-avatar'
 import { GrantBadge } from './grant-badge'
-import { Dropdown, DropdownMenuItem, DropdownMenuDivider } from './dropdown'
 import { Modal } from './modal'
 import { Card } from './card'
 import { ResponsivePanel } from './responsive-panel'
@@ -16,7 +15,6 @@ import { CreativeReviewCard } from './creative-review-card'
 import { OntologySection } from './ontology-section'
 import { SmartCollectionFilterBuilder } from './smart-collection-filter-builder'
 import { Tag } from './tag'
-import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import type { Collection } from '@/lib/collection-types'
 import { isSmart, isCollection, getCollectionCapabilities } from '@/lib/collection-types'
 import { getCollectionReviewSummary } from '@/lib/review-notes'
@@ -137,6 +135,21 @@ interface CollectionSidePanelProps {
   avatarSrc?: string
 }
 
+function describeFilters(filter: AssetFilter): string[] {
+  const items: string[] = []
+  if (filter.department) items.push(`Department: ${filter.department}`)
+  if (filter.types?.length) items.push(`Type: ${filter.types.join(', ')}`)
+  if (filter.typeTags?.length) items.push(filter.typeTags.join(', '))
+  if (filter.isFinal) items.push('Final only')
+  if (filter.isKeyArt) items.push('Key Art only')
+  if (filter.aiCharacters?.length) items.push(`Characters: ${filter.aiCharacters.join(', ')}`)
+  if (filter.aiLocation) items.push(`Location: ${filter.aiLocation}`)
+  if (filter.aiScene) items.push(`Scene: ${filter.aiScene}`)
+  if (filter.aiConfidenceBelow) items.push(`AI confidence below ${Math.round(filter.aiConfidenceBelow * 100)}%`)
+  if (filter.query) items.push(`"${filter.query}"`)
+  return items
+}
+
 function filtersEqual(a: AssetFilter, b: AssetFilter): boolean {
   return JSON.stringify(a) === JSON.stringify(b)
 }
@@ -238,8 +251,6 @@ export function CollectionSidePanel({
     setEditModalOpen(false)
   }
 
-  const hasDropdown = canEdit || canDelete || canMount
-
   return (
     <ResponsivePanel open={open} onClose={onClose}>
       <div className="flex items-center justify-between gap-3 p-4">
@@ -248,207 +259,159 @@ export function CollectionSidePanel({
           <div className="min-w-0">
             <p className="text-body-0-bold text-foreground truncate flex items-center gap-1.5">
               {collection.name}
-              {sharedBy && <Import className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />}
             </p>
             <p className="text-body-0-regular text-foreground-dim">{caps.typeLabel}</p>
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
-          {hasDropdown && (
-            <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
-              <div className="py-1">
-                {canEdit && (
-                  <DropdownMenuItem icon={<Pencil className="w-4 h-4" />} label="Edit" onClick={openEditModal} />
-                )}
-                {canMount && (
-                  <DropdownMenuItem icon={<HardDrive className="w-4 h-4" />} label="Mount to Drive" onClick={() => onAction!({ type: 'mount' })} />
-                )}
-                {(canEdit || canMount) && canDelete && <DropdownMenuDivider />}
-                {canDelete && (
-                  <DropdownMenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete" onClick={() => onAction!({ type: 'delete' })} destructive />
-                )}
-              </div>
-            </Dropdown>
-          )}
           <Button variant="icon" compact onClick={onClose}>
             <X className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
-      <Tabs defaultValue="details" className="flex-1 min-h-0 flex flex-col">
-        <TabsList className="px-4 shrink-0">
-          <Tab value="details">Details</Tab>
-          <Tab value="connections">
-            <span className="flex items-center gap-1.5">
-              Connections
-              {connectionsCount > 0 && <Tag size="compact" type="neutral" variant="border">{connectionsCount}</Tag>}
-            </span>
-          </Tab>
-          {caps.showAccessTab && <Tab value="access">Access</Tab>}
-        </TabsList>
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+        {/* Details */}
+        {ontologyMeta ? (
+          <OntologyDetails meta={ontologyMeta} />
+        ) : (
+          <section className="space-y-1">
+            <div className="flex justify-between text-body-0-regular">
+              <span className="text-foreground-dim">Assets</span>
+              <span className="text-foreground">{assetCount}</span>
+            </div>
+            {createdByName && (
+              <div className="flex justify-between text-body-0-regular">
+                <span className="text-foreground-dim">Created by</span>
+                <span className="text-foreground">{createdByName}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-body-0-regular">
+              <span className="text-foreground-dim">Created</span>
+              <span className="text-foreground">{collection.createdAt.toLocaleDateString()}</span>
+            </div>
+            {sharedBy && (
+              <div className="flex justify-between text-body-0-regular">
+                <span className="text-foreground-dim">Shared by</span>
+                <span className="text-foreground">{sharedBy}</span>
+              </div>
+            )}
+          </section>
+        )}
 
-        <div className="flex-1 overflow-y-auto">
-          <TabsContent value="details" className="p-4 space-y-4">
-            {ontologyMeta ? (
-              <OntologyDetails meta={ontologyMeta} />
-            ) : (
-              <section className="space-y-1">
-                <div className="flex justify-between text-body-0-regular">
-                  <span className="text-foreground-dim">Assets</span>
-                  <span className="text-foreground">{assetCount}</span>
-                </div>
-                {createdByName && (
-                  <div className="flex justify-between text-body-0-regular">
-                    <span className="text-foreground-dim">Created by</span>
-                    <span className="text-foreground">{createdByName}</span>
+        {/* Smart collection filters */}
+        {smart && (() => {
+          const filterItems = describeFilters(smart.filter)
+          return filterItems.length > 0 ? (
+            <section className="space-y-2">
+              <h3 className="text-body-0-bold text-foreground-dim">Filters</h3>
+              <div className="flex flex-wrap gap-1.5">
+                {filterItems.map((item, i) => (
+                  <Tag key={i} size="compact" type="neutral" variant="border">{item}</Tag>
+                ))}
+              </div>
+            </section>
+          ) : null
+        })()}
+
+        {reviewNoteSummary && (
+          <CreativeReviewCard summary={reviewNoteSummary} />
+        )}
+
+        {/* Connections */}
+        {relationships && connectionsCount > 0 && (
+          <section className="space-y-2">
+            <OntologySection
+              dimensions={relationships}
+              suppressDimension={suppressDimension}
+            />
+          </section>
+        )}
+
+        {/* Access */}
+        {caps.showAccessTab && (
+          <section className="space-y-3">
+            <h3 className="text-body-0-bold text-foreground-dim">Access</h3>
+            {canManageAccess ? (
+              <>
+                {smart && linkedSnapshotCollections.length > 1 && (
+                  <div className="bg-surface-low rounded-lg px-3 py-2.5 space-y-1">
+                    <span className="text-body-0-regular text-foreground-dim">Sharing</span>
+                    <p className="text-body-0-regular text-foreground">
+                      Shared as {linkedSnapshotCollections.length} separate snapshot collections.
+                    </p>
                   </div>
                 )}
-                <div className="flex justify-between text-body-0-regular">
-                  <span className="text-foreground-dim">Created</span>
-                  <span className="text-foreground">{collection.createdAt.toLocaleDateString()}</span>
-                </div>
-                {sharedBy && (
-                  <div className="flex justify-between text-body-0-regular">
-                    <span className="text-foreground-dim">Shared by</span>
-                    <span className="text-foreground">{sharedBy}</span>
-                  </div>
-                )}
-              </section>
-            )}
 
-            {reviewNoteSummary && (
-              <CreativeReviewCard summary={reviewNoteSummary} />
-            )}
-          </TabsContent>
-
-          <TabsContent value="connections" className="p-4 space-y-4">
-            {relationships && connectionsCount > 0 ? (
-              <OntologySection
-                dimensions={relationships}
-                suppressDimension={suppressDimension}
-              />
-            ) : (
-              <p className="text-body-0-regular text-foreground-dim py-4">No connections found for this collection.</p>
-            )}
-          </TabsContent>
-
-          {caps.showAccessTab && (
-            <TabsContent value="access" className="p-4 space-y-3">
-              {canManageAccess ? (
-                /* ── Coordinator/owner view: full grant list ── */
-                <>
-                  {createdByName && (
-                    <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
-                      <span className="text-body-0-regular text-foreground-dim">Created by</span>
-                      <div className="flex items-center gap-2">
-                        <Avatar name={createdByName} size="compact" />
-                        <span className="text-body-0-regular text-foreground">{createdByName}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {smart && linkedSnapshotCollections.length > 1 && (
-                    <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-1">
-                      <span className="text-body-0-regular text-foreground-dim">Sharing</span>
-                      <p className="text-body-0-regular text-foreground">
-                        Shared as {linkedSnapshotCollections.length} separate snapshot collections. Open a generated shared collection to manage or version a specific handoff.
-                      </p>
-                    </div>
-                  )}
-
-                  {grants.length > 0 && (
-                    <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
-                      <span className="text-body-0-regular text-foreground-dim">Shared with</span>
-                      {grants.map(grant => {
-                        const name = resolvePrincipalName(grant.principal)
-                        return (
-                          <div key={grant.id} className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <PrincipalAvatar principal={grant.principal} />
-                              <span className="text-body-0-regular text-foreground truncate">{name}</span>
-                            </div>
-                            <div className="flex-shrink-0">
-                              <GrantBadge grant={grant} roleGroups={roleGroups} />
-                            </div>
+                {grants.length > 0 && (
+                  <div className="space-y-2">
+                    {grants.map(grant => {
+                      const name = resolvePrincipalName(grant.principal)
+                      return (
+                        <div key={grant.id} className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <PrincipalAvatar principal={grant.principal} />
+                            <span className="text-body-0-regular text-foreground truncate">{name}</span>
                           </div>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  {guestLinks.length > 0 && (
-                    <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
-                      <span className="text-body-0-regular text-foreground-dim">Guest links</span>
-                      {guestLinks.map(link => (
-                        <div key={link.id} className="flex items-center justify-between gap-2">
-                          <span className="text-body-0-regular text-foreground truncate">
-                            {link.allowDownload ? 'View + Download' : 'View only'}
-                            {link.expiresAt && <span className="text-foreground-dim"> · expires {link.expiresAt}</span>}
-                          </span>
+                          <div className="flex-shrink-0">
+                            <GrantBadge grant={grant} roleGroups={roleGroups} />
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      )
+                    })}
+                  </div>
+                )}
 
-                  {grants.length === 0 && guestLinks.length === 0 && !createdByName && (
-                    <p className="text-body-0-regular text-foreground-dim">Not shared</p>
-                  )}
-
-                  <Button variant="secondary" compact onClick={() => setAccessModalOpen(true)}>
-                    Manage Access
-                  </Button>
-                </>
-              ) : (
-                /* ── Recipient view: your access + sharer info ── */
-                <>
-                  {sharedBy && (
-                    <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
-                      <span className="text-body-0-regular text-foreground-dim">Shared by</span>
-                      <div className="flex items-center gap-2">
-                        <Avatar name={sharedBy} size="compact" />
-                        <span className="text-body-0-regular text-foreground">{sharedBy}</span>
+                {guestLinks.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-body-0-regular text-foreground-dim">Guest links</span>
+                    {guestLinks.map(link => (
+                      <div key={link.id} className="flex items-center justify-between gap-2">
+                        <span className="text-body-0-regular text-foreground truncate">
+                          {link.allowDownload ? 'View + Download' : 'View only'}
+                          {link.expiresAt && <span className="text-foreground-dim"> · expires {link.expiresAt}</span>}
+                        </span>
                       </div>
-                    </div>
-                  )}
+                    ))}
+                  </div>
+                )}
 
-                  {(() => {
-                    const myGrant = activePersona ? grants.find(g =>
-                      (g.principal.type === 'user' && g.principal.userId === activePersona.id) ||
-                      (g.principal.type === 'team' && isUserInTeam(activePersona.id, g.principal.teamId))
-                    ) : undefined
-                    if (!myGrant) return null
-                    const capabilities: string[] = []
-                    capabilities.push('Preview')
-                    if (myGrant.allowDownload) capabilities.push('Download')
-                    if (myGrant.allowComment) capabilities.push('Comment')
-                    if (myGrant.allowUpload) capabilities.push('Upload')
-                    return (
-                      <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-1">
-                        <span className="text-body-0-regular text-foreground-dim">Your access</span>
-                        <p className="text-body-0-regular text-foreground">{capabilities.join(', ')}</p>
-                      </div>
-                    )
-                  })()}
+                {grants.length === 0 && guestLinks.length === 0 && (
+                  <p className="text-body-0-regular text-foreground-dim">Not shared</p>
+                )}
 
-                  {(() => {
-                    const myGrant = grants.find(g =>
-                      (g.principal.type === 'user' && g.principal.userId === activePersona?.id)
-                    )
-                    if (!myGrant?.note) return null
-                    return (
-                      <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-1">
-                        <span className="text-body-0-regular text-foreground-dim">Note</span>
-                        <p className="text-body-0-regular text-foreground">{myGrant.note}</p>
-                      </div>
-                    )
-                  })()}
-                </>
-              )}
-            </TabsContent>
-          )}
-        </div>
-      </Tabs>
+                <Button variant="secondary" compact onClick={() => setAccessModalOpen(true)}>
+                  Manage Access
+                </Button>
+              </>
+            ) : (
+              (() => {
+                const myGrant = activePersona ? grants.find(g =>
+                  (g.principal.type === 'user' && g.principal.userId === activePersona.id) ||
+                  (g.principal.type === 'team' && isUserInTeam(activePersona.id, g.principal.teamId))
+                ) : undefined
+                const capabilities: string[] = ['Preview']
+                if (myGrant?.allowDownload) capabilities.push('Download')
+                if (myGrant?.allowComment) capabilities.push('Comment')
+                if (myGrant?.allowUpload) capabilities.push('Upload')
+                return (
+                  <div className="space-y-2">
+                    <p className="text-body-0-regular text-foreground">{capabilities.join(', ')}</p>
+                    {sharedBy && (
+                      <p className="text-body-0-regular text-foreground-dim">
+                        Shared by {sharedBy}
+                      </p>
+                    )}
+                    {myGrant?.note && (
+                      <p className="text-body-0-regular text-foreground-dim italic">{myGrant.note}</p>
+                    )}
+                  </div>
+                )
+              })()
+            )}
+          </section>
+        )}
+      </div>
 
       <AccessModal
         open={accessModalOpen}

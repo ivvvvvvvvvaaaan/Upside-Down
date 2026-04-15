@@ -21,7 +21,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
   const [searchQuery, setSearchQuery] = useState('')
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const { cardSize } = useViewPreferences()
-  const { filterByAccess, canAccess, getVisibilityState, requestAccess } = useAccess()
+  const { filterByAccess, getVisibilityState, requestAccess } = useAccess()
   const { allAssets, assetsLoaded, assetsLoading, ensureAssetsLoaded } = useSmartCollections()
 
   useEffect(() => {
@@ -86,13 +86,8 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     return displayAssets.filter((asset) => selectedIds.has(asset.id))
   }, [displayAssets, selectedIds])
   const selectedEntities = useMemo(() => {
-    return selectedAssets.map((asset) => assetToSelectionEntity(asset, {
-      canAddToCollection: canAccess(asset.id),
-      addToCollectionReason: canAccess(asset.id)
-        ? undefined
-        : 'You can only add items you can access to a collection.',
-    }))
-  }, [selectedAssets, canAccess])
+    return selectedAssets.map((asset) => assetToSelectionEntity(asset))
+  }, [selectedAssets])
 
   const isSearchActive = searchQuery.trim().length > 0
   const isSearching = isSearchActive && (!assetsLoaded || assetsLoading)
@@ -135,6 +130,14 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                   </form>
                 </div>
               </div>
+
+              <ContextualActionBar
+                selectedEntities={selectedEntities}
+                onClearSelection={clearSelection}
+                metadata={isSearchActive && searchResults
+                  ? `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`
+                  : accessibleRecentAssets.length > 0 ? 'Recent' : undefined}
+              />
 
               {/* Results */}
               {isSearchActive ? (
@@ -195,10 +198,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
               ) : (
                 /* Recent Section */
                 accessibleRecentAssets.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-label-1-medium text-foreground-subtle">Recent</span>
-                    </div>
+                  <div>
                     <CardGrid columns={getGridColumns(cardSize)} gap="4">
                       {accessibleRecentAssets.map((asset) => (
                         <AssetCard
@@ -222,11 +222,6 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
         </div>
       </div>
 
-      <ContextualActionBar
-        selectedEntities={selectedEntities}
-        onClearSelection={clearSelection}
-        className="mx-6"
-      />
     </div>
   )
 }

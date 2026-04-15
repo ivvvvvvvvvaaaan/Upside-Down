@@ -1,11 +1,12 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Download, X } from 'lucide-react'
+import { Download, MoreVertical, Trash2, X } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { Tooltip } from './tooltip'
+import { Dropdown, DropdownMenuItem } from './dropdown'
 import { AccessModal } from './access-modal'
 import { CollectionMembershipModal } from './collection-membership-modal'
 import { useAccess } from '@/hooks'
@@ -32,6 +33,12 @@ interface ContextualActionBarProps {
     reason?: string
     label?: string
   }
+  /** Optional remove action for the current selection (e.g. remove from collection) */
+  removeAction?: {
+    enabled: boolean
+    onClick: () => void
+    reason?: string
+  }
   /** Left-side metadata shown when nothing is selected (e.g. "3 assets") */
   metadata?: string
   className?: string
@@ -41,6 +48,7 @@ export function ContextualActionBar({
   selectedEntities,
   onClearSelection,
   downloadAction,
+  removeAction,
   metadata,
   className,
 }: ContextualActionBarProps) {
@@ -109,19 +117,6 @@ export function ContextualActionBar({
                 </Button>
               </DisabledTooltip>
             )}
-            {evaluation.actions.addToCollection.visible && (
-              <DisabledTooltip reason={!evaluation.actions.addToCollection.enabled ? evaluation.actions.addToCollection.reason : undefined}>
-                <Button
-                  variant="secondary"
-                  compact
-                  icon={<Image src="/Icons/Icon-new.svg" alt="" width={16} height={16} />}
-                  onClick={() => setShowCollectionModal(true)}
-                  disabled={!evaluation.actions.addToCollection.enabled}
-                >
-                  {evaluation.actions.addToCollection.label}
-                </Button>
-              </DisabledTooltip>
-            )}
             {evaluation.actions.share.visible && (
               <DisabledTooltip reason={!evaluation.actions.share.enabled ? evaluation.actions.share.reason : undefined}>
                 <Button
@@ -134,6 +129,23 @@ export function ContextualActionBar({
                   {evaluation.actions.share.label}
                 </Button>
               </DisabledTooltip>
+            )}
+            {((evaluation.actions.addToCollection.visible && evaluation.actions.addToCollection.enabled) || (removeAction && removeAction.enabled)) && (
+              <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
+                {evaluation.actions.addToCollection.visible && evaluation.actions.addToCollection.enabled && (
+                  <DropdownMenuItem
+                    label={evaluation.actions.addToCollection.label}
+                    onClick={() => setShowCollectionModal(true)}
+                  />
+                )}
+                {removeAction && removeAction.enabled && (
+                  <DropdownMenuItem
+                    label="Remove from collection"
+                    onClick={removeAction.onClick}
+                    destructive
+                  />
+                )}
+              </Dropdown>
             )}
           </>
         ) : (

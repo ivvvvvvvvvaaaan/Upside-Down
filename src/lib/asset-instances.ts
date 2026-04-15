@@ -18,7 +18,6 @@ export interface AssetInstance {
   modifiedBy?: string
   aiTags?: AITagResult
   sourceFolderId?: string
-  shotMeta?: { scene?: string; take?: string; camera?: string }
   sequenceMeta?: { sequence?: string; shot?: string }
 }
 
@@ -71,19 +70,6 @@ function mapExtensionToType(ext?: string): AssetType {
 }
 
 /** Parse shot metadata from filename patterns like ep01_scene12_take3, chase_scene_steadicam_take2 */
-function parseShotMeta(filename: string): { scene?: string; take?: string; camera?: string } | null {
-  const name = filename.replace(/\.[^.]+$/, '').toLowerCase()
-  const sceneMatch = name.match(/scene[\s_-]?(\w+)/)
-  const takeMatch = name.match(/take[\s_-]?(\w+)/)
-  if (!sceneMatch && !takeMatch) return null
-  const cameraMatch = name.match(/^([a-z])[\s_-]?\d/) // e.g. "A_0305C014..."
-  return {
-    scene: sceneMatch ? sceneMatch[1].toUpperCase() : undefined,
-    take: takeMatch ? `t${takeMatch[1]}` : undefined,
-    camera: cameraMatch ? cameraMatch[1].toUpperCase() : undefined,
-  }
-}
-
 /** Parse sequence metadata from VFX filename patterns like SEQ010_SH010_comp_v12 */
 function parseSequenceMeta(filename: string): { sequence?: string; shot?: string } | null {
   const name = filename.replace(/\.[^.]+$/, '').toUpperCase()
@@ -96,11 +82,8 @@ function parseSequenceMeta(filename: string): { sequence?: string; shot?: string
   }
 }
 
-/** Determine asset type — video files with shot patterns become shots */
-function inferAssetType(ext?: string, filename?: string): AssetType {
-  const baseType = mapExtensionToType(ext)
-  if (baseType === 'video' && filename && parseShotMeta(filename)) return 'shot'
-  return baseType
+function inferAssetType(ext?: string): AssetType {
+  return mapExtensionToType(ext)
 }
 
 /** Walk workspace folders and generate instances for all files within */
@@ -119,7 +102,6 @@ export function generateAssetInstances(
     for (const node of nodes) {
       if (node.type === 'file') {
         const name = node.name.replace(/\.[^.]+$/, '')
-        const shotMeta = parseShotMeta(node.name)
         const sequenceMeta = parseSequenceMeta(node.name)
         instances.push({
           id: node.id,
@@ -129,8 +111,7 @@ export function generateAssetInstances(
           sourcePath: [...pathParts, node.name].join(' / '),
           department: domainId,
           category,
-          type: inferAssetType(node.extension, node.name),
-          ...(shotMeta && { shotMeta }),
+          type: inferAssetType(node.extension),
           ...(sequenceMeta && { sequenceMeta }),
           size: node.size,
           modifiedAt: node.modifiedAt,
@@ -257,12 +238,7 @@ export function promotedInstanceToAsset(instance: AssetInstance): Asset {
   }
 
   // Set type-specific metadata
-  if (instance.type === 'shot' && instance.shotMeta) {
-    base.shotMeta = {
-      ...instance.shotMeta,
-      duration: fakeDuration(instance.id),
-    }
-  } else if (typeTag) {
+  if (typeTag) {
     if (isSequence) {
       base.videoMeta = { typeTag, duration: fakeDuration(instance.id, 'sequence') }
       if (instance.sequenceMeta) {

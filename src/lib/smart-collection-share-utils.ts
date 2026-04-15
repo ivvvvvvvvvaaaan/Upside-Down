@@ -10,7 +10,7 @@ function isLegacySmartShareSnapshot(
   if (collection.sourceSmartCollectionId) return false
   if (!smartCollection.createdBy) return false
   return (
-    collection.name === `${smartCollection.name} (shared)` &&
+    (collection.name === smartCollection.name || collection.name === `${smartCollection.name} (shared)`) &&
     collection.createdBy === smartCollection.createdBy
   )
 }

@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { Tag } from './tag'
 import { Tooltip } from './tooltip'
-import { MoreVertical, Music, FileText, ImageIcon, Film, File, Lock, Box } from 'lucide-react'
+import { MoreVertical, Music, FileText, ImageIcon, Film, File, EyeOff, Box } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -308,14 +308,15 @@ export function AssetCard({
         {/* Restricted overlay */}
         {restricted && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/20">
-            <Lock className="w-5 h-5 text-white/80" />
+            <EyeOff className="w-5 h-5 text-white/80" />
           </div>
         )}
 
         {/* Sensitive media badge - top-left */}
         {!restricted && asset && isSensitiveAsset(asset.id) && (
-          <div className="absolute top-2 left-2 flex items-center gap-0.5 px-1 py-0.5 rounded bg-black/60">
-            <Lock className="w-3 h-3 text-white" />
+          <div className="absolute top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/60">
+            <EyeOff className="w-3 h-3 text-white" />
+            <span className="text-label-0-regular text-white">Sensitive</span>
           </div>
         )}
 

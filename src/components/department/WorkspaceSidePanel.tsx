@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { X, Folder, FolderSymlink, FolderLock, File, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { X, Folder, FolderSymlink, FolderLock, File } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Dropdown, DropdownMenuItem, DropdownMenuDivider } from '@/components/ui/dropdown'
 import { Modal } from '@/components/ui/modal'
 import { Card } from '@/components/ui/card'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
@@ -152,22 +151,6 @@ export function WorkspaceSidePanel({
           <span className="text-body-0-bold text-foreground">Info</span>
         )}
         <div className="flex items-center gap-1 flex-shrink-0">
-          {isFolder && node && (onRename || onDelete) && (
-            <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
-              <div className="py-1">
-                {onRename && (
-                  <DropdownMenuItem icon={<Pencil className="w-4 h-4" />} label="Edit" onClick={() => {
-                    setDraftName(node.name)
-                    setEditModalOpen(true)
-                  }} />
-                )}
-                {onRename && onDelete && <DropdownMenuDivider />}
-                {onDelete && (
-                  <DropdownMenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete" onClick={() => onDelete(node.id)} destructive />
-                )}
-              </div>
-            </Dropdown>
-          )}
           <Button variant="icon" compact onClick={onClose}>
             <X className="w-4 h-4" />
           </Button>

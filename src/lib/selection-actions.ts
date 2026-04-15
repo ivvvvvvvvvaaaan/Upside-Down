@@ -150,9 +150,11 @@ export function evaluateSelectionActions({
   } else if (selectedAssets.length !== selectedEntities.length) {
     addToCollectionReason = 'Only real assets can be added to collections.'
   } else {
-    const blockedEntity = selectedEntities.find((entity) => entity.canAddToCollection === false)
-    if (blockedEntity) {
-      addToCollectionReason = blockedEntity.addToCollectionReason ?? `You can't add ${blockedEntity.label} to a collection.`
+    const blockedEntities = selectedEntities.filter((entity) => entity.canAddToCollection === false)
+    if (blockedEntities.length > 0) {
+      addToCollectionReason = blockedEntities.length === 1
+        ? `You don't have access to ${blockedEntities[0].label}.`
+        : `You don't have access to ${blockedEntities.length} of ${selectedEntities.length} selected items.`
     } else {
       addToCollectionEnabled = true
     }
