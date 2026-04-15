@@ -8,6 +8,8 @@ interface ReferenceFolderResolutionOptions {
   filterAssets: (assets: Asset[], collectionId: string) => Asset[]
   filterByAccess: (assets: Asset[]) => Asset[]
   scopedAssets: Asset[]
+  /** Override default collection asset resolution (e.g. to use live file tree) */
+  resolveAssets?: (collection: Collection) => Asset[]
 }
 
 function assetToFileNode(asset: Asset): UnifiedFileNode {
@@ -39,7 +41,10 @@ function resolveReferenceFolderAssets(
   if (!collection) return []
 
   if (isCollection(collection)) {
-    return options.filterByAccess(resolveCollectionAssets(collection))
+    const assets = options.resolveAssets
+      ? options.resolveAssets(collection)
+      : resolveCollectionAssets(collection)
+    return options.filterByAccess(assets)
   }
 
   if (isSmart(collection)) {

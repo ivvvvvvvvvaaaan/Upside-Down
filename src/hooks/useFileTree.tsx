@@ -180,6 +180,16 @@ function findSubtree(nodes: UnifiedFileNode[], id: string): UnifiedFileNode[] | 
   return null
 }
 
+/** Collect all file nodes under a folder, recursively */
+function collectFileNodes(nodes: UnifiedFileNode[]): UnifiedFileNode[] {
+  const files: UnifiedFileNode[] = []
+  for (const node of nodes) {
+    if (node.type === 'file') files.push(node)
+    if (node.children) files.push(...collectFileNodes(node.children))
+  }
+  return files
+}
+
 function findReferenceFolder(
   nodes: UnifiedFileNode[],
   parentId: string | null,
@@ -231,6 +241,8 @@ interface FileTreeContextValue {
   confirmMove: (nodeId: string, targetParentId: string) => void
   /** Create a file reference (same asset, different location) */
   createFileReference: (sourceFileId: string, targetParentId: string) => string | null
+  /** Get all file nodes under a folder from the live tree (recursive) */
+  getFileNodesForFolder: (folderId: string) => UnifiedFileNode[]
 }
 
 const FileTreeContext = createContext<FileTreeContextValue | null>(null)
@@ -402,6 +414,12 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     return refId
   }, [rawTree, updateTree])
 
+  const getFileNodesForFolder = useCallback((folderId: string): UnifiedFileNode[] => {
+    const children = findSubtree(rawTree, folderId)
+    if (!children) return []
+    return collectFileNodes(children)
+  }, [rawTree])
+
   const value = useMemo<FileTreeContextValue>(() => ({
     tree,
     getDomainFiles,
@@ -413,7 +431,8 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     getMoveImpact,
     confirmMove,
     createFileReference,
-  }), [tree, getDomainFiles, createFolder, createFile, createReferenceFolder, renameNode, deleteNode, getMoveImpact, confirmMove, createFileReference])
+    getFileNodesForFolder,
+  }), [tree, getDomainFiles, createFolder, createFile, createReferenceFolder, renameNode, deleteNode, getMoveImpact, confirmMove, createFileReference, getFileNodesForFolder])
 
   return (
     <FileTreeContext.Provider value={value}>

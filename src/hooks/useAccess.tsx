@@ -626,6 +626,26 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return accessById
   }, [collections, getDirectCollectionPermissionSet])
 
+  // Resolve collection asset IDs from the live file tree for folder-bound
+  // collections, so newly added files are picked up immediately.
+  const resolveCollectionAssetIdsLive = useCallback((collection: UserCollection): string[] => {
+    if (collection.boundFolderId) {
+      const node = nodeById.get(collection.boundFolderId)
+      if (node?.children) {
+        const collectFiles = (nodes: UnifiedFileNode[]): string[] => {
+          const ids: string[] = []
+          for (const n of nodes) {
+            if (n.type === 'file') ids.push(n.id)
+            if (n.children) ids.push(...collectFiles(n.children))
+          }
+          return ids
+        }
+        return collectFiles(node.children)
+      }
+    }
+    return resolveCollectionAssetIds(collection)
+  }, [nodeById])
+
   const collectionAssetAccessById = useMemo(() => {
     const accessById = new Map<string, EffectivePermissionSet>()
 
@@ -653,7 +673,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
       const assetIds = (grant.shareMode === 'snapshot' && grant.snapshotAssetIds)
         ? grant.snapshotAssetIds
-        : resolveCollectionAssetIds(collection)
+        : resolveCollectionAssetIdsLive(collection)
 
       for (const assetId of assetIds) {
         const sharerPermissions = resolveAccessWithInheritance(
@@ -687,7 +707,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
 
     return accessById
-  }, [activePersona, userId, activeGrants, grants, roleGroups, collectionById, getResourceDomainId, toPermissionSet, blocks, nodeToParent, nodeToDomain])
+  }, [activePersona, userId, activeGrants, grants, roleGroups, collectionById, getResourceDomainId, toPermissionSet, blocks, nodeToParent, nodeToDomain, resolveCollectionAssetIdsLive])
 
   const visibleCollections = useMemo(() => {
     return collections.filter((collection) => collectionAccessById.has(collection.id))
@@ -964,14 +984,14 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     })
   }, [activePersona, canAccess])
 
-  // Collection asset counts — uses resolveCollectionAssetIds for consistent resolution
+  // Collection asset counts — uses live file tree for folder-bound collections
   // Tracks both total (before access filtering) and accessible (after filtering) counts
   const collectionAssetCounts = useMemo(() => {
     const accessibleCounts = new Map<string, number>()
     const totalCounts = new Map<string, number>()
     for (const collection of collections) {
       if (!collectionAccessById.has(collection.id)) continue
-      const assetIds = resolveCollectionAssetIds(collection)
+      const assetIds = resolveCollectionAssetIdsLive(collection)
       totalCounts.set(collection.id, assetIds.length)
       let count = 0
       for (const assetId of assetIds) {
@@ -980,7 +1000,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       accessibleCounts.set(collection.id, count)
     }
     return { accessible: accessibleCounts, total: totalCounts }
-  }, [collections, collectionAccessById, canAccess])
+  }, [collections, collectionAccessById, canAccess, resolveCollectionAssetIdsLive])
 
   const getCollectionAssetCount = useCallback((id: string): { total: number; accessible: number } => {
     return {
@@ -993,7 +1013,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const getCollectionShareCeiling = useCallback((collectionId: string, intendedProfile: AccessProfileId): { total: number; atLevel: number; capped: number; cappedAssetIds: string[] } => {
     const collection = collections.find(c => c.id === collectionId)
     if (!collection || !userId) return { total: 0, atLevel: 0, capped: 0, cappedAssetIds: [] }
-    const assetIds = resolveCollectionAssetIds(collection)
+    const assetIds = resolveCollectionAssetIdsLive(collection)
     const intendedRank = TEMPLATE_RANK[intendedProfile] ?? 0
     let atLevel = 0
     let capped = 0
@@ -1009,7 +1029,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       }
     }
     return { total: assetIds.length, atLevel, capped, cappedAssetIds }
-  }, [collections, userId, grants, roleGroups, blocks])
+  }, [collections, userId, grants, roleGroups, blocks, resolveCollectionAssetIdsLive])
 
   // Resolve share labels: collection IDs → real collection names
   const collectionNameById = useMemo(() => {
@@ -1417,7 +1437,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     for (const collection of collections) {
       // Only show grants from collections the current viewer can access
       if (!canAccess(collection.id)) continue
-      const collectionAssetIds = new Set(resolveCollectionAssetIds(collection).flatMap(getAssetIdVariants))
+      const collectionAssetIds = new Set(resolveCollectionAssetIdsLive(collection).flatMap(getAssetIdVariants))
       if (!collectionAssetIds.has(assetId)) continue
       const collGrants = activeGrants.filter(g => g.resource.id === collection.id)
       for (const g of collGrants) {
@@ -1425,7 +1445,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       }
     }
     return rippled
-  }, [collections, activeGrants, canAccess])
+  }, [collections, activeGrants, canAccess, resolveCollectionAssetIdsLive])
 
   // Compute remaining access paths for a user on a resource, excluding specific grants
   const getRemainingAccessPaths = useCallback((
@@ -1523,7 +1543,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
     // 6. Collection ripple — check if user has access via shared collections
     for (const collection of collections) {
-      const collectionAssetIds = new Set(resolveCollectionAssetIds(collection).flatMap(getAssetIdVariants))
+      const collectionAssetIds = new Set(resolveCollectionAssetIdsLive(collection).flatMap(getAssetIdVariants))
       if (!collectionAssetIds.has(resourceId)) continue
       const collGrants = remainingGrants.filter(g => g.resource.id === collection.id)
       for (const g of collGrants) {
@@ -1537,7 +1557,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
 
     return paths
-  }, [activeGrants, nodeToParent, nodeToDomain, fileTree, collections])
+  }, [activeGrants, nodeToParent, nodeToDomain, fileTree, collections, resolveCollectionAssetIdsLive])
 
   const getVersionHistory = useCallback((resourceId: string, principalKey?: string): { version: number; note: string; date: string; grantId: string }[] => {
     return grants
@@ -1615,7 +1635,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       seenCollections.add(grant.resource.id)
       const collection = collectionById.get(grant.resource.id)
       if (!collection) continue
-      const assetIds = resolveCollectionAssetIds(collection)
+      const assetIds = resolveCollectionAssetIdsLive(collection)
       for (const id of assetIds) uniqueAssetIds.add(id)
       collectionShares.push({
         collectionId: collection.id,
@@ -1654,7 +1674,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       domainReleases,
       totalUniqueAssets: uniqueAssetIds.size,
     }
-  }, [activeGrants, roleGroups, collectionById])
+  }, [activeGrants, roleGroups, collectionById, resolveCollectionAssetIdsLive])
 
   // --- Collection governance (Phase 5) ---
   const getCollectionsContainingDepartmentAssets = useCallback((domainId: DomainId): DepartmentCollectionInfo[] => {

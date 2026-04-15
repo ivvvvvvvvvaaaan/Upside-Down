@@ -29,7 +29,7 @@ import type { Asset } from '@/lib/data'
 import { PERSONAS } from '@/lib/personas'
 import { assetToSelectionEntity } from '@/lib/selection-actions'
 import { getContextAssetGroups } from '@/lib/context-relationships'
-import { resolveCollectionAssets } from '@/lib/data'
+import { resolveCollectionAssets, getAssetsByIds } from '@/lib/data'
 import { AccessModal } from '@/components/ui/access-modal'
 import type { ResourceRef } from '@/lib/grants'
 import type { AssetType } from '@/lib/data'
@@ -63,7 +63,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     canUploadToCollection,
   } = useAccess()
   const { getCollection, deleteCollection, addAssetsToCollection } = useUserCollections()
-  const { createReferenceFolder } = useFileTree()
+  const { createReferenceFolder, getFileNodesForFolder } = useFileTree()
   const { showToast } = useToast()
   const { getRelatedCollectionsForAssets, scopedAssets, ensureAssetsLoaded } = useSmartCollections()
   const { selectedIds, primaryId, handleAssetClick, selectOnly, clearSelection } = useAssetSelection()
@@ -190,7 +190,8 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
 
 
 
-  // Resolve assets using the unified resolution function
+  // Resolve assets — folder-bound collections use the live file tree so newly
+  // added files are visible immediately (the static seed map doesn't update).
   useEffect(() => {
     if (!hydrated) return
     if (!collection || !hasCollectionAccess) {
@@ -201,7 +202,27 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
 
     setLoading(true)
     try {
-      const resolved = resolveCollectionAssets(collection)
+      let resolved: Asset[]
+      if (collection.boundFolderId) {
+        const fileNodes = getFileNodesForFolder(collection.boundFolderId)
+        const fileIds = fileNodes.map(n => n.id)
+        const seedAssets = getAssetsByIds(fileIds)
+        const seedIds = new Set(seedAssets.map(a => a.id))
+        // Synthesize Asset objects for files not in seed data (user-added files)
+        const synthesized: Asset[] = fileNodes
+          .filter(n => !seedIds.has(n.id))
+          .map(n => ({
+            id: n.id,
+            name: n.name,
+            type: inferAssetType(n.extension ?? ''),
+            extension: n.extension,
+            department: collection.boundDomainId as DomainId | undefined,
+            created_at: n.modifiedAt,
+          }))
+        resolved = [...seedAssets, ...synthesized]
+      } else {
+        resolved = resolveCollectionAssets(collection)
+      }
       // Collection grant is the access path — assets inside are accessible.
       // Pass asset IDs as additionalIds so filterByAccess allows them through
       // while still applying sensitive media filtering.
@@ -212,7 +233,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
       setAssets([])
     }
     setLoading(false)
-  }, [hydrated, collection, hasCollectionAccess, filterByAccess])
+  }, [hydrated, collection, hasCollectionAccess, filterByAccess, getFileNodesForFolder])
 
   const handleMenuClick = (asset: Asset) => {
     console.log('Menu clicked for:', asset.name)
