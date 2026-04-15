@@ -16,7 +16,7 @@ import type { Asset } from '@/lib/data'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
 import { AssetDetailPanelContent } from '@/components/ui/asset-detail-panel'
 
-function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, onMenuClick, onRequestAccess, showTags, metadataFields, versionCounts }: {
+function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, onMenuClick, onRequestAccess, showTags, metadataFields, versionCounts, isSensitiveAsset }: {
   episode: string
   cuts: VisibleCutEntry[]
   selectedIds: Set<string>
@@ -27,6 +27,7 @@ function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, o
   showTags?: boolean
   metadataFields?: MetadataFieldVisibility
   versionCounts?: Map<string, number>
+  isSensitiveAsset: (id: string) => boolean
 }) {
   const allAssets = cuts.map(c => c.asset)
   return (
@@ -53,6 +54,7 @@ function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, o
                 onRequestAccess={onRequestAccess}
                 showTags={showTags}
                 metadataFields={metadataFields}
+                sensitive={isSensitiveAsset(cut.asset.id)}
                 allSelectedIds={selectedIds}
               />
               {count > 1 && (
@@ -71,7 +73,7 @@ function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, o
 export function LibraryView() {
   const { hydrated, isAdmin, activePersona } = usePersona()
   const { visibleCuts, accessibleCuts } = useCuts()
-  const { requestAccess } = useAccess()
+  const { requestAccess, isSensitiveAsset } = useAccess()
   const { scopedAssets } = useSmartCollections()
   const { sidePanelOpen, setSidePanelOpen, showTags, metadataFields } = useViewPreferences()
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
@@ -242,6 +244,7 @@ export function LibraryView() {
                     showTags={showTags}
                     metadataFields={metadataFields}
                     versionCounts={versionCounts}
+                    isSensitiveAsset={isSensitiveAsset}
                   />
                 ))}
               </div>

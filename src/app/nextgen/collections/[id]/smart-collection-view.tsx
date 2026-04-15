@@ -78,7 +78,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
   const isMobile = useIsMobile()
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
-  const { canShare, canEditAcl, getCurrentUserGrant } = useAccess()
+  const { canShare, canEditAcl, getCurrentUserGrant, isSensitiveAsset } = useAccess()
   const { createReferenceFolder } = useFileTree()
   const { showToast } = useToast()
   const [shareModalOpen, setShareModalOpen] = useState(false)
@@ -497,6 +497,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                             onMenuClick={handleMenuClick}
                             showDepartment
                             shared={asset.department != null && activePersona?.domainId != null && asset.department !== activePersona.domainId}
+                            sensitive={isSensitiveAsset(asset.id)}
                             allSelectedIds={selectedAssetIds}
                           />
                         ))}

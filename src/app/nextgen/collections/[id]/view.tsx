@@ -64,6 +64,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     canDownload,
     getResourceGrants,
     canUploadToCollection,
+    isSensitiveAsset,
   } = useAccess()
   const { getCollection, deleteCollection, addAssetsToCollection, removeAssetFromCollection } = useUserCollections()
   const { createReferenceFolder, resolveCollectionAssets } = useFileTree()
@@ -488,6 +489,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         showDepartment
                         shared={sharedBy ? false : undefined}
                         processing={uploadingAssets.get(asset.id)?.processing}
+                        sensitive={isSensitiveAsset(asset.id)}
                         allSelectedIds={selectedIds}
                       />
                     ))}

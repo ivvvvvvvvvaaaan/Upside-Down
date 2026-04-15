@@ -178,7 +178,7 @@ interface WorkspaceViewProps {
 export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }: WorkspaceViewProps) {
   const router = useRouter()
   const isLanding = !domainId
-  const { canAccess, sharesReceivedByMe, getInheritedGrants, filterByAccess, getResourceGrants } = useAccess()
+  const { canAccess, sharesReceivedByMe, getInheritedGrants, filterByAccess, getResourceGrants, isSensitiveAsset } = useAccess()
   const { activePersona } = usePersona()
   const { getCollection, filterAssets: filterCollectionAssets, scopedAssets, ensureAssetsLoaded, allCollections: allCollectionsUnified } = useCollections()
   const { layout, setLayout, cardSize, setCardSize, viewMode, setViewMode, sidePanelOpen: showPanel, setSidePanelOpen: setShowPanel, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
@@ -1003,6 +1003,7 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
                                   handleSelectionClick(selectionEntry.entity, e, currentGridSelectionEntities)
                                 }
                               }}
+                              sensitive={isSensitiveAsset(workspaceAsset.id)}
                               allSelectedIds={selectedIds}
                             />
                           )

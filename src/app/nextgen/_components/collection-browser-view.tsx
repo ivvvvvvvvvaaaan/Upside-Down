@@ -95,7 +95,7 @@ export function CollectionBrowserView({
     handleSelectionClick: handleCollectionSelectionClick,
     clearSelection: clearCollectionSelection,
   } = useResourceSelection<Collection>()
-  const { getCollectionAssetCount } = useAccess()
+  const { getCollectionAssetCount, isSensitiveAsset } = useAccess()
   const {
     selectedCollection,
     assets: collectionAssets,
@@ -311,6 +311,7 @@ export function CollectionBrowserView({
                         forceEmptyPreview={forceEmptyPreview}
                         processing={showProcessing}
                         showDepartment
+                        sensitive={isSensitiveAsset(asset.id)}
                         allSelectedIds={selectedAssetIds}
                       />
                     ))}

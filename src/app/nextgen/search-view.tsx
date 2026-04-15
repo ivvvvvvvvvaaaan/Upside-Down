@@ -21,7 +21,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
   const [searchQuery, setSearchQuery] = useState('')
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const { cardSize } = useViewPreferences()
-  const { filterByAccess, getVisibilityState, requestAccess } = useAccess()
+  const { filterByAccess, getVisibilityState, requestAccess, isSensitiveAsset } = useAccess()
   const { allAssets, assetsLoaded, assetsLoading, ensureAssetsLoaded } = useSmartCollections()
 
   useEffect(() => {
@@ -159,6 +159,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                             onMenuClick={handleMenuClick}
                             showDepartment
                             restricted={isRestricted(asset)}
+                            sensitive={isSensitiveAsset(asset.id)}
                             onRequestAccess={handleRequestAccess}
                             allSelectedIds={selectedIds}
                           />
@@ -180,6 +181,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                             onMenuClick={handleMenuClick}
                             showDepartment
                             restricted={isRestricted(asset)}
+                            sensitive={isSensitiveAsset(asset.id)}
                             onRequestAccess={handleRequestAccess}
                             allSelectedIds={selectedIds}
                           />
@@ -210,6 +212,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                           onMenuClick={handleMenuClick}
                           showDepartment
                           restricted={isRestricted(asset)}
+                            sensitive={isSensitiveAsset(asset.id)}
                           onRequestAccess={handleRequestAccess}
                         />
                       ))}

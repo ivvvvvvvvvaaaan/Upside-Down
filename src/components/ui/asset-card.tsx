@@ -10,7 +10,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Asset, DomainId } from '@/lib/data'
 import type { MetadataFieldVisibility } from '@/hooks/useViewPreferences'
-import { useAccess } from '@/hooks/useAccess'
 
 const STATUS_LABELS = new Set(['Key Art', 'Final'])
 const BADGE_EXTENSIONS = new Set(['exr', 'nk', 'mb', 'hip', 'prproj', 'psd', 'ai', 'ptx', 'tiff', 'tx', 'pdf', 'zip', 'cube', 'xlsx'])
@@ -85,6 +84,8 @@ export interface AssetCardProps {
   showTags?: boolean
   /** Per-field metadata visibility */
   metadataFields?: MetadataFieldVisibility
+  /** Asset is flagged as sensitive media */
+  sensitive?: boolean
   /** All currently selected asset IDs (for multi-drag) */
   allSelectedIds?: Set<string>
 }
@@ -104,6 +105,7 @@ export function AssetCard({
   processing = false,
   restricted = false,
   shared,
+  sensitive = false,
   onRequestAccess,
   showTags = true,
   metadataFields,
@@ -113,7 +115,6 @@ export function AssetCard({
   // Primary implies selected
   const isSelected = selected || primary
   const isShared = shared === true
-  const { isSensitiveAsset } = useAccess()
 
   // Loading state with breathing animation (no asset data available)
   if (loading || !asset) {
@@ -313,7 +314,7 @@ export function AssetCard({
         )}
 
         {/* Sensitive media badge - top-left */}
-        {!restricted && asset && isSensitiveAsset(asset.id) && (
+        {!restricted && asset && sensitive && (
           <div className="absolute top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/60">
             <EyeOff className="w-3 h-3 text-white" />
             <span className="text-label-0-regular text-white">Sensitive</span>
