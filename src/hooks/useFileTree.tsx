@@ -12,6 +12,11 @@ import {
 } from '@/lib/workspace-data'
 import { SEED_VERSION } from '@/lib/constants'
 import { assignSharedMountOwner, filterSharedMountsForViewer } from '@/lib/shared-mount-utils'
+import { generateAssetInstances, promotedInstanceToAsset } from '@/lib/asset-instances'
+import { seedCutToAsset } from '@/lib/cuts'
+import { buildCuts } from '@/lib/scenario'
+import type { Asset } from '@/lib/data'
+import type { UserCollection } from './useUserCollections'
 
 const STORAGE_KEY = 'unified-workspace-files'
 const VERSION_KEY = 'unified-workspace-files-version'
@@ -243,6 +248,19 @@ interface FileTreeContextValue {
   createFileReference: (sourceFileId: string, targetParentId: string) => string | null
   /** Get all file nodes under a folder from the live tree (recursive) */
   getFileNodesForFolder: (folderId: string) => UnifiedFileNode[]
+  // --- Derived asset index (single source of truth) ---
+  /** All assets derived from the live file tree + cuts */
+  allAssets: Asset[]
+  /** O(1) asset lookup by ID */
+  assetById: Map<string, Asset>
+  /** Resolve asset IDs for a collection from the live tree */
+  resolveCollectionAssetIds: (collection: UserCollection) => string[]
+  /** Resolve full Asset objects for a collection from the live tree */
+  resolveCollectionAssets: (collection: UserCollection) => Asset[]
+  /** Look up assets by ID from the live index */
+  getAssetsByIds: (ids: string[]) => Asset[]
+  /** Recent assets sorted by date */
+  getRecentAssets: (limit?: number) => Asset[]
 }
 
 const FileTreeContext = createContext<FileTreeContextValue | null>(null)
@@ -295,6 +313,50 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     if (!folderId) return []
     return (findSubtree(rawTree, folderId) ?? []) as WorkspaceFileNode[]
   }, [rawTree])
+
+  // --- Derived asset index: single source of truth for all Asset objects ---
+  const { assetById, allAssets } = useMemo(() => {
+    const assets: Asset[] = []
+    const domains = Object.keys(DOMAIN_TO_FOLDER_ID) as ProductionDomainId[]
+    for (const domainId of domains) {
+      const folderId = DOMAIN_TO_FOLDER_ID[domainId]
+      const children = findSubtree(rawTree, folderId)
+      if (!children) continue
+      const instances = generateAssetInstances(children as WorkspaceFileNode[], domainId)
+      assets.push(...instances.map(promotedInstanceToAsset))
+    }
+    // Merge cut assets (not from file tree)
+    const cutAssets = buildCuts().map(c => seedCutToAsset(c))
+    const all = [...assets, ...cutAssets]
+    const byId = new Map(all.map(a => [a.id, a]))
+    return { assetById: byId, allAssets: all }
+  }, [rawTree])
+
+  const getAssetsByIdsFromTree = useCallback((ids: string[]): Asset[] => {
+    return ids.map(id => assetById.get(id)).filter(Boolean) as Asset[]
+  }, [assetById])
+
+  const resolveCollectionAssetIdsFromTree = useCallback((collection: UserCollection): string[] => {
+    if (collection.boundFolderId) {
+      const children = findSubtree(rawTree, collection.boundFolderId)
+      if (children) return collectFileNodes(children).map(n => n.id)
+    }
+    return collection.assetIds
+  }, [rawTree])
+
+  const resolveCollectionAssetsFromTree = useCallback((collection: UserCollection): Asset[] => {
+    return getAssetsByIdsFromTree(resolveCollectionAssetIdsFromTree(collection))
+  }, [getAssetsByIdsFromTree, resolveCollectionAssetIdsFromTree])
+
+  const getRecentAssetsFromTree = useCallback((limit: number = 12): Asset[] => {
+    return [...allAssets]
+      .sort((a, b) => {
+        const da = a.created_at ? new Date(a.created_at).getTime() : 0
+        const db = b.created_at ? new Date(b.created_at).getTime() : 0
+        return db - da
+      })
+      .slice(0, limit)
+  }, [allAssets])
 
   const createFolder = useCallback((parentId: string | null, name: string, initialChildren?: UnifiedFileNode[]): string => {
     const id = generateId()
@@ -432,7 +494,13 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     confirmMove,
     createFileReference,
     getFileNodesForFolder,
-  }), [tree, getDomainFiles, createFolder, createFile, createReferenceFolder, renameNode, deleteNode, getMoveImpact, confirmMove, createFileReference, getFileNodesForFolder])
+    allAssets,
+    assetById,
+    resolveCollectionAssetIds: resolveCollectionAssetIdsFromTree,
+    resolveCollectionAssets: resolveCollectionAssetsFromTree,
+    getAssetsByIds: getAssetsByIdsFromTree,
+    getRecentAssets: getRecentAssetsFromTree,
+  }), [tree, getDomainFiles, createFolder, createFile, createReferenceFolder, renameNode, deleteNode, getMoveImpact, confirmMove, createFileReference, getFileNodesForFolder, allAssets, assetById, resolveCollectionAssetIdsFromTree, resolveCollectionAssetsFromTree, getAssetsByIdsFromTree, getRecentAssetsFromTree])
 
   return (
     <FileTreeContext.Provider value={value}>

@@ -22,7 +22,6 @@ import { getReviewNoteSummary } from '@/lib/review-notes'
 import type { ReviewNoteSummary } from '@/lib/review-notes'
 import { PERSONAS } from '@/lib/personas'
 import { TEAMS } from '@/lib/teams'
-import { resolveCollectionAssetIds } from '@/lib/data'
 import { slugify } from '@/lib/smart-collection-filters'
 import { OntologySection } from './ontology-section'
 import type { ContainerItem } from './ontology-section'
@@ -69,6 +68,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
   const { getResourceGrants, roleGroups, canShare, revokeGrant, getResourceGuestLinks, revokeGuestLink } = useAccess()
   const { collections, getCollection, removeAssetFromCollection } = useUserCollections()
   const { activePersona, isAdmin } = usePersona()
+  const { resolveCollectionAssetIds } = useFileTree()
   const [modalOpen, setModalOpen] = useState(false)
 
   const assetVariants = useMemo(() => new Set(getAssetIdVariants(assetId)), [assetId])
@@ -413,7 +413,7 @@ export function AssetDetailPanelContent({
 }: AssetDetailPanelContentProps) {
   const { getInheritedGrants, getCollectionRippleGrants, visibleCollections, canEdit, canAccess, canShare, isSensitiveAsset } = useAccess()
   const { activePersona } = usePersona()
-  const { getDomainFiles } = useFileTree()
+  const { getDomainFiles, resolveCollectionAssetIds } = useFileTree()
   const { getCollection, scopedAssets } = useSmartCollections()
   const { getCutsForAsset, getVersionsForGroup } = useCuts()
 

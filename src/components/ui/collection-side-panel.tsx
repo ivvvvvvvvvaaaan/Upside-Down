@@ -19,12 +19,11 @@ import { Tag } from './tag'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import type { Collection } from '@/lib/collection-types'
 import { isSmart, isCollection, getCollectionCapabilities } from '@/lib/collection-types'
-import { resolveCollectionAssetIds } from '@/lib/data'
 import { getCollectionReviewSummary } from '@/lib/review-notes'
 import type { ResourceRef, Grant } from '@/lib/grants'
 import type { AssetFilter, SmartCollectionGroupBy } from '@/lib/data'
 import type { RelatedCollections } from '@/hooks/useSmartCollections'
-import { useAccess, usePersona, useUserCollections } from '@/hooks'
+import { useAccess, useFileTree, usePersona, useUserCollections } from '@/hooks'
 import { PERSONAS } from '@/lib/personas'
 import { TEAMS, isUserInTeam } from '@/lib/teams'
 import { getOntologyMeta } from '@/lib/ontology-meta'
@@ -170,6 +169,7 @@ export function CollectionSidePanel({
 
   const { collections: userCollections } = useUserCollections()
   const { sharesReceivedByMe, allProjectShares, getResourceGrants, getResourceGuestLinks, roleGroups, canShare } = useAccess()
+  const { resolveCollectionAssetIds } = useFileTree()
   const { isAdmin, activePersona } = usePersona()
   const [accessModalOpen, setAccessModalOpen] = useState(false)
 

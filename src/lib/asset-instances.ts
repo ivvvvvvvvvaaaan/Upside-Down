@@ -1,6 +1,6 @@
 import type { DomainId } from '@/components/department/types'
 import type { Asset, AssetType, AssetTag } from '@/lib/data'
-import type { WorkspaceFileNode } from '@/lib/workspace-data'
+import type { UnifiedFileNode } from '@/lib/workspace-data'
 import { getAITagsForFile, toAIMeta } from '@/lib/ai-tags'
 import type { AITagResult } from '@/lib/ai-tags'
 
@@ -105,13 +105,13 @@ function inferAssetType(ext?: string, filename?: string): AssetType {
 
 /** Walk workspace folders and generate instances for all files within */
 export function generateAssetInstances(
-  files: WorkspaceFileNode[],
+  files: UnifiedFileNode[],
   domainId: DomainId,
 ): AssetInstance[] {
   const instances: AssetInstance[] = []
 
   function walk(
-    nodes: WorkspaceFileNode[],
+    nodes: UnifiedFileNode[],
     pathParts: string[],
     category: string,
     containingFolderId?: string,
@@ -317,4 +317,28 @@ export function mergeWorkspaceAssets(
 ): Asset[] {
   const promoted = instances.map(promotedInstanceToAsset)
   return [...apiAssets, ...promoted]
+}
+
+/** Convert a single file tree node to a full Asset via the standard promotion pipeline. */
+export function fileNodeToAsset(
+  node: UnifiedFileNode,
+  domainId: DomainId,
+  parentFolderName?: string,
+): Asset {
+  const instances = generateAssetInstances([node], domainId)
+  if (instances.length > 0) return promotedInstanceToAsset(instances[0])
+  // Fallback for empty (shouldn't happen for file nodes)
+  return promotedInstanceToAsset({
+    id: node.id,
+    name: node.name.replace(/\.[^.]+$/, ''),
+    sourceFileId: node.id,
+    sourceFileName: node.name,
+    sourcePath: parentFolderName ? `${parentFolderName} / ${node.name}` : node.name,
+    department: domainId,
+    category: parentFolderName ?? '',
+    type: mapExtensionToType(node.extension),
+    size: node.size,
+    modifiedAt: node.modifiedAt,
+    modifiedBy: node.modifiedBy,
+  })
 }

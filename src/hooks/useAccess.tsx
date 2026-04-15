@@ -46,14 +46,11 @@ import {
   isReferenceFolder,
   type UnifiedFileNode,
 } from '@/lib/workspace-data'
-import { getAssetIdsForFolder } from '@/lib/data-client'
-import { resolveCollectionAssetIds } from '@/lib/data'
 import { getStoredSmartCollectionById } from '@/lib/smart-collection-store'
 import { SCENARIO, SENSITIVE_ASSET_IDS } from '@/lib/scenario'
 import type { GuestLinkSeed } from '@/lib/scenario'
 import { domainConfigs } from '@/lib/domain-configs'
 import { logAuditEvent, getAuditLog, type AuditEventType, type AuditEvent } from '@/lib/audit-log'
-import { resolveCollectionAssets } from '@/lib/data'
 import { useBlocks } from './useBlocks'
 import { useProjectLock } from './useProjectLock'
 import type { ProjectLockInfo } from './useProjectLock'
@@ -370,7 +367,12 @@ function loadStoredRoleGroups(): RoleGroup[] {
 export function AccessProvider({ children }: { children: ReactNode }) {
   const { activePersona } = usePersona()
   const { collections } = useUserCollections()
-  const { tree: fileTree } = useFileTree()
+  const {
+    tree: fileTree,
+    resolveCollectionAssetIds: resolveCollectionAssetIdsLive,
+    resolveCollectionAssets: resolveCollectionAssetsLive,
+    getFileNodesForFolder,
+  } = useFileTree()
   const [grants, setGrantsState] = useState<Grant[]>(() => structuredClone(DEFAULT_GRANTS))
   const setGrants: typeof setGrantsState = useCallback((action) => {
     setGrantsState((prev) => {
@@ -625,26 +627,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
     return accessById
   }, [collections, getDirectCollectionPermissionSet])
-
-  // Resolve collection asset IDs from the live file tree for folder-bound
-  // collections, so newly added files are picked up immediately.
-  const resolveCollectionAssetIdsLive = useCallback((collection: UserCollection): string[] => {
-    if (collection.boundFolderId) {
-      const node = nodeById.get(collection.boundFolderId)
-      if (node?.children) {
-        const collectFiles = (nodes: UnifiedFileNode[]): string[] => {
-          const ids: string[] = []
-          for (const n of nodes) {
-            if (n.type === 'file') ids.push(n.id)
-            if (n.children) ids.push(...collectFiles(n.children))
-          }
-          return ids
-        }
-        return collectFiles(node.children)
-      }
-    }
-    return resolveCollectionAssetIds(collection)
-  }, [nodeById])
 
   const collectionAssetAccessById = useMemo(() => {
     const accessById = new Map<string, EffectivePermissionSet>()
@@ -1592,7 +1574,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       const domainId = targetPersona.domainId
       const domainMeta = DOMAIN_FOLDER_MAP[domainId]
       if (domainMeta) {
-        const assetIds = getAssetIdsForFolder(domainMeta.id)
+        const assetIds = getFileNodesForFolder(domainMeta.id).map(n => n.id)
         for (const id of assetIds) uniqueAssetIds.add(id)
         departmentAssets.push({
           domainId,
@@ -1689,7 +1671,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       if (collection.createdBy && departmentEmails.has(collection.createdBy.toLowerCase())) continue
 
       // Resolve assets and check if any belong to this department
-      const assets = resolveCollectionAssets(collection)
+      const assets = resolveCollectionAssetsLive(collection)
       const deptAssets = assets.filter(a => a.department === domainId)
       if (deptAssets.length === 0) continue
 

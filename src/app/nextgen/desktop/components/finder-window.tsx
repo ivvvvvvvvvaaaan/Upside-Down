@@ -31,9 +31,6 @@ import {
   AlertTriangle,
   Loader2,
 } from 'lucide-react'
-import { getAssetsByIds } from '@/lib/data'
-import type { Asset, AssetType } from '@/lib/data'
-import type { DomainId } from '@/components/department/types'
 
 // Sidebar items for Finder
 interface SidebarItem {
@@ -371,7 +368,7 @@ export function FinderWindow({
   const [folderPathIds, setFolderPathIds] = useState<string[]>([])
 
   // Shared file tree from context
-  const { tree: workspaceFiles, createFolder: contextCreateFolder, createFile: contextCreateFile, renameNode: contextRenameNode, deleteNode: contextDeleteNode, getFileNodesForFolder } = useFileTree()
+  const { tree: workspaceFiles, createFolder: contextCreateFolder, createFile: contextCreateFile, renameNode: contextRenameNode, deleteNode: contextDeleteNode, resolveCollectionAssets: treeResolveCollectionAssets } = useFileTree()
   const { canAccess, sharesReceivedByMe, filterByAccess } = useAccess()
   const { getCollection, filterAssets, scopedAssets } = useCollections()
   const { activePersona } = usePersona()
@@ -484,34 +481,15 @@ export function FinderWindow({
     }, 50)
   }, [contextCreateFolder, selectedSidebar, workspaceFiles])
 
-  const resolveCollectionAssetsLive = useCallback((collection: import('@/lib/collection-types').Collection): Asset[] => {
-    if (!('boundFolderId' in collection) || !collection.boundFolderId) return []
-    const fileNodes = getFileNodesForFolder(collection.boundFolderId)
-    const fileIds = fileNodes.map(n => n.id)
-    const seedAssets = getAssetsByIds(fileIds)
-    const seedIds = new Set(seedAssets.map(a => a.id))
-    const synthesized: Asset[] = fileNodes
-      .filter(n => !seedIds.has(n.id))
-      .map(n => ({
-        id: n.id,
-        name: n.name,
-        type: (n.extension ? (['mp4', 'mov', 'avi', 'mkv', 'webm', 'mxf'].includes(n.extension) ? 'video' : ['jpg', 'jpeg', 'png', 'psd', 'tiff', 'exr', 'dpx', 'svg', 'webp'].includes(n.extension) ? 'image' : ['wav', 'mp3', 'aac', 'flac', 'aiff'].includes(n.extension) ? 'audio' : 'text') : 'text') as AssetType,
-        extension: n.extension,
-        department: collection.boundDomainId as DomainId | undefined,
-        created_at: n.modifiedAt,
-      }))
-    return [...seedAssets, ...synthesized]
-  }, [getFileNodesForFolder])
-
   const resolvedWorkspaceFiles = useMemo(() => {
     return materializeReferenceFolders(workspaceFiles, {
       getCollection,
       filterAssets,
       filterByAccess,
       scopedAssets,
-      resolveAssets: resolveCollectionAssetsLive,
+      resolveAssets: treeResolveCollectionAssets,
     })
-  }, [workspaceFiles, getCollection, filterAssets, filterByAccess, scopedAssets, resolveCollectionAssetsLive])
+  }, [workspaceFiles, getCollection, filterAssets, filterByAccess, scopedAssets, treeResolveCollectionAssets])
 
   const visibleSharedWorkspaceFiles = useMemo(() => {
     return sharesReceivedByMe

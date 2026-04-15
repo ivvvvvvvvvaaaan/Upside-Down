@@ -36,8 +36,7 @@ import type { DomainId, ProductionDomainId } from '@/components/department/types
 import { DOMAIN_FOLDER_MAP, isReferenceFolder, SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { promotedInstanceToAsset } from '@/lib/asset-instances'
-import type { Asset, AssetType } from '@/lib/data'
-import { getAssetsByIds } from '@/lib/data'
+import type { Asset } from '@/lib/data'
 import { WorkspaceSidePanel } from '@/components/department/WorkspaceSidePanel'
 import { AssetDetailPanel } from '@/components/ui/asset-detail-panel'
 import { getContextAssetGroups } from '@/lib/context-relationships'
@@ -48,7 +47,6 @@ import { domainConfigs } from '@/lib/domain-configs'
 import { assetToSelectionEntity, folderToSelectionEntity } from '@/lib/selection-actions'
 import type { SelectionEntity } from '@/lib/selection-actions'
 import { materializeReferenceFolders } from '@/lib/reference-folder-utils'
-import type { Collection } from '@/lib/collection-types'
 
 interface ContextMenuState {
   x: number
@@ -222,25 +220,7 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
     targetParentId: string
     impactedCollections: { id: string; name: string; grantCount: number }[]
   } | null>(null)
-  const { createFolder: fileTreeCreateFolder, createFile: fileTreeCreateFile, deleteNode: fileTreeDeleteNode, renameNode: fileTreeRenameNode, tree: fileTree, getDomainFiles: getFileTreeDomainFiles, getMoveImpact, confirmMove, getFileNodesForFolder } = useFileTree()
-  const resolveCollectionAssetsLive = useCallback((collection: Collection): Asset[] => {
-    if (!('boundFolderId' in collection) || !collection.boundFolderId) return []
-    const fileNodes = getFileNodesForFolder(collection.boundFolderId)
-    const fileIds = fileNodes.map(n => n.id)
-    const seedAssets = getAssetsByIds(fileIds)
-    const seedIds = new Set(seedAssets.map(a => a.id))
-    const synthesized: Asset[] = fileNodes
-      .filter(n => !seedIds.has(n.id))
-      .map(n => ({
-        id: n.id,
-        name: n.name,
-        type: (n.extension ? (['mp4', 'mov', 'avi', 'mkv', 'webm', 'mxf'].includes(n.extension) ? 'video' : ['jpg', 'jpeg', 'png', 'psd', 'tiff', 'exr', 'dpx', 'svg', 'webp'].includes(n.extension) ? 'image' : ['wav', 'mp3', 'aac', 'flac', 'aiff'].includes(n.extension) ? 'audio' : 'text') : 'text') as AssetType,
-        extension: n.extension,
-        department: collection.boundDomainId as DomainId | undefined,
-        created_at: n.modifiedAt,
-      }))
-    return [...seedAssets, ...synthesized]
-  }, [getFileNodesForFolder])
+  const { createFolder: fileTreeCreateFolder, createFile: fileTreeCreateFile, deleteNode: fileTreeDeleteNode, renameNode: fileTreeRenameNode, tree: fileTree, getDomainFiles: getFileTreeDomainFiles, getMoveImpact, confirmMove, resolveCollectionAssets: treeResolveCollectionAssets } = useFileTree()
 
   const resolveReferenceNodes = useCallback((nodes: WorkspaceFileNode[]) => {
     return materializeReferenceFolders(nodes, {
@@ -248,9 +228,9 @@ export function WorkspaceView({ domainId, folderPath: urlPath, landingFolderId }
       filterAssets: filterCollectionAssets,
       filterByAccess,
       scopedAssets,
-      resolveAssets: resolveCollectionAssetsLive,
+      resolveAssets: treeResolveCollectionAssets,
     }) as WorkspaceFileNode[]
-  }, [getCollection, filterCollectionAssets, filterByAccess, scopedAssets, resolveCollectionAssetsLive])
+  }, [getCollection, filterCollectionAssets, filterByAccess, scopedAssets, treeResolveCollectionAssets])
   // Workspace-level folders: top-level folders created by user (exclude domain folders already rendered via domainNodes)
   const landingFolders = useMemo(() => {
     return resolveReferenceNodes(

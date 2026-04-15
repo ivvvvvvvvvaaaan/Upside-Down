@@ -18,7 +18,7 @@ import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import { Checkbox } from './checkbox'
 import { Card } from './card'
 import { domainConfigs } from '@/lib/domain-configs'
-import { useAccess, usePersona } from '@/hooks'
+import { useAccess, useFileTree, usePersona } from '@/hooks'
 import type { Block, Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
 import { useToast } from './toast'
 import { getRoleGroup, roleGroupOptions } from '@/lib/grants'
@@ -27,7 +27,7 @@ import { buildAccessDisplayEntries } from './access-display'
 import type { AccessDisplayEntry } from './access-display'
 import { buildShareSearchResults } from '@/lib/share-search'
 import type { GuestLinkSeed } from '@/lib/scenario'
-import { resolveCollectionAssetIds, getAssetIdVariants } from '@/lib/data'
+import { getAssetIdVariants } from '@/lib/data'
 import { isGrantActive } from '@/lib/grants'
 import { useUserCollections } from '@/hooks/useUserCollections'
 import { useSmartCollections } from '@/hooks'
@@ -417,6 +417,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     isBlocked,
     getBlocksForResource,
   } = useAccess()
+  const { resolveCollectionAssetIds } = useFileTree()
   const { showToast } = useToast()
   const { activePersona } = usePersona()
   const [shareTab, setShareTab] = useState<'people' | 'release'>('people')
