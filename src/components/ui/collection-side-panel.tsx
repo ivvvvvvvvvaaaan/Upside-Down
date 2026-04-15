@@ -160,17 +160,18 @@ export function CollectionSidePanel({
   const canMount = Boolean(onAction && (actionPermissions?.canMount ?? true) && caps.canMount)
 
   const ontologyMeta = smart ? getOntologyMeta(collection.name, smart.icon) : null
-  const resolvedAssetIds = useMemo(() => (
-    curated ? resolveCollectionAssetIds(curated) : []
-  ), [curated])
-  const assetCount = matchingCount ?? resolvedAssetIds.length
-  const assetIds = resolvedAssetIds
-  const reviewNoteSummary = curated ? getCollectionReviewSummary(collection.id, assetIds) : null
 
   const { collections: userCollections } = useUserCollections()
   const { sharesReceivedByMe, allProjectShares, getResourceGrants, getResourceGuestLinks, roleGroups, canShare } = useAccess()
   const { resolveCollectionAssetIds } = useFileTree()
   const { isAdmin, activePersona } = usePersona()
+
+  const resolvedAssetIds = useMemo(() => (
+    curated ? resolveCollectionAssetIds(curated) : []
+  ), [curated, resolveCollectionAssetIds])
+  const assetCount = matchingCount ?? resolvedAssetIds.length
+  const assetIds = resolvedAssetIds
+  const reviewNoteSummary = curated ? getCollectionReviewSummary(collection.id, assetIds) : null
   const [accessModalOpen, setAccessModalOpen] = useState(false)
 
   const linkedSnapshotCollections = useMemo(() => {
