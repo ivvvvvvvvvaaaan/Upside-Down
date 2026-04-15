@@ -13,8 +13,9 @@ export function getSharedResourceHref(resource: SharedResourceRef): string | und
   if (resource.resourceType === 'collection') return `/nextgen/collections/${resource.resourceId}`
   if (resource.resourceType === 'smart-collection') return `/nextgen/collections/${resource.resourceId}`
   if (resource.resourceType === 'folder') {
-    // Shared folders open as collections so recipients without workspace access can view them
-    return `/nextgen/collections/${resource.resourceId}`
+    const effectiveDomainId = resource.domainId
+    if (!effectiveDomainId) return `/nextgen/workspace/${resource.resourceId}`
+    return `/nextgen/workspace/${effectiveDomainId}/${resource.resourceId}`
   }
 
   return undefined
