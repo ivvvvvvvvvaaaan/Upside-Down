@@ -39,7 +39,8 @@ import type {
 } from '@/lib/grants'
 import { PERSONAS } from '@/lib/personas'
 import { useFileTree } from './useFileTree'
-import { isUserInTeam, getTeamById } from '@/lib/teams'
+import { TEAMS, isUserInTeam, getTeamById } from '@/lib/teams'
+import { getAssetIdsForFolderRecursive } from '@/lib/data-client'
 import {
   findNodeInTree,
   DOMAIN_FOLDER_MAP,
@@ -92,7 +93,7 @@ export type AccessPath = {
 }
 
 export type UserAccessSummary = {
-  departmentAssets: { domainId: string; domainName: string; count: number }[]
+  workspaceRoots: { folderId: string; folderName: string; count: number }[]
   directShares: { resourceId: string; label: string; profile: string }[]
   collectionShares: { collectionId: string; collectionName: string; assetCount: number }[]
   domainReleases: { domainId: string; domainName: string; assetCount: number }[]
@@ -214,19 +215,8 @@ interface AccessContextValue {
   lockProject: () => void
   unlockProject: () => void
 
-  // Collection governance (Phase 5)
-  getCollectionsContainingDepartmentAssets: (domainId: DomainId) => DepartmentCollectionInfo[]
-
   // Audit log (Phase 6)
   getAuditLog: (filters?: { resourceId?: string; userId?: string; type?: AuditEventType }) => AuditEvent[]
-}
-
-export type DepartmentCollectionInfo = {
-  collectionId: string
-  collectionName: string
-  createdBy: string
-  sharedWithCount: number
-  departmentAssetCount: number
 }
 
 const AccessContext = createContext<AccessContextValue | null>(null)
@@ -560,29 +550,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
           collection.id,
           currentGrants,
           roleGroups,
-          collection.boundDomainId as DomainId | undefined,
+          undefined,
           blocks,
         ),
       ),
     )
-
-    if (collection.boundDomainId) {
-      const domainRootId = DOMAIN_FOLDER_MAP[collection.boundDomainId as DomainId]?.id
-      if (domainRootId) {
-        layers.push(
-          fromResolvedAccess(
-            resolveAccess(
-              userId,
-              domainRootId,
-              currentGrants,
-              roleGroups,
-              collection.boundDomainId as DomainId,
-              blocks,
-            ),
-          ),
-        )
-      }
-    }
 
     return mergePermissionSets(...layers)
   }, [activePersona, userId, grants, roleGroups, collectionById, ownerPermissionSet, fromResolvedAccess, blocks])
@@ -720,7 +692,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     if (!activePersona) return ownerPermissionSet
     if (!userId) return EMPTY_PERMISSION_SET
 
-    const resourceDomainId = resource.domainId ?? getResourceDomainId(resource.id)
     const layers: EffectivePermissionSet[] = []
 
     if (resource.type === 'collection') {
@@ -735,7 +706,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
             resource.id,
             currentGrants,
             roleGroups,
-            resourceDomainId,
+            undefined,
             blocks,
           ),
         ),
@@ -983,6 +954,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return assets.filter((asset) => {
       if (!hasSensitiveCap && SENSITIVE_ASSET_IDS.has(asset.id)) return false
       if (canAccess(asset.id)) return true
+      if (asset.sourceFolderIds?.some((fid) => canAccess(fid))) return true
       if (additionalIds?.has(asset.id)) return true
       return false
     })
@@ -1527,25 +1499,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       parentId = nodeToParent.get(parentId)
     }
 
-    // 5. Department workspace access — check if resource is in a domain the user has grants on
-    const resourceDomain = nodeToDomain.get(resourceId)
-    if (resourceDomain) {
-      const domainRootId = DOMAIN_FOLDER_MAP[resourceDomain]?.id
-      if (domainRootId && domainRootId !== resourceId) {
-        const domainRootGrants = remainingGrants.filter(g => g.resource.id === domainRootId)
-        for (const g of domainRootGrants) {
-          if (principalMatchesUser(g.principal, targetUserId)) {
-            const domainMeta = DOMAIN_FOLDER_MAP[resourceDomain]
-            paths.push({
-              path: 'department',
-              source: `${domainMeta.name} workspace`,
-            })
-          }
-        }
-      }
-    }
-
-    // 6. Collection ripple — check if user has access via shared collections
+    // 5. Collection ripple — check if user has access via shared collections
     for (const collection of collections) {
       const collectionAssetIds = new Set(resolveCollectionAssetIdsLive(collection).flatMap(getAssetIdVariants))
       if (!collectionAssetIds.has(resourceId)) continue
@@ -1595,26 +1549,26 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
       if (resource.type === 'collection') {
         const collection = collectionById.get(resource.id)
-        return collection ? resolveCollectionAssetIds(collection) : []
+        return collection ? resolveCollectionAssetIdsLive(collection) : []
       }
 
       return [resource.id]
     }
 
-    // 1. Department assets: check which domains the user belongs to
     const targetPersona = PERSONAS.find(p => p.id === targetUserId)
-    const departmentAssets: UserAccessSummary['departmentAssets'] = []
-    if (targetPersona?.domainId) {
-      const domainId = targetPersona.domainId
-      const domainMeta = DOMAIN_FOLDER_MAP[domainId]
-      if (domainMeta) {
-        for (const id of assetIds) uniqueAssetIds.add(id)
-        departmentAssets.push({
-          domainId,
-          domainName: domainMeta.name,
-          count: assetIds.length,
-        })
-      }
+    // 1. Workspace root access: groups with root folders the user belongs to
+    const workspaceRoots: UserAccessSummary['workspaceRoots'] = []
+    for (const team of TEAMS) {
+      if (team.kind !== 'group' || !team.rootFolderId) continue
+      if (!team.memberUserIds.includes(targetUserId)) continue
+
+      const assetIds = getAssetIdsForFolderRecursive(team.rootFolderId, fileTree)
+      for (const id of assetIds) uniqueAssetIds.add(id)
+      workspaceRoots.push({
+        folderId: team.rootFolderId,
+        folderName: team.name,
+        count: assetIds.length,
+      })
     }
 
     // 2. Direct shares: non-collection, non-project resource grants to the user
@@ -1687,46 +1641,13 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
 
     return {
-      departmentAssets,
+      workspaceRoots,
       directShares,
       collectionShares,
       domainReleases,
       totalUniqueAssets: uniqueAssetIds.size,
     }
-
-  // --- Collection governance (Phase 5) ---
-  const getCollectionsContainingDepartmentAssets = useCallback((domainId: DomainId): DepartmentCollectionInfo[] => {
-    const results: DepartmentCollectionInfo[] = []
-    // Find personas in this department to determine "same department" creators
-    const departmentEmails = new Set(
-      PERSONAS.filter(p => p.domainId === domainId).map(p => p.email.toLowerCase())
-    )
-
-    for (const collection of collections) {
-      // Skip collections created by someone IN the department
-      if (collection.createdBy && departmentEmails.has(collection.createdBy.toLowerCase())) continue
-
-      // Resolve assets and check if any belong to this department
-      const assets = resolveCollectionAssetsLive(collection)
-      const deptAssets = assets.filter(a => a.department === domainId)
-      if (deptAssets.length === 0) continue
-
-      // Count shares on this collection
-      const sharedWithCount = activeGrants.filter(
-        g => g.resource.id === collection.id
-      ).length
-
-      results.push({
-        collectionId: collection.id,
-        collectionName: collection.name,
-        createdBy: collection.createdBy ?? 'Unknown',
-        sharedWithCount,
-        departmentAssetCount: deptAssets.length,
-      })
-    }
-
-    return results
-  }, [collections, activeGrants])
+  }, [activeGrants, grants, roleGroups, collections, fileTree])
 
   // --- Audit log accessor (Phase 6) ---
   const getAuditLogFn = useCallback((filters?: { resourceId?: string; userId?: string; type?: AuditEventType }) => {
@@ -1800,7 +1721,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     projectLockInfo,
     lockProject,
     unlockProject,
-    getCollectionsContainingDepartmentAssets,
     getAuditLog: getAuditLogFn,
   }), [
     canAccess,
@@ -1869,7 +1789,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     projectLockInfo,
     lockProject,
     unlockProject,
-    getCollectionsContainingDepartmentAssets,
     getAuditLogFn,
   ])
 

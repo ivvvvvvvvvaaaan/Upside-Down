@@ -20,7 +20,6 @@ export type UserCollection = {
   createdBy?: string
   /** If set, this collection is a share snapshot created from a smart collection */
   sourceSmartCollectionId?: string
-  boundDomainId?: string
 }
 
 const COLLECTIONS_STORAGE_KEY = 'user-collections'

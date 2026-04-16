@@ -27,11 +27,6 @@ const routeLabels: Record<string, string> = {
   '/nextgen/library': 'Cuts',
   '/nextgen/shared': 'Shared',
   '/nextgen/workspace': 'Workspace',
-  '/nextgen/departments/art-design': 'Art & Design',
-  '/nextgen/departments/camera': 'Camera',
-  '/nextgen/departments/editorial': 'Editorial',
-  '/nextgen/departments/vfx': 'VFX',
-  '/nextgen/departments/audio-sound': 'Audio & Sound',
   '/nextgen/collections': 'All Collections',
   '/nextgen/collections/characters': 'Characters',
   '/nextgen/collections/locations': 'Locations',
@@ -40,7 +35,6 @@ const routeLabels: Record<string, string> = {
 
 // Section groupings for breadcrumb hierarchy
 const sectionPrefixes: { prefix: string; label: string }[] = [
-  { prefix: '/nextgen/departments/', label: 'Departments' },
   { prefix: '/nextgen/collections/', label: 'Collections' },
   { prefix: '/nextgen/sharing/', label: 'Sharing' },
 ]

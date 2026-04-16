@@ -1,7 +1,7 @@
 import type { DomainId } from '@/components/department/types'
 import { PERSONAS } from '@/lib/personas'
 import { isUserInTeam, getTeamById } from '@/lib/teams'
-import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
+import { DOMAIN_FOLDER_MAP, getFinderWorkspaceTree } from '@/lib/workspace-data'
 import {
   buildGrants,
   buildLabels,
@@ -131,6 +131,27 @@ const POLICY_RESOURCE_IDS = new Set(
   Object.values(DOMAIN_FOLDER_MAP).map((folder) => folder.id),
 )
 
+const PARENT_RESOURCE_IDS = (() => {
+  const parents = new Map<string, string>()
+
+  const walk = (
+    nodes: ReturnType<typeof getFinderWorkspaceTree>,
+    parentId?: string,
+  ) => {
+    for (const node of nodes) {
+      if (parentId) {
+        parents.set(node.id, parentId)
+      }
+      if (node.type === 'folder' && node.children) {
+        walk(node.children, node.id)
+      }
+    }
+  }
+
+  walk(getFinderWorkspaceTree())
+  return parents
+})()
+
 export function getRoleGroup(roleGroups: RoleGroup[], templateId?: AccessProfileId | null): RoleGroup | undefined {
   if (!templateId) return undefined
   return roleGroups.find((rg) => rg.id === templateId)
@@ -249,6 +270,27 @@ function resolveMatchingGrants(
   }
 }
 
+function getAncestorResourceIds(resourceId: string, resourceDomainId?: DomainId): string[] {
+  const ancestors: string[] = []
+  let parentId = PARENT_RESOURCE_IDS.get(resourceId)
+
+  while (parentId) {
+    ancestors.push(parentId)
+    parentId = PARENT_RESOURCE_IDS.get(parentId)
+  }
+
+  if (ancestors.length > 0) {
+    return ancestors
+  }
+
+  const domainRootId = resourceDomainId ? DOMAIN_FOLDER_MAP[resourceDomainId]?.id : undefined
+  if (domainRootId && domainRootId !== resourceId) {
+    return [domainRootId]
+  }
+
+  return []
+}
+
 function buildResolvedAccess(
   direct: Grant[],
   team: Grant[],
@@ -340,30 +382,22 @@ export function resolveAccess(
   }
 
   const resourceMatches = resolveMatchingGrants(grants, userId, resourceId)
-  const resourceAccess = buildResolvedAccess(resourceMatches.direct, resourceMatches.team, roleGroups, 'team')
-
-  let domainAccess: ResolvedAccess | null = null
-  if (resourceDomainId) {
-    const domainRootId = DOMAIN_FOLDER_MAP[resourceDomainId]?.id
-    if (domainRootId && domainRootId !== resourceId) {
-      const domainRootMatches = resolveMatchingGrants(grants, userId, domainRootId)
-      domainAccess = buildResolvedAccess(
-        domainRootMatches.direct,
-        domainRootMatches.team,
-        roleGroups,
-        'team',
-      )
-    }
-  }
-
-  // Take whichever level grants higher privilege
-  if (resourceAccess && domainAccess) {
-    const rRank = resourceAccess.effectiveProfile ? TEMPLATE_RANK[resourceAccess.effectiveProfile] : 0
-    const dRank = domainAccess.effectiveProfile ? TEMPLATE_RANK[domainAccess.effectiveProfile] : 0
-    return rRank >= dRank ? resourceAccess : domainAccess
-  }
-
-  return resourceAccess ?? domainAccess ?? NO_ACCESS
+  const inheritedMatches = getAncestorResourceIds(resourceId, resourceDomainId).reduce(
+    (acc, ancestorId) => {
+      const matches = resolveMatchingGrants(grants, userId, ancestorId)
+      acc.direct.push(...matches.direct)
+      acc.team.push(...matches.team)
+      return acc
+    },
+    { direct: [] as Grant[], team: [] as Grant[] },
+  )
+  const resourceAccess = buildResolvedAccess(
+    [...resourceMatches.direct, ...inheritedMatches.direct],
+    [...resourceMatches.team, ...inheritedMatches.team],
+    roleGroups,
+    'team',
+  )
+  return resourceAccess ?? NO_ACCESS
 }
 
 function resolveAccessForResource(
@@ -441,7 +475,7 @@ export function principalLabel(principal: PrincipalRef): string {
 
   const team = getTeamById(principal.teamId)
   if (!team) return principal.teamId
-  return team.domainId ? `${team.name} (domain)` : `${team.name} (team)`
+  return team.kind === 'domain' ? `${team.name} (domain)` : `${team.name} (group)`
 }
 
 function grantToView(grant: Grant): GrantView {

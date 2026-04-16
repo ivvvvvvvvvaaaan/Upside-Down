@@ -36,7 +36,6 @@ import { AccessModal } from '@/components/ui/access-modal'
 import type { ResourceRef } from '@/lib/grants'
 import { SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
 import { useToast } from '@/components/ui/toast'
-import type { DomainId } from '@/components/department/types'
 import type { AssetType } from '@/lib/data'
 
 function inferAssetType(ext: string): AssetType {
@@ -213,7 +212,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
       resourceType: 'collection',
       shareMode: grant?.shareMode ?? 'live',
       snapshotAssetIds: grant?.snapshotAssetIds,
-      domainId: collection.boundDomainId as DomainId | undefined,
+      domainId: undefined,
     })
     showToast(`Mounted "${collection.name}" to /Shared/${collection.name}`)
   }
@@ -281,7 +280,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     }
     showToast(`Download started for ${selectedAssets.length} assets.`)
   }, [selectedAssets, showToast])
-  const isCurated = !!collection && !collection.boundFolderId
+  const isCurated = !!collection
   const canRemoveFromCollection = isCurated && isOwner
   const handleRemoveSelectedAssets = useCallback(() => {
     if (!collection || selectedAssets.length === 0) return
@@ -533,6 +532,24 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
           collection={collection}
           open={panelOpen && !primaryAsset}
           onClose={closePanel}
+          onAction={(action) => {
+            if (action.type === 'delete') handleDeleteCollection()
+            if (action.type === 'mount') {
+              const grant = getCurrentUserGrant(collection.id)
+              createReferenceFolder(SHARED_MOUNT_FOLDER_ID, collection.name, {
+                resourceId: collection.id,
+                resourceType: 'collection',
+                shareMode: grant?.shareMode ?? 'live',
+                snapshotAssetIds: grant?.snapshotAssetIds,
+              })
+              showToast(`Mounted "${collection.name}" to /Shared/${collection.name}`)
+            }
+          }}
+          actionPermissions={{
+            canEdit: false,
+            canDelete: isOwner,
+            canMount: true,
+          }}
           relationships={relationships}
         />
       )}

@@ -488,7 +488,7 @@ export function AssetDetailPanelContent({
       const domainRootId = DOMAIN_FOLDER_MAP[asset.department]?.id
       return {
         label: fullLabel,
-        href: `/nextgen/workspace/${asset.department}`,
+        href: domainRootId ? `/nextgen/workspace/${domainRootId}` : null,
         folderId: domainRootId,
       }
     }
@@ -505,9 +505,14 @@ export function AssetDetailPanelContent({
       currentNodes = match.children ?? []
     }
 
+    const domainRootId = DOMAIN_FOLDER_MAP[asset.department]?.id
+    if (!domainRootId) {
+      return { label: fullLabel, href: null, folderId: folderIds[folderIds.length - 1] }
+    }
+
     return {
       label: fullLabel,
-      href: `/nextgen/workspace/${asset.department}/${folderIds.join('/')}`,
+      href: `/nextgen/workspace/${domainRootId}/${folderIds.join('/')}`,
       folderId: folderIds[folderIds.length - 1],
     }
   }, [asset, getDomainFiles])

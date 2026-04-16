@@ -25,6 +25,7 @@ export interface UnifiedFileNode {
   modifiedAt?: string
   modifiedBy?: string
   domainId?: DomainId
+  zone?: 'managed' | 'wip'
   /** Local mount owner for reference folders shown in the Shared drive view */
   mountedByUserId?: string | null
   /** Folder-level: reference to a shared folder or collection */
@@ -42,8 +43,6 @@ export function isFileReference(
 
 export interface WorkspaceFileNode extends UnifiedFileNode {
   children?: WorkspaceFileNode[]
-  /** Folder-level: zone designation after sync rules are applied (default: managed) */
-  zone?: 'managed' | 'wip'
   /** Computed: true if this node is inside a managed zone */
   managedZone?: boolean
 }

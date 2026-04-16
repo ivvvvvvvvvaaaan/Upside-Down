@@ -126,6 +126,24 @@ function renameNodeInTree(
   })
 }
 
+function toggleManagedZoneInTree(
+  nodes: UnifiedFileNode[],
+  nodeId: string,
+): UnifiedFileNode[] {
+  return nodes.map((node) => {
+    if (node.id === nodeId && node.type === 'folder') {
+      return {
+        ...node,
+        zone: node.zone === 'wip' ? 'managed' : 'wip',
+      }
+    }
+    if (node.children) {
+      return { ...node, children: toggleManagedZoneInTree(node.children, nodeId) }
+    }
+    return node
+  })
+}
+
 function deleteNodeFromTree(
   nodes: UnifiedFileNode[],
   nodeId: string,
@@ -238,6 +256,7 @@ interface FileTreeContextValue {
   createFolder: (parentId: string | null, name: string, children?: UnifiedFileNode[]) => string
   createFile: (parentId: string, name: string, extension?: string) => string
   createReferenceFolder: (parentId: string | null, name: string, reference: ReferenceFolderSource) => string
+  toggleManagedZone: (folderId: string) => void
   renameNode: (nodeId: string, newName: string) => void
   deleteNode: (nodeId: string) => void
   /** Analyze impact of moving a node — which shared folders would be affected */
@@ -337,12 +356,8 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
   }, [assetById])
 
   const resolveCollectionAssetIdsFromTree = useCallback((collection: UserCollection): string[] => {
-    if (collection.boundFolderId) {
-      const children = findSubtree(rawTree, collection.boundFolderId)
-      if (children) return collectFileNodes(children).map(n => n.id)
-    }
     return collection.assetIds
-  }, [rawTree])
+  }, [])
 
   const resolveCollectionAssetsFromTree = useCallback((collection: UserCollection): Asset[] => {
     return getAssetsByIdsFromTree(resolveCollectionAssetIdsFromTree(collection))
@@ -413,6 +428,10 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
 
     return id
   }, [activePersona, rawTree, updateTree])
+
+  const toggleManagedZone = useCallback((folderId: string) => {
+    updateTree((prev) => toggleManagedZoneInTree(prev, folderId))
+  }, [updateTree])
 
   const renameNode = useCallback((nodeId: string, newName: string) => {
     updateTree((prev) => renameNodeInTree(prev, nodeId, newName))
@@ -486,6 +505,7 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     createFolder,
     createFile,
     createReferenceFolder,
+    toggleManagedZone,
     renameNode,
     deleteNode,
     getMoveImpact,

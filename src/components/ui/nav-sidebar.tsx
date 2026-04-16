@@ -29,15 +29,12 @@ import {
   Share2,
   type LucideIcon,
 } from 'lucide-react'
-import { useSmartCollections, useFileTree, useAccess, usePersona, useCollections } from '@/hooks'
+import { useSmartCollections, useFileTree, useAccess, usePersona } from '@/hooks'
 import { useUserCollections } from '@/hooks/useUserCollections'
-import { isSmart, isCollection } from '@/lib/collection-types'
-import type { SmartCollectionEntry } from '@/lib/collection-types'
 import { matchesFilter } from '@/lib/smart-collection-filters'
-import type { DomainId, ProductionDomainId } from '@/components/department/types'
-import { domainConfigs } from '@/lib/domain-configs'
-import { DOMAIN_FOLDER_MAP, SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
+import { SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
+import { collectAccessibleWorkspaceRoots, collectSharedFolderIds } from '@/lib/workspace-roots'
 import { cn } from '@/lib/utils'
 import { useToast } from './toast'
 import { Tag } from './tag'
@@ -484,24 +481,14 @@ function FolderNavTree({ nodes, basePath, sharedFolderIds, onAssetDropToFolder }
   )
 }
 
-// Domain info for nav items (production domains only — distribution domains have no workspace)
-const DOMAIN_NAV_ITEMS: { href: string; label: string; id: ProductionDomainId }[] = [
-  { href: '/nextgen/workspace/art-design', label: 'Art & Design', id: 'art-design' },
-  { href: '/nextgen/workspace/camera', label: 'Camera', id: 'camera' },
-  { href: '/nextgen/workspace/editorial', label: 'Editorial', id: 'editorial' },
-  { href: '/nextgen/workspace/vfx', label: 'VFX', id: 'vfx' },
-  { href: '/nextgen/workspace/audio-sound', label: 'Audio & Sound', id: 'audio-sound' },
-]
-
-
-/** Renders a single domain nav item, using files from the shared file tree */
-function DomainNavItem({ item }: { item: typeof DOMAIN_NAV_ITEMS[number] }) {
+function WorkspaceRootNavItem({ root }: { root: WorkspaceFileNode }) {
   const pathname = usePathname()
-  const { getDomainFiles, confirmMove, createFileReference } = useFileTree()
+  const { confirmMove, createFileReference } = useFileTree()
   const { getResourceGrants } = useAccess()
   const { showToast } = useToast()
-  const files = getDomainFiles(item.id) as WorkspaceFileNode[]
+  const files = root.children ?? []
   const hasFolders = files.some((n) => n.type === 'folder')
+  const href = `/nextgen/workspace/${root.id}`
 
   const handleFolderDrop = useCallback((folderId: string, folderName: string, assetIds: string[]) => {
     // Default: create file references (non-destructive)
@@ -524,49 +511,36 @@ function DomainNavItem({ item }: { item: typeof DOMAIN_NAV_ITEMS[number] }) {
     )
   }, [createFileReference, confirmMove, showToast])
 
-  // Folders in this domain with explicit outgoing grants.
-  const sharedFolderIds = useMemo(() => {
-    const ids = new Set<string>()
-    const collect = (nodes: WorkspaceFileNode[]) => {
-      for (const node of nodes) {
-        if (node.type !== 'folder') continue
-        if (getResourceGrants(node.id).some((grant) => grant.templateId !== 'manager')) {
-          ids.add(node.id)
-        }
-        if (node.children) collect(node.children as WorkspaceFileNode[])
-      }
-    }
-    collect(files)
-    return ids
-  }, [files, getResourceGrants])
+  const sharedFolderIds = useMemo(
+    () => collectSharedFolderIds([root], getResourceGrants),
+    [root, getResourceGrants],
+  )
+  const sharedIcon = sharedFolderIds.has(root.id) ? <Share2 className="w-3 h-3 text-foreground-dim" /> : undefined
 
   if (hasFolders) {
     const folders = files.filter(n => n.type === 'folder')
-    const activeFolder = folders.find(f => pathname.startsWith(`${item.href}/${f.id}`))
+    const activeFolder = folders.find(f => pathname.startsWith(`${href}/${f.id}`))
     return (
       <TreeNavLink
-        href={item.href}
-        label={item.label}
+        href={href}
+        label={root.name}
+        trailingIcon={sharedIcon}
         defaultExpanded={false}
         autoExpandOnActiveChild={false}
         collapsedPreview={activeFolder ? (
           <TreeNavLink
-            href={`${item.href}/${activeFolder.id}`}
+            href={`${href}/${activeFolder.id}`}
             label={activeFolder.name}
             indent
           />
         ) : undefined}
       >
-        <FolderNavTree nodes={files} basePath={item.href} sharedFolderIds={sharedFolderIds} onAssetDropToFolder={handleFolderDrop} />
+        <FolderNavTree nodes={files} basePath={href} sharedFolderIds={sharedFolderIds} onAssetDropToFolder={handleFolderDrop} />
       </TreeNavLink>
     )
   }
   return (
-    <NavLink
-      href={item.href}
-      label={item.label}
-      matchSubpaths
-    />
+    <TreeNavLink href={href} label={root.name} trailingIcon={sharedIcon} />
   )
 }
 
@@ -658,28 +632,14 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
   const { visibleCollections: smartCollections, getChildren, scopedAssets } = useSmartCollections()
   const { tree: fileTree } = useFileTree()
   const { sharesReceivedByMe, allProjectShares, canAccess, visibleCollections: userCollections, getCollectionAssetCount } = useAccess()
-  const { activePersona, isAdmin } = usePersona()
-  const { visibleCollections: unifiedCollections } = useCollections()
+  const { isAdmin } = usePersona()
   const { addAssetsToCollection } = useUserCollections()
   const { showToast } = useToast()
-  // Workspace-level folders: top-level folders created by user (exclude domain folders already rendered above)
-  const DOMAIN_FOLDER_IDS = new Set(Object.values(DOMAIN_FOLDER_MAP).map(d => d.id))
-  const workspaceFolders = fileTree.filter((f) => f.type === 'folder' && !DOMAIN_FOLDER_IDS.has(f.id) && f.id !== SHARED_MOUNT_FOLDER_ID) as WorkspaceFileNode[]
-  const accessibleDomains = DOMAIN_NAV_ITEMS.filter((item) => canAccess(DOMAIN_FOLDER_MAP[item.id].id))
-  // Distribution domains don't have workspaces — they receive content via releases/shares
-  const isDistributionDomain = activePersona?.domainId
-    ? domainConfigs[activePersona.domainId]?.kind === 'distribution'
-    : false
-  const showWorkspaceLink = !isDistributionDomain && (accessibleDomains.length > 0 || workspaceFolders.length > 0)
-  const sharedCollectionIds = new Set(
-    (isAdmin ? allProjectShares : sharesReceivedByMe)
-      .filter((entry) => entry.resourceType === 'collection')
-      .map((entry) => entry.resourceId),
-  )
-  const ownedCollections = userCollections.filter((collection) => {
-    if (activePersona) return collection.createdBy === activePersona.email
-    return !sharedCollectionIds.has(collection.id)
-  })
+  const workspaceRoots = useMemo(() => collectAccessibleWorkspaceRoots(
+    fileTree.filter((node): node is WorkspaceFileNode => node.type === 'folder' && node.id !== SHARED_MOUNT_FOLDER_ID),
+    canAccess,
+  ), [fileTree, canAccess])
+  const showWorkspaceLink = workspaceRoots.length > 0
 
   const smartCollectionCounts = useMemo(() => {
     const counts = new Map<string, number>()
@@ -701,30 +661,9 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
           <div className="pt-3" />
           {showWorkspaceLink && (
             <TreeNavLink href="/nextgen/workspace" label="Workspaces" defaultExpanded={true}>
-              {accessibleDomains.map((item) => (
-                <DomainNavItem key={item.href} item={item} />
+              {workspaceRoots.map((root) => (
+                <WorkspaceRootNavItem key={root.id} root={root} />
               ))}
-              {workspaceFolders.map((folder) => {
-                const href = `/nextgen/workspace/${folder.id}`
-                const childFolders = (folder.children ?? []).filter((node) => node.type === 'folder') as WorkspaceFileNode[]
-
-                if (childFolders.length > 0) {
-                  return (
-                    <TreeNavLink key={folder.id} href={href} label={folder.name} defaultExpanded={false}>
-                      <FolderNavTree nodes={childFolders} basePath={href} />
-                    </TreeNavLink>
-                  )
-                }
-
-                return (
-                  <NavLink
-                    key={folder.id}
-                    href={href}
-                    label={folder.name}
-                    matchSubpaths
-                  />
-                )
-              })}
             </TreeNavLink>
           )}
         </div>
@@ -733,7 +672,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
       {/* Collections — owned + smart */}
       <SectionHeader title="Collections" />
       <div className="px-3 space-y-1">
-        {unifiedCollections.filter(isSmart).filter(c => !c.parentId).map((collection) => (
+        {smartCollections.filter(c => !c.parentId).map((collection) => (
           <SmartCollectionNavItem
             key={collection.id}
             collection={collection}
@@ -743,13 +682,10 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
           />
         ))}
         {(() => {
-          const seen = new Set<string>(unifiedCollections.filter(isSmart).map(c => c.id))
+          const seen = new Set<string>(smartCollections.map(c => c.id))
           const items: { id: string; name: string; count: number }[] = []
-          for (const c of unifiedCollections.filter(isCollection)) {
+          for (const c of userCollections) {
             if (seen.has(c.id)) continue
-            const isOwned = !activePersona || c.createdBy === activePersona.email
-            const isDomain = 'boundDomainId' in c && c.boundDomainId === activePersona?.domainId
-            if (!isOwned && !isDomain && !isAdmin) continue
             seen.add(c.id)
             items.push({ id: c.id, name: c.name, count: getCollectionAssetCount(c.id).accessible })
           }
@@ -790,11 +726,9 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
 
       {/* Shared with me */}
       {(() => {
-        const smartIds = new Set(unifiedCollections.filter(isSmart).map(c => c.id))
+        const smartIds = new Set(smartCollections.map(c => c.id))
         const ownedIds = new Set(
-          unifiedCollections.filter(isCollection)
-            .filter(c => (!activePersona || c.createdBy === activePersona.email) || ('boundDomainId' in c && c.boundDomainId === activePersona?.domainId))
-            .map(c => c.id)
+          userCollections.map((collection) => collection.id)
         )
         const seen = new Set([...Array.from(smartIds), ...Array.from(ownedIds)])
         const shares = isAdmin ? allProjectShares : sharesReceivedByMe

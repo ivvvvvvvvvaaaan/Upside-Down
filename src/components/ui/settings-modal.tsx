@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
-import { Search, ChevronDown, ChevronRight, Plus, X, Info, RefreshCw, Shield, Lock, Unlock, FileText, ArrowRightLeft, Archive } from 'lucide-react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
+import { Search, ChevronDown, ChevronRight, Plus, X, Info, Shield, Lock, Unlock, FileText, ArrowRightLeft, Archive } from 'lucide-react'
 import { Facepile } from './facepile'
 import { Modal } from './modal'
 import { Button } from './button'
 import { Input } from './input'
 import { MenuSelect } from './menu-select'
-import { RoleSelect } from './role-select'
 import { Avatar } from './avatar'
+import { AccessSummary } from './access-summary'
 import { DepartmentAvatar } from './department-avatar'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import { useAccess, usePersona } from '@/hooks'
@@ -17,13 +17,20 @@ import { useToast } from './toast'
 import { cn } from '@/lib/utils'
 import { PERSONAS, DIRECTORY_UPDATED_EVENT } from '@/lib/personas'
 import type { User } from '@/lib/personas'
-import { TEAMS, addUserToTeam, removeUserFromTeam, createTeam } from '@/lib/teams'
-import { PROJECT_RESOURCE, profileLabel, isGrantActive, roleGroupOptions } from '@/lib/grants'
-import type { Permission, RoleGroup, Grant, AccessProfileId, PrincipalRef, ResourceRef } from '@/lib/grants'
+import {
+  TEAMS,
+  addTeamManager,
+  addUserToTeam,
+  createTeam,
+  isUserTeamManager,
+  removeTeamManager,
+  removeUserFromTeam,
+} from '@/lib/teams'
+import { PROJECT_RESOURCE, isGrantActive } from '@/lib/grants'
+import type { Permission, RoleGroup, Grant, ResourceRef } from '@/lib/grants'
 import type { DomainId, ProductionDomainId } from '@/components/department/types'
 import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
-import { domainConfigs } from '@/lib/domain-configs'
-import type { DiscoveryResourceType, UserAccessSummary, DepartmentCollectionInfo } from '@/hooks/useAccess'
+import type { DiscoveryResourceType, UserAccessSummary } from '@/hooks/useAccess'
 import type { AuditEvent, AuditEventType } from '@/lib/audit-log'
 
 const ALL_PERMISSIONS: { id: Permission; name: string }[] = [
@@ -81,9 +88,9 @@ function toDisplayNameFromEmail(email: string): string {
     .join(' ')
 }
 
-function toPersonaId(domainId: DomainId, email: string): string {
+function toPersonaId(scopeId: string, email: string): string {
   const localPart = email.split('@')[0].replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase()
-  const base = `${domainId}-${localPart || 'member'}`
+  const base = `${scopeId}-${localPart || 'member'}`
   let nextId = base
   let index = 2
   while (PERSONAS.some((persona) => persona.id === nextId)) {
@@ -92,51 +99,30 @@ function toPersonaId(domainId: DomainId, email: string): string {
   return nextId
 }
 
-function addOrMoveDomainMember(domainId: DomainId, teamId: string, email: string): User | null {
+function addUserToWorkspaceTeam(teamId: string, email: string): User | null {
   const normalizedEmail = email.trim().toLowerCase()
   if (!normalizedEmail) return null
 
-  const domainTeamIds = new Set(
-    TEAMS.filter((team) => team.domainId).map((team) => team.id),
-  )
+  const team = TEAMS.find((candidate) => candidate.id === teamId && candidate.kind === 'group')
+  if (!team) return null
 
   let persona = PERSONAS.find((candidate) => candidate.email.toLowerCase() === normalizedEmail)
 
   if (!persona) {
     persona = {
-      id: toPersonaId(domainId, normalizedEmail),
+      id: toPersonaId(team.domainId ?? team.id, normalizedEmail),
       name: toDisplayNameFromEmail(normalizedEmail),
       email: normalizedEmail,
       role: 'artist',
-      title: `${DOMAIN_FOLDER_MAP[domainId]?.name ?? domainConfigs[domainId]?.name ?? domainId} Artist`,
-      domainId,
-      teamIds: [teamId],
+      title: `${team.name} Artist`,
+      domainId: undefined,
+      teamIds: [],
     }
     PERSONAS.push(persona)
-  } else {
-    persona.domainId = domainId
-    if (persona.role !== 'manager' && persona.role !== 'artist') {
-      persona.role = 'artist'
-    }
-    persona.teamIds = Array.from(new Set([
-      ...persona.teamIds.filter((id) => !domainTeamIds.has(id)),
-      teamId,
-    ]))
   }
 
-  for (const team of TEAMS) {
-    if (!team.domainId) continue
-    if (team.id === teamId) {
-      if (!team.memberUserIds.includes(persona.id)) {
-        team.memberUserIds.push(persona.id)
-      }
-      continue
-    }
-    team.memberUserIds = team.memberUserIds.filter((memberId) => memberId !== persona.id)
-  }
-
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event(DIRECTORY_UPDATED_EVENT))
+  if (!team.memberUserIds.includes(persona.id)) {
+    addUserToTeam(persona.id, teamId)
   }
 
   return persona
@@ -151,6 +137,7 @@ function removePersonFromDirectory(userId: string): User | null {
 
   for (const team of TEAMS) {
     team.memberUserIds = team.memberUserIds.filter((memberId) => memberId !== userId)
+    team.managerUserIds = team.managerUserIds.filter((managerId) => managerId !== userId)
   }
 
   if (typeof window !== 'undefined') {
@@ -160,37 +147,24 @@ function removePersonFromDirectory(userId: string): User | null {
   return persona
 }
 
-function removeDomainMember(domainId: DomainId, teamId: string, userId: string): User | null {
+function removeWorkspaceMember(teamId: string, userId: string): User | null {
   const persona = PERSONAS.find((candidate) => candidate.id === userId)
   if (!persona) return null
 
-  const team = TEAMS.find((candidate) => candidate.id === teamId)
-  if (team) {
-    team.memberUserIds = team.memberUserIds.filter((memberId) => memberId !== userId)
-  }
-
-  persona.teamIds = persona.teamIds.filter((id) => id !== teamId)
-
-  if (persona.domainId === domainId) {
-    const nextDomainTeam = TEAMS.find(
-      (candidate) => candidate.domainId && persona.teamIds.includes(candidate.id),
-    )
-    persona.domainId = nextDomainTeam?.domainId
-  }
-
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event(DIRECTORY_UPDATED_EVENT))
-  }
-
-  return persona
+  return removeUserFromTeam(userId, teamId) ? persona : null
 }
 
-type PendingDomainInvite = {
+type PendingWorkspaceInvite = {
   id: string
   email: string
-  domainId: DomainId
   teamId: string
   displayName: string
+}
+
+function getSoleManagedTeams(userId: string) {
+  return TEAMS.filter(
+    (team) => team.managerUserIds.includes(userId) && team.managerUserIds.length === 1,
+  )
 }
 
 // --- People tab ---
@@ -210,12 +184,12 @@ function PersonAccessDetail({
 
   return (
     <div className="bg-surface-mid rounded px-3 py-2 ml-8 mr-2 mb-1 space-y-2">
-      {summary.departmentAssets.length > 0 && (
+      {summary.workspaceRoots.length > 0 && (
         <div>
-          <p className="text-label-0-bold text-foreground-dim uppercase mb-1">Department</p>
-          {summary.departmentAssets.map((d) => (
-            <p key={d.domainId} className="text-body-0-regular text-foreground">
-              {d.domainName} workspace — {d.count} assets
+          <p className="text-label-0-bold text-foreground-dim uppercase mb-1">Workspaces</p>
+          {summary.workspaceRoots.map((root) => (
+            <p key={root.folderId} className="text-body-0-regular text-foreground">
+              {root.folderName} root — {root.count} assets
             </p>
           ))}
         </div>
@@ -328,14 +302,19 @@ function PeopleTab({
     }
 
     return PERSONAS
-      .filter((persona) => persona.domainId || stats.has(persona.id))
+      .filter((persona) => persona.teamIds.length > 0 || stats.has(persona.id))
       .map((persona) => {
         const involvement = stats.get(persona.id) ?? { received: 0, shared: 0, directGrantCount: 0, teamCount: 0 }
+        const workspaceMemberships = TEAMS.filter((team) => team.rootFolderId && team.memberUserIds.includes(persona.id))
         const teamCount = TEAMS.filter((team) => team.memberUserIds.includes(persona.id)).length
-        const primaryLabel = persona.domainId
-          ? `${domainConfigs[persona.domainId]?.name ?? persona.domainId} member`
+        const primaryLabel = workspaceMemberships.length > 1
+          ? `${workspaceMemberships.length} workspaces`
+          : workspaceMemberships.length === 1
+          ? `${workspaceMemberships[0].name} workspace`
           : persona.role === 'vendor'
           ? 'External participant'
+          : persona.teamIds.length > 0
+          ? 'Team member'
           : 'Shared participant'
         const activityParts = [
           involvement.received > 0 ? `${involvement.received} received` : null,
@@ -348,25 +327,20 @@ function PeopleTab({
           activityLabel: activityParts.length > 0 ? activityParts.join(' · ') : 'No active shares',
           directGrantCount: involvement.directGrantCount,
           teamCount,
-          canRemove: persona.id !== activeUserId && (Boolean(persona.domainId) || involvement.directGrantCount > 0 || teamCount > 0),
+          canRemove: persona.id !== activeUserId && (persona.teamIds.length > 0 || involvement.directGrantCount > 0 || teamCount > 0),
         }
       })
-      .sort((a, b) => {
-        const aDom = a.domainId ? 0 : 1
-        const bDom = b.domainId ? 0 : 1
-        if (aDom !== bDom) return aDom - bDom
-        return a.name.localeCompare(b.name)
-      })
+      .sort((a, b) => a.name.localeCompare(b.name))
   }, [grants, policyResourceIds, directoryVersion, activeUserId])
 
   return (
     <div className="space-y-3">
       <p className="text-body-0-regular text-foreground-dim">
-        People appear here because they belong to a department or are involved through explicit shares. Add new working users from the Departments tab, and use share controls on assets or collections for ad hoc access.
+        People appear here because they belong to a workspace or team, or are involved through explicit shares. Add new working users from the Workspaces tab, and use share controls on assets or collections for ad hoc access.
       </p>
       {canRemoveParticipants && (
         <p className="text-label-0-regular text-foreground-dim">
-          Project admins can remove a person here to remove their direct shares and remove them from department and team membership.
+          Project admins can remove a person here to remove their direct shares and remove them from workspace and team membership.
         </p>
       )}
 
@@ -519,105 +493,36 @@ function DiscoverySection({
   )
 }
 
-// --- External collections section (Phase 5) ---
+// --- Workspaces tab ---
 
-function ExternalCollectionsSection({
-  domainId,
-  getExternalCollections,
-  onPullAssets,
-}: {
-  domainId: DomainId
-  getExternalCollections: (domainId: DomainId) => DepartmentCollectionInfo[]
-  onPullAssets: (collectionName: string) => void
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const externalCollections = useMemo(() => getExternalCollections(domainId), [getExternalCollections, domainId])
-
-  if (externalCollections.length === 0) return null
-
-  return (
-    <div className="mt-2 pt-2 border-t border-border-dim">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 w-full text-left py-1"
-      >
-        {isOpen ? (
-          <ChevronDown className="w-3 h-3 text-foreground-dim" />
-        ) : (
-          <ChevronRight className="w-3 h-3 text-foreground-dim" />
-        )}
-        <span className="text-label-0-bold text-foreground-dim uppercase">
-          External collections ({externalCollections.length})
-        </span>
-      </button>
-      {isOpen && (
-        <div className="space-y-1 mt-1">
-          {externalCollections.map((col) => (
-            <div key={col.collectionId} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded hover:bg-surface-3/40">
-              <div className="min-w-0 flex-1">
-                <span className="text-body-0-regular text-foreground truncate block">{col.collectionName}</span>
-                <span className="text-label-0-regular text-foreground-dim block">
-                  by {col.createdBy} · shared with {col.sharedWithCount} · {col.departmentAssetCount} dept assets
-                </span>
-              </div>
-              <Button
-                variant="secondary"
-                compact
-                onClick={() => onPullAssets(col.collectionName)}
-              >
-                Remove assets
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// --- Domains tab ---
-
-function DomainsTab({
-  roleGroups,
-  getResourceGrants,
-  onRoleChange,
-  onAddGrant,
-  onRemoveGrant,
-  canShareResource,
-  canEditResource,
+function WorkspaceRootsTab({
   pendingInvites,
   inviteEmail,
   onInviteEmailChange,
-  selectedDomainId,
-  onSelectedDomainChange,
+  selectedTeamId,
+  onSelectedTeamChange,
   onStageInvite,
   onRemovePendingInvite,
-  onRemoveDomainMember,
-  getExternalCollections,
-  onPullAssets,
-  readOnly = false,
+  onRemoveWorkspaceMember,
+  onPromoteManager,
+  onDemoteManager,
+  canManageTeamMembers,
+  canManageTeamManagers,
 }: {
-  roleGroups: RoleGroup[]
-  getResourceGrants: (resourceId: string) => Grant[]
-  onRoleChange: (grantId: string, profileId: AccessProfileId) => void
-  onAddGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId) => void
-  onRemoveGrant: (grantId: string) => void
-  canShareResource: (resource: ResourceRef) => boolean
-  canEditResource: (resource: ResourceRef) => boolean
-  pendingInvites: PendingDomainInvite[]
+  pendingInvites: PendingWorkspaceInvite[]
   inviteEmail: string
   onInviteEmailChange: (value: string) => void
-  selectedDomainId: DomainId
-  onSelectedDomainChange: (domainId: DomainId) => void
+  selectedTeamId: string
+  onSelectedTeamChange: (teamId: string) => void
   onStageInvite: () => boolean
   onRemovePendingInvite: (inviteId: string) => void
-  onRemoveDomainMember: (domainId: DomainId, teamId: string, userId: string) => void
-  getExternalCollections: (domainId: DomainId) => DepartmentCollectionInfo[]
-  onPullAssets: (collectionName: string) => void
-  readOnly?: boolean
+  onRemoveWorkspaceMember: (teamId: string, userId: string) => void
+  onPromoteManager: (teamId: string, userId: string) => void
+  onDemoteManager: (teamId: string, userId: string) => void
+  canManageTeamMembers: (teamId: string) => boolean
+  canManageTeamManagers: (teamId: string) => boolean
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [editingOverrides, setEditingOverrides] = useState<Set<string>>(new Set())
 
   const toggle = (id: string) => {
     setExpanded(prev => {
@@ -628,39 +533,56 @@ function DomainsTab({
     })
   }
 
-  const options = useMemo(() => roleGroupOptions(roleGroups), [roleGroups])
-  const domains = useMemo(
-    () => (Object.keys(DOMAIN_FOLDER_MAP) as ProductionDomainId[]).map((domainId) => ({
-      domainId,
-      folder: DOMAIN_FOLDER_MAP[domainId],
-      team: TEAMS.find((candidate) => candidate.domainId === domainId),
-    })),
+  const workspaceTeams = useMemo(
+    () => TEAMS
+      .filter((team) => team.kind === 'group' && team.rootFolderId)
+      .sort((a, b) => a.name.localeCompare(b.name)),
     [],
   )
-  const domainOptions = useMemo(
-    () => domains.map(({ domainId, folder }) => ({ value: domainId, label: folder.name })),
-    [domains],
+  const manageableWorkspaceTeams = useMemo(
+    () => workspaceTeams.filter((team) => canManageTeamMembers(team.id)),
+    [workspaceTeams, canManageTeamMembers],
   )
-  const pendingByDomain = useMemo(() => {
-    const map = new Map<DomainId, PendingDomainInvite[]>()
+  const teamOptions = useMemo(
+    () => manageableWorkspaceTeams.map((team) => ({ value: team.id, label: team.name })),
+    [manageableWorkspaceTeams],
+  )
+  const pendingByTeam = useMemo(() => {
+    const map = new Map<string, PendingWorkspaceInvite[]>()
     for (const invite of pendingInvites) {
-      const existing = map.get(invite.domainId) ?? []
+      const existing = map.get(invite.teamId) ?? []
       existing.push(invite)
-      map.set(invite.domainId, existing)
+      map.set(invite.teamId, existing)
     }
     return map
   }, [pendingInvites])
-  const canStageInvite = inviteEmail.trim().length > 0
+  const selectedInviteTeamId = teamOptions.some((team) => team.value === selectedTeamId)
+    ? selectedTeamId
+    : (teamOptions[0]?.value ?? '')
+  const canStageInvite = teamOptions.length > 0 && inviteEmail.trim().length > 0
+
+  useEffect(() => {
+    if (teamOptions.length === 0 || teamOptions.some((team) => team.value === selectedTeamId)) return
+    onSelectedTeamChange(teamOptions[0]!.value)
+  }, [onSelectedTeamChange, selectedTeamId, teamOptions])
+
+  if (workspaceTeams.length === 0) {
+    return (
+      <p className="text-body-0-regular text-foreground-dim">
+        No workspace roots are configured.
+      </p>
+    )
+  }
 
   return (
     <div className="space-y-3">
       <p className="text-body-0-regular text-foreground-dim">
-        Departments own content. Members get workspace access automatically based on the role set here.
+        Workspace access comes from root-folder groups. Members inherit access from the folder grants configured here.
       </p>
-      {!readOnly && (
+      {teamOptions.length > 0 ? (
         <div className="space-y-2">
           <p className="text-body-0-regular text-foreground-dim">
-            Queue someone into a department, then confirm with Update Access in the footer.
+            Queue someone into a workspace root, then confirm with Update Access in the footer.
           </p>
           <div className="flex items-start gap-2">
             <Input
@@ -673,16 +595,16 @@ function DomainsTab({
                 if (e.key !== 'Enter') return
                 e.preventDefault()
                 if (onStageInvite()) {
-                  setExpanded((prev) => new Set(prev).add(selectedDomainId))
+                  setExpanded((prev) => new Set(prev).add(selectedInviteTeamId))
                 }
               }}
               placeholder="Add by email..."
             />
             <MenuSelect
               className="w-48 flex-shrink-0"
-              options={domainOptions}
-              value={selectedDomainId}
-              onChange={(value) => onSelectedDomainChange(value as DomainId)}
+              options={teamOptions}
+              value={selectedInviteTeamId}
+              onChange={(value) => onSelectedTeamChange(value as string)}
               size="standard"
               align="start"
               width="sm"
@@ -691,7 +613,7 @@ function DomainsTab({
               variant="secondary"
               onClick={() => {
                 if (onStageInvite()) {
-                  setExpanded((prev) => new Set(prev).add(selectedDomainId))
+                  setExpanded((prev) => new Set(prev).add(selectedInviteTeamId))
                 }
               }}
               disabled={!canStageInvite}
@@ -701,41 +623,39 @@ function DomainsTab({
             </Button>
           </div>
         </div>
+      ) : (
+        <p className="text-body-0-regular text-foreground-dim">
+          Group managers staff workspace membership. You can still review folder access below.
+        </p>
       )}
 
       <div className="space-y-1">
-        {domains.map(({ domainId, folder, team }) => {
-          const isOpen = expanded.has(domainId)
-          const members = (team?.memberUserIds ?? [])
+        {workspaceTeams.map((team) => {
+          const isOpen = expanded.has(team.id)
+          const members = team.memberUserIds
             .map(uid => PERSONAS.find(p => p.id === uid))
-            .filter(Boolean)
-          const pendingMembers = pendingByDomain.get(domainId) ?? []
-          const resourceRef: ResourceRef = { id: folder.id, type: 'folder', domainId }
-          const rootGrants = getResourceGrants(resourceRef.id)
-          const grant = team
-            ? rootGrants.find(g => g.principal.type === 'team' && g.principal.teamId === team.id)
-            : undefined
-          const canShareDomain = canShareResource(resourceRef)
-          const canEditDomain = canEditResource(resourceRef)
-          const noDefaultAccessValue = '__no_default_access__'
-          const defaultRoleValue = grant?.templateId ?? noDefaultAccessValue
-          const defaultMemberLabel = grant?.templateId
-            ? profileLabel(grant.templateId, roleGroups)
-            : 'No default access'
+            .filter(Boolean) as User[]
+          const pendingMembers = pendingByTeam.get(team.id) ?? []
+          const managerIds = new Set(team.managerUserIds)
+          const canManageMembers = canManageTeamMembers(team.id)
+          const canManageManagers = canManageTeamManagers(team.id)
+          const resourceRef: ResourceRef = { id: team.rootFolderId!, type: 'folder', domainId: team.domainId }
 
           return (
-            <div key={domainId} className={cn('rounded-lg transition-colors', isOpen && 'bg-surface-3/40')}>
+            <div key={team.id} className={cn('rounded-lg transition-colors', isOpen && 'bg-surface-3/40')}>
               <div className={cn('flex items-center justify-between gap-2 py-2 px-2 rounded-lg transition-colors', !isOpen && 'hover:bg-surface-3/40')}>
                 <button
-                  onClick={() => toggle(domainId)}
+                  onClick={() => toggle(team.id)}
                   className="flex items-center gap-2 min-w-0 flex-1"
                 >
                   <ChevronDown className={cn('w-3.5 h-3.5 text-foreground-dim transition-transform flex-shrink-0', !isOpen && '-rotate-90')} />
-                  <DepartmentAvatar domainId={domainId} size="sm" />
+                  <DepartmentAvatar domainId={team.domainId} size="sm" />
                   <div className="min-w-0 flex-1 text-left">
-                    <span className="text-body-0-bold text-foreground truncate block">{folder.name}</span>
+                    <span className="text-body-0-bold text-foreground truncate block">{team.name}</span>
                     <span className="text-label-0-regular text-foreground-dim block">
                       {members.length} {members.length === 1 ? 'member' : 'members'}
+                      {' · '}
+                      {team.managerUserIds.length} {team.managerUserIds.length === 1 ? 'manager' : 'managers'}
                       {pendingMembers.length > 0 ? ` · ${pendingMembers.length} pending` : ''}
                     </span>
                   </div>
@@ -747,37 +667,12 @@ function DomainsTab({
                     />
                   )}
                 </button>
-                {team ? (
-                  <RoleSelect
-                    options={[{ value: noDefaultAccessValue, label: 'No default access' }, ...options]}
-                    value={defaultRoleValue}
-                    disabled={readOnly || (grant ? !canEditDomain : !canShareDomain)}
-                    onChange={(value) => {
-                      if (value === noDefaultAccessValue) {
-                        if (grant) onRemoveGrant(grant.id)
-                        return
-                      }
-
-                      if (grant) {
-                        onRoleChange(grant.id, value as AccessProfileId)
-                        return
-                      }
-
-                      onAddGrant(
-                        resourceRef,
-                        { type: 'team', teamId: team.id },
-                        value as AccessProfileId,
-                      )
-                    }}
-                  />
-                ) : (
-                  <span className="text-label-0-regular text-foreground-dim flex-shrink-0">
-                    No default access
-                  </span>
-                )}
+                <span className="text-label-0-regular text-foreground-dim flex-shrink-0">
+                  Root folder
+                </span>
               </div>
               {isOpen && (
-                <div className="px-2 pb-2">
+                <div className="px-2 pb-2 space-y-3">
                   {pendingMembers.map((invite) => (
                     <div key={invite.id} className="flex items-center gap-2 py-1.5 pl-2 pr-0 rounded">
                       <Avatar name={invite.displayName} size="sm" />
@@ -787,123 +682,76 @@ function DomainsTab({
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <span className="text-label-0-regular text-foreground-dim">New user</span>
-                        <Button
-                          variant="secondary"
-                          compact
-                          onClick={() => onRemovePendingInvite(invite.id)}
-                          aria-label={`Remove pending addition for ${invite.displayName}`}
-                        >
-                          Remove
-                        </Button>
+                        {canManageMembers && (
+                          <Button
+                            variant="secondary"
+                            compact
+                            onClick={() => onRemovePendingInvite(invite.id)}
+                            aria-label={`Remove pending addition for ${invite.displayName}`}
+                          >
+                            Remove
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
-                  {members.filter(Boolean).map((persona) => persona && (
-                    (() => {
-                      const overrideGrant = rootGrants.find(
-                        (candidate) => candidate.principal.type === 'user' && candidate.principal.userId === persona.id,
-                      )
-                      const overrideKey = `${domainId}:${persona.id}`
-                      const isEditingOverride = editingOverrides.has(overrideKey)
-                      const memberValue = overrideGrant?.templateId ?? noDefaultAccessValue
-                      const displayedMemberLabel = overrideGrant?.templateId
-                        ? profileLabel(overrideGrant.templateId, roleGroups)
-                        : defaultMemberLabel
-                      const removeAccessValue = '__remove_domain_access__'
-                      const overrideOptions = [
-                        ...(overrideGrant ? options : [{ value: noDefaultAccessValue, label: displayedMemberLabel }]),
-                        ...options,
-                        {
-                          value: removeAccessValue,
-                          label: 'Remove Access',
-                          destructive: true,
-                          separated: true,
-                        },
-                      ]
+                  {members.map((persona) => {
+                    const isManager = managerIds.has(persona.id)
+                    const canRemoveMember = canManageMembers && (!isManager || canManageManagers)
 
-                      return (
-                        <div key={persona.id} className="flex items-center gap-2 py-1.5 pl-2 pr-0 rounded">
-                          <Avatar name={persona.name} size="sm" />
-                          <div className="min-w-0 flex-1">
-                            <span className="text-body-0-regular text-foreground truncate block">{persona.name}</span>
-                            <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
-                          </div>
-                          {isEditingOverride ? (
-                            <div className="flex items-center flex-shrink-0">
-                              <MenuSelect
-                                options={overrideOptions}
-                                value={memberValue}
-                                size="compact"
-                                width="sm"
-                                align="end"
-                                disabled={readOnly || (overrideGrant ? !canEditDomain : !canShareDomain)}
-                                onChange={(value) => {
-                                  if (value === noDefaultAccessValue) {
-                                    setEditingOverrides((prev) => {
-                                      const next = new Set(prev)
-                                      next.delete(overrideKey)
-                                      return next
-                                    })
-                                    return
-                                  }
-
-                                  if (value === removeAccessValue) {
-                                    if (overrideGrant) onRemoveGrant(overrideGrant.id)
-                                    onRemoveDomainMember(domainId, team!.id, persona.id)
-                                    setEditingOverrides((prev) => {
-                                      const next = new Set(prev)
-                                      next.delete(overrideKey)
-                                      return next
-                                    })
-                                    return
-                                  }
-
-                                  if (overrideGrant) {
-                                    onRoleChange(overrideGrant.id, value as AccessProfileId)
-                                  } else {
-                                    onAddGrant(
-                                      resourceRef,
-                                      { type: 'user', userId: persona.id },
-                                      value as AccessProfileId,
-                                    )
-                                  }
-
-                                  setEditingOverrides((prev) => {
-                                    const next = new Set(prev)
-                                    next.delete(overrideKey)
-                                    return next
-                                  })
-                                }}
-                              />
-                            </div>
-                          ) : (
-                            <div className="flex items-center flex-shrink-0">
-                              {!readOnly && canShareDomain && (
-                                <Button
-                                  variant="secondary"
-                                  compact
-                                  icon={<RefreshCw className="w-3 h-3" />}
-                                  onClick={() => {
-                                    setEditingOverrides((prev) => new Set(prev).add(overrideKey))
-                                  }}
-                                >
-                                  Override
-                                </Button>
-                              )}
-                            </div>
+                    return (
+                      <div key={persona.id} className="flex items-center gap-2 py-1.5 pl-2 pr-0 rounded">
+                        <Avatar name={persona.name} size="sm" />
+                        <div className="min-w-0 flex-1">
+                          <span className="text-body-0-regular text-foreground truncate block">{persona.name}</span>
+                          <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {isManager && (
+                            <span className="text-label-0-bold text-foreground-dim">Manager</span>
+                          )}
+                          {canManageManagers && (
+                            isManager ? (
+                              <Button
+                                variant="secondary"
+                                compact
+                                onClick={() => onDemoteManager(team.id, persona.id)}
+                              >
+                                Demote
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="secondary"
+                                compact
+                                onClick={() => onPromoteManager(team.id, persona.id)}
+                              >
+                                Make manager
+                              </Button>
+                            )
+                          )}
+                          {canRemoveMember && (
+                            <Button
+                              variant="secondary"
+                              compact
+                              onClick={() => onRemoveWorkspaceMember(team.id, persona.id)}
+                            >
+                              Remove
+                            </Button>
                           )}
                         </div>
-                      )
-                    })()
-                  ))}
+                      </div>
+                    )
+                  })}
                   {members.length === 0 && (
                     <p className="text-label-0-regular text-foreground-dim py-2 px-2 text-center">No members yet.</p>
                   )}
-                  <ExternalCollectionsSection
-                    domainId={domainId}
-                    getExternalCollections={getExternalCollections}
-                    onPullAssets={onPullAssets}
-                  />
+                  <div className="rounded-lg border border-border-dim px-3 py-3">
+                    <AccessSummary
+                      resourceId={resourceRef.id}
+                      resourceRef={resourceRef}
+                      resourceName={team.name}
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -936,7 +784,7 @@ function RoleGroupsTab({
   return (
     <div className="space-y-4">
       <p className="text-body-0-regular text-foreground-dim">
-        Role groups define what actions users can take. Assign a role group to a person or domain to grant capabilities.
+        Role groups define what actions users can take. Assign a role group to a person, team, or release audience to grant capabilities.
       </p>
 
       <div className="overflow-x-auto">
@@ -1347,7 +1195,13 @@ function AuditLogTab({
 
 // --- Teams tab ---
 
-function TeamsTab({ canManage }: { canManage: boolean }) {
+function TeamsTab({
+  activeUserId,
+  canManageProject,
+}: {
+  activeUserId?: string
+  canManageProject: boolean
+}) {
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [addMemberQuery, setAddMemberQuery] = useState('')
@@ -1356,7 +1210,7 @@ function TeamsTab({ canManage }: { canManage: boolean }) {
   const { showToast } = useToast()
 
   const manageableTeams = useMemo(() => {
-    return TEAMS.filter(t => t.kind === 'team')
+    return TEAMS.filter((team) => team.kind === 'group' && !team.rootFolderId)
   }, [version])
   const filteredTeams = useMemo(() => {
     if (!searchQuery.trim()) return manageableTeams
@@ -1369,6 +1223,9 @@ function TeamsTab({ canManage }: { canManage: boolean }) {
       })
     )
   }, [searchQuery, manageableTeams])
+  const canManageMembers = useCallback((teamId: string) => (
+    canManageProject || (!!activeUserId && isUserTeamManager(activeUserId, teamId))
+  ), [activeUserId, canManageProject])
 
   const handleAddMember = (teamId: string, userId: string) => {
     if (addUserToTeam(userId, teamId)) {
@@ -1381,14 +1238,47 @@ function TeamsTab({ canManage }: { canManage: boolean }) {
   }
 
   const handleRemoveMember = (teamId: string, userId: string) => {
-    if (removeUserFromTeam(userId, teamId)) {
-      setVersion(v => v + 1)
+    const team = TEAMS.find((candidate) => candidate.id === teamId)
+    if (!removeUserFromTeam(userId, teamId)) {
+      const blockedTeams = team ? getSoleManagedTeams(userId).filter((candidate) => candidate.id === team.id) : []
+      if (blockedTeams.length > 0) {
+        showToast(`Assign another manager for ${blockedTeams[0]!.name} before removing this member.`)
+      }
+      return
     }
+    setVersion(v => v + 1)
+  }
+
+  const handlePromoteManager = (teamId: string, userId: string) => {
+    if (addTeamManager(userId, teamId)) {
+      const persona = PERSONAS.find((candidate) => candidate.id === userId)
+      const team = TEAMS.find((candidate) => candidate.id === teamId)
+      showToast(`${persona?.name ?? 'Member'} can now manage ${team?.name ?? 'this group'}`)
+      setVersion((v) => v + 1)
+    }
+  }
+
+  const handleDemoteManager = (teamId: string, userId: string) => {
+    const team = TEAMS.find((candidate) => candidate.id === teamId)
+    if (!removeTeamManager(userId, teamId)) {
+      if (team) {
+        showToast(`Assign another manager for ${team.name} before demoting this person.`)
+      }
+      return
+    }
+    const persona = PERSONAS.find((candidate) => candidate.id === userId)
+    showToast(`${persona?.name ?? 'Member'} no longer manages ${team?.name ?? 'this group'}`)
+    setVersion((v) => v + 1)
   }
 
   const handleCreateTeam = () => {
     if (!newTeamName.trim()) return
-    createTeam(newTeamName.trim())
+    if (!activeUserId) {
+      showToast('Switch into a project persona before creating a group.')
+      return
+    }
+    const managerIds = activeUserId ? [activeUserId] : []
+    createTeam(newTeamName.trim(), managerIds, 'group', managerIds)
     showToast(`Created team "${newTeamName.trim()}"`)
     setNewTeamName('')
     setVersion(v => v + 1)
@@ -1412,7 +1302,9 @@ function TeamsTab({ canManage }: { canManage: boolean }) {
           const members = team.memberUserIds
             .map(uid => PERSONAS.find(u => u.id === uid))
             .filter(Boolean) as User[]
-          const addCandidates = addMemberQuery.trim() && isExpanded
+          const managers = new Set(team.managerUserIds)
+          const teamCanManageMembers = canManageMembers(team.id)
+          const addCandidates = addMemberQuery.trim() && isExpanded && teamCanManageMembers
             ? PERSONAS.filter(p =>
                 !team.memberUserIds.includes(p.id) &&
                 (p.name.toLowerCase().includes(addMemberQuery.toLowerCase()) ||
@@ -1431,6 +1323,8 @@ function TeamsTab({ canManage }: { canManage: boolean }) {
                 </div>
                 <span className="text-label-0-regular text-foreground-dim flex-shrink-0">
                   {members.length} {members.length === 1 ? 'member' : 'members'}
+                  {' · '}
+                  {team.managerUserIds.length} {team.managerUserIds.length === 1 ? 'manager' : 'managers'}
                 </span>
               </button>
               {isExpanded && (
@@ -1445,8 +1339,28 @@ function TeamsTab({ canManage }: { canManage: boolean }) {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
+                        {managers.has(member.id) && (
+                          <span className="text-label-0-bold text-foreground-dim">Manager</span>
+                        )}
                         {member.title && <span className="text-label-0-regular text-foreground-dim">{member.title}</span>}
-                        {canManage && (
+                        {canManageProject && (
+                          managers.has(member.id) ? (
+                            <button
+                              onClick={() => handleDemoteManager(team.id, member.id)}
+                              className="text-label-0-regular text-foreground-dim hover:text-foreground transition-colors"
+                            >
+                              Demote
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handlePromoteManager(team.id, member.id)}
+                              className="text-label-0-regular text-foreground-dim hover:text-foreground transition-colors"
+                            >
+                              Make manager
+                            </button>
+                          )
+                        )}
+                        {teamCanManageMembers && (!managers.has(member.id) || canManageProject) && (
                           <button
                             onClick={() => handleRemoveMember(team.id, member.id)}
                             className="text-label-0-regular text-foreground-dim hover:text-foreground-system-error transition-colors"
@@ -1460,7 +1374,7 @@ function TeamsTab({ canManage }: { canManage: boolean }) {
                   {members.length === 0 && (
                     <p className="text-body-0-regular text-foreground-dim py-1">No members</p>
                   )}
-                  {canManage && (
+                  {teamCanManageMembers && (
                     <div className="pt-1">
                       <input
                         type="text"
@@ -1495,7 +1409,7 @@ function TeamsTab({ canManage }: { canManage: boolean }) {
           <p className="text-body-0-regular text-foreground-dim py-4 text-center">No teams match your search.</p>
         )}
       </div>
-      {canManage && (
+      {canManageProject && (
         <div className="flex items-center gap-2">
           <input
             type="text"
@@ -1529,10 +1443,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     renameRoleGroup,
     addRoleGroup,
     removeRoleGroup,
-    getResourceGrants,
-    createGrant,
-    updateGrantProfile,
-    revokeGrant,
     revokeUserAccess,
     canShare,
     canEditAcl,
@@ -1544,32 +1454,44 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     projectLockInfo,
     lockProject,
     unlockProject,
-    getCollectionsContainingDepartmentAssets,
     getAuditLog,
   } = useAccess()
   const { orphanedCollections, transferCollectionOwnership } = useUserCollections()
   const { showToast } = useToast()
   const { activePersona } = usePersona()
+  const activeUserId = activePersona?.id
   const canManageProject = canEditAcl(PROJECT_RESOURCE)
-  const [activeTab, setActiveTab] = useState('departments')
-  const [directoryVersion, setDirectoryVersion] = useState(0)
-  const [pendingDomainInvites, setPendingDomainInvites] = useState<PendingDomainInvite[]>([])
-  const domainIds = useMemo(() => Object.keys(DOMAIN_FOLDER_MAP) as DomainId[], [])
-  const [inviteEmail, setInviteEmail] = useState('')
-  const [selectedDomainId, setSelectedDomainId] = useState<DomainId>(domainIds[0] ?? 'vfx')
-  const canManageDomains = useMemo(
-    () => (Object.keys(DOMAIN_FOLDER_MAP) as ProductionDomainId[]).some((domainId) => {
-      const resourceRef: ResourceRef = {
-        id: DOMAIN_FOLDER_MAP[domainId].id,
-        type: 'folder',
-        domainId,
-      }
-      return canShare(resourceRef) || canEditAcl(resourceRef)
-    }),
-    [canShare, canEditAcl],
+  const workspaceTeams = useMemo(
+    () => TEAMS
+      .filter((team) => team.kind === 'group' && team.rootFolderId)
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    [],
   )
-  const canManageAnything = canManageDomains || canManageProject
-  const hasPendingDomainInvites = pendingDomainInvites.length > 0
+  const [activeTab, setActiveTab] = useState('workspaces')
+  const [directoryVersion, setDirectoryVersion] = useState(0)
+  const [pendingWorkspaceInvites, setPendingWorkspaceInvites] = useState<PendingWorkspaceInvite[]>([])
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [selectedWorkspaceTeamId, setSelectedWorkspaceTeamId] = useState<string>(workspaceTeams[0]?.id ?? '')
+  const canManageTeamMembers = useCallback((teamId: string) => (
+    canManageProject || (!!activeUserId && isUserTeamManager(activeUserId, teamId))
+  ), [activeUserId, canManageProject])
+  const canManageWorkspaces = useMemo(
+    () => workspaceTeams.some((team) => {
+      const resourceRef: ResourceRef = {
+        id: team.rootFolderId!,
+        type: 'folder',
+        domainId: team.domainId,
+      }
+      return canManageTeamMembers(team.id) || canShare(resourceRef) || canEditAcl(resourceRef)
+    }),
+    [workspaceTeams, canManageTeamMembers, canShare, canEditAcl],
+  )
+  const canManageGroups = useMemo(
+    () => TEAMS.some((team) => team.kind === 'group' && !team.rootFolderId && canManageTeamMembers(team.id)),
+    [canManageTeamMembers, directoryVersion],
+  )
+  const canManageAnything = canManageProject || canManageWorkspaces || canManageGroups
+  const hasPendingWorkspaceInvites = pendingWorkspaceInvites.length > 0
   const discoverySections: { resourceType: DiscoveryResourceType; title: string; description: string }[] = [
     {
       resourceType: 'asset',
@@ -1583,16 +1505,18 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     },
   ]
 
-  const resetPendingDomainInvites = useCallback(() => {
-    setPendingDomainInvites([])
+  const resetPendingWorkspaceInvites = useCallback(() => {
+    setPendingWorkspaceInvites([])
     setInviteEmail('')
   }, [])
 
-  const stageDomainInvite = useCallback(() => {
+  const stageWorkspaceInvite = useCallback(() => {
     const normalizedEmail = inviteEmail.trim().toLowerCase()
     if (!normalizedEmail) return false
 
-    const team = TEAMS.find((candidate) => candidate.domainId === selectedDomainId)
+    const team = workspaceTeams.find(
+      (candidate) => candidate.id === selectedWorkspaceTeamId && canManageTeamMembers(candidate.id),
+    ) ?? workspaceTeams.find((candidate) => canManageTeamMembers(candidate.id))
     if (!team) return false
 
     const existingPersona = PERSONAS.find((candidate) => candidate.email.toLowerCase() === normalizedEmail)
@@ -1601,12 +1525,11 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       return false
     }
 
-    setPendingDomainInvites((prev) => {
-      const next = prev.filter((invite) => invite.email !== normalizedEmail)
+    setPendingWorkspaceInvites((prev) => {
+      const next = prev.filter((invite) => !(invite.email === normalizedEmail && invite.teamId === team.id))
       next.push({
-        id: `pending-${selectedDomainId}-${normalizedEmail}`,
+        id: `pending-${team.id}-${normalizedEmail}`,
         email: normalizedEmail,
-        domainId: selectedDomainId,
         teamId: team.id,
         displayName: existingPersona?.name ?? toDisplayNameFromEmail(normalizedEmail),
       })
@@ -1614,28 +1537,56 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     })
     setInviteEmail('')
     return true
-  }, [inviteEmail, selectedDomainId])
+  }, [inviteEmail, selectedWorkspaceTeamId, workspaceTeams, canManageTeamMembers])
 
-  const applyPendingDomainInvites = useCallback(() => {
-    if (pendingDomainInvites.length === 0) return
-    for (const invite of pendingDomainInvites) {
-      addOrMoveDomainMember(invite.domainId, invite.teamId, invite.email)
+  const applyPendingWorkspaceInvites = useCallback(() => {
+    if (pendingWorkspaceInvites.length === 0) return
+    for (const invite of pendingWorkspaceInvites) {
+      addUserToWorkspaceTeam(invite.teamId, invite.email)
     }
     setDirectoryVersion((prev) => prev + 1)
-    resetPendingDomainInvites()
-  }, [pendingDomainInvites, resetPendingDomainInvites])
+    resetPendingWorkspaceInvites()
+  }, [pendingWorkspaceInvites, resetPendingWorkspaceInvites])
 
-  const handleRemoveDomainMember = useCallback((domainId: DomainId, teamId: string, userId: string) => {
-    removeDomainMember(domainId, teamId, userId)
+  const handleRemoveWorkspaceMember = useCallback((teamId: string, userId: string) => {
+    const removedPersona = removeWorkspaceMember(teamId, userId)
+    if (!removedPersona) {
+      const blockedTeam = TEAMS.find((team) => team.id === teamId)
+      if (blockedTeam) {
+        showToast(`Assign another manager for ${blockedTeam.name} before removing this member.`)
+      }
+      return
+    }
     setDirectoryVersion((prev) => prev + 1)
-  }, [])
+  }, [showToast])
+
+  const handlePromoteWorkspaceManager = useCallback((teamId: string, userId: string) => {
+    if (!addTeamManager(userId, teamId)) return
+    const persona = PERSONAS.find((candidate) => candidate.id === userId)
+    const team = TEAMS.find((candidate) => candidate.id === teamId)
+    showToast(`${persona?.name ?? 'Member'} can now manage ${team?.name ?? 'this workspace group'}`)
+    setDirectoryVersion((prev) => prev + 1)
+  }, [showToast])
+
+  const handleDemoteWorkspaceManager = useCallback((teamId: string, userId: string) => {
+    const team = TEAMS.find((candidate) => candidate.id === teamId)
+    if (!removeTeamManager(userId, teamId)) {
+      if (team) {
+        showToast(`Assign another manager for ${team.name} before demoting this person.`)
+      }
+      return
+    }
+    const persona = PERSONAS.find((candidate) => candidate.id === userId)
+    showToast(`${persona?.name ?? 'Member'} no longer manages ${team?.name ?? 'this workspace group'}`)
+    setDirectoryVersion((prev) => prev + 1)
+  }, [showToast])
 
   const handleModalOpenChange = useCallback((nextOpen: boolean) => {
     if (!nextOpen) {
-      resetPendingDomainInvites()
+      resetPendingWorkspaceInvites()
     }
     onOpenChange(nextOpen)
-  }, [onOpenChange, resetPendingDomainInvites])
+  }, [onOpenChange, resetPendingWorkspaceInvites])
 
   return (
     <Modal open={open} onOpenChange={handleModalOpenChange} size="md">
@@ -1654,21 +1605,21 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             <div className="mx-6 mt-4 flex items-start gap-2 rounded border border-border-dim bg-surface-low px-3 py-2">
               <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-foreground-dim" />
               <p className="text-body-0-regular text-foreground-dim">
-                {canManageDomains
-                  ? 'Project-wide settings are view only. You can still manage domain membership and domain access where you have rights.'
+                {canManageWorkspaces || canManageGroups
+                  ? 'Project-wide settings are view only. You can still manage the groups and workspace roots where you have rights.'
                   : 'Project-wide settings are managed by project admins.'}
               </p>
             </div>
           )}
 
           <Tabs
-            defaultValue="departments"
+            defaultValue="workspaces"
             value={activeTab}
             onValueChange={setActiveTab}
             className="px-6 pt-4"
           >
             <TabsList>
-              <Tab value="departments">Departments</Tab>
+              <Tab value="workspaces">Workspaces</Tab>
               <Tab value="people">People</Tab>
               <Tab value="teams">Teams</Tab>
               {canManageProject && <Tab value="role-groups">Role Groups</Tab>}
@@ -1688,8 +1639,15 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   onRemoveParticipant={(userId) => {
                     const persona = PERSONAS.find((candidate) => candidate.id === userId)
                     const name = persona?.name ?? 'this person'
+                    const blockingTeams = getSoleManagedTeams(userId)
+                    if (blockingTeams.length > 0) {
+                      showToast(
+                        `Assign another manager for ${blockingTeams.map((team) => team.name).join(', ')} before removing ${name}.`,
+                      )
+                      return
+                    }
                     const confirmed = window.confirm(
-                      `Remove ${name} from the project? This removes direct shares and removes domain and team membership.`,
+                      `Remove ${name} from the project? This removes direct shares and removes workspace and team membership.`,
                     )
                     if (!confirmed) return
                     revokeUserAccess(userId)
@@ -1699,30 +1657,24 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 />
               </TabsContent>
               <TabsContent value="teams">
-                <TeamsTab canManage={canManageProject} />
+                <TeamsTab activeUserId={activeUserId} canManageProject={canManageProject} />
               </TabsContent>
-              <TabsContent value="departments">
-                <DomainsTab
-                  roleGroups={roleGroups}
-                  getResourceGrants={getResourceGrants}
-                  onRoleChange={updateGrantProfile}
-                  onAddGrant={createGrant}
-                  onRemoveGrant={revokeGrant}
-                  canShareResource={canShare}
-                  canEditResource={canEditAcl}
-                  pendingInvites={pendingDomainInvites}
+              <TabsContent value="workspaces">
+                <WorkspaceRootsTab
+                  pendingInvites={pendingWorkspaceInvites}
                   inviteEmail={inviteEmail}
                   onInviteEmailChange={setInviteEmail}
-                  selectedDomainId={selectedDomainId}
-                  onSelectedDomainChange={setSelectedDomainId}
-                  onStageInvite={stageDomainInvite}
+                  selectedTeamId={selectedWorkspaceTeamId}
+                  onSelectedTeamChange={setSelectedWorkspaceTeamId}
+                  onStageInvite={stageWorkspaceInvite}
                   onRemovePendingInvite={(inviteId) => {
-                    setPendingDomainInvites((prev) => prev.filter((invite) => invite.id !== inviteId))
+                    setPendingWorkspaceInvites((prev) => prev.filter((invite) => invite.id !== inviteId))
                   }}
-                  onRemoveDomainMember={handleRemoveDomainMember}
-                  getExternalCollections={getCollectionsContainingDepartmentAssets}
-                  onPullAssets={(collectionName) => showToast(`Assets pulled from ${collectionName}`)}
-                  readOnly={!canManageDomains && !canManageProject}
+                  onRemoveWorkspaceMember={handleRemoveWorkspaceMember}
+                  onPromoteManager={handlePromoteWorkspaceManager}
+                  onDemoteManager={handleDemoteWorkspaceManager}
+                  canManageTeamMembers={canManageTeamMembers}
+                  canManageTeamManagers={() => canManageProject}
                 />
               </TabsContent>
               {canManageProject && (
@@ -1786,12 +1738,12 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
         </div>
 
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-border-dim">
-          {hasPendingDomainInvites ? (
+          {hasPendingWorkspaceInvites ? (
             <>
               <Button
                 variant="secondary"
                 onClick={() => {
-                  resetPendingDomainInvites()
+                  resetPendingWorkspaceInvites()
                   onOpenChange(false)
                 }}
               >
@@ -1800,7 +1752,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               <Button
                 variant="primary"
                 onClick={() => {
-                  applyPendingDomainInvites()
+                  applyPendingWorkspaceInvites()
                   onOpenChange(false)
                 }}
               >

@@ -31,9 +31,11 @@ type ScenarioPerson = {
 type ScenarioTeam = {
   id: string
   name: string
-  kind: 'department' | 'domain' | 'team'
+  kind: 'group' | 'domain'
   members: string[]
+  managers?: string[]
   domain?: DomainId
+  rootFolderId?: string
 }
 
 type ScenarioRoleGroup = {
@@ -91,7 +93,6 @@ type ScenarioCollection = {
   createdBy: string
   assetIds: string[]
   sourceSmartCollectionId?: string
-  boundDomainId?: string
 }
 
 type ScenarioCut = {
@@ -112,12 +113,6 @@ type ScenarioCut = {
   note: string
   /** Override the default version group (for parallel cuts like director's cut vs studio cut) */
   cutGroupId?: string
-}
-
-type ScenarioDomainAccess = {
-  domain: DomainId
-  defaultTeamId: string
-  defaultProfile: AccessProfileId
 }
 
 type DiscoveryResourceType = 'asset' | 'cut'
@@ -155,7 +150,6 @@ type Scenario = {
   roleGroups: ScenarioRoleGroup[]
   people: ScenarioPerson[]
   teams: ScenarioTeam[]
-  domainAccess: ScenarioDomainAccess[]
   projectRoles: {
     people: Record<string, AccessProfileId>
     teams: Record<string, AccessProfileId>
@@ -226,33 +220,25 @@ export const SCENARIO: Scenario = {
   ],
 
   teams: [
-    { id: 'vfx-core',       name: 'VFX',            kind: 'department', members: ['vfx-supervisor', 'vfx-coordinator'],                        domain: 'vfx' },
-    { id: 'editorial',      name: 'Editorial',      kind: 'department', members: ['editorial-coordinator', 'editorial-artist'],                 domain: 'editorial' },
-    { id: 'art-design',     name: 'Art & Design',   kind: 'department', members: ['art-artist'],                                               domain: 'art-design' },
-    { id: 'camera-team',    name: 'Camera',         kind: 'department', members: ['camera-dit'],                                                domain: 'camera' },
-    { id: 'audio-team',     name: 'Audio & Sound',  kind: 'department', members: ['audio-supervisor'],                                           domain: 'audio-sound' },
+    { id: 'vfx-core',       name: 'VFX',            kind: 'group', members: ['vfx-supervisor', 'vfx-coordinator'],                        managers: ['vfx-supervisor', 'vfx-coordinator'],           domain: 'vfx',         rootFolderId: 'ws-vfx' },
+    { id: 'editorial',      name: 'Editorial',      kind: 'group', members: ['editorial-coordinator', 'editorial-artist'],                 managers: ['editorial-coordinator'],                      domain: 'editorial',   rootFolderId: 'ws-editorial' },
+    { id: 'art-design',     name: 'Art & Design',   kind: 'group', members: ['art-artist'],                                               managers: ['art-artist'],                                domain: 'art-design',  rootFolderId: 'ws-art' },
+    { id: 'camera-team',    name: 'Camera',         kind: 'group', members: ['camera-dit'],                                                managers: ['camera-dit'],                                 domain: 'camera',      rootFolderId: 'ws-camera' },
+    { id: 'audio-team',     name: 'Audio & Sound',  kind: 'group', members: ['audio-supervisor'],                                           managers: ['audio-supervisor'],                           domain: 'audio-sound', rootFolderId: 'ws-audio' },
     // Vendor teams
-    { id: 'framestore-io',  name: 'Framestore',     kind: 'team',    members: ['vendor-framestore'] },
+    { id: 'framestore-io',  name: 'Framestore',     kind: 'group',   members: ['vendor-framestore'],                                       managers: ['vendor-framestore'] },
     // Internal cross-department teams
-    { id: 'studio-leadership', name: 'Studio Leadership', kind: 'team', members: ['studio-alex', 'creative-david'] },
-    { id: 'netflix-studio',    name: 'Netflix Studio',    kind: 'team', members: ['studio-alex'] },
-    { id: 'netflix-post',      name: 'Netflix Post',      kind: 'team', members: ['vfx-supervisor', 'editorial-coordinator', 'audio-supervisor'] },
-    { id: 'super-prod',        name: 'Super Prod',        kind: 'team', members: ['studio-alex', 'creative-david', 'vfx-coordinator', 'editorial-coordinator'] },
+    { id: 'studio-leadership', name: 'Studio Leadership', kind: 'group', members: ['studio-alex', 'creative-david'],                       managers: ['studio-alex'] },
+    { id: 'netflix-studio',    name: 'Netflix Studio',    kind: 'group', members: ['studio-alex'],                                          managers: ['studio-alex'] },
+    { id: 'netflix-post',      name: 'Netflix Post',      kind: 'group', members: ['vfx-supervisor', 'editorial-coordinator', 'audio-supervisor'], managers: ['vfx-supervisor', 'editorial-coordinator', 'audio-supervisor'] },
+    { id: 'super-prod',        name: 'Super Prod',        kind: 'group', members: ['studio-alex', 'creative-david', 'vfx-coordinator', 'editorial-coordinator'], managers: ['studio-alex', 'creative-david'] },
     // Release domain groups (managed by CAM)
-    { id: 'team-globalization',     name: 'Globalization',      kind: 'domain', members: [] },
-    { id: 'team-marketing',         name: 'Marketing',          kind: 'domain', members: ['marketing-coordinator'] },
-    { id: 'team-legal',             name: 'Legal',              kind: 'domain', members: ['legal-reviewer'] },
-    { id: 'team-music',             name: 'Music',              kind: 'domain', members: [] },
-    { id: 'team-consumer-insights', name: 'Consumer Insights',  kind: 'domain', members: [] },
-    { id: 'team-content-preview',   name: 'Content Preview',    kind: 'domain', members: [] },
-  ],
-
-  domainAccess: [
-    { domain: 'vfx', defaultTeamId: 'vfx-core', defaultProfile: 'manager' },
-    { domain: 'editorial', defaultTeamId: 'editorial', defaultProfile: 'manager' },
-    { domain: 'art-design', defaultTeamId: 'art-design', defaultProfile: 'manager' },
-    { domain: 'camera', defaultTeamId: 'camera-team', defaultProfile: 'manager' },
-    { domain: 'audio-sound', defaultTeamId: 'audio-team', defaultProfile: 'manager' },
+    { id: 'team-globalization',     name: 'Globalization',      kind: 'domain', members: [],                        managers: ['studio-alex'] },
+    { id: 'team-marketing',         name: 'Marketing',          kind: 'domain', members: ['marketing-coordinator'], managers: ['marketing-coordinator', 'studio-alex'] },
+    { id: 'team-legal',             name: 'Legal',              kind: 'domain', members: ['legal-reviewer'],        managers: ['legal-reviewer', 'studio-alex'] },
+    { id: 'team-music',             name: 'Music',              kind: 'domain', members: [],                        managers: ['studio-alex'] },
+    { id: 'team-consumer-insights', name: 'Consumer Insights',  kind: 'domain', members: [],                        managers: ['studio-alex'] },
+    { id: 'team-content-preview',   name: 'Content Preview',    kind: 'domain', members: [],                        managers: ['studio-alex'] },
   ],
 
   projectRoles: {
@@ -526,19 +512,19 @@ export const SCENARIO: Scenario = {
 
   collections: [
     // Shared collections (referenced by grants)
-    { id: 'ws-vfx-coll-for-editorial', name: 'EP301 VFX Pulls - Edit Review',  createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-020-010'], boundDomainId: 'vfx' },
-    { id: 'coll-smart-finals-shared',  name: 'Finals',                createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020'], sourceSmartCollectionId: 'smart-finals', boundDomainId: 'vfx' },
-    { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', assetIds: ['ws-edit-cut-1', 'ws-edit-cut-2', 'ws-edit-cut-3'], boundDomainId: 'editorial' },
+    { id: 'ws-vfx-coll-for-editorial', name: 'EP301 VFX Pulls - Edit Review',  createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-020-010'] },
+    { id: 'coll-smart-finals-shared',  name: 'Finals (shared)',                createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020'], sourceSmartCollectionId: 'smart-finals' },
+    { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', assetIds: ['ws-edit-cut-1', 'ws-edit-cut-2', 'ws-edit-cut-3'] },
     // Camera collections
-    { id: 'ws-cam-coll-broll', name: 'B-Roll Highlights', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-broll-town', 'ws-cam-broll-forest', 'ws-cam-aerial-dawn', 'ws-cam-aerial-quarry'], boundDomainId: 'camera' },
+    { id: 'ws-cam-coll-broll', name: 'B-Roll Highlights', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-broll-town', 'ws-cam-broll-forest', 'ws-cam-aerial-dawn', 'ws-cam-aerial-quarry'] },
     // Audio collections
-    { id: 'ws-audio-coll-for-editorial', name: 'Temp Sound Kit', createdBy: 'robi@netflix.com', assetIds: ['ws-audio-sfx-1', 'ws-audio-sfx-2', 'ws-audio-music-1', 'ws-audio-music-2', 'ws-audio-sfx-ambience'], boundDomainId: 'audio-sound' },
+    { id: 'ws-audio-coll-for-editorial', name: 'Temp Sound Kit', createdBy: 'robi@netflix.com', assetIds: ['ws-audio-sfx-1', 'ws-audio-sfx-2', 'ws-audio-music-1', 'ws-audio-music-2', 'ws-audio-sfx-ambience'] },
     // Everyday organising collections
-    { id: 'coll-creature-designs',  name: 'Car Designs', createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-demogorgon', 'ws-art-concept-creature', 'ws-art-char-eleven'], boundDomainId: 'art-design' },
-    { id: 'coll-key-locations',     name: 'Key Circuits',    createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-ud-env', 'ws-art-concept-lab', 'ws-art-env-byers', 'ws-art-env-starcourt'], boundDomainId: 'art-design' },
-    { id: 'coll-hero-shots',        name: 'Hero Shots',       createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-020-010', 'ws-vfx-comp-eleven'], boundDomainId: 'vfx' },
+    { id: 'coll-creature-designs',  name: 'Car Designs', createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-demogorgon', 'ws-art-concept-creature', 'ws-art-char-eleven'] },
+    { id: 'coll-key-locations',     name: 'Key Circuits',    createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-ud-env', 'ws-art-concept-lab', 'ws-art-env-byers', 'ws-art-env-starcourt'] },
+    { id: 'coll-hero-shots',        name: 'Hero Shots',       createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-020-010', 'ws-vfx-comp-eleven'] },
     // Curated collections (snapshot shares — discrete handoffs)
-    { id: 'coll-cam-dailies',      name: 'Dailies (concept reference)', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'], boundDomainId: 'camera' },
+    { id: 'coll-cam-dailies',      name: 'Dailies (concept reference)', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'] },
   ],
 
   sensitiveAssetIds: ['ws-edit-cut-1', 'ws-edit-cut-2'],
@@ -597,7 +583,9 @@ export function buildTeams(): Team[] {
     name: t.name,
     kind: t.kind,
     memberUserIds: t.members,
+    managerUserIds: t.managers ?? [],
     domainId: t.domain,
+    rootFolderId: t.rootFolderId,
   }))
 }
 
@@ -613,6 +601,10 @@ export function buildRoleGroups(): RoleGroup[] {
 export function buildLabels(): Record<string, string> {
   const labels: Record<string, string> = {
     project: SCENARIO.projectName,
+  }
+
+  for (const root of Object.values(DOMAIN_FOLDER_MAP)) {
+    labels[root.id] = root.name
   }
 
   // Build a flat lookup of all workspace nodes across domains
@@ -786,7 +778,7 @@ export function buildGrants(): Grant[] {
     })
   }
 
-  // Project-level department-team grants (unused in the simplified prototype, but kept for compatibility)
+  // Project-level group grants
   for (const [teamId, profileId] of Object.entries(SCENARIO.projectRoles.teams)) {
     grants.push({
       id: grantId(),
@@ -799,17 +791,16 @@ export function buildGrants(): Grant[] {
     })
   }
 
-  // Department root folder grants — each department has a single team default.
-  for (const policy of SCENARIO.domainAccess) {
-    const folderId = DOMAIN_FOLDER_MAP[policy.domain]?.id
-    if (!folderId) continue
+  // Workspace root grants — root folders are just folders shared to groups.
+  for (const team of SCENARIO.teams) {
+    if (!team.rootFolderId) continue
 
     grants.push({
       id: grantId(),
-      resource: { id: folderId, type: 'folder' as const, domainId: policy.domain },
-      principal: { type: 'team', teamId: policy.defaultTeamId },
-      templateId: policy.defaultProfile,
-      permissions: permissionsForTemplate(policy.defaultProfile),
+      resource: { id: team.rootFolderId, type: 'folder' as const, domainId: team.domain },
+      principal: { type: 'team', teamId: team.id },
+      templateId: 'manager',
+      permissions: permissionsForTemplate('manager'),
       grantedByUserId: 'studio-alex',
       grantedAt: '2026-01-01',
     })
@@ -897,6 +888,5 @@ export function buildSeedCollections(): UserCollection[] {
     createdAt: new Date('2026-02-14'),
     createdBy: c.createdBy,
     sourceSmartCollectionId: c.sourceSmartCollectionId,
-    boundDomainId: c.boundDomainId,
   }))
 }
