@@ -22,13 +22,16 @@ import {
   DropdownMenuItem,
   DropdownMenuDivider,
   MoveWarningModal,
+  Tag,
 } from '@/components/ui'
 import type { ResourceRef } from '@/lib/grants'
+import { profileLabel } from '@/lib/grants'
+import { TEAMS, isUserWorkspaceOwner, getDomainOwnerTeam } from '@/lib/teams'
+import { PERSONAS } from '@/lib/personas'
+import { ShareIcon } from '@/components/ui/share-icon'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import type { FileNode, FileViewMode } from '@/components/ui/file-explorer'
-import { ContextMenu } from '@/components/ui/context-menu'
-import type { ContextMenuItem } from '@/components/ui/context-menu'
 import { getGridColumns, useViewPreferences, useCompactBar, useResourceSelection, useFileTree, useAccess, usePersona, useMobilePanel, useCollections } from '@/hooks'
 
 import type { DomainId, ProductionDomainId } from '@/components/department/types'
@@ -46,12 +49,6 @@ import { assetToSelectionEntity, folderToSelectionEntity } from '@/lib/selection
 import type { SelectionEntity } from '@/lib/selection-actions'
 import { materializeReferenceFolders } from '@/lib/reference-folder-utils'
 import { collectAccessibleWorkspaceRoots, collectSharedFolderIds } from '@/lib/workspace-roots'
-
-interface ContextMenuState {
-  x: number
-  y: number
-  node: WorkspaceFileNode
-}
 
 interface WorkspaceSelectionEntry {
   id: string
@@ -200,6 +197,10 @@ const ROOT_FOLDER_ID_TO_DOMAIN = Object.fromEntries(
   Object.entries(DOMAIN_FOLDER_MAP).map(([domId, folder]) => [folder.id, domId as DomainId]),
 ) as Record<string, DomainId>
 
+type AccessTagInfo =
+  | { kind: 'owner'; subtitle: string }
+  | { kind: 'recipient'; subtitle: string }
+
 interface WorkspaceViewProps {
   /** URL path segments representing the drilled-down folder path */
   folderPath: string[]
@@ -209,7 +210,7 @@ interface WorkspaceViewProps {
 
 export function WorkspaceView({ folderPath: urlPath, landingFolderId }: WorkspaceViewProps) {
   const router = useRouter()
-  const { canAccess, sharesReceivedByMe, getInheritedGrants, filterByAccess, getResourceGrants, isSensitiveAsset } = useAccess()
+  const { canAccess, canShare: canShareResource, canEdit: canEditResource, sharesReceivedByMe, getInheritedGrants, filterByAccess, getResourceGrants, roleGroups, isSensitiveAsset } = useAccess()
   const { activePersona } = usePersona()
   const { getCollection, filterAssets: filterCollectionAssets, scopedAssets, ensureAssetsLoaded } = useCollections()
   const { layout, setLayout, cardSize, setCardSize, viewMode, setViewMode, sidePanelOpen: showPanel, setSidePanelOpen: setShowPanel, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
@@ -238,7 +239,6 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     resolveCollectionAssets: treeResolveCollectionAssets,
   } = useFileTree()
 
-  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [accessModalNode, setAccessModalNode] = useState<WorkspaceFileNode | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [newFolderModalOpen, setNewFolderModalOpen] = useState(false)
@@ -478,15 +478,6 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     }
   }, [selectionEntryByNodeId, selectOnly])
 
-  const handleContextMenu = useCallback((event: React.MouseEvent, fileNode: FileNode) => {
-    event.preventDefault()
-    const wsNode = findNodeById(currentGridItems, fileNode.id)
-    if (wsNode) {
-      setContextMenu({ x: event.clientX, y: event.clientY, node: wsNode })
-    }
-  }, [currentGridItems])
-
-  const closeContextMenu = useCallback(() => setContextMenu(null), [])
 
   const handleFolderDrilldown = useCallback((folder: WorkspaceFileNode) => {
     if (landingFolderId) {
@@ -553,82 +544,6 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     }
   }, [moveWarningState, confirmMove])
 
-  const contextMenuItems: ContextMenuItem[] = (() => {
-    if (!contextMenu) return []
-    // Background right-click — only "New Folder" at current level
-    if (contextMenu.node.id === '__background__') {
-      return [{
-        label: 'New Folder',
-        icon: <FolderPlus className="w-4 h-4" />,
-        onClick: () => {
-          setNewFolderParentPath(urlPath)
-          setNewFolderModalOpen(true)
-        },
-      }]
-    }
-    if (contextMenu.node.type === 'folder') {
-      if (isReferenceFolder(contextMenu.node)) {
-        return []
-      }
-      return [
-        {
-          label: 'New Folder',
-          icon: <FolderPlus className="w-4 h-4" />,
-          onClick: () => {
-            setNewFolderParentPath([...urlPath, contextMenu.node.id])
-            setNewFolderModalOpen(true)
-          },
-        },
-        {
-          label: 'Upload',
-          icon: <Upload className="w-4 h-4" />,
-          onClick: () => {
-            setUploadTargetFolderId(contextMenu.node.id)
-            uploadInputRef.current?.click()
-          },
-        },
-        {
-          label: 'New File',
-          icon: <FilePlus className="w-4 h-4" />,
-          onClick: () => {
-            const names = ['SEQ010_SH040_comp_v1.exr', 'hero_closeup_final.dpx', 'ambience_pit_lane.wav', 'grade_pass_02.mov', 'concept_sketch_v3.psd', 'lens_calibration_data.csv']
-            fileTreeCreateFile(contextMenu.node.id, names[Math.floor(Math.random() * names.length)])
-          },
-        },
-        {
-          label: managedFolderIds.has(contextMenu.node.id) ? 'Disable Sync' : 'Enable Sync',
-          icon: <RefreshCw className="w-4 h-4" />,
-          onClick: () => toggleManagedZone(contextMenu.node.id),
-          dividerAfter: true,
-        },
-        {
-          label: 'Share',
-          icon: <Share2 className="w-4 h-4" />,
-          onClick: () => setAccessModalNode(contextMenu.node),
-        },
-        {
-          label: 'Delete',
-          icon: <Trash2 className="w-4 h-4" />,
-          onClick: () => fileTreeDeleteNode(contextMenu.node.id),
-        },
-      ]
-    }
-    // File context menu
-    return [
-      {
-        label: 'Move to...',
-        icon: <FolderInput className="w-4 h-4" />,
-        onClick: () => handleMoveFile(contextMenu.node),
-        dividerAfter: true,
-      },
-      {
-        label: 'Delete',
-        icon: <Trash2 className="w-4 h-4" />,
-        onClick: () => fileTreeDeleteNode(contextMenu.node.id),
-      },
-    ]
-  })()
-
   const workspaceRootMissing = Boolean(landingFolderId && !requestedWorkspaceRoot)
   const requestedWorkspaceAccessible = requestedWorkspaceRoot
     ? canAccess(getAclResourceId(requestedWorkspaceRoot))
@@ -661,6 +576,48 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
       : undefined
   }, [effectiveNode, getFileTreeDomainFiles])
   const pageTitle = currentLocationNode?.name ?? 'Workspace'
+
+  const [pageAccessModalOpen, setPageAccessModalOpen] = useState(false)
+
+  const pageAccessResourceRef: ResourceRef | undefined = currentLocationNode ? {
+    id: getAclResourceId(currentLocationNode),
+    type: 'folder',
+    domainId: effectiveNodeDomainId,
+  } : undefined
+
+  const canShareCurrentFolder = pageAccessResourceRef ? canShareResource(pageAccessResourceRef) : false
+  const canEditCurrentFolder = currentLocationNode ? canEditResource(getAclResourceId(currentLocationNode)) : true
+
+  const isCurrentFolderOwner = useMemo(() => {
+    if (!currentLocationNode || !activePersona) return true
+    const nodeId = getAclResourceId(currentLocationNode)
+    return isUserWorkspaceOwner(activePersona.id, nodeId, effectiveNodeDomainId)
+  }, [currentLocationNode, activePersona, getAclResourceId, effectiveNodeDomainId])
+
+  const pageAccessTag = useMemo((): AccessTagInfo | null => {
+    if (!currentLocationNode || currentLocationNode.type !== 'folder') return null
+    const nodeId = getAclResourceId(currentLocationNode)
+    const direct = getResourceGrants(nodeId)
+    const inherited = getInheritedGrants(nodeId)
+    const allGrants = [...direct, ...inherited.map(({ grant }) => grant)]
+    if (allGrants.length === 0) return null
+
+    // Recipient: show who shared it
+    if (!isCurrentFolderOwner) {
+      const grantor = direct.length > 0 ? PERSONAS.find(p => p.id === direct[0].grantedByUserId) : undefined
+      const sharedBy = grantor?.name ?? getDomainOwnerTeam(effectiveNodeDomainId ?? '')?.name ?? 'someone'
+      return { kind: 'recipient', subtitle: `Shared by ${sharedBy} · View only` }
+    }
+
+    // Owner: show how many people it's shared with
+    const sharedGrants = allGrants.filter((g) => {
+      const p = g.principal
+      return p.type !== 'team' || !TEAMS.find((t) => t.id === p.teamId)?.rootFolderId
+    })
+    if (sharedGrants.length === 0) return null
+    return { kind: 'owner', subtitle: `Shared with ${sharedGrants.length} ${sharedGrants.length === 1 ? 'person' : 'people'}` }
+  }, [currentLocationNode, getAclResourceId, getResourceGrants, getInheritedGrants, isCurrentFolderOwner, effectiveNodeDomainId])
+
   const isGridView = viewMode === 'grid'
   const explorerViewMode = (isGridView ? 'list' : viewMode) as FileViewMode
 
@@ -725,15 +682,16 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
               <Stack spacing="lg">
                 {/* Mobile nav */}
                 <MobileToolbar title={pageTitle} actions={
-                  <Button
-                    variant="icon"
-                    size="icon"
-                    aria-label={panelOpen ? 'Close panel' : 'Open panel'}
-                    onClick={togglePanel}
-                    
-                  >
-                    <Info className="w-4 h-4" />
-                  </Button>
+                  !panelOpen ? (
+                    <Button
+                      variant="icon"
+                      size="icon"
+                      aria-label="Open panel"
+                      onClick={togglePanel}
+                    >
+                      <Info className="w-4 h-4" />
+                    </Button>
+                  ) : undefined
                 } />
                 <div className="flex items-center gap-2 md:hidden">
                   <HawkinsSearch
@@ -763,9 +721,18 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
 
                 {/* Header */}
                 <div ref={headerRef} className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between gap-4">
-                    <PageHeader title={pageTitle} hideTitleOnMobile />
-                    <div className="hidden md:flex items-center gap-2">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <PageHeader
+                      title={pageTitle}
+                      description={[
+                        pageAccessTag?.subtitle,
+                        landingFolderId
+                          ? `${filteredFileCount} item${filteredFileCount !== 1 ? 's' : ''}`
+                          : `${workspaceRootNodes.length} workspace${workspaceRootNodes.length !== 1 ? 's' : ''}`,
+                      ].filter(Boolean).join(' · ')}
+                      hideTitleOnMobile
+                    />
+                    <div className="hidden md:flex items-center gap-2 flex-shrink-0">
                       <SortDropdown
                         fields={sortFields}
                         value={sortCriteria}
@@ -787,25 +754,34 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                         metadataFields={metadataFields}
                         onMetadataFieldChange={setMetadataField}
                       />
-                      <Button
-                        variant="icon"
-                        size="icon"
-                        aria-label="New folder"
-                        onClick={() => {
-                          setNewFolderParentPath(urlPath)
-                          setNewFolderModalOpen(true)
-                        }}
-                      >
-                        <FolderPlus className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="icon"
-                        aria-label={panelOpen ? 'Close panel' : 'Open panel'}
-                        onClick={togglePanel}
-                        
-                      >
-                        <PanelRight className="w-4 h-4" />
-                      </Button>
+                      {landingFolderId && canShareCurrentFolder && (
+                        <Button variant="secondary" compact onClick={() => setPageAccessModalOpen(true)}>
+                          <ShareIcon className="w-4 h-4" />
+                          Share
+                        </Button>
+                      )}
+                      {canEditCurrentFolder && (
+                        <Button
+                          variant="secondary"
+                          compact
+                          onClick={() => {
+                            setNewFolderParentPath(urlPath)
+                            setNewFolderModalOpen(true)
+                          }}
+                        >
+                          <FolderPlus className="w-4 h-4" />
+                          New Folder
+                        </Button>
+                      )}
+                      {!panelOpen && (
+                        <Button
+                          variant="icon"
+                          aria-label="Open panel"
+                          onClick={togglePanel}
+                        >
+                          <PanelRight className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                   <div className="hidden md:block">
@@ -820,26 +796,11 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                 <ContextualActionBar
                   selectedEntities={selectedEntities}
                   onClearSelection={clearSelection}
-                  metadata={landingFolderId
-                    ? `${filteredFileCount} item${filteredFileCount !== 1 ? 's' : ''}`
-                    : `${workspaceRootNodes.length} workspace${workspaceRootNodes.length !== 1 ? 's' : ''}`}
                 />
 
                 {/* Content */}
                 {isGridView && (
-                <div
-                  className="min-h-[400px] flex-1"
-                  onContextMenu={(e) => {
-                    if ((e.target as HTMLElement).closest('[data-card]') === null) {
-                      e.preventDefault()
-                      setContextMenu({
-                        x: e.clientX,
-                        y: e.clientY,
-                        node: { id: '__background__', name: '', type: 'folder', children: [] },
-                      })
-                    }
-                  }}
-                >
+                <div className="min-h-[400px] flex-1">
                   {currentGridItems.length > 0 ? (
                       <CardGrid gap="4" columns={getGridColumns(cardSize)}>
                         {currentGridItems.map((node) => {
@@ -945,7 +906,6 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
               primaryId={primaryNodeId}
               onFileClick={handleNodeClick}
               onFolderClick={handleNodeClick}
-              onContextMenu={handleContextMenu}
             />
           )}
 
@@ -968,11 +928,9 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
             onClose={closePanel}
             domainId={effectiveNodeDomainId}
             folderVariant={
-              false
+              effectiveNode && sharedFolderIds.has(effectiveNode.id)
                 ? 'shared'
-                : primarySelectionEntry?.node && sharedFolderIds.has(primarySelectionEntry.node.id)
-                ? 'shared'
-                : primarySelectionEntry?.node && !canAccess(getAclResourceId(primarySelectionEntry.node))
+                : effectiveNode && effectiveNode.type === 'folder' && !canAccess(getAclResourceId(effectiveNode))
                   ? 'restricted'
                   : undefined
             }
@@ -982,15 +940,6 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
         )}
       </div>
 
-      {/* Context Menu */}
-      {contextMenu && contextMenuItems.length > 0 && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          items={contextMenuItems}
-          onClose={closeContextMenu}
-        />
-      )}
 
       <input
         ref={uploadInputRef}
@@ -1039,6 +988,19 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
           />
         )
       })()}
+      {pageAccessModalOpen && currentLocationNode && pageAccessResourceRef && (
+        <AccessModal
+          open
+          onClose={() => setPageAccessModalOpen(false)}
+          resourceId={pageAccessResourceRef.id}
+          resourceRef={pageAccessResourceRef}
+          inheritedGrants={getInheritedGrants(getAclResourceId(currentLocationNode)).map(({ grant, fromResourceName }) => ({
+            grant,
+            fromResourceName,
+          }))}
+          title={currentLocationNode.name}
+        />
+      )}
     </div>
   )
 }

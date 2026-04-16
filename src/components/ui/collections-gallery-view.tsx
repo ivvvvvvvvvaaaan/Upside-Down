@@ -10,7 +10,7 @@ import { EmptyState } from './empty-state'
 import Image from 'next/image'
 import type { Collection, Asset } from '@/lib/data'
 
-// Skeleton placeholder count for loading states
+
 const SKELETON_ASSET_COUNT = 6
 const EMPTY_COLLECTION_PLACEHOLDER = '/assets/clapper-img.png'
 

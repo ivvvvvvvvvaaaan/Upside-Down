@@ -12,7 +12,7 @@ import { Tag } from './tag'
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule])
 
-// Skeleton placeholder count for loading states
+
 const SKELETON_ROW_COUNT = 6
 
 // Unified row type for tree structure

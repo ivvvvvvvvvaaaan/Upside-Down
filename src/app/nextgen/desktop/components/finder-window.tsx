@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { DesktopWindow } from './desktop-window'
-import { cn, formatDate } from '@/lib/utils'
+import { cn, formatDate, formatFileSize } from '@/lib/utils'
 import type { WindowState, SyncStatus } from '../view'
 import type { UnifiedFileNode } from '@/lib/workspace-data'
 import { DOMAIN_FOLDER_MAP, isReferenceFolder } from '@/lib/workspace-data'
@@ -284,7 +284,6 @@ function getFileIcon(node: FileNode, sizeClass: string = 'w-4 h-4') {
   return <File className={cn(sizeClass, 'text-foreground/70')} />
 }
 
-// Render folder sync indicators.
 function FolderIndicators({
   node,
   className,
@@ -302,7 +301,6 @@ function FolderIndicators({
     return null
   }
 
-  // Get sync icon based on status
   const getSyncIcon = () => {
     switch (syncStatus) {
       case 'synced':
@@ -324,15 +322,6 @@ function FolderIndicators({
     </div>
   )
 }
-
-function formatFileSize(bytes?: number): string {
-  if (!bytes) return '—'
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
-}
-
 
 interface FinderWindowProps {
   window: WindowState
@@ -422,7 +411,6 @@ export function FinderWindow({
     }
   }, [contextMenu])
 
-  // Handle right-click on file/folder
   const handleContextMenu = useCallback((e: React.MouseEvent, item: FileNode) => {
     e.preventDefault()
     e.stopPropagation()
@@ -434,7 +422,6 @@ export function FinderWindow({
     })
   }, [])
 
-  // Handle right-click on empty background area
   const handleBackgroundContextMenu = useCallback((e: React.MouseEvent) => {
     // Only trigger if the click target is the container itself (not a file/folder row)
     if ((e.target as HTMLElement).closest('[data-file-node]')) return
@@ -451,7 +438,6 @@ export function FinderWindow({
     })
   }, [folderPathIds])
 
-  // Create a new folder inside the specified parent folder
   const handleCreateFolder = useCallback((parentId: string | null) => {
     if (selectedSidebar !== 'workspace') {
       setContextMenu(null)
@@ -539,13 +525,10 @@ export function FinderWindow({
     return roots
   }, [resolvedWorkspaceFiles, canAccess, canSeeRestrictedFolders, visibleSharedWorkspaceFiles])
 
-  // Get root files based on selected sidebar location.
   const rootFiles = selectedSidebar === 'workspace' ? visibleWorkspaceFiles : mockFiles
 
-  // Build folder path from IDs (to get fresh references from current state)
   const folderPath = folderPathIds.map(id => findNodeById(rootFiles, id)).filter((n): n is FileNode => n !== null)
 
-  // Start renaming an item
   const handleStartRename = useCallback((item: FileNode) => {
     if (isReferenceFolder(item)) {
       setContextMenu(null)
@@ -556,7 +539,6 @@ export function FinderWindow({
     setContextMenu(null)
   }, [])
 
-  // Finish renaming (save)
   const handleFinishRename = useCallback(() => {
     if (renamingId && renameValue.trim()) {
       const item = findNodeById(rootFiles, renamingId)
@@ -571,13 +553,11 @@ export function FinderWindow({
     setRenameValue('')
   }, [renamingId, renameValue, contextRenameNode, rootFiles])
 
-  // Cancel renaming
   const handleCancelRename = useCallback(() => {
     setRenamingId(null)
     setRenameValue('')
   }, [])
 
-  // Delete an item
   const handleDeleteItem = useCallback((itemId: string) => {
     const item = findNodeById(rootFiles, itemId)
     if (isReferenceFolder(item)) {
@@ -591,12 +571,10 @@ export function FinderWindow({
     }
   }, [selectedFile, contextDeleteNode, rootFiles])
 
-  // Get current files based on folder path (for icons view navigation)
   const currentFiles = folderPath.length > 0
     ? folderPath[folderPath.length - 1].children || []
     : rootFiles
 
-  // Navigate into a folder (for icons view).
   const navigateIntoFolder = useCallback((folder: FileNode) => {
     if (folder.type === 'folder' && folder.children) {
       setFolderPathIds((prev) => [...prev, folder.id])
@@ -604,16 +582,13 @@ export function FinderWindow({
     }
   }, [])
 
-  // Navigate back one folder
   const navigateBack = useCallback(() => {
     setFolderPathIds((prev) => prev.slice(0, -1))
     setSelectedFile(null)
   }, [])
 
-  // Check if we can go back
   const canGoBack = folderPath.length > 0
 
-  // Get display name for current location
   const getLocationName = () => {
     if (folderPath.length > 0) {
       return folderPath[folderPath.length - 1].name
@@ -782,7 +757,6 @@ export function FinderWindow({
   const renderColumnsView = () => {
     const columns: FileNode[][] = [currentFiles]
 
-    // Build columns from selected path.
     for (const node of columnPath) {
       if (node.type === 'folder' && node.children) {
         columns.push(node.children)
@@ -804,7 +778,6 @@ export function FinderWindow({
                   data-file-node
                   onClick={() => {
                     setSelectedFile(node.id)
-                    // Update column path.
                     const newPath = columnPath.slice(0, colIndex)
                     if (node.type === 'folder') {
                       newPath.push(node)

@@ -30,10 +30,6 @@ export type AccessDisplayEntry = AccessDisplaySourceEntry & {
   }[]
 }
 
-function formatOthers(count: number): string {
-  return `${count} other${count === 1 ? '' : 's'}`
-}
-
 export function buildAccessDisplayEntries(
   entries: AccessDisplaySourceEntry[],
   roleGroups: RoleGroup[],
@@ -137,8 +133,7 @@ export function buildAccessDisplayEntries(
         const youLabel = activeGrantLabel && activeGrantLabel !== teamRoleLabel
           ? `You (${activeGrantLabel})`
           : 'You'
-        const othersCount = Math.max(team.memberUserIds.length - 1, 0)
-        subtitle = othersCount > 0 ? `${youLabel} + ${formatOthers(othersCount)}` : youLabel
+        subtitle = subtitle ? `${subtitle} + ${youLabel}` : youLabel
       }
 
       return {

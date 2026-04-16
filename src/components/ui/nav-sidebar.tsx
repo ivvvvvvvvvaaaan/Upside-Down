@@ -22,11 +22,12 @@ import {
   Database,
   Film,
   Layout,
+  Layers,
+  MapPin,
+  Zap,
   Lock,
   Inbox,
-  Import,
   Send,
-  Share2,
   type LucideIcon,
 } from 'lucide-react'
 import { useSmartCollections, useFileTree, useAccess, usePersona } from '@/hooks'
@@ -250,20 +251,21 @@ function TreeNavLink({
   }, [forceExpand, isExpanded, setIsExpanded])
 
   const hasChevron = !!children
-  const reserveChevronSpace = indent && !hasChevron
+  const hasLeadingIcon = !!icon
+  const reserveChevronSpace = indent && !hasChevron && !hasLeadingIcon
   const showCollapsedPreview = hasActiveCollapsedPreview && !isExpanded
   const effectiveExpanded = isExpanded
+  const hasLeadingArea = hasLeadingIcon || hasChevron || reserveChevronSpace
 
   const linkClassName = cn(
     'flex-1 flex items-center justify-between pr-3 min-w-0',
     mobile ? 'py-3' : 'py-2',
-    hasChevron ? 'pl-1' : reserveChevronSpace ? 'pl-1' : 'pl-3',
+    hasLeadingArea ? 'pl-1' : 'pl-3',
   )
 
   const linkContent = (
     <>
       <span className="flex items-center gap-2 min-w-0 truncate">
-        {icon}
         <span className="truncate">{label}</span>
       </span>
       <span className="flex items-center gap-1">
@@ -278,6 +280,37 @@ function TreeNavLink({
       </span>
     </>
   )
+
+  const chevronIcon = effectiveExpanded
+    ? <ChevronDown className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
+    : <ChevronRight className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
+
+  const leadingArea = hasLeadingIcon ? (
+    // Combined chevron + icon: consistent width regardless of children
+    hasChevron ? (
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center gap-0.5 pl-1 py-2 flex-shrink-0"
+      >
+        {chevronIcon}
+        {icon}
+      </button>
+    ) : (
+      <span className="flex items-center gap-0.5 pl-1 py-2 flex-shrink-0">
+        <span className="w-3.5 flex-shrink-0" />
+        {icon}
+      </span>
+    )
+  ) : hasChevron ? (
+    <button
+      onClick={() => setIsExpanded(!isExpanded)}
+      className="w-7 flex items-center justify-center py-2 flex-shrink-0"
+    >
+      {chevronIcon}
+    </button>
+  ) : reserveChevronSpace ? (
+    <span className="w-7 flex-shrink-0" />
+  ) : null
 
   return (
     <div>
@@ -313,20 +346,7 @@ function TreeNavLink({
             : 'text-foreground-subtle hover:bg-surface-2 hover:text-foreground'
         )}
       >
-        {hasChevron ? (
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="w-7 flex items-center justify-center py-2 flex-shrink-0"
-          >
-            {effectiveExpanded ? (
-              <ChevronDown className="w-4 h-4 text-foreground-dim" />
-            ) : (
-              <ChevronRight className="w-4 h-4 text-foreground-dim" />
-            )}
-          </button>
-        ) : reserveChevronSpace ? (
-          <span className="w-7 flex-shrink-0" />
-        ) : null}
+        {leadingArea}
         {href ? (
           <Link href={href} className={linkClassName}>
             {linkContent}
@@ -341,7 +361,7 @@ function TreeNavLink({
         )}
       </div>
       {children && (effectiveExpanded || showCollapsedPreview) && (
-        <div className="pl-6 space-y-1 mt-1">
+        <div className="pl-8 space-y-1 mt-1">
           {effectiveExpanded ? children : collapsedPreview}
         </div>
       )}
@@ -461,20 +481,21 @@ function FolderNavTree({ nodes, basePath, sharedFolderIds, onAssetDropToFolder }
           )
         }
         const isShared = sharedFolderIds?.has(folder.id)
-        const sharedIcon = isShared ? <Share2 className="w-3 h-3 text-foreground-dim" /> : undefined
+        const FolderIcon = isShared ? FolderSymlink : Folder
+        const folderIcon = <FolderIcon className="w-4 h-4 flex-shrink-0" />
         const subfolders = (folder.children ?? []).filter((n) => n.type === 'folder')
         const folderDrop = onAssetDropToFolder
           ? (assetIds: string[]) => onAssetDropToFolder(folder.id, folder.name, assetIds)
           : undefined
         if (subfolders.length > 0) {
           return (
-            <TreeNavLink key={folder.id} href={href} label={folder.name} defaultExpanded={false} trailingIcon={sharedIcon} onAssetDrop={folderDrop}>
+            <TreeNavLink key={folder.id} href={href} label={folder.name} icon={folderIcon} defaultExpanded={false} onAssetDrop={folderDrop}>
               <FolderNavTree nodes={folder.children ?? []} basePath={href} sharedFolderIds={sharedFolderIds} onAssetDropToFolder={onAssetDropToFolder} />
             </TreeNavLink>
           )
         }
         return (
-          <TreeNavLink key={folder.id} href={href} label={folder.name} indent trailingIcon={sharedIcon} onAssetDrop={folderDrop} />
+          <TreeNavLink key={folder.id} href={href} label={folder.name} icon={folderIcon} onAssetDrop={folderDrop} />
         )
       })}
     </>
@@ -491,7 +512,6 @@ function WorkspaceRootNavItem({ root }: { root: WorkspaceFileNode }) {
   const href = `/nextgen/workspace/${root.id}`
 
   const handleFolderDrop = useCallback((folderId: string, folderName: string, assetIds: string[]) => {
-    // Default: create file references (non-destructive)
     for (const assetId of assetIds) {
       createFileReference(assetId, folderId)
     }
@@ -515,32 +535,50 @@ function WorkspaceRootNavItem({ root }: { root: WorkspaceFileNode }) {
     () => collectSharedFolderIds([root], getResourceGrants),
     [root, getResourceGrants],
   )
-  const sharedIcon = sharedFolderIds.has(root.id) ? <Share2 className="w-3 h-3 text-foreground-dim" /> : undefined
+
+  const folderIcon = sharedFolderIds.has(root.id)
+    ? <FolderSymlink className="w-4 h-4 flex-shrink-0" />
+    : <Folder className="w-4 h-4 flex-shrink-0" />
 
   if (hasFolders) {
-    const folders = files.filter(n => n.type === 'folder')
-    const activeFolder = folders.find(f => pathname.startsWith(`${href}/${f.id}`))
+    const activePath: WorkspaceFileNode[] = []
+    let level = files
+    while (level.length > 0) {
+      const match = level.find((n) => n.type === 'folder' && pathname.startsWith(`${href}/${activePath.map((p) => p.id).concat(n.id).join('/')}`))
+      if (!match) break
+      activePath.push(match)
+      level = match.children?.filter((n) => n.type === 'folder') as WorkspaceFileNode[] ?? []
+    }
+
+    const previewFolderIcon = <Folder className="w-4 h-4 flex-shrink-0" />
+    let preview: React.ReactNode = undefined
+    for (let i = activePath.length - 1; i >= 0; i--) {
+      const folder = activePath[i]
+      const folderHref = `${href}/${activePath.slice(0, i + 1).map((p) => p.id).join('/')}`
+      preview = preview ? (
+        <TreeNavLink key={folder.id} href={folderHref} label={folder.name} icon={previewFolderIcon} indent={i === 0} defaultExpanded>
+          {preview}
+        </TreeNavLink>
+      ) : (
+        <TreeNavLink key={folder.id} href={folderHref} label={folder.name} icon={previewFolderIcon} indent={i === 0} />
+      )
+    }
+
     return (
       <TreeNavLink
         href={href}
         label={root.name}
-        trailingIcon={sharedIcon}
+        icon={folderIcon}
         defaultExpanded={false}
         autoExpandOnActiveChild={false}
-        collapsedPreview={activeFolder ? (
-          <TreeNavLink
-            href={`${href}/${activeFolder.id}`}
-            label={activeFolder.name}
-            indent
-          />
-        ) : undefined}
+        collapsedPreview={preview}
       >
         <FolderNavTree nodes={files} basePath={href} sharedFolderIds={sharedFolderIds} onAssetDropToFolder={handleFolderDrop} />
       </TreeNavLink>
     )
   }
   return (
-    <TreeNavLink href={href} label={root.name} trailingIcon={sharedIcon} />
+    <TreeNavLink href={href} label={root.name} icon={folderIcon} />
   )
 }
 
@@ -554,7 +592,7 @@ function SharedNavSection() {
   return (
     <NavLink
       href="/nextgen/shared"
-      label="Shared"
+      label="Shares"
       icon={<Send className="w-4 h-4 flex-shrink-0" />}
       badge={badge > 0 ? badge : undefined}
       badgeStyle="unread"
@@ -578,10 +616,9 @@ function InboxNavLink() {
 }
 
 
-function SmartCollectionNavItem({ collection, getChildren, indent, badge }: {
+function SmartCollectionNavItem({ collection, getChildren, badge }: {
   collection: { id: string; name: string; groupBy?: string }
   getChildren: (parentId: string) => { id: string; name: string }[]
-  indent?: boolean
   badge?: number
 }) {
   const pathname = usePathname()
@@ -590,12 +627,20 @@ function SmartCollectionNavItem({ collection, getChildren, indent, badge }: {
     const childHref = `/nextgen/collections/${child.id}`
     return pathname === childHref || pathname.startsWith(childHref + '/')
   })
+  const groupByIcons: Record<string, typeof Zap> = {
+    characters: Users,
+    locations: MapPin,
+    scenes: Film,
+  }
+  const IconComponent = (collection.groupBy && groupByIcons[collection.groupBy]) || Zap
+  const collectionIcon = <IconComponent className="w-4 h-4 flex-shrink-0" />
   if (collection.groupBy && children.length > 0) {
     return (
       <TreeNavLink
         key={collection.id}
         href={`/nextgen/collections/${collection.id}`}
         label={collection.name}
+        icon={collectionIcon}
         badge={badge}
         defaultExpanded={false}
         autoExpandOnActiveChild={false}
@@ -621,8 +666,8 @@ function SmartCollectionNavItem({ collection, getChildren, indent, badge }: {
       key={collection.id}
       href={`/nextgen/collections/${collection.id}`}
       label={collection.name}
+      icon={collectionIcon}
       badge={badge}
-      indent={indent}
     />
   )
 }
@@ -649,6 +694,13 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
     return counts
   }, [smartCollections, scopedAssets])
 
+  const smartCollectionIds = useMemo(() => new Set(smartCollections.map(c => c.id)), [smartCollections])
+  const allOwnedIds = useMemo(() => {
+    const ids = new Set(smartCollectionIds)
+    for (const c of userCollections) ids.add(c.id)
+    return ids
+  }, [smartCollectionIds, userCollections])
+
   return (
     <>
       {/* Top Level Items */}
@@ -658,29 +710,45 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
           <InboxNavLink />
           <NavLink href="/nextgen/library" label="Cuts" icon={<Film className="w-4 h-4 flex-shrink-0" />} matchSubpaths />
           <SharedNavSection />
-          <div className="pt-3" />
-          {showWorkspaceLink && (
-            <TreeNavLink href="/nextgen/workspace" label="Workspaces" defaultExpanded={true}>
-              {workspaceRoots.map((root) => (
-                <WorkspaceRootNavItem key={root.id} root={root} />
-              ))}
-            </TreeNavLink>
-          )}
         </div>
       </div>
 
-      {/* Collections — owned + smart */}
-      <SectionHeader title="Collections" />
+      {/* Folders */}
+      {showWorkspaceLink && (
+        <>
+          <SectionHeader title="Folders" />
+          <div className="px-3 space-y-1">
+            {workspaceRoots.map((root) => (
+              <WorkspaceRootNavItem key={root.id} root={root} />
+            ))}
+            <button
+              className="flex items-center pr-3 py-2 text-body-0-bold text-foreground-subtle hover:text-foreground transition-colors min-w-0"
+            >
+              <span className="w-7 flex items-center justify-center flex-shrink-0">
+                <Plus className="w-3.5 h-3.5" />
+              </span>
+              <span className="pl-1 truncate">New Folder</span>
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Smart Collections */}
+      <SectionHeader title="Smart Collections" />
       <div className="px-3 space-y-1">
         {smartCollections.filter(c => !c.parentId).map((collection) => (
           <SmartCollectionNavItem
             key={collection.id}
             collection={collection}
             getChildren={getChildren}
-            indent
             badge={smartCollectionCounts.get(collection.id) || undefined}
           />
         ))}
+      </div>
+
+      {/* Collections */}
+      <SectionHeader title="Collections" />
+      <div className="px-3 space-y-1">
         {(() => {
           const seen = new Set<string>(smartCollections.map(c => c.id))
           const items: { id: string; name: string; count: number }[] = []
@@ -694,8 +762,8 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
               key={item.id}
               href={`/nextgen/collections/${item.id}`}
               label={item.name}
+              icon={<Layers className="w-4 h-4 flex-shrink-0" />}
               badge={item.count || undefined}
-              indent
               onAssetDrop={(assetIds) => {
                 addAssetsToCollection(item.id, assetIds)
                 const count = assetIds.length
@@ -726,11 +794,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
 
       {/* Shared with me */}
       {(() => {
-        const smartIds = new Set(smartCollections.map(c => c.id))
-        const ownedIds = new Set(
-          userCollections.map((collection) => collection.id)
-        )
-        const seen = new Set([...Array.from(smartIds), ...Array.from(ownedIds)])
+        const seen = new Set(allOwnedIds)
         const shares = isAdmin ? allProjectShares : sharesReceivedByMe
         const sharedItems: { id: string; name: string; count: number }[] = []
         for (const entry of shares) {
@@ -749,8 +813,8 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
                   key={item.id}
                   href={`/nextgen/collections/${item.id}`}
                   label={item.name}
+                  icon={<Layers className="w-4 h-4 flex-shrink-0" />}
                   badge={item.count || undefined}
-                  indent
                 />
               ))}
             </div>

@@ -347,14 +347,17 @@ function getAssetIdsForFolder(folderId: string): string[] {
   return (PROTOTYPE_ASSETS_BY_FOLDER.get(folderId) ?? []).map(a => a.id)
 }
 
+/** Recursive tree node shape used for folder traversal */
+type TreeNode = { id: string; children?: TreeNode[] }
+
 /** Get asset IDs for a folder and all its subfolders recursively */
-export function getAssetIdsForFolderRecursive(folderId: string, tree: { id: string; children?: { id: string; children?: unknown[] }[] }[]): string[] {
+export function getAssetIdsForFolderRecursive(folderId: string, tree: TreeNode[]): string[] {
   const ids = [...getAssetIdsForFolder(folderId)]
-  const findNode = (nodes: typeof tree, id: string): typeof tree[0] | null => {
+  const findNode = (nodes: TreeNode[], id: string): TreeNode | null => {
     for (const n of nodes) {
       if (n.id === id) return n
       if (n.children) {
-        const found = findNode(n.children as typeof tree, id)
+        const found = findNode(n.children, id)
         if (found) return found
       }
     }
@@ -362,18 +365,18 @@ export function getAssetIdsForFolderRecursive(folderId: string, tree: { id: stri
   }
   const node = findNode(tree, folderId)
   if (!node?.children) return ids
-  const walk = (children: typeof tree) => {
+  const walk = (children: TreeNode[]) => {
     for (const child of children) {
       ids.push(...getAssetIdsForFolder(child.id))
-      if (child.children) walk(child.children as typeof tree)
+      if (child.children) walk(child.children)
     }
   }
-  walk(node.children as typeof tree)
+  walk(node.children)
   return ids
 }
 
 function uniquePreviewImages(images: Array<string | undefined>, max: number = 6): string[] | undefined {
-  const deduped = Array.from(new Set(images.filter(Boolean) as string[])).slice(0, max)
+  const deduped = Array.from(new Set(images.filter((img): img is string => img != null))).slice(0, max)
   return deduped.length > 0 ? deduped : undefined
 }
 

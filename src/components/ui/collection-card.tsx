@@ -192,19 +192,16 @@ export function CollectionCard({
     )
   }
 
-  // Calculate remaining assets for "+X" overlay
   const remainingAssets = numberOfAssets === 'Many'
     ? Math.max(0, assetCount - 3)
     : numberOfAssets === 'Two'
     ? Math.max(0, assetCount - 2)
     : 0
 
-  // Pick folder icon variant based on access state
   const FolderIcon = type === 'folder' && accessIcon
     ? (className?.includes('cursor-not-allowed') ? FolderLock : FolderSymlink)
     : Folder
 
-  // Render thumbnail grid based on numberOfAssets
   const renderThumbnails = () => {
     if (type === 'folder') {
       return (
@@ -338,7 +335,6 @@ export function CollectionCard({
     )
   }
 
-  // Render footer based on collection type
   const renderFooter = () => {
     // Link styling applies on hover (via CSS) or when explicitly set via state prop
     const linkClass = 'group-hover:underline group-hover:text-foreground-system-link transition-colors'

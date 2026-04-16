@@ -1,8 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Download, MoreVertical, Trash2, X } from 'lucide-react'
-import Image from 'next/image'
+import { Download, MoreVertical, Plus, X } from 'lucide-react'
+import { ShareIcon } from './share-icon'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { Tooltip } from './tooltip'
@@ -37,8 +37,6 @@ interface ContextualActionBarProps {
     onClick: () => void
     reason?: string
   }
-  /** Left-side metadata shown when nothing is selected (e.g. "3 assets") */
-  metadata?: string
   className?: string
 }
 
@@ -47,10 +45,9 @@ export function ContextualActionBar({
   onClearSelection,
   downloadAction,
   removeAction,
-  metadata,
   className,
 }: ContextualActionBarProps) {
-  const { canShare, getGrantableProfiles } = useAccess()
+  const { canShare, getGrantableProfiles, getInheritedGrants } = useAccess()
   const [showCollectionModal, setShowCollectionModal] = useState(false)
   const [showAccessModal, setShowAccessModal] = useState(false)
   const [shareTarget, setShareTarget] = useState<{ resourceRef: ResourceRef; title: string } | null>(null)
@@ -65,6 +62,14 @@ export function ContextualActionBar({
   }), [selectedEntities, canShare, getGrantableProfiles])
 
   const selectionLabel = getSelectionCountLabel(selectedEntities)
+
+  const shareInheritedGrants = useMemo(() => {
+    if (!shareTarget || batchResourceRefs.length > 1) return undefined
+    return getInheritedGrants(shareTarget.resourceRef.id).map(({ grant, fromResourceName }) => ({
+      grant,
+      fromResourceName,
+    }))
+  }, [batchResourceRefs.length, getInheritedGrants, shareTarget])
 
   const handleShare = () => {
     if (!evaluation.actions.share.enabled) return
@@ -85,10 +90,11 @@ export function ContextualActionBar({
 
   return (
     <>
-      <div className={cn('flex items-center gap-2 min-h-8 -my-2', className)}>
-        {hasSelection ? (
-          <>
-            <span className="text-body-0-regular text-foreground-subtle whitespace-nowrap">{selectionLabel}</span>
+      {/* Floating bottom bar when selection is active */}
+      {hasSelection && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-high border border-border-dim shadow-lg">
+            <span className="text-body-0-bold text-foreground whitespace-nowrap">{selectionLabel}</span>
             <Button
               variant="icon"
               compact
@@ -98,7 +104,7 @@ export function ContextualActionBar({
               <X className="w-4 h-4" />
             </Button>
 
-            <div className="flex-1" />
+            <div className="w-px h-5 bg-border-dim mx-1" />
 
             {downloadAction && (
               <DisabledTooltip reason={!downloadAction.enabled ? downloadAction.reason : undefined}>
@@ -118,7 +124,7 @@ export function ContextualActionBar({
                 <Button
                   variant="secondary"
                   compact
-                  icon={<Image src="/Icons/Icons-share.svg" alt="" width={16} height={16} />}
+                  icon={<ShareIcon />}
                   onClick={handleShare}
                   disabled={!evaluation.actions.share.enabled}
                 >
@@ -126,28 +132,28 @@ export function ContextualActionBar({
                 </Button>
               </DisabledTooltip>
             )}
-            {((evaluation.actions.addToCollection.visible && evaluation.actions.addToCollection.enabled) || (removeAction && removeAction.enabled)) && (
+            {evaluation.actions.addToCollection.visible && evaluation.actions.addToCollection.enabled && (
+              <Button
+                variant="secondary"
+                compact
+                icon={<Plus className="w-4 h-4" />}
+                onClick={() => setShowCollectionModal(true)}
+              >
+                {evaluation.actions.addToCollection.label}
+              </Button>
+            )}
+            {removeAction && removeAction.enabled && (
               <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
-                {evaluation.actions.addToCollection.visible && evaluation.actions.addToCollection.enabled && (
-                  <DropdownMenuItem
-                    label={evaluation.actions.addToCollection.label}
-                    onClick={() => setShowCollectionModal(true)}
-                  />
-                )}
-                {removeAction && removeAction.enabled && (
-                  <DropdownMenuItem
-                    label="Remove from collection"
-                    onClick={removeAction.onClick}
-                    destructive
-                  />
-                )}
+                <DropdownMenuItem
+                  label="Remove from collection"
+                  onClick={removeAction.onClick}
+                  destructive
+                />
               </Dropdown>
             )}
-          </>
-        ) : (
-          <span className="text-body-0-regular text-foreground-subtle whitespace-nowrap">{metadata}</span>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
 
       <CollectionMembershipModal
         open={showCollectionModal}
@@ -162,6 +168,7 @@ export function ContextualActionBar({
         resourceId={shareTarget?.resourceRef.id ?? batchResourceRefs[0]?.id ?? ''}
         resourceRef={shareTarget?.resourceRef ?? batchResourceRefs[0]}
         batchResourceRefs={batchResourceRefs.length > 1 ? batchResourceRefs : undefined}
+        inheritedGrants={shareInheritedGrants}
         title={shareTarget?.title}
       />
     </>

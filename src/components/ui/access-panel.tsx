@@ -11,6 +11,7 @@ import { RoleSelect } from './role-select'
 import { MenuSelect } from './menu-select'
 import { Avatar } from './avatar'
 import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
+import { PrincipalAvatar } from './principal-avatar'
 import { Toggle } from './switch'
 import { GrantBadge } from './grant-badge'
 import { Modal } from './modal'
@@ -61,8 +62,24 @@ interface AccessPanelProps {
   onPendingChange?: (pending: boolean, handlers: { confirm: () => void; cancel: () => void }) => void
 }
 
+function roleOptionsForResource(roleGroups: RoleGroup[], resourceType?: Grant['resource']['type']) {
+  const options = roleGroupOptions(roleGroups)
+  if (resourceType !== 'folder') return options
 
-function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onRemove, onBlock, onUpdateProfile, onUpdateShareMode, onReshareSnapshot, name, subtitle, roleLabel, members, domainId, versionLabel }: {
+  return options
+    .filter((option) => option.value === 'manager' || option.value === 'viewer')
+    .map((option) => option.value === 'viewer'
+      ? { ...option, label: 'View only', description: 'Open and preview content' }
+      : option)
+}
+
+function roleLabelForResource(roleGroups: RoleGroup[], profileId: AccessProfileId, resourceType?: Grant['resource']['type']) {
+  if (resourceType === 'folder' && profileId === 'viewer') return 'View only'
+  return getRoleGroup(roleGroups, profileId)?.name ?? profileId
+}
+
+
+function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onRemove, onBlock, onUpdateProfile, onUpdateShareMode, onReshareSnapshot, onSetMemberOverride, name, subtitle, roleLabel, members, domainId, versionLabel }: {
   grant: Grant
   readOnly: boolean
   roleGroups: RoleGroup[]
@@ -73,6 +90,7 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
   onUpdateProfile?: (grantId: string, profileId: AccessProfileId) => void
   onUpdateShareMode?: (grantId: string, mode: ShareMode) => void
   onReshareSnapshot?: (grant: Grant) => void
+  onSetMemberOverride?: (memberUserId: string, profileId: AccessProfileId, existingGrantId?: string) => void
   name: string
   subtitle?: string
   roleLabel: string
@@ -80,9 +98,9 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
   domainId?: DomainId
   versionLabel?: string
 }) {
-  const isOwner = grant.templateId === 'manager'
   const principal = grant.principal
-  const canEdit = !readOnly && !isOwner
+  const canEdit = !readOnly
+  const hideGroupRoleLabel = principal.type === 'team' && expanded && Boolean(members?.length)
 
   return (
     <div className="py-1 space-y-1">
@@ -111,33 +129,25 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {canEdit && onUpdateProfile ? (() => {
-            const roleName = getRoleGroup(roleGroups, grant.templateId ?? 'viewer')?.name ?? 'Viewer'
+          {!hideGroupRoleLabel && (canEdit && onUpdateProfile ? (() => {
+            const roleName = roleLabelForResource(roleGroups, grant.templateId ?? 'viewer', grant.resource.type)
             let extras = 0
-            if (grant.allowUpload) extras++
-            if (grant.shareMode === 'live') extras++
-            if (grant.allowDownload) extras++
-            if (grant.allowComment) extras++
+            if (grant.resource.type !== 'folder') {
+              if (grant.shareMode === 'live') extras++
+              if (grant.allowDownload) extras++
+              if (grant.allowComment) extras++
+            }
             if (grant.lockedToVersion != null) extras++
             const label = extras > 0 ? `${roleName} +${extras}` : roleName
+            const showGrantOptions = grant.resource.type === 'collection' && grant.shareMode !== undefined
             return (
             <RoleSelect
-              options={roleGroupOptions(roleGroups)}
+              options={roleOptionsForResource(roleGroups, grant.resource.type)}
               value={grant.templateId ?? 'viewer'}
               onChange={(value) => onUpdateProfile(grant.id, value as AccessProfileId)}
               triggerLabel={label}
-              footer={(grant.allowUpload !== undefined || grant.shareMode !== undefined) ? (
+              footer={showGrantOptions ? (
                 <div className="space-y-2">
-                  {grant.allowUpload !== undefined && (
-                    <label className="flex items-center justify-between text-body-0-regular text-foreground-dim cursor-pointer">
-                      Uploads
-                      <Toggle
-                        checked={!!grant.allowUpload}
-                        onChange={() => {}}
-                        aria-label="Uploads"
-                      />
-                    </label>
-                  )}
                   {grant.shareMode !== undefined && (
                     <label className="flex items-center justify-between text-body-0-regular text-foreground-dim cursor-pointer">
                       Include new
@@ -154,7 +164,7 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
             )
           })() : (
             <GrantBadge grant={grant} roleGroups={roleGroups} />
-          )}
+          ))}
           {canEdit && onRemove && (
             <Button variant="secondary" compact onClick={() => onRemove(grant.id)}>
               Remove
@@ -164,10 +174,11 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
       </div>
       {(() => {
         const lines: { label: string; value?: string }[] = []
-        if (grant.allowDownload) lines.push({ label: 'Download', value: 'Yes' })
-        if (grant.allowComment) lines.push({ label: 'Comment', value: 'Yes' })
-        if (grant.allowUpload) lines.push({ label: 'Upload', value: 'Yes' })
-        if (grant.shareMode) lines.push({ label: 'New assets', value: grant.shareMode === 'live' ? 'Included' : 'Snapshot' })
+        if (grant.resource.type !== 'folder') {
+          if (grant.allowDownload) lines.push({ label: 'Download', value: 'Yes' })
+          if (grant.allowComment) lines.push({ label: 'Comment', value: 'Yes' })
+          if (grant.shareMode) lines.push({ label: 'New assets', value: grant.shareMode === 'live' ? 'Included' : 'Snapshot' })
+        }
         if (grant.lockedToVersion != null) lines.push({ label: 'Version', value: `Locked to v${grant.lockedToVersion}` })
         const showReshare = canEdit && grant.resource.type === 'collection' && grant.shareMode === 'snapshot' && onReshareSnapshot
         if (lines.length === 0 && !versionLabel) return null
@@ -221,10 +232,27 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
                 </div>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
-                {!readOnly && member.grantId && onUpdateProfile ? (
+                {onSetMemberOverride ? (
                   <RoleSelect
                     options={[
-                      ...roleGroupOptions(roleGroups),
+                      ...roleOptionsForResource(roleGroups, grant.resource.type),
+                      ...(member.grantId ? [{ value: '__inherit__', label: 'Use group access', description: 'Remove local override', separated: true }] : []),
+                    ]}
+                    value={member.roleValue ?? grant.templateId ?? 'viewer'}
+                    triggerLabel={roleLabelForResource(roleGroups, member.roleValue ?? grant.templateId ?? 'viewer', grant.resource.type)}
+                    onChange={(value) => {
+                      if (value === '__inherit__') {
+                        if (member.grantId && onRemove) onRemove(member.grantId)
+                        return
+                      }
+                      if (!member.grantId && value === (grant.templateId ?? 'viewer')) return
+                      onSetMemberOverride(member.id, value as AccessProfileId, member.grantId)
+                    }}
+                  />
+                ) : !readOnly && member.grantId && onUpdateProfile ? (
+                  <RoleSelect
+                    options={[
+                      ...roleOptionsForResource(roleGroups, grant.resource.type),
                       ...(onRemove ? [{ value: '__remove__', label: 'Remove', destructive: true }] : []),
                     ]}
                     value={member.roleValue ?? 'viewer'}
@@ -238,7 +266,7 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
                   />
                 ) : member.roleValue ? (
                   <RoleSelect
-                    options={roleGroupOptions(roleGroups)}
+                    options={roleOptionsForResource(roleGroups, grant.resource.type)}
                     value={member.roleValue}
                     onChange={() => {}}
                     disabled
@@ -427,7 +455,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   })
   const [query, setQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
-  type PendingGrant = { id: string; principal: PrincipalRef; name: string; kind: 'user' | 'team' | 'domain'; role: AccessProfileId; shareMode: ShareMode; expires: boolean; expiresInDays: number; allowUpload: boolean; note: string }
+  type PendingGrant = { id: string; principal: PrincipalRef; name: string; kind: 'user' | 'team' | 'domain'; role: AccessProfileId; shareMode: ShareMode; expires: boolean; expiresInDays: number; note: string }
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
   const [showReleaseWarning, setShowReleaseWarning] = useState(false)
   const [flaggedReleaseRecipients, setFlaggedReleaseRecipients] = useState<{ name: string; reason: string }[]>([])
@@ -524,44 +552,14 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   }, [isAssetResource, resourceId, collections, getResourceGrants, inheritedGrants])
 
   const addRoleOptions = useMemo(() => {
-    if (!resourceRef) return roleGroupOptions(roleGroups)
+    if (!resourceRef) return roleOptionsForResource(roleGroups)
     const allowedProfiles = new Set(getGrantableProfiles(resourceRef))
-    return roleGroupOptions(roleGroups).filter((option) => allowedProfiles.has(option.value as AccessProfileId))
+    return roleOptionsForResource(roleGroups, resourceRef.type).filter((option) => allowedProfiles.has(option.value as AccessProfileId))
   }, [resourceRef, roleGroups, getGrantableProfiles])
 
   // Scoped visibility: what can the current user see in this access panel?
   const canSeeFullAccessList = canAddGrants || canManageAllGrants
 
-  // Status card for assets: summary of how this asset is reachable
-  const assetStatusCard = isAssetResource && (() => {
-    const deptName = resourceRef?.domainId ? (domainConfigs[resourceRef.domainId]?.name ?? resourceRef.domainId) : null
-    const collectionCount = sharedViaCollections.length
-    const totalPeople = new Set<string>()
-    const countPrincipal = (p: PrincipalRef) => {
-      if (p.type === 'user') totalPeople.add(p.userId)
-      else if (p.type === 'team') {
-        const t = TEAMS.find(t2 => t2.id === p.teamId)
-        if (t) t.memberUserIds.forEach(uid => totalPeople.add(uid))
-      }
-    }
-    for (const g of grants) countPrincipal(g.principal)
-    for (const { grants: cg } of sharedViaCollections) {
-      for (const g of cg) countPrincipal(g.principal)
-    }
-
-    const parts: string[] = []
-    if (deptName) parts.push(deptName)
-    if (collectionCount > 0) parts.push(`${collectionCount} collection${collectionCount !== 1 ? 's' : ''}`)
-    if (totalPeople.size > 0) parts.push(`${totalPeople.size} people`)
-
-    if (parts.length === 0) return null
-
-    return (
-      <div className="bg-surface-mid rounded-lg px-3 py-2 text-body-0-regular text-foreground-dim">
-        {parts.join(' · ')}
-      </div>
-    )
-  })()
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -617,7 +615,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     // Smart defaults based on recipient type
     let defaultRole = addAsRole
     let defaultShareMode = shareMode
-    let defaultAllowUpload = false
 
     if (kind === 'domain') {
       defaultRole = 'viewer'
@@ -625,9 +622,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     } else if (principal.type === 'user') {
       const persona = PERSONAS.find(p => p.id === principal.userId)
       if (persona?.role === 'vendor') {
-        defaultRole = 'viewer'
+        defaultRole = isFolderResource ? 'manager' : 'viewer'
         defaultShareMode = 'snapshot'
-        defaultAllowUpload = true
       }
     }
 
@@ -640,7 +636,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       shareMode: defaultShareMode,
       expires,
       expiresInDays,
-      allowUpload: defaultAllowUpload,
       note: '',
     }])
     setQuery('')
@@ -683,7 +678,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           expiresInDays: pending.expires ? pending.expiresInDays : undefined,
           shareMode: isCollection ? pending.shareMode : undefined,
           snapshotAssetIds,
-          allowUpload: pending.allowUpload || undefined,
           note: pending.note || undefined,
         })
       }
@@ -788,6 +782,18 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     updateGrantProfile(grantId, profileId)
   }
 
+  const handleSetMemberOverride = (memberUserId: string, profileId: AccessProfileId, existingGrantId?: string) => {
+    if (!resourceRef) return
+
+    markDirty()
+    if (existingGrantId) {
+      updateGrantProfile(existingGrantId, profileId)
+      return
+    }
+
+    createGrant(resourceRef, { type: 'user', userId: memberUserId }, profileId)
+  }
+
   const handleUpdateShareMode = (grantId: string, mode: ShareMode) => {
     markDirty()
     updateGrantShareMode(grantId, mode)
@@ -804,7 +810,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       permissions: grant.templateId ? undefined : grant.permissions,
       shareMode: 'snapshot',
       snapshotAssetIds: resolveCollectionAssetIds(collection),
-      allowUpload: grant.allowUpload,
       expiresAt: grant.expiresAt,
     })
     showToast(`Re-shared "${collection.name}" as a new snapshot version.`)
@@ -839,8 +844,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       sourceName: undefined as string | undefined,
     }))
 
-    // For assets: inherited grants only feed the status card, not the access list
-    const inheritedRaw = isAssetResource ? [] : (inheritedGrants ?? []).map(({ grant, fromResourceName }) => ({
+    const inheritedRaw = (inheritedGrants ?? []).map(({ grant, fromResourceName }) => ({
       key: `inherited-${grant.id}-${fromResourceName}`,
       grant,
       readOnly: true,
@@ -852,22 +856,59 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       roleGroups,
       activePersona?.id,
     )
-  }, [grants, canManageGrant, inheritedGrants, roleGroups, activePersona?.id])
+  }, [grants, canManageGrant, inheritedGrants, roleGroups, activePersona?.id, isAssetResource])
 
   const directEntries = useMemo(() => allEntries.filter(e => !e.sourceName), [allEntries])
   const inheritedEntries = useMemo(() => allEntries.filter(e => !!e.sourceName), [allEntries])
 
+  const inheritedTeamMemberIds = useMemo(() => {
+    const memberIds = new Set<string>()
+    for (const entry of inheritedEntries) {
+      if (entry.grant.principal.type !== 'team') continue
+      entry.members?.forEach((member) => memberIds.add(member.id))
+    }
+    return memberIds
+  }, [inheritedEntries])
+
+  const localUserOverrides = useMemo(() => {
+    const overrides = new Map<string, Grant>()
+    for (const grant of grants) {
+      if (!isGrantActive(grant) || grant.principal.type !== 'user') continue
+      overrides.set(grant.principal.userId, grant)
+    }
+    return overrides
+  }, [grants])
+
+  const applyLocalMemberOverrides = (entry: AccessDisplayEntry): AccessDisplayEntry => ({
+    ...entry,
+    members: entry.members?.map((member) => {
+      const override = localUserOverrides.get(member.id)
+      if (!override) return member
+      return {
+        ...member,
+        grantId: override.id,
+        roleValue: override.templateId,
+        roleLabel: override.templateId
+          ? roleLabelForResource(roleGroups, override.templateId, resourceRef?.type)
+          : undefined,
+      }
+    }),
+  })
+
   const userEntries = useMemo(() =>
-    [...directEntries, ...inheritedEntries].filter((entry) => entry.grant.principal.type === 'user'),
-    [directEntries, inheritedEntries],
+    directEntries.filter((entry) => {
+      if (entry.grant.principal.type !== 'user') return false
+      return !inheritedTeamMemberIds.has(entry.grant.principal.userId)
+    }),
+    [directEntries, inheritedTeamMemberIds],
   )
   const teamEntries = useMemo(() =>
-    [...directEntries, ...inheritedEntries].filter(e => e.grant.principal.type === 'team'),
-    [directEntries, inheritedEntries],
+    directEntries.filter(e => e.grant.principal.type === 'team'),
+    [directEntries],
   )
   const domainEntries = useMemo(() =>
-    [...directEntries, ...inheritedEntries].filter(e => e.grant.principal.type === 'domain'),
-    [directEntries, inheritedEntries],
+    directEntries.filter(e => e.grant.principal.type === 'domain'),
+    [directEntries],
   )
 
   const showTabs = resourceRef?.type === 'asset' || resourceRef?.type === 'cut'
@@ -1006,6 +1047,33 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     </div>
   )
 
+  const inheritedEntriesSection = inheritedEntries.length > 0 && (
+    <div className="space-y-0">
+      <h3 className="text-body-0-bold text-foreground-dim pb-2">Access from parent folders</h3>
+      {inheritedEntries.map((entry) => {
+        const entryWithOverrides = applyLocalMemberOverrides(entry)
+        return (
+          <GrantRow
+            key={entry.key}
+            grant={entryWithOverrides.grant}
+            readOnly
+            roleGroups={roleGroups}
+            expanded={expandedGroups.has(entry.grant.id)}
+            onToggleExpanded={() => toggleGroupExpanded(entry.grant.id)}
+            name={entryWithOverrides.name}
+            subtitle={entryWithOverrides.subtitle}
+            roleLabel={entryWithOverrides.roleLabel}
+            members={entryWithOverrides.members}
+            domainId={entryWithOverrides.domainId}
+            onRemove={!readOnly && canManageAllGrants ? handleRevokeGrant : undefined}
+            onSetMemberOverride={!readOnly && canManageAllGrants ? handleSetMemberOverride : undefined}
+            versionLabel={buildVersionLabel(entry.grant)}
+          />
+        )
+      })}
+    </div>
+  )
+
   const sharedViaCollectionsSection = sharedViaCollections.map(({ collection, grants: collGrants }) => {
     const collRef: ResourceRef = { id: collection.id, type: 'collection' }
     const canManageCollection = canEditAcl(collRef)
@@ -1062,30 +1130,18 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               <span className="text-body-0-regular text-foreground truncate">{pending.name}</span>
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
-              {(isCollectionResource || isFolderResource) && pending.kind !== 'domain' && (
-                <>
+              {isCollectionResource && pending.kind !== 'domain' && (
                 <label className="flex items-center gap-1.5 mr-2 text-label-0-regular text-foreground-dim cursor-pointer">
                   <Toggle
-                    checked={pending.allowUpload}
-                    onChange={(v) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, allowUpload: v } : p))}
-                    aria-label="Allow uploads"
+                    checked={pending.shareMode === 'live'}
+                    onChange={(v) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, shareMode: v ? 'live' : 'snapshot' } : p))}
+                    aria-label="Include new"
                   />
-                  <span>Uploads</span>
+                  <span>Include new</span>
+                  <Tooltip label="Show new assets as they're added">
+                    <Info className="w-3 h-3 text-foreground-dim" />
+                  </Tooltip>
                 </label>
-                {isCollectionResource && (
-                  <label className="flex items-center gap-1.5 mr-2 text-label-0-regular text-foreground-dim cursor-pointer">
-                    <Toggle
-                      checked={pending.shareMode === 'live'}
-                      onChange={(v) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, shareMode: v ? 'live' : 'snapshot' } : p))}
-                      aria-label="Include new"
-                    />
-                    <span>Include new</span>
-                    <Tooltip label="Show new assets as they're added">
-                      <Info className="w-3 h-3 text-foreground-dim" />
-                    </Tooltip>
-                  </label>
-                )}
-                </>
               )}
               <RoleSelect
                 options={pending.kind === 'domain'
@@ -1131,7 +1187,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     </div>
   )
 
-  const peopleEmptyState = userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && sharedViaCollections.length === 0 && pendingPeopleCount === 0 && (
+  const peopleEmptyState = inheritedEntries.length === 0 && userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && sharedViaCollections.length === 0 && pendingPeopleCount === 0 && (
     <p className="text-body-0-regular text-foreground-subtle py-2">Use the search above to share with people or teams.</p>
   )
 
@@ -1272,17 +1328,17 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         <>
           {canSeeFullAccessList && searchSection}
 
-          {/* Asset share modal: status card + direct grants only */}
-          {isAssetResource && assetStatusCard}
-
           {canSeeFullAccessList ? (
-            <div>
-              {(userEntries.length > 0 || teamEntries.length > 0) && (
-                <div className="pb-2">{haveAccessHeader}</div>
+            <div className="space-y-4">
+              {inheritedEntriesSection}
+              {(userEntries.length > 0 || teamEntries.length > 0 || resourceBlocks.length > 0) && (
+                <div>
+                  {haveAccessHeader && <div className="pb-2">{haveAccessHeader}</div>}
+                  {userEntriesSection}
+                  {blockedSection}
+                  {teamEntriesSection}
+                </div>
               )}
-              {userEntriesSection}
-              {blockedSection}
-              {teamEntriesSection}
             </div>
           ) : (
             activePersona && (() => {

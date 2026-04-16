@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { PanelRight, Info, MoreVertical, HardDrive } from 'lucide-react'
-import Image from 'next/image'
+import { ShareIcon } from '@/components/ui/share-icon'
+import { PERSONAS } from '@/lib/personas'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import {
@@ -77,7 +78,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
   const isMobile = useIsMobile()
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
-  const { canShare, canEditAcl, getCurrentUserGrant, isSensitiveAsset } = useAccess()
+  const { canShare, canEditAcl, getCurrentUserGrant, getResourceGrants, sharesReceivedByMe, allProjectShares, isSensitiveAsset } = useAccess()
   const { createReferenceFolder } = useFileTree()
   const { showToast } = useToast()
   const [shareModalOpen, setShareModalOpen] = useState(false)
@@ -105,6 +106,30 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const isOwner = collection?.createdBy === activePersona?.email
   const canManageCurrentCollection = Boolean(collection && (isOwner || isAdmin || canEditAcl(collectionResourceRef)))
   const canDeleteCurrentCollection = Boolean(collection && (isOwner || isAdmin))
+
+  const subtitle = useMemo(() => {
+    // Received from someone else
+    if (!isOwner && collection) {
+      const shares = isAdmin ? allProjectShares : sharesReceivedByMe
+      const share = shares.find(s => s.resourceId === collectionId)
+      if (share) {
+        const grantor = PERSONAS.find(p => p.id === share.grantedByUserId)
+        return `Shared by ${grantor?.name ?? share.grantedByUserId}`
+      }
+    }
+    // Owned: show sharing status
+    if (isOwner && collection) {
+      const grants = getResourceGrants(shareResourceRef.id)
+      const directGrants = grants.filter(g => !g.reviewLinkId)
+      const linkGrants = grants.filter(g => g.reviewLinkId)
+      if (directGrants.length === 0 && linkGrants.length === 0) return 'Private'
+      const parts: string[] = []
+      if (directGrants.length > 0) parts.push(`Shared with ${directGrants.length} ${directGrants.length === 1 ? 'person' : 'people'}`)
+      if (linkGrants.length > 0) parts.push('Link sharing on')
+      return parts.join(' · ')
+    }
+    return undefined
+  }, [isOwner, isAdmin, collection, collectionId, sharesReceivedByMe, allProjectShares, getResourceGrants, shareResourceRef.id])
 
   useEffect(() => {
     void ensureAssetsLoaded()
@@ -165,7 +190,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
         collection: child,
         assetCount: assets.length,
         mainImage: assets[0]?.thumbnail,
-        thumbnailImages: assets.slice(1, 3).map(a => a.thumbnail).filter(Boolean) as string[],
+        thumbnailImages: assets.slice(1, 3).map(a => a.thumbnail).filter((t): t is string => t != null),
         avatarSrc: `https://i.pravatar.cc/150?img=${(i * 7 + 3) % 70}`,
       }
     })
@@ -396,7 +421,11 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                   {/* Header */}
                   <div ref={headerRef} className="flex flex-col gap-3">
                     <div className="flex items-center justify-between gap-4">
-                      <PageHeader title={pageTitle} hideTitleOnMobile />
+                      <PageHeader
+                        title={pageTitle}
+                        description={[subtitle, !loading ? `${itemCount} ${countLabel}${itemCount !== 1 ? 's' : ''}` : undefined].filter(Boolean).join(' · ')}
+                        hideTitleOnMobile
+                      />
                       <div className="hidden md:flex items-center gap-2">
                         <SortDropdown
                           fields={sortFields}
@@ -419,20 +448,22 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                         {showShareButton && (
                           <Button
                             variant="primary"
-                            icon={<Image src="/Icons/Icons-share.svg" alt="" width={16} height={16} />}
+                            compact
+                            icon={<ShareIcon />}
                             onClick={() => setShareModalOpen(true)}
                           >
                             Share
                           </Button>
                         )}
-                        <Button
-                          variant="icon"
-                          onClick={togglePanel}
-                          aria-label={panelOpen ? 'Close panel' : 'Open panel'}
-                          
-                        >
-                          <PanelRight className="w-4 h-4" />
-                        </Button>
+                        {!panelOpen && (
+                          <Button
+                            variant="icon"
+                            onClick={togglePanel}
+                            aria-label="Open panel"
+                          >
+                            <PanelRight className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -440,7 +471,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                   <ContextualActionBar
                     selectedEntities={activeSelectionEntities}
                     onClearSelection={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
-                    metadata={loading ? undefined : `${itemCount} ${countLabel}${itemCount !== 1 ? 's' : ''}`}
                   />
 
                   {/* Content */}

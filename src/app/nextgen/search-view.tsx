@@ -131,12 +131,14 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                 </div>
               </div>
 
+              <span className="text-body-0-regular text-foreground-subtle min-h-5">
+                {isSearchActive && searchResults
+                  ? `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`
+                  : accessibleRecentAssets.length > 0 ? 'Recent' : '\u00A0'}
+              </span>
               <ContextualActionBar
                 selectedEntities={selectedEntities}
                 onClearSelection={clearSelection}
-                metadata={isSearchActive && searchResults
-                  ? `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`
-                  : accessibleRecentAssets.length > 0 ? 'Recent' : undefined}
               />
 
               {/* Results */}

@@ -68,28 +68,9 @@ export type AccessRequest = {
 // Re-export types consumers may need
 export type { Block, Grant, GrantView, ResourceRef, ResourceType, PrincipalRef, AccessProfileId, RoleGroup, Permission }
 
-export type AccessPathSource =
-  | 'domain'               // user is in the same domain
-  | 'direct-grant'         // explicit grant on this resource
-  | 'folder-inheritance'   // inherited from a parent folder grant
-  | 'collection-ripple'    // accessible via a shared collection
-  | 'admin'                // admin bypass
-
 export type RemainingAccessPath = {
   path: 'department' | 'collection' | 'direct' | 'domain' | 'folder' | 'team'
   source: string
-}
-
-export type AccessPath = {
-  source: AccessPathSource
-  /** The resource that provided access (collection id, folder id, etc.) */
-  viaResourceId?: string
-  /** Human-readable name of the resource that provided access */
-  viaResourceName?: string
-  /** Who shared it (user id of the grant creator) */
-  sharedByUserId?: string
-  /** Can the user browse the workspace folder where this asset lives */
-  canBrowseWorkspace: boolean
 }
 
 export type UserAccessSummary = {
@@ -130,7 +111,7 @@ interface AccessContextValue {
   getCollectionAssetCount: (id: string) => { total: number; accessible: number }
   getCollectionShareCeiling: (collectionId: string, intendedProfile: AccessProfileId) => { total: number; atLevel: number; capped: number; cappedAssetIds: string[] }
   getCurrentUserGrant: (resourceId: string) => Grant | undefined
-  createGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId, options?: { permissions?: Permission[]; shareMode?: ShareMode; snapshotAssetIds?: string[]; allowDownload?: boolean; allowComment?: boolean; allowUpload?: boolean; expiresInDays?: number; expiresAt?: string; versionNote?: string; note?: string }) => void
+  createGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId, options?: { permissions?: Permission[]; shareMode?: ShareMode; snapshotAssetIds?: string[]; allowDownload?: boolean; allowComment?: boolean; expiresInDays?: number; expiresAt?: string; versionNote?: string; note?: string }) => void
   getGrantableProfiles: (resource: ResourceRef) => AccessProfileId[]
   revokeGrant: (grantId: string) => void
   revokeUserAccess: (userId: string) => void
@@ -178,9 +159,6 @@ interface AccessContextValue {
 
   // Add shared content to workspace as a synced reference folder
 
-
-  // Dropbox mode — check if current user can upload to a collection
-  canUploadToCollection: (collectionId: string) => boolean
 
   // Review links — authenticated direct links with expiration
   createReviewLink: (resource: ResourceRef, principal: PrincipalRef, expiresInDays?: number) => string | undefined
@@ -259,9 +237,43 @@ function mergePermissionSets(...sets: EffectivePermissionSet[]): EffectivePermis
   }
 }
 
+function getDirectUserOverridePermissionSet(
+  userId: string,
+  resourceId: string,
+  currentGrants: Grant[],
+  roleGroups: RoleGroup[],
+): EffectivePermissionSet | null {
+  const directUserGrants = currentGrants.filter((grant) =>
+    grant.resource.id === resourceId &&
+    isGrantActive(grant) &&
+    grant.principal.type === 'user' &&
+    grant.principal.userId === userId,
+  )
+
+  if (directUserGrants.length === 0) return null
+
+  const permissions = mergePermissions(
+    ...directUserGrants.map((grant) =>
+      grant.permissions.length > 0
+        ? grant.permissions
+        : getPermissionsForProfile(grant.templateId, roleGroups),
+    ),
+  )
+  const templateId = directUserGrants.reduce<AccessProfileId | null>(
+    (current, grant) => mostPermissiveProfile(current, grant.templateId),
+    null,
+  )
+
+  return {
+    templateId,
+    permissions,
+    canEdit: permissions.includes('write'),
+  }
+}
+
 /**
- * Pure function: resolve a user's access to a resource by checking direct grants
- * AND walking up the folder parent chain. This is the single access resolution path.
+ * Resolve another user's permissions on a resource, including folder inheritance.
+ * Used for the collection asset ceiling check (what can the sharer actually access?).
  */
 function resolveAccessWithInheritance(
   userId: string,
@@ -273,11 +285,22 @@ function resolveAccessWithInheritance(
   blocks: Block[],
   getResourceDomainIdFn: (id: string) => DomainId | undefined,
 ): Permission[] {
+  const directOverride = getDirectUserOverridePermissionSet(userId, resourceId, currentGrants, roleGroups)
+  if (directOverride) return directOverride.permissions
+
   const direct = resolveAccess(userId, resourceId, currentGrants, roleGroups, getResourceDomainIdFn(resourceId), blocks)
   const allPermissions = [...direct.permissions]
 
   let parentId = nodeToParent.get(resourceId)
   while (parentId) {
+    const parentOverride = getDirectUserOverridePermissionSet(userId, parentId, currentGrants, roleGroups)
+    if (parentOverride) {
+      for (const perm of parentOverride.permissions) {
+        if (!allPermissions.includes(perm)) allPermissions.push(perm)
+      }
+      break
+    }
+
     const parentAccess = resolveAccess(userId, parentId, currentGrants, roleGroups, nodeToDomain.get(parentId), blocks)
     for (const perm of parentAccess.permissions) {
       if (!allPermissions.includes(perm)) allPermissions.push(perm)
@@ -699,35 +722,52 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     } else if (resource.type === 'smart-collection') {
       layers.push(getDirectSmartCollectionPermissionSet(resource.id, currentGrants))
     } else {
-      layers.push(
-        fromResolvedAccess(
-          resolveAccess(
-            userId,
-            resource.id,
-            currentGrants,
-            roleGroups,
-            undefined,
-            blocks,
+      const directOverride = getDirectUserOverridePermissionSet(userId, resource.id, currentGrants, roleGroups)
+      if (directOverride) {
+        layers.push(directOverride)
+      } else {
+        layers.push(
+          fromResolvedAccess(
+            resolveAccess(
+              userId,
+              resource.id,
+              currentGrants,
+              roleGroups,
+              undefined,
+              blocks,
+            ),
           ),
-        ),
-      )
+        )
+      }
     }
 
-    let parentId = nodeToParent.get(resource.id)
-    while (parentId) {
-      layers.push(
-        fromResolvedAccess(
-          resolveAccess(
-            userId,
-            parentId,
-            currentGrants,
-            roleGroups,
-            nodeToDomain.get(parentId),
-            blocks,
+    const directResourceOverride = resource.type !== 'collection' && resource.type !== 'smart-collection'
+      ? getDirectUserOverridePermissionSet(userId, resource.id, currentGrants, roleGroups)
+      : null
+
+    if (!directResourceOverride) {
+      let parentId = nodeToParent.get(resource.id)
+      while (parentId) {
+        const parentOverride = getDirectUserOverridePermissionSet(userId, parentId, currentGrants, roleGroups)
+        if (parentOverride) {
+          layers.push(parentOverride)
+          break
+        }
+
+        layers.push(
+          fromResolvedAccess(
+            resolveAccess(
+              userId,
+              parentId,
+              currentGrants,
+              roleGroups,
+              nodeToDomain.get(parentId),
+              blocks,
+            ),
           ),
-        ),
-      )
-      parentId = nodeToParent.get(parentId)
+        )
+        parentId = nodeToParent.get(parentId)
+      }
     }
 
     if (currentGrants === grants) {
@@ -885,7 +925,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       domainId,
     }).permissions.includes('open')) return true
 
-    // Domain-level fallback: if the asset's domain root is accessible, the asset is too
+    // Domain-level fallback: for resources not in the folder tree,
+    // check whether the domain root folder is accessible.
     if (domainId) {
       const domainRoot = DOMAIN_FOLDER_MAP[domainId]
       if (domainRoot && getEffectivePermissionSet({
@@ -893,17 +934,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         type: 'folder',
         domainId,
       }).permissions.includes('open')) return true
-    }
-
-    // Parent folder fallback: walk up the tree
-    let parentId = nodeToParent.get(id)
-    while (parentId) {
-      if (getEffectivePermissionSet({
-        id: parentId,
-        type: 'folder',
-        domainId: nodeToDomain.get(parentId),
-      }).permissions.includes('open')) return true
-      parentId = nodeToParent.get(parentId)
     }
 
     return false
@@ -1040,20 +1070,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return resolveShareLabels(buildAllProjectShares(grants))
   }, [grants, resolveShareLabels])
 
-  // Dropbox mode — check if current user can upload to a collection
-  const canUploadToCollection = useCallback((collectionId: string): boolean => {
-    if (!userId) return false
-    return grants.some(g =>
-      g.resource.id === collectionId &&
-      isGrantActive(g) &&
-      g.allowUpload &&
-      (
-        (g.principal.type === 'user' && g.principal.userId === userId) ||
-        (g.principal.type === 'team' && isUserInTeam(userId, g.principal.teamId))
-      )
-    )
-  }, [userId, grants])
-
   // Review links — create an authenticated, expiring review grant
   const createReviewLink = useCallback((resource: ResourceRef, principal: PrincipalRef, expiresInDays: number = 7): string | undefined => {
     if (!activePersona) return undefined
@@ -1120,7 +1136,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return activeGrants.some((grant) =>
       grant.resource.id === resource.id
       && principalMatchesUser(grant.principal, userId)
-      && (grant.allowDownload || grant.allowUpload)
+      && grant.allowDownload
     )
   }, [activePersona, userId, activeGrants, getEffectivePermissionSet])
 
@@ -1145,7 +1161,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       snapshotAssetIds?: string[]
       allowDownload?: boolean
       allowComment?: boolean
-      allowUpload?: boolean
       expiresInDays?: number
       expiresAt?: string
       versionNote?: string
@@ -1156,6 +1171,12 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
     setGrants((prev) => {
       if (!canShareFn(resource, prev)) return prev
+
+      const supportsShareExtras = resource.type !== 'folder'
+      const shareModeOption = supportsShareExtras ? options?.shareMode : undefined
+      const snapshotAssetIdsOption = supportsShareExtras ? options?.snapshotAssetIds : undefined
+      const allowDownloadOption = supportsShareExtras ? options?.allowDownload : undefined
+      const allowCommentOption = supportsShareExtras ? options?.allowComment : undefined
 
       const principalKey = getPrincipalKey(principal)
       const matchingActiveGrants = prev.filter(g =>
@@ -1173,7 +1194,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         return current.grantedAt > latest.grantedAt ? current : latest
       }, undefined)
 
-      const isVersionedSnapshot = resource.type === 'collection' && options?.shareMode === 'snapshot'
+      const isVersionedSnapshot = resource.type === 'collection' && shareModeOption === 'snapshot'
 
       // Snapshot collection re-shares create a new version and revoke the prior
       // active grant so access resolves to the latest frozen asset list.
@@ -1188,7 +1209,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         const version = (latestExistingGrant?.version ?? 0) + 1
         const versionNote = options?.versionNote ?? buildSnapshotVersionNote(
           latestExistingGrant?.snapshotAssetIds,
-          options?.snapshotAssetIds,
+          snapshotAssetIdsOption,
         )
 
         const next = prev.map((grant) => (
@@ -1206,11 +1227,10 @@ export function AccessProvider({ children }: { children: ReactNode }) {
           grantedByUserId: grantorUserId,
           grantedAt: now.toISOString().slice(0, 10),
           expiresAt,
-          shareMode: options?.shareMode,
-          snapshotAssetIds: options?.snapshotAssetIds,
-          allowDownload: options?.allowDownload,
-          allowComment: options?.allowComment,
-          allowUpload: options?.allowUpload,
+          shareMode: shareModeOption,
+          snapshotAssetIds: snapshotAssetIdsOption,
+          allowDownload: allowDownloadOption,
+          allowComment: allowCommentOption,
           version,
           versionNote,
           previousVersionId: latestExistingGrant?.id,
@@ -1248,9 +1268,10 @@ export function AccessProvider({ children }: { children: ReactNode }) {
               grantedByUserId: grantorUserId,
               grantedAt: new Date().toISOString().slice(0, 10),
               expiresAt: options?.expiresAt ?? g.expiresAt,
-              allowDownload: options?.allowDownload ?? g.allowDownload,
-              allowComment: options?.allowComment ?? g.allowComment,
-              allowUpload: options?.allowUpload ?? g.allowUpload,
+              shareMode: supportsShareExtras ? g.shareMode : undefined,
+              snapshotAssetIds: supportsShareExtras ? g.snapshotAssetIds : undefined,
+              allowDownload: supportsShareExtras ? allowDownloadOption ?? g.allowDownload : undefined,
+              allowComment: supportsShareExtras ? allowCommentOption ?? g.allowComment : undefined,
               note: options?.note ?? g.note,
             }
           : g
@@ -1276,11 +1297,10 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         grantedByUserId: grantorUserId,
         grantedAt: now.toISOString().slice(0, 10),
         expiresAt,
-        shareMode: options?.shareMode,
-        snapshotAssetIds: options?.snapshotAssetIds,
-        allowDownload: options?.allowDownload,
-        allowComment: options?.allowComment,
-        allowUpload: options?.allowUpload,
+        shareMode: shareModeOption,
+        snapshotAssetIds: snapshotAssetIdsOption,
+        allowDownload: allowDownloadOption,
+        allowComment: allowCommentOption,
         note: options?.note,
       }
 
@@ -1704,7 +1724,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     readShareIds,
     markShareRead,
     unreadInboxCount,
-    canUploadToCollection,
     createReviewLink,
     getGrantByReviewLinkId,
     restoreResourceGrants,
@@ -1772,7 +1791,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     readShareIds,
     markShareRead,
     unreadInboxCount,
-    canUploadToCollection,
     createReviewLink,
     getGrantByReviewLinkId,
     restoreResourceGrants,

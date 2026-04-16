@@ -16,16 +16,19 @@ import type { Grant, RoleGroup } from '@/lib/grants'
 
 function getGrantExtras(grant: Grant): string[] {
   const extras: string[] = []
+  if (grant.resource.type === 'folder') return extras
+
   if (grant.allowDownload) extras.push('Download')
   if (grant.allowComment) extras.push('Comment')
-  if (grant.allowUpload) extras.push('Upload')
   if (grant.shareMode === 'live') extras.push('Include new assets')
   if (grant.lockedToVersion != null) extras.push(`Locked to v${grant.lockedToVersion}`)
   return extras
 }
 
 export function GrantBadge({ grant, roleGroups }: { grant: Grant; roleGroups: RoleGroup[] }) {
-  const role = profileLabel(grant.templateId, roleGroups)
+  const role = grant.resource.type === 'folder' && grant.templateId === 'viewer'
+    ? 'View only'
+    : profileLabel(grant.templateId, roleGroups)
   const extras = getGrantExtras(grant)
   const extraCount = extras.length
 

@@ -23,9 +23,7 @@ import { Button } from './button'
  * - rounded: 4px border radius
  */
 
-// ===========================================
 // FILTER CHIP SUB-COMPONENT
-// ===========================================
 
 export interface FilterChipProps {
   /** Chip label */
@@ -41,7 +39,7 @@ export interface FilterChipProps {
   className?: string
 }
 
-// Ghost placeholder for filter options
+
 function FilterOptionGhost({ width = 'w-24' }: { width?: string }) {
   return (
     <div className={cn('h-4 rounded bg-surface-4', width)} />
@@ -124,9 +122,7 @@ function FilterChip({
   )
 }
 
-// ===========================================
 // MAIN HAWKINS SEARCH COMPONENT
-// ===========================================
 
 export interface FilterOption {
   id: string

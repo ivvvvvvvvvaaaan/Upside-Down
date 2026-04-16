@@ -567,12 +567,12 @@ export function getDomainWorkspaceFiles(domainId: DomainId): WorkspaceFileNode[]
 }
 
 
-/** Find a node by ID in a tree of WorkspaceFileNodes */
-export function findNodeInTree(nodes: WorkspaceFileNode[], id: string): WorkspaceFileNode | null {
+/** Find a node by ID in a tree of UnifiedFileNodes (or any subtype) */
+export function findNodeInTree<T extends UnifiedFileNode>(nodes: T[], id: string): T | null {
   for (const node of nodes) {
     if (node.id === id) return node
     if (node.children) {
-      const found = findNodeInTree(node.children, id)
+      const found = findNodeInTree(node.children as T[], id)
       if (found) return found
     }
   }

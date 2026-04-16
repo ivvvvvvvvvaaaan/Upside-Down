@@ -14,7 +14,6 @@ import type {
 } from '@/lib/grants'
 import type { UserCollection } from '@/hooks/useUserCollections'
 
-// --- Scenario shape types ---
 
 type ScenarioPerson = {
   id: string
@@ -64,8 +63,6 @@ type ScenarioShare = {
   allowDownload?: boolean
   /** Allow recipient to comment and annotate */
   allowComment?: boolean
-  /** Allow recipient to upload into this collection */
-  allowUpload?: boolean
   /** Review link ID for direct review access */
   reviewLinkId?: string
   /** Version number for versioned re-shares (turnovers) */
@@ -131,8 +128,8 @@ type ScenarioReleaseDomain = {
   group: ReleaseDomainGroup
   /** Which asset types can be released to this domain */
   assetTypes: string[]
-  /** The production department this release domain maps to (filtered from release pills for own-department assets) */
-  originDepartmentId?: string
+  /** The production domain this release domain maps to (filtered from release pills for own-department assets) */
+  originDomainId?: string
   /** Teams that receive grants when content is released to this domain */
   granteeTeamIds: string[]
   /** Individual users that receive grants */
@@ -162,7 +159,6 @@ type Scenario = {
   sensitiveAssetIds: string[]
 }
 
-// --- The scenario ---
 
 export const SCENARIO: Scenario = {
   projectName: 'Apex S1',
@@ -183,10 +179,10 @@ export const SCENARIO: Scenario = {
   // Each domain defines WHO gets grants when content is released to that domain
   releaseDomains: [
     // Studio tier — internal Netflix studio teams
-    { id: 'studio-creative',    name: 'Studio Creative',    group: 'Studio', assetTypes: ['cut', 'asset'], originDepartmentId: 'art-design',  granteeTeamIds: ['studio-leadership'],  defaultProfile: 'viewer' },
-    { id: 'studio-post',        name: 'Studio Post',        group: 'Studio', assetTypes: ['cut', 'asset'], originDepartmentId: 'editorial',   granteeTeamIds: ['netflix-post'],       defaultProfile: 'viewer' },
+    { id: 'studio-creative',    name: 'Studio Creative',    group: 'Studio', assetTypes: ['cut', 'asset'], originDomainId: 'art-design',  granteeTeamIds: ['studio-leadership'],  defaultProfile: 'viewer' },
+    { id: 'studio-post',        name: 'Studio Post',        group: 'Studio', assetTypes: ['cut', 'asset'], originDomainId: 'editorial',   granteeTeamIds: ['netflix-post'],       defaultProfile: 'viewer' },
     { id: 'studio-production',  name: 'Studio Production',  group: 'Studio', assetTypes: ['cut', 'asset'],                                    granteeTeamIds: ['super-prod'],         defaultProfile: 'viewer' },
-    { id: 'studio-vfx',         name: 'Studio VFX',         group: 'Studio', assetTypes: ['cut'],          originDepartmentId: 'vfx',         granteeTeamIds: ['vfx-core'],           defaultProfile: 'viewer' },
+    { id: 'studio-vfx',         name: 'Studio VFX',         group: 'Studio', assetTypes: ['cut'],          originDomainId: 'vfx',         granteeTeamIds: ['vfx-core'],           defaultProfile: 'viewer' },
     // Wide tier — broader Netflix org
     { id: 'globalization',      name: 'Globalization',       group: 'Wide',   assetTypes: ['cut'],          granteeTeamIds: ['team-globalization'],      defaultProfile: 'viewer' },
     { id: 'marketing',          name: 'Marketing',           group: 'Wide',   assetTypes: ['cut', 'asset'], granteeTeamIds: ['team-marketing'],          defaultProfile: 'viewer' },
@@ -221,7 +217,7 @@ export const SCENARIO: Scenario = {
 
   teams: [
     { id: 'vfx-core',       name: 'VFX',            kind: 'group', members: ['vfx-supervisor', 'vfx-coordinator'],                        managers: ['vfx-supervisor', 'vfx-coordinator'],           domain: 'vfx',         rootFolderId: 'ws-vfx' },
-    { id: 'editorial',      name: 'Editorial',      kind: 'group', members: ['editorial-coordinator', 'editorial-artist'],                 managers: ['editorial-coordinator'],                      domain: 'editorial',   rootFolderId: 'ws-editorial' },
+    { id: 'editorial',      name: 'Editorial',      kind: 'group', members: ['editorial-coordinator', 'editorial-artist'],                 managers: ['editorial-coordinator', 'editorial-artist'],   domain: 'editorial',   rootFolderId: 'ws-editorial' },
     { id: 'art-design',     name: 'Art & Design',   kind: 'group', members: ['art-artist'],                                               managers: ['art-artist'],                                domain: 'art-design',  rootFolderId: 'ws-art' },
     { id: 'camera-team',    name: 'Camera',         kind: 'group', members: ['camera-dit'],                                                managers: ['camera-dit'],                                 domain: 'camera',      rootFolderId: 'ws-camera' },
     { id: 'audio-team',     name: 'Audio & Sound',  kind: 'group', members: ['audio-supervisor'],                                           managers: ['audio-supervisor'],                           domain: 'audio-sound', rootFolderId: 'ws-audio' },
@@ -277,11 +273,10 @@ export const SCENARIO: Scenario = {
       by: 'vfx-coordinator',
       date: '2026-01-15',
       expiresAt: '2026-06-15',
-      allowUpload: true,
       note: 'Shared vendor delivery folder for comp turnover and submissions.',
-      context: 'Sarah shares the Framestore workspace folder directly. James can browse the turnover, download plates, and upload comp deliveries in the same folder during the delivery window.',
+      context: 'Sarah shares the Framestore workspace folder directly. James can work inside the delivery space during the delivery window because the vendor group has manager access on this folder.',
       grants: [
-        { toTeam: 'framestore-io', as: 'viewer' },
+        { toTeam: 'framestore-io', as: 'manager' },
       ],
     },
     // --- Cut shares (composite entities, not raw files) ---
@@ -559,7 +554,6 @@ export const SCENARIO: Scenario = {
   ],
 }
 
-// --- Builder functions ---
 
 export function buildPersonas(): User[] {
   return SCENARIO.people.map((p) => ({
@@ -609,10 +603,11 @@ export function buildLabels(): Record<string, string> {
 
   // Build a flat lookup of all workspace nodes across domains
   const allDomainIds: ProductionDomainId[] = Object.keys(DOMAIN_FOLDER_MAP) as ProductionDomainId[]
-  const walk = (nodes: { id: string; name: string; children?: { id: string; name: string; children?: unknown[] }[] }[]) => {
+  type LabelNode = { id: string; name: string; children?: LabelNode[] }
+  const walk = (nodes: LabelNode[]) => {
     for (const node of nodes) {
       labels[node.id] = node.name
-      if (node.children) walk(node.children as typeof nodes)
+      if (node.children) walk(node.children)
     }
   }
   for (const domainId of allDomainIds) {
@@ -693,8 +688,9 @@ export function buildGrants(): Grant[] {
         grantedByUserId: share.by,
         grantedAt: share.date,
       }
-      // Smart defaults for viewer grants: persons get +Download +Comment, domains get +Download
-      if (g.as === 'viewer' && !share.allowDownload && !share.allowComment && !share.allowUpload) {
+      const supportsShareExtras = share.resource.type !== 'folder'
+      // Smart defaults for non-folder viewer grants: persons get +Download +Comment, domains get +Download
+      if (g.as === 'viewer' && share.resource.type !== 'folder' && !share.allowDownload && !share.allowComment) {
         if (principal.type === 'user' || principal.type === 'team') {
           grant.allowDownload = true
           grant.allowComment = true
@@ -710,25 +706,19 @@ export function buildGrants(): Grant[] {
       if (share.expiresAt) {
         grant.expiresAt = share.expiresAt
       }
-      if (share.shareMode) {
+      if (supportsShareExtras && share.shareMode) {
         grant.shareMode = share.shareMode
       }
-      if (share.snapshotAssetIds) {
+      if (supportsShareExtras && share.snapshotAssetIds) {
         grant.snapshotAssetIds = share.snapshotAssetIds
       }
-      if (share.allowDownload) {
+      if (supportsShareExtras && share.allowDownload) {
         grant.allowDownload = true
         if (!grant.permissions.includes('download')) grant.permissions = [...grant.permissions, 'download']
       }
-      if (share.allowComment) {
+      if (supportsShareExtras && share.allowComment) {
         grant.allowComment = true
         if (!grant.permissions.includes('comment')) grant.permissions = [...grant.permissions, 'comment']
-      }
-      if (share.allowUpload) {
-        grant.allowUpload = true
-        grant.allowDownload = grant.allowDownload ?? true
-        if (!grant.permissions.includes('upload')) grant.permissions = [...grant.permissions, 'upload']
-        if (!grant.permissions.includes('download')) grant.permissions = [...grant.permissions, 'download']
       }
       if (share.reviewLinkId) {
         grant.reviewLinkId = share.reviewLinkId
@@ -849,8 +839,8 @@ export type ReleaseDomain = {
   name: string
   group: 'Studio' | 'Wide' | 'Other'
   assetTypes: string[]
-  /** The production department this release domain maps to (for filtering own-domain releases) */
-  originDepartmentId?: string
+  /** The production domain this release domain maps to (for filtering own-domain releases) */
+  originDomainId?: string
   granteeTeamIds: string[]
   granteeUserIds?: string[]
   defaultProfile: AccessProfileId

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Stack, Text, CardGrid, AssetCard, EmptyState, MobileToolbar } from '@/components/ui'
+import { Stack, CardGrid, AssetCard, EmptyState, MobileToolbar, PageHeader, Tag } from '@/components/ui'
 import { ContextualActionBar } from '@/components/ui/contextual-action-bar'
 import { getGridColumns, useAssetSelection, useViewPreferences, useAccess, useFileTree } from '@/hooks'
 import { assetToSelectionEntity } from '@/lib/selection-actions'
@@ -18,7 +18,7 @@ interface SharedFolderViewProps {
 export function SharedFolderView({ folderId }: SharedFolderViewProps) {
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const { cardSize } = useViewPreferences()
-  const { getResourceGrants } = useAccess()
+  const { getResourceGrants, canAccess } = useAccess()
   const { tree } = useFileTree()
 
   // Find the folder in the tree to get its name and domain
@@ -59,6 +59,34 @@ export function SharedFolderView({ folderId }: SharedFolderViewProps) {
 
   const folderName = folderInfo?.name ?? folderId
 
+  if (!folderInfo) {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="flex-1 min-h-0 overflow-auto">
+          <div className="p-6">
+            <div className="max-w-7xl mx-auto">
+              <EmptyState title="Not Found" message="This folder does not exist." />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!canAccess(folderId)) {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="flex-1 min-h-0 overflow-auto">
+          <div className="p-6">
+            <div className="max-w-7xl mx-auto">
+              <EmptyState title="Access Restricted" message="You don't have access to this folder." />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1 min-h-0 overflow-auto">
@@ -68,20 +96,18 @@ export function SharedFolderView({ folderId }: SharedFolderViewProps) {
               <MobileToolbar title={folderName} />
 
               <div className="hidden md:block">
-                <Text variant="headline-1" weight="bold" className="mb-2">
-                  {folderName}
-                </Text>
-                {sharedBy && (
-                  <Text variant="body-2" color="secondary">
-                    Shared by {sharedBy}
-                  </Text>
-                )}
+                <PageHeader
+                  title={folderName}
+                  description={[
+                    sharedBy ? `Shared by ${sharedBy} · View only` : 'View only',
+                    `${assets.length} asset${assets.length !== 1 ? 's' : ''}`,
+                  ].join(' · ')}
+                />
               </div>
 
               <ContextualActionBar
                 selectedEntities={selectedEntities}
                 onClearSelection={clearSelection}
-                metadata={`${assets.length} asset${assets.length !== 1 ? 's' : ''}`}
               />
 
               {assets.length > 0 ? (

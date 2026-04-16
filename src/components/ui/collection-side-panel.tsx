@@ -394,7 +394,6 @@ export function CollectionSidePanel({
                 const capabilities: string[] = ['Preview']
                 if (myGrant?.allowDownload) capabilities.push('Download')
                 if (myGrant?.allowComment) capabilities.push('Comment')
-                if (myGrant?.allowUpload) capabilities.push('Upload')
                 return (
                   <div className="space-y-2">
                     <p className="text-body-0-regular text-foreground">{capabilities.join(', ')}</p>

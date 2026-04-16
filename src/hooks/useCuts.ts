@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react'
 import { buildCuts, type SeedCut } from '@/lib/scenario'
-import { getAssetIdVariants, type Asset } from '@/lib/data'
+import type { Asset } from '@/lib/data'
 import { seedCutToAsset, compareCutsByStageAndVersion } from '@/lib/cuts'
 import { deriveReleaseTagInfo } from '@/lib/release'
 import { useAccess } from './useAccess'
@@ -67,9 +67,8 @@ export function useCuts() {
 
   /** Find cuts whose constituents include this asset — latest version per stage only */
   const getCutsForAsset = useCallback((assetId: string): Asset[] => {
-    const variants = new Set(getAssetIdVariants(assetId))
     const matching = accessibleCutAssets.filter(cut =>
-      cut.constituents?.some(cid => variants.has(cid))
+      cut.constituents?.some(cid => cid === assetId)
     )
     // Deduplicate: keep only the latest version per versionGroupId
     const groups = new Map<string, Asset[]>()

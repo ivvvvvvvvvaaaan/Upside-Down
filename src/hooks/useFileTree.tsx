@@ -5,6 +5,8 @@ import { usePersona } from './usePersona'
 import type { DomainId, ProductionDomainId } from '@/components/department/types'
 import {
   getFinderWorkspaceTree,
+  findNodeInTree,
+  DOMAIN_FOLDER_MAP,
   type ReferenceFolderSource,
   type FileReference,
   type UnifiedFileNode,
@@ -49,16 +51,12 @@ function persistTree(tree: UnifiedFileNode[]) {
   } catch {}
 }
 
-/** Map workspace domain IDs to their wrapper folder IDs in the Finder tree */
-const DOMAIN_TO_FOLDER_ID: Record<ProductionDomainId, string> = {
-  'art-design': 'ws-art',
-  'vfx': 'ws-vfx',
-  'camera': 'ws-camera',
-  'editorial': 'ws-editorial',
-  'audio-sound': 'ws-audio',
-}
+/** Domain ID to wrapper folder ID, derived from DOMAIN_FOLDER_MAP */
+const DOMAIN_TO_FOLDER_ID: Record<ProductionDomainId, string> = Object.fromEntries(
+  (Object.entries(DOMAIN_FOLDER_MAP) as [ProductionDomainId, { id: string }][])
+    .map(([domainId, folder]) => [domainId, folder.id]),
+) as Record<ProductionDomainId, string>
 
-// --- Tree helpers ---
 
 function generateId(): string {
   return `ws-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
@@ -158,22 +156,11 @@ function deleteNodeFromTree(
     })
 }
 
-function findNodeInUnifiedTree(nodes: UnifiedFileNode[], id: string): UnifiedFileNode | null {
-  for (const node of nodes) {
-    if (node.id === id) return node
-    if (node.children) {
-      const found = findNodeInUnifiedTree(node.children, id)
-      if (found) return found
-    }
-  }
-  return null
-}
-
 /** Check if a node (by id) is a descendant of a folder (by id) in a tree */
 function isDescendantOf(nodes: UnifiedFileNode[], nodeId: string, ancestorId: string): boolean {
-  const ancestor = findNodeInUnifiedTree(nodes, ancestorId)
+  const ancestor = findNodeInTree(nodes, ancestorId)
   if (!ancestor || !ancestor.children) return false
-  return findNodeInUnifiedTree(ancestor.children, nodeId) !== null
+  return findNodeInTree(ancestor.children, nodeId) !== null
 }
 
 function moveNodeInTree(
@@ -182,7 +169,7 @@ function moveNodeInTree(
   targetParentId: string,
 ): UnifiedFileNode[] {
   // First, extract the node
-  const node = findNodeInUnifiedTree(nodes, nodeId)
+  const node = findNodeInTree(nodes, nodeId)
   if (!node) return nodes
 
   // Remove from current location
@@ -242,7 +229,6 @@ function findReferenceFolder(
   return null
 }
 
-// --- Context ---
 
 export type MoveImpactShare = { id: string; name: string; grantCount: number }
 
@@ -352,7 +338,7 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
   }, [rawTree])
 
   const getAssetsByIdsFromTree = useCallback((ids: string[]): Asset[] => {
-    return ids.map(id => assetById.get(id)).filter(Boolean) as Asset[]
+    return ids.map(id => assetById.get(id)).filter((a): a is Asset => a != null)
   }, [assetById])
 
   const resolveCollectionAssetIdsFromTree = useCallback((collection: UserCollection): string[] => {
@@ -467,7 +453,7 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
   }, [updateTree])
 
   const createFileReference = useCallback((sourceFileId: string, targetParentId: string): string | null => {
-    const sourceNode = findNodeInUnifiedTree(rawTree, sourceFileId)
+    const sourceNode = findNodeInTree(rawTree, sourceFileId)
     if (!sourceNode || sourceNode.type !== 'file') return null
     const refId = `ref-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const refNode: UnifiedFileNode = {

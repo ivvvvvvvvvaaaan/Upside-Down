@@ -31,6 +31,3 @@ export function getAuditLog(filters?: { resourceId?: string; userId?: string; ty
   return results.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
 }
 
-export function getAuditLogCount(): number {
-  return auditLog.length
-}

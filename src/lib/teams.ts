@@ -125,3 +125,21 @@ export function createTeam(
   dispatchDirectoryUpdated()
   return team
 }
+
+export function getWorkspaceOwnerTeam(folderId: string): Team | undefined {
+  return TEAMS.find((t) => t.rootFolderId === folderId)
+}
+
+export function getDomainOwnerTeam(domainId: string): Team | undefined {
+  return TEAMS.find((t) => t.domainId === domainId && t.rootFolderId)
+}
+
+export function isUserWorkspaceOwner(userId: string, folderId: string, domainId?: string): boolean {
+  const directOwner = getWorkspaceOwnerTeam(folderId)
+  if (directOwner) return directOwner.memberUserIds.includes(userId)
+  if (domainId) {
+    const domainOwner = getDomainOwnerTeam(domainId)
+    if (domainOwner) return domainOwner.memberUserIds.includes(userId)
+  }
+  return false
+}

@@ -21,11 +21,6 @@ export interface AssetInstance {
   sequenceMeta?: { sequence?: string; shot?: string }
 }
 
-export interface AssetInstanceGroup {
-  category: string
-  instances: AssetInstance[]
-}
-
 const EXTENSION_TO_ASSET_TYPE: Record<string, AssetType> = {
   psd: 'image',
   png: 'image',
@@ -131,22 +126,6 @@ export function generateAssetInstances(
 
   walk(files, [], '')
   return instances
-}
-
-/** Group instances by category (parent managed folder) */
-export function groupInstancesByCategory(
-  instances: AssetInstance[],
-): AssetInstanceGroup[] {
-  const map = new Map<string, AssetInstance[]>()
-  for (const inst of instances) {
-    const list = map.get(inst.category) ?? []
-    list.push(inst)
-    map.set(inst.category, list)
-  }
-  return Array.from(map.entries()).map(([category, items]) => ({
-    category,
-    instances: items,
-  }))
 }
 
 import { pickForDomain } from '@/lib/images'
@@ -295,26 +274,3 @@ export function mergeWorkspaceAssets(
   return [...apiAssets, ...promoted]
 }
 
-/** Convert a single file tree node to a full Asset via the standard promotion pipeline. */
-export function fileNodeToAsset(
-  node: UnifiedFileNode,
-  domainId: DomainId,
-  parentFolderName?: string,
-): Asset {
-  const instances = generateAssetInstances([node], domainId)
-  if (instances.length > 0) return promotedInstanceToAsset(instances[0])
-  // Fallback for empty (shouldn't happen for file nodes)
-  return promotedInstanceToAsset({
-    id: node.id,
-    name: node.name.replace(/\.[^.]+$/, ''),
-    sourceFileId: node.id,
-    sourceFileName: node.name,
-    sourcePath: parentFolderName ? `${parentFolderName} / ${node.name}` : node.name,
-    department: domainId,
-    category: parentFolderName ?? '',
-    type: mapExtensionToType(node.extension),
-    size: node.size,
-    modifiedAt: node.modifiedAt,
-    modifiedBy: node.modifiedBy,
-  })
-}

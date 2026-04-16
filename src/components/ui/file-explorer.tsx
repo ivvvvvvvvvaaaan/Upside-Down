@@ -1,10 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { cn, formatDate } from '@/lib/utils'
+import { cn, formatDate, formatFileSize } from '@/lib/utils'
 import { Folder, File, Image as ImageIcon, FileVideo, FileText, ChevronRight, List, Columns } from 'lucide-react'
-
-
 /**
  * File Explorer Component
  *
@@ -86,15 +84,6 @@ function getFileIcon(node: FileNode, sizeClass: string = 'w-4 h-4') {
   }
   return <File className={cn(sizeClass, 'text-foreground-dim')} />
 }
-
-function formatFileSize(bytes?: number): string {
-  if (!bytes) return '—'
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
-}
-
 
 interface FileRowProps {
   node: FileNode

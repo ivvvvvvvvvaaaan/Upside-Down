@@ -98,7 +98,6 @@ export function DesktopView() {
     setActivePersona(DESKTOP_PERSONAS[0] ?? null)
   }, [activePersona, hydrated, setActivePersona])
 
-  // Toggle cloud sync for all
   const toggleCloudSync = useCallback(() => {
     setCloudSyncEnabled((prev) => {
       const next = !prev
@@ -107,26 +106,22 @@ export function DesktopView() {
     })
   }, [])
 
-  // Update sync status
   const updateSyncStatus = useCallback((status: SyncStatus) => {
     setSyncStatus(status)
     localStorage.setItem(STORAGE_KEYS.SYNC_STATUS, status)
   }, [])
 
-  // Get active app name for menu bar
   const getActiveAppName = () => {
     if (activeWindowId === 'finder') return 'Finder'
     if (activeWindowId === 'browser') return 'Chrome'
     return 'Finder'
   }
 
-  // Get the next z-index (max + 1)
   const getNextZIndex = useCallback(() => {
     const maxZ = Math.max(...windows.map((w) => w.zIndex))
     return maxZ + 1
   }, [windows])
 
-  // Bring window to front
   const focusWindow = useCallback(
     (id: string) => {
       setActiveWindowId(id)
@@ -137,14 +132,12 @@ export function DesktopView() {
     [getNextZIndex]
   )
 
-  // Update window position
   const updateWindowPosition = useCallback((id: string, x: number, y: number) => {
     setWindows((prev) =>
       prev.map((w) => (w.id === id ? { ...w, x, y } : w))
     )
   }, [])
 
-  // Update window size
   const updateWindowSize = useCallback(
     (id: string, width: number, height: number, x?: number, y?: number) => {
       setWindows((prev) =>
@@ -163,14 +156,12 @@ export function DesktopView() {
     []
   )
 
-  // Minimize window
   const minimizeWindow = useCallback((id: string) => {
     setWindows((prev) =>
       prev.map((w) => (w.id === id ? { ...w, isMinimized: true } : w))
     )
   }, [])
 
-  // Maximize/restore window
   const toggleMaximize = useCallback((id: string) => {
     setWindows((prev) =>
       prev.map((w) => {
@@ -200,12 +191,10 @@ export function DesktopView() {
     )
   }, [])
 
-  // Close window (only for Finder)
   const closeWindow = useCallback((id: string) => {
     setWindows((prev) => prev.filter((w) => w.id !== id))
   }, [])
 
-  // Get window by id
   const getWindow = (id: string) => windows.find((w) => w.id === id)
 
   const browserWindow = getWindow('browser')

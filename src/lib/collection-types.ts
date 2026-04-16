@@ -11,14 +11,12 @@
 import type { UserCollection } from '@/hooks/useUserCollections'
 import type { SmartCollection } from '@/lib/data-client'
 
-// SmartCollectionEntry is just SmartCollection — kept as alias for backward compat
+
 export type SmartCollectionEntry = SmartCollection
 
 export type Collection = UserCollection | SmartCollectionEntry
 
-// ---------------------------------------------------------------------------
 // Type guards
-// ---------------------------------------------------------------------------
 
 export function isCollection(c: Collection): c is UserCollection {
   return c.flavor === 'collection'
@@ -28,9 +26,7 @@ export function isSmart(c: Collection): c is SmartCollectionEntry {
   return c.flavor === 'smart'
 }
 
-// ---------------------------------------------------------------------------
 // Capabilities — what operations a collection supports, derived from its data
-// ---------------------------------------------------------------------------
 
 export interface CollectionCapabilities {
   canRename: boolean

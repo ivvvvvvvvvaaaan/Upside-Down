@@ -25,9 +25,7 @@ export function pick(images: string[], seed: string, count: number = 1): string[
   return results
 }
 
-// ---------------------------------------------------------------------------
 // Per-domain image pools
-// ---------------------------------------------------------------------------
 
 const ART_IMAGES = [
   '/images/art/concepts/adf11e68-7898-48cf-a7c0-d0b36816360b.jpeg',
@@ -64,7 +62,7 @@ const AUDIO_IMAGES: string[] = [
   // Drop waveform screenshots, DAW sessions into /images/audio/
 ]
 
-export const DOMAIN_POOLS: Record<DomainId, string[]> = {
+const DOMAIN_POOLS: Record<DomainId, string[]> = {
   'art-design': ART_IMAGES,
   'vfx': VFX_IMAGES,
   'camera': CAMERA_IMAGES,
@@ -75,9 +73,7 @@ export const DOMAIN_POOLS: Record<DomainId, string[]> = {
   'globalization': [],
 }
 
-// ---------------------------------------------------------------------------
 // Per-dimension image pools (for smart collection cards)
-// ---------------------------------------------------------------------------
 
 const CHARACTER_IMAGES = [
   '/images/characters/545c203dbd67064a6f0a3a9c47e1bcae82639e8b.webp',
@@ -104,15 +100,13 @@ const SCENE_IMAGES = [
 
 export type ImageDimension = 'characters' | 'scenes' | 'locations'
 
-export const DIMENSION_POOLS: Record<ImageDimension, string[]> = {
+const DIMENSION_POOLS: Record<ImageDimension, string[]> = {
   characters: CHARACTER_IMAGES,
   scenes: SCENE_IMAGES,
   locations: LOCATION_IMAGES,
 }
 
-// ---------------------------------------------------------------------------
 // Combined fallback pool (all images)
-// ---------------------------------------------------------------------------
 
 export const IMAGE_POOL = [
   ...ART_IMAGES,
@@ -125,19 +119,13 @@ export const IMAGE_POOL = [
   ...SCENE_IMAGES,
 ]
 
-// ---------------------------------------------------------------------------
 // Smart pick helpers
-// ---------------------------------------------------------------------------
 
 /** Pick from the domain-specific pool, falling back to the combined pool */
 export function pickForDomain(domain: DomainId | undefined, seed: string, count: number = 1): string[] {
   const pool = domain ? DOMAIN_POOLS[domain] : null
   return pick(pool && pool.length > 0 ? pool : IMAGE_POOL, seed, count)
 }
-/** @deprecated Use pickForDomain */
-export const pickForDepartment = pickForDomain
-/** @deprecated Use DOMAIN_POOLS */
-export const DEPARTMENT_POOLS = DOMAIN_POOLS
 
 /** Pick from the dimension-specific pool (for smart collection cards) */
 export function pickForDimension(dimension: ImageDimension | undefined, seed: string, count: number = 1): string[] {

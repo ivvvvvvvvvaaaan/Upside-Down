@@ -149,11 +149,18 @@ describe('capability decomposition', () => {
 
   it('resolveAccess merges explicit permissions from all active matching grants', () => {
     const result = resolveAccess('vendor-framestore', 'ws-vfx-vendor-framestore', DEFAULT_GRANTS)
+    const folderGrant = DEFAULT_GRANTS.find((grant) =>
+      grant.resource.id === 'ws-vfx-vendor-framestore' &&
+      grant.principal.type === 'team' &&
+      grant.principal.teamId === 'framestore-io',
+    )
+
     expect(result.hasAccess).toBe(true)
-    expect(result.effectiveProfile).toBe('viewer')
+    expect(result.effectiveProfile).toBe('manager')
     expect(result.permissions).toContain('open')
-    expect(result.permissions).toContain('download')
-    expect(result.canEdit).toBe(false)
+    expect(result.permissions).toContain('upload')
+    expect(result.canEdit).toBe(true)
+    expect(folderGrant?.allowDownload).toBeUndefined()
   })
 
   it('resolveAccess preserves snapped grant permissions when role-group templates change', () => {
@@ -199,6 +206,23 @@ describe('capability decomposition', () => {
 
     expect(canCreateGrantForResource('vendor-framestore', PROJECT_RESOURCE, DEFAULT_GRANTS)).toBe(false)
     expect(canEditAclForResource('vendor-framestore', PROJECT_RESOURCE, DEFAULT_GRANTS)).toBe(false)
+  })
+
+  it('lets a direct person grant override inherited folder group access', () => {
+    const vfxFolder: ResourceRef = { id: 'ws-vfx-shots', type: 'folder', domainId: 'vfx' }
+    const viewerOverride: Grant = {
+      id: 'vfx-coordinator-shots-override',
+      resource: vfxFolder,
+      principal: { type: 'user', userId: 'vfx-coordinator' },
+      templateId: 'viewer',
+      permissions: DEFAULT_ROLE_GROUPS.find((group) => group.id === 'viewer')!.permissions,
+      grantedByUserId: 'vfx-supervisor',
+      grantedAt: '2026-04-16',
+    }
+    const grants = [...DEFAULT_GRANTS, viewerOverride]
+
+    expect(canCreateGrantForResource('vfx-coordinator', vfxFolder, grants)).toBe(false)
+    expect(canEditAclForResource('vfx-coordinator', vfxFolder, grants)).toBe(false)
   })
 
   it('prevents editors from delegating profiles with permissions they do not have', () => {

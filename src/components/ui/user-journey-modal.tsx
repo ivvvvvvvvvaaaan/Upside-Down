@@ -65,7 +65,6 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
         revoked: share.revoked ?? false,
         expiresAt: share.expiresAt,
         shareMode: share.shareMode,
-        allowUpload: share.allowUpload,
       }
     })
 
@@ -189,9 +188,6 @@ export function UserJourneyModal({ open, onClose }: UserJourneyModalProps) {
                               )}
                               {'shareMode' in event && event.shareMode === 'live' && (
                                 <Tag size="compact" type="positive" variant="border">Live</Tag>
-                              )}
-                              {'allowUpload' in event && event.allowUpload && (
-                                <Tag size="compact" type="announcement" variant="border">Upload</Tag>
                               )}
                             </div>
 

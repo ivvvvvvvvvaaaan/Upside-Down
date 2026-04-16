@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { Search, ChevronDown, ChevronRight, Plus, X, Info, Shield, Lock, Unlock, FileText, ArrowRightLeft, Archive } from 'lucide-react'
+import { Search, ChevronDown, ChevronRight, Plus, X, Info, Shield, Lock, Unlock, ArrowRightLeft, Archive } from 'lucide-react'
 import { Facepile } from './facepile'
 import { Modal } from './modal'
 import { Button } from './button'
 import { Input } from './input'
 import { MenuSelect } from './menu-select'
+import { Tag } from './tag'
 import { Avatar } from './avatar'
-import { AccessSummary } from './access-summary'
 import { DepartmentAvatar } from './department-avatar'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import { useAccess, usePersona } from '@/hooks'
@@ -26,8 +26,9 @@ import {
   removeTeamManager,
   removeUserFromTeam,
 } from '@/lib/teams'
+import type { Team } from '@/lib/teams'
 import { PROJECT_RESOURCE, isGrantActive } from '@/lib/grants'
-import type { Permission, RoleGroup, Grant, ResourceRef } from '@/lib/grants'
+import type { Permission, RoleGroup, Grant } from '@/lib/grants'
 import type { DomainId, ProductionDomainId } from '@/components/department/types'
 import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
 import type { DiscoveryResourceType, UserAccessSummary } from '@/hooks/useAccess'
@@ -43,7 +44,6 @@ const ALL_PERMISSIONS: { id: Permission; name: string }[] = [
   { id: 'edit-acl', name: 'Admin' },
 ]
 
-// --- Shared components ---
 
 function PermissionCheckbox({
   checked,
@@ -161,13 +161,41 @@ type PendingWorkspaceInvite = {
   displayName: string
 }
 
+const NO_WORKSPACE_VALUE = '__none__'
+
+const GROUP_MEMBER_ROLE_OPTIONS = [
+  { value: 'member', label: 'Member' },
+  { value: 'manager', label: 'Admin' },
+]
+
+function groupAccessSortRank(team: Team, activeUserId?: string): number {
+  if (activeUserId && team.managerUserIds.includes(activeUserId)) return 0
+  if (activeUserId && team.memberUserIds.includes(activeUserId)) return 1
+  if (team.rootFolderId) return 2
+  return 3
+}
+
+function sortGroupsForAccessControl(groups: Team[], activeUserId?: string): Team[] {
+  const seedOrder = new Map(TEAMS.map((team, index) => [team.id, index]))
+
+  return [...groups].sort((a, b) => {
+    const aRank = groupAccessSortRank(a, activeUserId)
+    const bRank = groupAccessSortRank(b, activeUserId)
+    if (aRank !== bRank) return aRank - bRank
+
+    const seedDelta = (seedOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (seedOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER)
+    if (aRank <= 2 && seedDelta !== 0) return seedDelta
+
+    return a.name.localeCompare(b.name)
+  })
+}
+
 function getSoleManagedTeams(userId: string) {
   return TEAMS.filter(
     (team) => team.managerUserIds.includes(userId) && team.managerUserIds.length === 1,
   )
 }
 
-// --- People tab ---
 
 function PersonAccessDetail({
   userId,
@@ -336,7 +364,7 @@ function PeopleTab({
   return (
     <div className="space-y-3">
       <p className="text-body-0-regular text-foreground-dim">
-        People appear here because they belong to a workspace or team, or are involved through explicit shares. Add new working users from the Workspaces tab, and use share controls on assets or collections for ad hoc access.
+        People appear here because they belong to a group, or are involved through explicit shares. Add new working users from the Groups tab, and use share controls on folders, assets, or collections for ad hoc access.
       </p>
       {canRemoveParticipants && (
         <p className="text-label-0-regular text-foreground-dim">
@@ -493,9 +521,8 @@ function DiscoverySection({
   )
 }
 
-// --- Workspaces tab ---
 
-function WorkspaceRootsTab({
+function GroupsTab({
   pendingInvites,
   inviteEmail,
   onInviteEmailChange,
@@ -506,8 +533,12 @@ function WorkspaceRootsTab({
   onRemoveWorkspaceMember,
   onPromoteManager,
   onDemoteManager,
+  onUpdateWorkspaceFolder,
   canManageTeamMembers,
   canManageTeamManagers,
+  workspaceFolderOptions,
+  activeUserId,
+  canManageProject,
 }: {
   pendingInvites: PendingWorkspaceInvite[]
   inviteEmail: string
@@ -519,10 +550,17 @@ function WorkspaceRootsTab({
   onRemoveWorkspaceMember: (teamId: string, userId: string) => void
   onPromoteManager: (teamId: string, userId: string) => void
   onDemoteManager: (teamId: string, userId: string) => void
+  onUpdateWorkspaceFolder: (teamId: string, folderId: string | null) => void
   canManageTeamMembers: (teamId: string) => boolean
   canManageTeamManagers: (teamId: string) => boolean
+  workspaceFolderOptions: { value: string; label: string }[]
+  activeUserId?: string
+  canManageProject: boolean
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [newGroupName, setNewGroupName] = useState('')
+  const [version, setVersion] = useState(0)
+  const { showToast } = useToast()
 
   const toggle = (id: string) => {
     setExpanded(prev => {
@@ -533,19 +571,20 @@ function WorkspaceRootsTab({
     })
   }
 
-  const workspaceTeams = useMemo(
-    () => TEAMS
-      .filter((team) => team.kind === 'group' && team.rootFolderId)
-      .sort((a, b) => a.name.localeCompare(b.name)),
-    [],
+  const groups = useMemo(
+    () => sortGroupsForAccessControl(
+      TEAMS.filter((team) => team.kind === 'group'),
+      activeUserId,
+    ),
+    [activeUserId, version],
   )
-  const manageableWorkspaceTeams = useMemo(
-    () => workspaceTeams.filter((team) => canManageTeamMembers(team.id)),
-    [workspaceTeams, canManageTeamMembers],
+  const manageableGroups = useMemo(
+    () => groups.filter((team) => canManageTeamMembers(team.id)),
+    [groups, canManageTeamMembers],
   )
   const teamOptions = useMemo(
-    () => manageableWorkspaceTeams.map((team) => ({ value: team.id, label: team.name })),
-    [manageableWorkspaceTeams],
+    () => manageableGroups.map((team) => ({ value: team.id, label: team.name })),
+    [manageableGroups],
   )
   const pendingByTeam = useMemo(() => {
     const map = new Map<string, PendingWorkspaceInvite[]>()
@@ -561,15 +600,29 @@ function WorkspaceRootsTab({
     : (teamOptions[0]?.value ?? '')
   const canStageInvite = teamOptions.length > 0 && inviteEmail.trim().length > 0
 
+  const handleCreateGroup = () => {
+    if (!newGroupName.trim()) return
+    if (!activeUserId) {
+      showToast('Switch into a project persona before creating a group.')
+      return
+    }
+    const managerIds = [activeUserId]
+    const team = createTeam(newGroupName.trim(), managerIds, 'group', managerIds)
+    showToast(`Created group "${team.name}"`)
+    setExpanded((prev) => new Set(prev).add(team.id))
+    setNewGroupName('')
+    setVersion((prev) => prev + 1)
+  }
+
   useEffect(() => {
     if (teamOptions.length === 0 || teamOptions.some((team) => team.value === selectedTeamId)) return
     onSelectedTeamChange(teamOptions[0]!.value)
   }, [onSelectedTeamChange, selectedTeamId, teamOptions])
 
-  if (workspaceTeams.length === 0) {
+  if (groups.length === 0) {
     return (
       <p className="text-body-0-regular text-foreground-dim">
-        No workspace roots are configured.
+        No groups are configured.
       </p>
     )
   }
@@ -577,12 +630,12 @@ function WorkspaceRootsTab({
   return (
     <div className="space-y-3">
       <p className="text-body-0-regular text-foreground-dim">
-        Workspace access comes from root-folder groups. Members inherit access from the folder grants configured here.
+        Groups are the working teams on this project. Add people to a group, then choose the workspace folder they should see by default.
       </p>
       {teamOptions.length > 0 ? (
         <div className="space-y-2">
           <p className="text-body-0-regular text-foreground-dim">
-            Queue someone into a workspace root, then confirm with Update Access in the footer.
+            Queue someone into a group, then confirm with Update Access in the footer.
           </p>
           <div className="flex items-start gap-2">
             <Input
@@ -625,21 +678,22 @@ function WorkspaceRootsTab({
         </div>
       ) : (
         <p className="text-body-0-regular text-foreground-dim">
-          Group managers staff workspace membership. You can still review folder access below.
+          You can review groups here. Group admins can staff the groups they manage.
         </p>
       )}
 
       <div className="space-y-1">
-        {workspaceTeams.map((team) => {
+        {groups.map((team) => {
           const isOpen = expanded.has(team.id)
           const members = team.memberUserIds
             .map(uid => PERSONAS.find(p => p.id === uid))
-            .filter(Boolean) as User[]
+            .filter((u): u is User => u != null)
           const pendingMembers = pendingByTeam.get(team.id) ?? []
           const managerIds = new Set(team.managerUserIds)
           const canManageMembers = canManageTeamMembers(team.id)
           const canManageManagers = canManageTeamManagers(team.id)
-          const resourceRef: ResourceRef = { id: team.rootFolderId!, type: 'folder', domainId: team.domainId }
+          const workspaceFolderValue = team.rootFolderId ?? NO_WORKSPACE_VALUE
+          const workspaceFolderLabel = workspaceFolderOptions.find((option) => option.value === workspaceFolderValue)?.label ?? 'Not assigned'
 
           return (
             <div key={team.id} className={cn('rounded-lg transition-colors', isOpen && 'bg-surface-3/40')}>
@@ -655,7 +709,7 @@ function WorkspaceRootsTab({
                     <span className="text-label-0-regular text-foreground-dim block">
                       {members.length} {members.length === 1 ? 'member' : 'members'}
                       {' · '}
-                      {team.managerUserIds.length} {team.managerUserIds.length === 1 ? 'manager' : 'managers'}
+                      {team.managerUserIds.length} {team.managerUserIds.length === 1 ? 'admin' : 'admins'}
                       {pendingMembers.length > 0 ? ` · ${pendingMembers.length} pending` : ''}
                     </span>
                   </div>
@@ -667,9 +721,6 @@ function WorkspaceRootsTab({
                     />
                   )}
                 </button>
-                <span className="text-label-0-regular text-foreground-dim flex-shrink-0">
-                  Root folder
-                </span>
               </div>
               {isOpen && (
                 <div className="px-2 pb-2 space-y-3">
@@ -698,6 +749,7 @@ function WorkspaceRootsTab({
                   {members.map((persona) => {
                     const isManager = managerIds.has(persona.id)
                     const canRemoveMember = canManageMembers && (!isManager || canManageManagers)
+                    const roleValue = isManager ? 'manager' : 'member'
 
                     return (
                       <div key={persona.id} className="flex items-center gap-2 py-1.5 pl-2 pr-0 rounded">
@@ -707,27 +759,24 @@ function WorkspaceRootsTab({
                           <span className="text-label-0-regular text-foreground-dim truncate block">{persona.email}</span>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          {isManager && (
-                            <span className="text-label-0-bold text-foreground-dim">Manager</span>
-                          )}
                           {canManageManagers && (
-                            isManager ? (
-                              <Button
-                                variant="secondary"
-                                compact
-                                onClick={() => onDemoteManager(team.id, persona.id)}
-                              >
-                                Demote
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="secondary"
-                                compact
-                                onClick={() => onPromoteManager(team.id, persona.id)}
-                              >
-                                Make manager
-                              </Button>
-                            )
+                            <MenuSelect
+                              options={GROUP_MEMBER_ROLE_OPTIONS}
+                              value={roleValue}
+                              onChange={(value) => {
+                                if (value === roleValue) return
+                                if (value === 'manager') onPromoteManager(team.id, persona.id)
+                                else onDemoteManager(team.id, persona.id)
+                              }}
+                              size="compact"
+                              align="end"
+                              width="sm"
+                            />
+                          )}
+                          {!canManageManagers && (
+                            <span className="text-label-0-bold text-foreground-dim">
+                              {isManager ? 'Admin' : 'Member'}
+                            </span>
                           )}
                           {canRemoveMember && (
                             <Button
@@ -745,12 +794,26 @@ function WorkspaceRootsTab({
                   {members.length === 0 && (
                     <p className="text-label-0-regular text-foreground-dim py-2 px-2 text-center">No members yet.</p>
                   )}
-                  <div className="rounded-lg border border-border-dim px-3 py-3">
-                    <AccessSummary
-                      resourceId={resourceRef.id}
-                      resourceRef={resourceRef}
-                      resourceName={team.name}
-                    />
+                  <div className="flex items-center gap-1.5 px-2 pt-1">
+                    <span className="text-label-0-regular text-foreground-dim">Workspace</span>
+                    {canManageMembers ? (
+                      <MenuSelect
+                        options={workspaceFolderOptions}
+                        value={workspaceFolderValue}
+                        onChange={(value) => onUpdateWorkspaceFolder(
+                          team.id,
+                          value === NO_WORKSPACE_VALUE ? null : value,
+                        )}
+                        triggerLabel={workspaceFolderLabel}
+                        size="compact"
+                        align="start"
+                        width="md"
+                      />
+                    ) : (
+                      <Tag size="compact" type="neutral" variant="border">
+                        {workspaceFolderLabel}
+                      </Tag>
+                    )}
                   </div>
                 </div>
               )}
@@ -758,11 +821,33 @@ function WorkspaceRootsTab({
           )
         })}
       </div>
+
+      {canManageProject && (
+        <div className="flex items-center gap-2 pt-2">
+          <Input
+            type="text"
+            value={newGroupName}
+            onChange={(event) => setNewGroupName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter') return
+              event.preventDefault()
+              handleCreateGroup()
+            }}
+            placeholder="New group name"
+          />
+          <Button
+            variant="secondary"
+            onClick={handleCreateGroup}
+            disabled={!newGroupName.trim()}
+          >
+            Create
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
 
-// --- Role Groups tab ---
 
 function RoleGroupsTab({
   roleGroups,
@@ -853,7 +938,6 @@ function RoleGroupsTab({
   )
 }
 
-// --- Security tab ---
 
 function SecurityTab({
   projectLocked,
@@ -966,7 +1050,6 @@ function SecurityTab({
   )
 }
 
-// --- Orphaned collections section ---
 
 function OrphanedCollectionsSection({
   orphanedCollections,
@@ -1072,7 +1155,6 @@ function OrphanedCollectionsSection({
   )
 }
 
-// --- Audit Log tab (Phase 6) ---
 
 function AuditLogTab({
   getAuditLog,
@@ -1193,243 +1275,6 @@ function AuditLogTab({
   )
 }
 
-// --- Teams tab ---
-
-function TeamsTab({
-  activeUserId,
-  canManageProject,
-}: {
-  activeUserId?: string
-  canManageProject: boolean
-}) {
-  const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [addMemberQuery, setAddMemberQuery] = useState('')
-  const [newTeamName, setNewTeamName] = useState('')
-  const [version, setVersion] = useState(0)
-  const { showToast } = useToast()
-
-  const manageableTeams = useMemo(() => {
-    return TEAMS.filter((team) => team.kind === 'group' && !team.rootFolderId)
-  }, [version])
-  const filteredTeams = useMemo(() => {
-    if (!searchQuery.trim()) return manageableTeams
-    const q = searchQuery.toLowerCase()
-    return manageableTeams.filter(t =>
-      t.name.toLowerCase().includes(q) ||
-      t.memberUserIds.some(uid => {
-        const p = PERSONAS.find(u => u.id === uid)
-        return p?.name.toLowerCase().includes(q) || p?.email?.toLowerCase().includes(q)
-      })
-    )
-  }, [searchQuery, manageableTeams])
-  const canManageMembers = useCallback((teamId: string) => (
-    canManageProject || (!!activeUserId && isUserTeamManager(activeUserId, teamId))
-  ), [activeUserId, canManageProject])
-
-  const handleAddMember = (teamId: string, userId: string) => {
-    if (addUserToTeam(userId, teamId)) {
-      const persona = PERSONAS.find(p => p.id === userId)
-      const team = TEAMS.find(t => t.id === teamId)
-      showToast(`Added ${persona?.name ?? userId} to ${team?.name ?? 'team'}`)
-      setAddMemberQuery('')
-      setVersion(v => v + 1)
-    }
-  }
-
-  const handleRemoveMember = (teamId: string, userId: string) => {
-    const team = TEAMS.find((candidate) => candidate.id === teamId)
-    if (!removeUserFromTeam(userId, teamId)) {
-      const blockedTeams = team ? getSoleManagedTeams(userId).filter((candidate) => candidate.id === team.id) : []
-      if (blockedTeams.length > 0) {
-        showToast(`Assign another manager for ${blockedTeams[0]!.name} before removing this member.`)
-      }
-      return
-    }
-    setVersion(v => v + 1)
-  }
-
-  const handlePromoteManager = (teamId: string, userId: string) => {
-    if (addTeamManager(userId, teamId)) {
-      const persona = PERSONAS.find((candidate) => candidate.id === userId)
-      const team = TEAMS.find((candidate) => candidate.id === teamId)
-      showToast(`${persona?.name ?? 'Member'} can now manage ${team?.name ?? 'this group'}`)
-      setVersion((v) => v + 1)
-    }
-  }
-
-  const handleDemoteManager = (teamId: string, userId: string) => {
-    const team = TEAMS.find((candidate) => candidate.id === teamId)
-    if (!removeTeamManager(userId, teamId)) {
-      if (team) {
-        showToast(`Assign another manager for ${team.name} before demoting this person.`)
-      }
-      return
-    }
-    const persona = PERSONAS.find((candidate) => candidate.id === userId)
-    showToast(`${persona?.name ?? 'Member'} no longer manages ${team?.name ?? 'this group'}`)
-    setVersion((v) => v + 1)
-  }
-
-  const handleCreateTeam = () => {
-    if (!newTeamName.trim()) return
-    if (!activeUserId) {
-      showToast('Switch into a project persona before creating a group.')
-      return
-    }
-    const managerIds = activeUserId ? [activeUserId] : []
-    createTeam(newTeamName.trim(), managerIds, 'group', managerIds)
-    showToast(`Created team "${newTeamName.trim()}"`)
-    setNewTeamName('')
-    setVersion(v => v + 1)
-  }
-
-  return (
-    <div className="space-y-4 pt-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-dim" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Search teams..."
-          className="w-full h-9 pl-9 pr-3 bg-surface-low border border-border-dim rounded text-body-0-regular text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-subtle transition-colors"
-        />
-      </div>
-      <div className="space-y-1">
-        {filteredTeams.map(team => {
-          const isExpanded = expandedTeamId === team.id
-          const members = team.memberUserIds
-            .map(uid => PERSONAS.find(u => u.id === uid))
-            .filter(Boolean) as User[]
-          const managers = new Set(team.managerUserIds)
-          const teamCanManageMembers = canManageMembers(team.id)
-          const addCandidates = addMemberQuery.trim() && isExpanded && teamCanManageMembers
-            ? PERSONAS.filter(p =>
-                !team.memberUserIds.includes(p.id) &&
-                (p.name.toLowerCase().includes(addMemberQuery.toLowerCase()) ||
-                 p.email?.toLowerCase().includes(addMemberQuery.toLowerCase()))
-              ).slice(0, 5)
-            : []
-          return (
-            <div key={team.id}>
-              <button
-                onClick={() => { setExpandedTeamId(isExpanded ? null : team.id); setAddMemberQuery('') }}
-                className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded hover:bg-surface-highlight transition-colors text-left"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  {isExpanded ? <ChevronDown className="w-4 h-4 text-foreground-dim flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-foreground-dim flex-shrink-0" />}
-                  <span className="text-body-0-regular text-foreground truncate">{team.name}</span>
-                </div>
-                <span className="text-label-0-regular text-foreground-dim flex-shrink-0">
-                  {members.length} {members.length === 1 ? 'member' : 'members'}
-                  {' · '}
-                  {team.managerUserIds.length} {team.managerUserIds.length === 1 ? 'manager' : 'managers'}
-                </span>
-              </button>
-              {isExpanded && (
-                <div className="pl-9 pb-2 space-y-1">
-                  {members.map(member => (
-                    <div key={member.id} className="flex items-center justify-between gap-2 py-1">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Avatar name={member.name} size="sm" />
-                        <div className="min-w-0">
-                          <span className="text-body-0-regular text-foreground truncate block">{member.name}</span>
-                          {member.email && <span className="text-label-0-regular text-foreground-dim truncate block">{member.email}</span>}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {managers.has(member.id) && (
-                          <span className="text-label-0-bold text-foreground-dim">Manager</span>
-                        )}
-                        {member.title && <span className="text-label-0-regular text-foreground-dim">{member.title}</span>}
-                        {canManageProject && (
-                          managers.has(member.id) ? (
-                            <button
-                              onClick={() => handleDemoteManager(team.id, member.id)}
-                              className="text-label-0-regular text-foreground-dim hover:text-foreground transition-colors"
-                            >
-                              Demote
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handlePromoteManager(team.id, member.id)}
-                              className="text-label-0-regular text-foreground-dim hover:text-foreground transition-colors"
-                            >
-                              Make manager
-                            </button>
-                          )
-                        )}
-                        {teamCanManageMembers && (!managers.has(member.id) || canManageProject) && (
-                          <button
-                            onClick={() => handleRemoveMember(team.id, member.id)}
-                            className="text-label-0-regular text-foreground-dim hover:text-foreground-system-error transition-colors"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  {members.length === 0 && (
-                    <p className="text-body-0-regular text-foreground-dim py-1">No members</p>
-                  )}
-                  {teamCanManageMembers && (
-                    <div className="pt-1">
-                      <input
-                        type="text"
-                        value={addMemberQuery}
-                        onChange={e => setAddMemberQuery(e.target.value)}
-                        placeholder="Add member by name or email..."
-                        className="w-full h-8 px-3 bg-surface-low border border-border-dim rounded text-body-0-regular text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-subtle transition-colors"
-                      />
-                      {addCandidates.length > 0 && (
-                        <div className="mt-1 border border-border-dim rounded bg-surface-low">
-                          {addCandidates.map(p => (
-                            <button
-                              key={p.id}
-                              onClick={() => handleAddMember(team.id, p.id)}
-                              className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-surface-highlight transition-colors"
-                            >
-                              <Avatar name={p.name} size="sm" />
-                              <span className="text-body-0-regular text-foreground">{p.name}</span>
-                              {p.email && <span className="text-label-0-regular text-foreground-dim">{p.email}</span>}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )
-        })}
-        {filteredTeams.length === 0 && (
-          <p className="text-body-0-regular text-foreground-dim py-4 text-center">No teams match your search.</p>
-        )}
-      </div>
-      {canManageProject && (
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={newTeamName}
-            onChange={e => setNewTeamName(e.target.value)}
-            placeholder="New team name"
-            className="flex-1 h-9 px-3 bg-surface-low border border-border-dim rounded text-body-0-regular text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-subtle transition-colors"
-            onKeyDown={e => { if (e.key === 'Enter') handleCreateTeam() }}
-          />
-          <Button variant="secondary" compact onClick={handleCreateTeam} disabled={!newTeamName.trim()}>
-            Create
-          </Button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// --- Main modal ---
-
 interface SettingsModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -1444,7 +1289,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     addRoleGroup,
     removeRoleGroup,
     revokeUserAccess,
-    canShare,
     canEditAcl,
     getDiscoverySettings,
     setDiscoveryEnabledForType,
@@ -1461,36 +1305,33 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const { activePersona } = usePersona()
   const activeUserId = activePersona?.id
   const canManageProject = canEditAcl(PROJECT_RESOURCE)
-  const workspaceTeams = useMemo(
-    () => TEAMS
-      .filter((team) => team.kind === 'group' && team.rootFolderId)
-      .sort((a, b) => a.name.localeCompare(b.name)),
-    [],
-  )
-  const [activeTab, setActiveTab] = useState('workspaces')
+  const [activeTab, setActiveTab] = useState('groups')
   const [directoryVersion, setDirectoryVersion] = useState(0)
   const [pendingWorkspaceInvites, setPendingWorkspaceInvites] = useState<PendingWorkspaceInvite[]>([])
   const [inviteEmail, setInviteEmail] = useState('')
-  const [selectedWorkspaceTeamId, setSelectedWorkspaceTeamId] = useState<string>(workspaceTeams[0]?.id ?? '')
+  const [selectedWorkspaceTeamId, setSelectedWorkspaceTeamId] = useState<string>('')
+  const groupTeams = useMemo(
+    () => sortGroupsForAccessControl(
+      TEAMS.filter((team) => team.kind === 'group'),
+      activeUserId,
+    ),
+    [activeUserId, directoryVersion],
+  )
+  const workspaceFolderOptions = useMemo(() => [
+    { value: NO_WORKSPACE_VALUE, label: 'Not assigned' },
+    ...(Object.values(DOMAIN_FOLDER_MAP).map((folder) => ({
+      value: folder.id,
+      label: folder.name,
+    }))),
+  ], [])
   const canManageTeamMembers = useCallback((teamId: string) => (
     canManageProject || (!!activeUserId && isUserTeamManager(activeUserId, teamId))
   ), [activeUserId, canManageProject])
-  const canManageWorkspaces = useMemo(
-    () => workspaceTeams.some((team) => {
-      const resourceRef: ResourceRef = {
-        id: team.rootFolderId!,
-        type: 'folder',
-        domainId: team.domainId,
-      }
-      return canManageTeamMembers(team.id) || canShare(resourceRef) || canEditAcl(resourceRef)
-    }),
-    [workspaceTeams, canManageTeamMembers, canShare, canEditAcl],
-  )
   const canManageGroups = useMemo(
-    () => TEAMS.some((team) => team.kind === 'group' && !team.rootFolderId && canManageTeamMembers(team.id)),
-    [canManageTeamMembers, directoryVersion],
+    () => groupTeams.some((team) => canManageTeamMembers(team.id)),
+    [canManageTeamMembers, groupTeams],
   )
-  const canManageAnything = canManageProject || canManageWorkspaces || canManageGroups
+  const canManageAnything = canManageProject || canManageGroups
   const hasPendingWorkspaceInvites = pendingWorkspaceInvites.length > 0
   const discoverySections: { resourceType: DiscoveryResourceType; title: string; description: string }[] = [
     {
@@ -1514,9 +1355,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     const normalizedEmail = inviteEmail.trim().toLowerCase()
     if (!normalizedEmail) return false
 
-    const team = workspaceTeams.find(
+    const team = groupTeams.find(
       (candidate) => candidate.id === selectedWorkspaceTeamId && canManageTeamMembers(candidate.id),
-    ) ?? workspaceTeams.find((candidate) => canManageTeamMembers(candidate.id))
+    ) ?? groupTeams.find((candidate) => canManageTeamMembers(candidate.id))
     if (!team) return false
 
     const existingPersona = PERSONAS.find((candidate) => candidate.email.toLowerCase() === normalizedEmail)
@@ -1537,7 +1378,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     })
     setInviteEmail('')
     return true
-  }, [inviteEmail, selectedWorkspaceTeamId, workspaceTeams, canManageTeamMembers])
+  }, [inviteEmail, selectedWorkspaceTeamId, groupTeams, canManageTeamMembers])
 
   const applyPendingWorkspaceInvites = useCallback(() => {
     if (pendingWorkspaceInvites.length === 0) return
@@ -1553,7 +1394,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     if (!removedPersona) {
       const blockedTeam = TEAMS.find((team) => team.id === teamId)
       if (blockedTeam) {
-        showToast(`Assign another manager for ${blockedTeam.name} before removing this member.`)
+        showToast(`Assign another admin for ${blockedTeam.name} before removing this member.`)
       }
       return
     }
@@ -1564,7 +1405,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     if (!addTeamManager(userId, teamId)) return
     const persona = PERSONAS.find((candidate) => candidate.id === userId)
     const team = TEAMS.find((candidate) => candidate.id === teamId)
-    showToast(`${persona?.name ?? 'Member'} can now manage ${team?.name ?? 'this workspace group'}`)
+    showToast(`${persona?.name ?? 'Member'} is now an admin of ${team?.name ?? 'this group'}`)
     setDirectoryVersion((prev) => prev + 1)
   }, [showToast])
 
@@ -1572,12 +1413,12 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     const team = TEAMS.find((candidate) => candidate.id === teamId)
     if (!removeTeamManager(userId, teamId)) {
       if (team) {
-        showToast(`Assign another manager for ${team.name} before demoting this person.`)
+        showToast(`Assign another admin for ${team.name} before changing this person to Member.`)
       }
       return
     }
     const persona = PERSONAS.find((candidate) => candidate.id === userId)
-    showToast(`${persona?.name ?? 'Member'} no longer manages ${team?.name ?? 'this workspace group'}`)
+    showToast(`${persona?.name ?? 'Member'} is now a member of ${team?.name ?? 'this group'}`)
     setDirectoryVersion((prev) => prev + 1)
   }, [showToast])
 
@@ -1605,23 +1446,22 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             <div className="mx-6 mt-4 flex items-start gap-2 rounded border border-border-dim bg-surface-low px-3 py-2">
               <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-foreground-dim" />
               <p className="text-body-0-regular text-foreground-dim">
-                {canManageWorkspaces || canManageGroups
-                  ? 'Project-wide settings are view only. You can still manage the groups and workspace roots where you have rights.'
+                {canManageGroups
+                  ? 'Project-wide settings are view only. You can still manage the groups where you are an admin.'
                   : 'Project-wide settings are managed by project admins.'}
               </p>
             </div>
           )}
 
           <Tabs
-            defaultValue="workspaces"
+            defaultValue="groups"
             value={activeTab}
             onValueChange={setActiveTab}
             className="px-6 pt-4"
           >
             <TabsList>
-              <Tab value="workspaces">Workspaces</Tab>
+              <Tab value="groups">Groups</Tab>
               <Tab value="people">People</Tab>
-              <Tab value="teams">Teams</Tab>
               {canManageProject && <Tab value="role-groups">Role Groups</Tab>}
               {canManageProject && <Tab value="settings">Settings</Tab>}
               {canManageProject && <Tab value="security">Security</Tab>}
@@ -1642,7 +1482,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     const blockingTeams = getSoleManagedTeams(userId)
                     if (blockingTeams.length > 0) {
                       showToast(
-                        `Assign another manager for ${blockingTeams.map((team) => team.name).join(', ')} before removing ${name}.`,
+                        `Assign another admin for ${blockingTeams.map((team) => team.name).join(', ')} before removing ${name}.`,
                       )
                       return
                     }
@@ -1656,11 +1496,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   }}
                 />
               </TabsContent>
-              <TabsContent value="teams">
-                <TeamsTab activeUserId={activeUserId} canManageProject={canManageProject} />
-              </TabsContent>
-              <TabsContent value="workspaces">
-                <WorkspaceRootsTab
+              <TabsContent value="groups">
+                <GroupsTab
                   pendingInvites={pendingWorkspaceInvites}
                   inviteEmail={inviteEmail}
                   onInviteEmailChange={setInviteEmail}
@@ -1673,8 +1510,17 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   onRemoveWorkspaceMember={handleRemoveWorkspaceMember}
                   onPromoteManager={handlePromoteWorkspaceManager}
                   onDemoteManager={handleDemoteWorkspaceManager}
+                  onUpdateWorkspaceFolder={(teamId, folderId) => {
+                    const team = TEAMS.find((candidate) => candidate.id === teamId)
+                    if (!team) return
+                    team.rootFolderId = folderId ?? undefined
+                    setDirectoryVersion((prev) => prev + 1)
+                  }}
                   canManageTeamMembers={canManageTeamMembers}
-                  canManageTeamManagers={() => canManageProject}
+                  canManageTeamManagers={canManageTeamMembers}
+                  workspaceFolderOptions={workspaceFolderOptions}
+                  activeUserId={activeUserId}
+                  canManageProject={canManageProject}
                 />
               </TabsContent>
               {canManageProject && (
