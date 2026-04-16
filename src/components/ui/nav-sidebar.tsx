@@ -78,20 +78,24 @@ function writeStoredNavScrollTop(scrollTop: number) {
 }
 
 function usePersistedExpand(key: string, fallback: boolean, skipRestore = false): [boolean, (v: boolean) => void] {
-  // Start with fallback to match server render and avoid hydration mismatch
-  const [value, setValue] = useState(fallback)
+  // Always start collapsed on server to avoid hydration mismatch,
+  // then restore the real value on mount.
+  const [value, setValue] = useState(false)
 
-  // Sync from localStorage after mount
   useEffect(() => {
-    if (skipRestore) return
+    if (skipRestore) {
+      setValue(fallback)
+      return
+    }
     try {
       const stored = localStorage.getItem(NAV_STORAGE_KEY)
       if (stored) {
         const map = JSON.parse(stored)
-        if (key in map) setValue(map[key] as boolean)
+        if (key in map) { setValue(map[key] as boolean); return }
       }
     } catch {}
-  }, [key, skipRestore])
+    setValue(fallback)
+  }, [key, skipRestore, fallback])
 
   const setPersisted = useCallback((next: boolean) => {
     setValue(next)
@@ -360,8 +364,8 @@ function TreeNavLink({
           </button>
         )}
       </div>
-      {children && (effectiveExpanded || showCollapsedPreview) && (
-        <div className="pl-8 space-y-1 mt-1">
+      {children && (
+        <div className={cn('pl-8 space-y-1 mt-1', !(effectiveExpanded || showCollapsedPreview) && 'hidden')}>
           {effectiveExpanded ? children : collapsedPreview}
         </div>
       )}
@@ -388,11 +392,9 @@ function CollapsibleSection({ title, defaultOpen = true, children }: Collapsible
           {title}
         </span>
       </button>
-      {isOpen && (
-        <div className="px-3 space-y-1 mt-1">
-          {children}
-        </div>
-      )}
+      <div className={cn('px-3 space-y-1 mt-1', !isOpen && 'hidden')}>
+        {children}
+      </div>
     </div>
   )
 }
@@ -674,6 +676,9 @@ function SmartCollectionNavItem({ collection, getChildren, badge }: {
 
 
 function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   const { visibleCollections: smartCollections, getChildren, scopedAssets } = useSmartCollections()
   const { tree: fileTree } = useFileTree()
   const { sharesReceivedByMe, allProjectShares, canAccess, visibleCollections: userCollections, getCollectionAssetCount } = useAccess()
@@ -701,9 +706,10 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
     return ids
   }, [smartCollectionIds, userCollections])
 
+  if (!mounted) return null
+
   return (
     <>
-      {/* Top Level Items */}
       <div className="pt-4 pb-2">
         <div className="px-3 space-y-1">
           <NavLink href="/nextgen" label="Search" icon={<Search className="w-4 h-4 flex-shrink-0" />} />

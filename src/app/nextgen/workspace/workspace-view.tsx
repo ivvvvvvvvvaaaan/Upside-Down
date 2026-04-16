@@ -11,7 +11,6 @@ import {
   AppearanceDropdown,
   SortDropdown,
   HawkinsSearch,
-  CompactBar,
   Button,
   FileExplorer,
   CollectionCard,
@@ -19,6 +18,7 @@ import {
   NewFolderModal,
   AccessModal,
   MobileToolbar,
+  Dropdown,
   DropdownMenuItem,
   DropdownMenuDivider,
   MoveWarningModal,
@@ -32,7 +32,7 @@ import { ShareIcon } from '@/components/ui/share-icon'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import type { FileNode, FileViewMode } from '@/components/ui/file-explorer'
-import { getGridColumns, useViewPreferences, useCompactBar, useResourceSelection, useFileTree, useAccess, usePersona, useMobilePanel, useCollections } from '@/hooks'
+import { getGridColumns, useViewPreferences, useResourceSelection, useFileTree, useAccess, usePersona, useMobilePanel, useCollections } from '@/hooks'
 
 import type { DomainId, ProductionDomainId } from '@/components/department/types'
 import { DOMAIN_FOLDER_MAP, isReferenceFolder, SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
@@ -43,7 +43,7 @@ import { WorkspaceSidePanel } from '@/components/department/WorkspaceSidePanel'
 import { AssetDetailPanel } from '@/components/ui/asset-detail-panel'
 import { getContextAssetGroups } from '@/lib/context-relationships'
 import { useIsMobile } from '@/hooks/useMediaQuery'
-import { List, Columns, LayoutGrid, PanelRight, Info, Lock, Users, FolderPlus, FolderSymlink, Share2, RefreshCw, Trash2, FilePlus, Upload, FolderInput } from 'lucide-react'
+import { List, Columns, LayoutGrid, PanelRight, Info, Lock, Users, FolderPlus, FolderSymlink, Share2, RefreshCw, Trash2, FilePlus, Upload, FolderInput, MoreVertical } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { assetToSelectionEntity, folderToSelectionEntity } from '@/lib/selection-actions'
 import type { SelectionEntity } from '@/lib/selection-actions'
@@ -216,7 +216,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
   const { scopedAssets, ensureAssetsLoaded } = useCollections()
   const { layout, setLayout, cardSize, setCardSize, viewMode, setViewMode, sidePanelOpen: showPanel, setSidePanelOpen: setShowPanel, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(showPanel, setShowPanel)
-  const { scrollRef, headerRef, showCompactBar } = useCompactBar()
+  const scrollRef = useRef<HTMLDivElement>(null)
   const isMobile = useIsMobile()
   const {
     selectedIds,
@@ -595,6 +595,12 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
 
   const canShareCurrentFolder = pageAccessResourceRef ? canShareResource(pageAccessResourceRef) : false
   const canEditCurrentFolder = currentLocationNode ? canEditResource(getAclResourceId(currentLocationNode)) : true
+  const canMountCurrentFolder = Boolean(
+    currentLocationNode
+    && currentLocationNode.type === 'folder'
+    && currentLocationNode.id !== SHARED_MOUNT_FOLDER_ID
+    && !isReferenceFolder(currentLocationNode),
+  )
 
   const isCurrentFolderOwner = useMemo(() => {
     if (!currentLocationNode || !activePersona) return true
@@ -667,39 +673,34 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     <div className="h-full flex flex-col">
       <div className="flex-1 min-h-0 flex">
         <div ref={scrollRef} className={cn('flex-1 min-w-0 min-h-0', isGridView ? 'overflow-auto' : 'flex flex-col overflow-hidden')}>
-          <CompactBar
-            visible={showCompactBar}
-            title={pageTitle}
-            count={landingFolderId ? filteredFileCount : workspaceRootNodes.length}
-            countLabel={landingFolderId ? 'file' : 'workspace'}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            filterOptions={filterOptions}
-            sortFields={sortFields}
-            sortCriteria={sortCriteria}
-            onSortChange={setSortCriteria}
-            layout={layout}
-            onLayoutChange={setLayout}
-            cardSize={cardSize}
-            onCardSizeChange={setCardSize}
-            showLayoutOptions={false}
-          />
-
           <div className="p-6">
             <div className="max-w-7xl mx-auto">
               <Stack spacing="lg">
                 {/* Mobile nav */}
                 <MobileToolbar title={pageTitle} actions={
-                  !panelOpen ? (
-                    <Button
-                      variant="icon"
-                      size="icon"
-                      aria-label="Open panel"
-                      onClick={togglePanel}
-                    >
-                      <Info className="w-4 h-4" />
-                    </Button>
-                  ) : undefined
+                  <div className="flex items-center gap-2">
+                    {canMountCurrentFolder && currentLocationNode && (
+                      <Dropdown label="Folder options" icon={<MoreVertical className="w-4 h-4" />} iconOnly align="end" width="sm">
+                        <div className="py-1">
+                          <DropdownMenuItem
+                            icon={<FolderInput className="w-4 h-4" />}
+                            label="Mount to Drive"
+                            onClick={() => handleMountFolderToDrive(currentLocationNode)}
+                          />
+                        </div>
+                      </Dropdown>
+                    )}
+                    {!panelOpen && (
+                      <Button
+                        variant="icon"
+                        size="icon"
+                        aria-label="Open panel"
+                        onClick={togglePanel}
+                      >
+                        <Info className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
                 } />
                 <div className="flex items-center gap-2 md:hidden">
                   <HawkinsSearch
@@ -728,7 +729,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                 </div>
 
                 {/* Header */}
-                <div ref={headerRef} className="flex flex-col gap-3">
+                <div className="flex flex-col gap-3">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <PageHeader
                       title={pageTitle}
@@ -767,6 +768,17 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                           <ShareIcon className="w-4 h-4" />
                           Share
                         </Button>
+                      )}
+                      {canMountCurrentFolder && currentLocationNode && (
+                        <Dropdown label="Folder options" icon={<MoreVertical className="w-4 h-4" />} iconOnly align="end" width="sm">
+                          <div className="py-1">
+                            <DropdownMenuItem
+                              icon={<FolderInput className="w-4 h-4" />}
+                              label="Mount to Drive"
+                              onClick={() => handleMountFolderToDrive(currentLocationNode)}
+                            />
+                          </div>
+                        </Dropdown>
                       )}
                       {canEditCurrentFolder && (
                         <Button

@@ -682,8 +682,14 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         })
       }
     }
+    const names = pendingGrants.map(p => p.name)
     setPendingGrants([])
     onPendingChange?.(false, { confirm: () => {}, cancel: () => {} })
+    if (names.length === 1) {
+      showToast(`Shared with ${names[0]}`)
+    } else if (names.length > 1) {
+      showToast(`Shared with ${names.length} people`)
+    }
   }
 
   const handleConfirmPending = () => {

@@ -20,12 +20,11 @@ import {
   HawkinsSearch,
   SortDropdown,
   AppearanceDropdown,
-  CompactBar,
   MobileToolbar,
 } from '@/components/ui'
 import type { CollectionCardType } from '@/components/ui/collection-card'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
-import { getGridColumns, useAssetSelection, useViewPreferences, useCompactBar, useResourceSelection, useSmartCollections, usePersona, useMobilePanel, useUserCollections } from '@/hooks'
+import { getGridColumns, useAssetSelection, useViewPreferences, useResourceSelection, useSmartCollections, usePersona, useMobilePanel, useUserCollections } from '@/hooks'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { matchesFilter } from '@/hooks/useSmartCollections'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
@@ -71,7 +70,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   } = useResourceSelection<{ id: string; name: string }>()
   const { layout, setLayout, cardSize, setCardSize, sidePanelOpen, setSidePanelOpen, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
-  const { scrollRef, headerRef, showCompactBar } = useCompactBar()
   const isMobile = useIsMobile()
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
   const { canShare, canEditAcl, getResourceGrants, sharesReceivedByMe, allProjectShares, isSensitiveAsset } = useAccess()
@@ -346,25 +344,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     <div className="h-full flex">
       {/* Main content area */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto">
-            <CompactBar
-              visible={showCompactBar}
-              title={pageTitle}
-              count={itemCount}
-              countLabel={countLabel}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              filterOptions={filterOptions}
-              sortFields={sortFields}
-              sortCriteria={sortCriteria}
-              onSortChange={setSortCriteria}
-              layout={layout}
-              onLayoutChange={setLayout}
-              cardSize={cardSize}
-              onCardSizeChange={setCardSize}
-              showLayoutOptions={false}
-            />
-
+        <div className="flex-1 min-h-0 overflow-auto">
             <div className="p-6">
               <div className="max-w-7xl mx-auto">
                 <Stack spacing="lg">
@@ -402,7 +382,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                   </div>
 
                   {/* Header */}
-                  <div ref={headerRef} className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between gap-4">
                       <PageHeader
                         title={pageTitle}
