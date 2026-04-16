@@ -93,7 +93,7 @@ export function ContextualActionBar({
       {/* Floating bottom bar when selection is active */}
       {hasSelection && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-high border border-border-dim shadow-lg">
+          <div className="flex items-center gap-2 pl-4 pr-2 py-2 rounded-lg bg-surface-high border border-border-dim shadow-lg">
             <span className="text-body-0-bold text-foreground whitespace-nowrap">{selectionLabel}</span>
             <Button
               variant="icon"
