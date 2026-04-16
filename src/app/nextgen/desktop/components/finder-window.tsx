@@ -329,6 +329,15 @@ function FolderIndicators({
   )
 }
 
+function EjectIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M8 3 3.5 9h9L8 3Z" />
+      <path d="M3.5 11h9v1.5h-9V11Z" />
+    </svg>
+  )
+}
+
 interface FinderWindowProps {
   window: WindowState
   isActive: boolean
@@ -361,6 +370,7 @@ export function FinderWindow({
 
   // Folder navigation state (for icons view) - stores folder IDs to avoid stale references
   const [folderPathIds, setFolderPathIds] = useState<string[]>([])
+  const [columnPath, setColumnPath] = useState<FileNode[]>([])
 
   // Shared file tree from context
   const { tree: workspaceFiles, createFolder: contextCreateFolder, createFile: contextCreateFile, createReferenceFolder: contextCreateReferenceFolder, renameNode: contextRenameNode, deleteNode: contextDeleteNode } = useFileTree()
@@ -496,6 +506,10 @@ export function FinderWindow({
   const rootFiles = selectedSidebar === 'workspace' ? visibleWorkspaceFiles : mockFiles
 
   const folderPath = folderPathIds.map(id => findNodeById(rootFiles, id)).filter((n): n is FileNode => n !== null)
+  const mountedFolders = useMemo(() => {
+    const sharedRoot = visibleWorkspaceFiles.find((node) => node.id === SHARED_MOUNT_FOLDER_ID)
+    return sharedRoot?.children?.filter(isReferenceFolder) ?? []
+  }, [visibleWorkspaceFiles])
 
   const handleStartRename = useCallback((item: FileNode) => {
     if (isReferenceFolder(item)) {
@@ -568,6 +582,11 @@ export function FinderWindow({
     contextDeleteNode(item.id)
     showToast(`Unmounted "${item.name}" from Shared`)
     setContextMenu(null)
+    setFolderPathIds((prev) => {
+      if (!prev.includes(item.id)) return prev
+      return []
+    })
+    setColumnPath((prev) => prev.filter((node) => node.id !== item.id))
     if (selectedFile === item.id) {
       setSelectedFile(null)
     }
@@ -748,8 +767,6 @@ export function FinderWindow({
   )
 
   // Columns view
-  const [columnPath, setColumnPath] = useState<FileNode[]>([])
-
   useEffect(() => {
     setFolderPathIds([])
     setColumnPath([])
@@ -990,6 +1007,49 @@ export function FinderWindow({
                   )
                 })}
             </div>
+
+            {mountedFolders.length > 0 && (
+              <div className="py-2">
+                <div className="px-3 py-1 text-label-0-bold text-foreground-dim uppercase tracking-wider">
+                  Mounted
+                </div>
+                {mountedFolders.map((folder) => {
+                  const isSelected = selectedSidebar === 'workspace' && folderPathIds.includes(folder.id)
+                  return (
+                    <div
+                      key={folder.id}
+                      className={cn(
+                        'group flex items-center gap-1 mx-2 rounded transition-colors',
+                        isSelected ? 'bg-surface-selected text-foreground' : 'text-foreground-dim hover:bg-surface-2',
+                      )}
+                    >
+                      <button
+                        onClick={() => {
+                          setSelectedSidebar('workspace')
+                          setFolderPathIds([SHARED_MOUNT_FOLDER_ID, folder.id])
+                          setColumnPath([])
+                          setSelectedFile(null)
+                        }}
+                        className="min-w-0 flex-1 flex items-center gap-2 px-1 py-1 text-left"
+                      >
+                        <FolderOpen className="w-4 h-4 text-foreground-dim flex-shrink-0" />
+                        <span className="text-body-0-regular truncate">{folder.name}</span>
+                      </button>
+                      <button
+                        aria-label={`Unmount ${folder.name}`}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          handleUnmountFolderFromDrive(folder)
+                        }}
+                        className="flex-shrink-0 p-1 rounded text-foreground-dim opacity-70 transition-colors hover:opacity-100 hover:bg-surface-selected-subtle hover:text-foreground"
+                      >
+                        <EjectIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* File list */}

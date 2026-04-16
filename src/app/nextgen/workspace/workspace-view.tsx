@@ -238,6 +238,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     getDomainFiles: getFileTreeDomainFiles,
     getMoveImpact,
     confirmMove,
+    createFileReference,
   } = useFileTree()
   const { showToast } = useToast()
 
@@ -816,6 +817,12 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                 <ContextualActionBar
                   selectedEntities={selectedEntities}
                   onClearSelection={clearSelection}
+                  onPlaceInFolder={(folderId, folderName, assetIds) => {
+                    for (const assetId of assetIds) {
+                      createFileReference(assetId, folderId)
+                    }
+                    showToast(`Placed ${assetIds.length} ${assetIds.length === 1 ? 'item' : 'items'} in ${folderName}`)
+                  }}
                 />
 
                 {/* Content */}

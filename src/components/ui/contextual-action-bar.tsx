@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Download, MoreVertical, Plus, X } from 'lucide-react'
+import { Download, FolderInput, MoreVertical, Plus, X } from 'lucide-react'
 import { ShareIcon } from './share-icon'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
@@ -9,6 +9,7 @@ import { Tooltip } from './tooltip'
 import { Dropdown, DropdownMenuItem } from './dropdown'
 import { AccessModal } from './access-modal'
 import { CollectionMembershipModal } from './collection-membership-modal'
+import { FolderPickerModal } from './folder-picker-modal'
 import { useAccess } from '@/hooks'
 import type { SelectionEntity } from '@/lib/selection-actions'
 import type { ResourceRef } from '@/lib/grants'
@@ -37,6 +38,8 @@ interface ContextualActionBarProps {
     onClick: () => void
     reason?: string
   }
+  /** Called when user places assets into a folder via the folder picker */
+  onPlaceInFolder?: (folderId: string, folderName: string, assetIds: string[]) => void
   className?: string
 }
 
@@ -45,11 +48,13 @@ export function ContextualActionBar({
   onClearSelection,
   downloadAction,
   removeAction,
+  onPlaceInFolder,
   className,
 }: ContextualActionBarProps) {
   const { canShare, getGrantableProfiles, getInheritedGrants } = useAccess()
   const [showCollectionModal, setShowCollectionModal] = useState(false)
   const [showAccessModal, setShowAccessModal] = useState(false)
+  const [showFolderPicker, setShowFolderPicker] = useState(false)
   const [shareTarget, setShareTarget] = useState<{ resourceRef: ResourceRef; title: string } | null>(null)
   const [batchResourceRefs, setBatchResourceRefs] = useState<ResourceRef[]>([])
 
@@ -86,6 +91,12 @@ export function ContextualActionBar({
       setBatchResourceRefs(refs)
       setShowAccessModal(true)
     }
+  }
+
+  const handleFolderSelect = (folderId: string, folderName: string) => {
+    if (!onPlaceInFolder) return
+    const assetIds = selectedEntities.map(e => e.resourceRef.id)
+    onPlaceInFolder(folderId, folderName, assetIds)
   }
 
   return (
@@ -132,6 +143,16 @@ export function ContextualActionBar({
                 </Button>
               </DisabledTooltip>
             )}
+            {onPlaceInFolder && (
+              <Button
+                variant="secondary"
+                compact
+                icon={<FolderInput className="w-4 h-4" />}
+                onClick={() => setShowFolderPicker(true)}
+              >
+                Place in folder
+              </Button>
+            )}
             {evaluation.actions.addToCollection.visible && evaluation.actions.addToCollection.enabled && (
               <Button
                 variant="secondary"
@@ -160,6 +181,12 @@ export function ContextualActionBar({
         onClose={() => setShowCollectionModal(false)}
         selectedAssets={evaluation.selectedAssets}
         onComplete={onClearSelection}
+      />
+
+      <FolderPickerModal
+        open={showFolderPicker}
+        onClose={() => setShowFolderPicker(false)}
+        onSelect={handleFolderSelect}
       />
 
       <AccessModal
