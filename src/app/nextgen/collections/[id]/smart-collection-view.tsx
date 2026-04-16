@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { PanelRight, Info, MoreVertical, HardDrive } from 'lucide-react'
+import { PanelRight, Info } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
 import { PERSONAS } from '@/lib/personas'
 import { cn } from '@/lib/utils'
@@ -22,8 +22,6 @@ import {
   AppearanceDropdown,
   CompactBar,
   MobileToolbar,
-  Dropdown,
-  DropdownMenuItem,
 } from '@/components/ui'
 import type { CollectionCardType } from '@/components/ui/collection-card'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
@@ -34,11 +32,9 @@ import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import type { Asset, AssetFilter } from '@/lib/data'
 import { assetToSelectionEntity, collectionToSelectionEntity } from '@/lib/selection-actions'
 import { getContextAssetGroups } from '@/lib/context-relationships'
-import { useAccess, useFileTree } from '@/hooks'
+import { useAccess } from '@/hooks'
 import { AccessModal } from '@/components/ui/access-modal'
 import type { ResourceRef } from '@/lib/grants'
-import { SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
-import { useToast } from '@/components/ui/toast'
 
 interface SmartCollectionDetailViewProps {
   collectionId: string
@@ -78,9 +74,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
   const isMobile = useIsMobile()
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
-  const { canShare, canEditAcl, getCurrentUserGrant, getResourceGrants, sharesReceivedByMe, allProjectShares, isSensitiveAsset } = useAccess()
-  const { createReferenceFolder } = useFileTree()
-  const { showToast } = useToast()
+  const { canShare, canEditAcl, getResourceGrants, sharesReceivedByMe, allProjectShares, isSensitiveAsset } = useAccess()
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const collectionResourceRef: ResourceRef = { id: collectionId, type: 'smart-collection' }
 
@@ -209,17 +203,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     if (collection && deleteCollection(collection.id)) {
       router.push('/nextgen')
     }
-  }
-
-  const handleMount = (resourceId: string, name: string) => {
-    const grant = getCurrentUserGrant(resourceId)
-    createReferenceFolder(SHARED_MOUNT_FOLDER_ID, name, {
-      resourceId,
-      resourceType: 'smart-collection',
-      shareMode: grant?.shareMode ?? 'live',
-      snapshotAssetIds: grant?.snapshotAssetIds,
-    })
-    showToast(`Mounted "${name}" to /Shared/${name}`)
   }
 
   const handleUpdateCollection = (updates: { name?: string; filter?: AssetFilter }) => {
@@ -562,15 +545,9 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
           collection={(selectedChildCollection)}
           open={panelOpen && !primaryAsset && !!selectedChildCollection}
           onClose={() => { clearCollectionSelection(); closePanel() }}
-          onAction={(action) => {
-            if (action.type === 'mount') {
-              handleMount(selectedChildCollection.id, selectedChildCollection.name)
-            }
-          }}
           actionPermissions={{
             canEdit: false,
             canDelete: false,
-            canMount: true,
           }}
           matchingCount={childData.find(c => c.collection.id === selectedCollectionId)?.assetCount}
           relationships={selectedChildRelationships}
@@ -586,12 +563,10 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
           onAction={(action) => {
             if (action.type === 'update') handleUpdateCollection(action.updates)
             else if (action.type === 'delete') handleDeleteCollection()
-            else if (action.type === 'mount') handleMount(collection.id, collection.name)
           }}
           actionPermissions={{
             canEdit: canManageCurrentCollection,
             canDelete: canDeleteCurrentCollection,
-            canMount: true,
           }}
           matchingCount={filteredAssets.length}
           relationships={relationships}

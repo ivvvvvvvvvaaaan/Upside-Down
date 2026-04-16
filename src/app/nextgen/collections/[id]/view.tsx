@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Download, HardDrive, MoreVertical, PanelRight, Info, Trash2 } from 'lucide-react'
+import { Download, MoreVertical, PanelRight, Info, Trash2 } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
@@ -32,7 +32,6 @@ import { assetToSelectionEntity } from '@/lib/selection-actions'
 import { getContextAssetGroups } from '@/lib/context-relationships'
 import { AccessModal } from '@/components/ui/access-modal'
 import type { ResourceRef } from '@/lib/grants'
-import { SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
 import { useToast } from '@/components/ui/toast'
 
 interface UserCollectionDetailViewProps {
@@ -48,14 +47,13 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     sharesReceivedByMe,
     allProjectShares,
     getVisibleCollection,
-    getCurrentUserGrant,
     canShare,
     canDownload,
     getResourceGrants,
     isSensitiveAsset,
   } = useAccess()
   const { getCollection, deleteCollection, removeAssetFromCollection } = useUserCollections()
-  const { createReferenceFolder, resolveCollectionAssets } = useFileTree()
+  const { resolveCollectionAssets } = useFileTree()
   const { showToast } = useToast()
   const { getRelatedCollectionsForAssets, scopedAssets, ensureAssetsLoaded } = useSmartCollections()
   const { selectedIds, primaryId, handleAssetClick, selectOnly, clearSelection } = useAssetSelection()
@@ -129,20 +127,6 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
       router.push('/nextgen')
     }
   }
-  const handleMountToDrive = () => {
-    if (!collection) return
-    const grant = getCurrentUserGrant(collection.id)
-    createReferenceFolder(SHARED_MOUNT_FOLDER_ID, collection.name, {
-      resourceId: collection.id,
-      resourceType: 'collection',
-      shareMode: grant?.shareMode ?? 'live',
-      snapshotAssetIds: grant?.snapshotAssetIds,
-      domainId: undefined,
-    })
-    showToast(`Mounted "${collection.name}" to /Shared/${collection.name}`)
-  }
-
-
 
   // Resolve assets from the unified tree-derived index
   useEffect(() => {
@@ -316,13 +300,12 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         metadataFields={metadataFields}
                         onMetadataFieldChange={setMetadataField}
                       />
-                      {(isOwner || hasCollectionAccess) && (
+                      {(isOwner || canDownloadCollection) && (
                         <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly align="end" width="sm">
                           <div className="py-1">
                             {canDownloadCollection && (
                               <DropdownMenuItem icon={<Download className="w-4 h-4" />} label="Download" onClick={handleDownloadCollection} />
                             )}
-                            <DropdownMenuItem icon={<HardDrive className="w-4 h-4" />} label="Mount to Drive" onClick={handleMountToDrive} />
                             {isOwner && (
                               <>
                                 <DropdownMenuDivider />
@@ -424,21 +407,10 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
           onClose={closePanel}
           onAction={(action) => {
             if (action.type === 'delete') handleDeleteCollection()
-            if (action.type === 'mount') {
-              const grant = getCurrentUserGrant(collection.id)
-              createReferenceFolder(SHARED_MOUNT_FOLDER_ID, collection.name, {
-                resourceId: collection.id,
-                resourceType: 'collection',
-                shareMode: grant?.shareMode ?? 'live',
-                snapshotAssetIds: grant?.snapshotAssetIds,
-              })
-              showToast(`Mounted "${collection.name}" to /Shared/${collection.name}`)
-            }
           }}
           actionPermissions={{
             canEdit: false,
             canDelete: isOwner,
-            canMount: true,
           }}
           relationships={relationships}
         />

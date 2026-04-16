@@ -782,7 +782,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     grants,
     roleGroups,
     ownerPermissionSet,
-    getResourceDomainId,
     getDirectCollectionPermissionSet,
     getDirectSmartCollectionPermissionSet,
     fromResolvedAccess,
@@ -1535,7 +1534,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
 
     return paths
-  }, [activeGrants, nodeToParent, nodeToDomain, fileTree, collections, resolveCollectionAssetIdsLive])
+  }, [activeGrants, nodeToParent, fileTree, collections, resolveCollectionAssetIdsLive])
 
   const getVersionHistory = useCallback((resourceId: string, principalKey?: string): { version: number; note: string; date: string; grantId: string }[] => {
     return grants
@@ -1667,7 +1666,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       domainReleases,
       totalUniqueAssets: uniqueAssetIds.size,
     }
-  }, [activeGrants, grants, roleGroups, collections, fileTree])
+  }, [activeGrants, roleGroups, fileTree, collectionById, resolveCollectionAssetIdsLive])
 
   // --- Audit log accessor (Phase 6) ---
   const getAuditLogFn = useCallback((filters?: { resourceId?: string; userId?: string; type?: AuditEventType }) => {

@@ -115,7 +115,6 @@ export type CollectionAction =
   | { type: 'update-filter'; filter: AssetFilter }
   | { type: 'update'; updates: { name?: string; filter?: AssetFilter } }
   | { type: 'delete' }
-  | { type: 'mount' }
 
 interface CollectionSidePanelProps {
   collection: Collection
@@ -126,7 +125,6 @@ interface CollectionSidePanelProps {
   actionPermissions?: {
     canEdit?: boolean
     canDelete?: boolean
-    canMount?: boolean
   }
   relationships?: RelatedCollections
   suppressDimension?: SmartCollectionGroupBy
@@ -169,7 +167,6 @@ export function CollectionSidePanel({
   const caps = getCollectionCapabilities(collection)
   const canEdit = Boolean(onAction && (actionPermissions?.canEdit ?? true) && (caps.canRename || caps.canEditFilter))
   const canDelete = Boolean(onAction && (actionPermissions?.canDelete ?? true) && caps.canDelete)
-  const canMount = Boolean(onAction && (actionPermissions?.canMount ?? true) && caps.canMount)
 
   const ontologyMeta = smart ? getOntologyMeta(collection.name, smart.icon) : null
 

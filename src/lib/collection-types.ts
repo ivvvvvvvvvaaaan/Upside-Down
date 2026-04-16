@@ -34,7 +34,6 @@ export interface CollectionCapabilities {
   canDelete: boolean
   canAddAssets: boolean
   canShare: boolean
-  canMount: boolean
   showAccessTab: boolean
   /** Display label for the entity type in panels — keep collection as the primary concept. */
   typeLabel: string
@@ -62,7 +61,6 @@ export function getCollectionCapabilities(c: Collection): CollectionCapabilities
         canDelete: false,
         canAddAssets: false,
         canShare: !isDerived,
-        canMount: true,
         showAccessTab: !isDerived,
         typeLabel: ontology.label,
         icon: ontology.icon,
@@ -75,7 +73,6 @@ export function getCollectionCapabilities(c: Collection): CollectionCapabilities
       canDelete: isUserCreated,
       canAddAssets: false,
       canShare: isUserCreated,
-      canMount: true,
       showAccessTab: isUserCreated,
       typeLabel: 'Collection',
       icon: 'smart',
@@ -89,7 +86,6 @@ export function getCollectionCapabilities(c: Collection): CollectionCapabilities
     canDelete: true,
     canAddAssets: true,
     canShare: true,
-    canMount: true,
     showAccessTab: true,
     typeLabel: 'Collection',
     icon: 'collection',

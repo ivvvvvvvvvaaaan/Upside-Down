@@ -504,7 +504,7 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     resolveCollectionAssets: resolveCollectionAssetsFromTree,
     getAssetsByIds: getAssetsByIdsFromTree,
     getRecentAssets: getRecentAssetsFromTree,
-  }), [tree, getDomainFiles, createFolder, createFile, createReferenceFolder, renameNode, deleteNode, getMoveImpact, confirmMove, createFileReference, getFileNodesForFolder, allAssets, assetById, resolveCollectionAssetIdsFromTree, resolveCollectionAssetsFromTree, getAssetsByIdsFromTree, getRecentAssetsFromTree])
+  }), [tree, getDomainFiles, createFolder, createFile, createReferenceFolder, toggleManagedZone, renameNode, deleteNode, getMoveImpact, confirmMove, createFileReference, getFileNodesForFolder, allAssets, assetById, resolveCollectionAssetIdsFromTree, resolveCollectionAssetsFromTree, getAssetsByIdsFromTree, getRecentAssetsFromTree])
 
   return (
     <FileTreeContext.Provider value={value}>

@@ -49,6 +49,7 @@ import { assetToSelectionEntity, folderToSelectionEntity } from '@/lib/selection
 import type { SelectionEntity } from '@/lib/selection-actions'
 import { materializeReferenceFolders } from '@/lib/reference-folder-utils'
 import { collectAccessibleWorkspaceRoots, collectSharedFolderIds } from '@/lib/workspace-roots'
+import { useToast } from '@/components/ui/toast'
 
 interface WorkspaceSelectionEntry {
   id: string
@@ -210,9 +211,9 @@ interface WorkspaceViewProps {
 
 export function WorkspaceView({ folderPath: urlPath, landingFolderId }: WorkspaceViewProps) {
   const router = useRouter()
-  const { canAccess, canShare: canShareResource, canEdit: canEditResource, sharesReceivedByMe, getInheritedGrants, filterByAccess, getResourceGrants, roleGroups, isSensitiveAsset } = useAccess()
+  const { canAccess, canShare: canShareResource, canEdit: canEditResource, getInheritedGrants, getResourceGrants, isSensitiveAsset } = useAccess()
   const { activePersona } = usePersona()
-  const { getCollection, filterAssets: filterCollectionAssets, scopedAssets, ensureAssetsLoaded } = useCollections()
+  const { scopedAssets, ensureAssetsLoaded } = useCollections()
   const { layout, setLayout, cardSize, setCardSize, viewMode, setViewMode, sidePanelOpen: showPanel, setSidePanelOpen: setShowPanel, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(showPanel, setShowPanel)
   const { scrollRef, headerRef, showCompactBar } = useCompactBar()
@@ -230,14 +231,15 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     toggleManagedZone,
     createFolder: fileTreeCreateFolder,
     createFile: fileTreeCreateFile,
+    createReferenceFolder: fileTreeCreateReferenceFolder,
     deleteNode: fileTreeDeleteNode,
     renameNode: fileTreeRenameNode,
     tree: fileTree,
     getDomainFiles: getFileTreeDomainFiles,
     getMoveImpact,
     confirmMove,
-    resolveCollectionAssets: treeResolveCollectionAssets,
   } = useFileTree()
+  const { showToast } = useToast()
 
   const [accessModalNode, setAccessModalNode] = useState<WorkspaceFileNode | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -255,17 +257,12 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
   } | null>(null)
   const resolveReferenceNodes = useCallback((nodes: WorkspaceFileNode[]) => {
     return materializeReferenceFolders(nodes, {
-      getCollection,
-      filterAssets: filterCollectionAssets,
-      filterByAccess,
       getFolderChildren: (resourceId) => {
         const sourceNode = findNodeById(fileTree as WorkspaceFileNode[], resourceId)
         return sourceNode?.type === 'folder' ? sourceNode.children : undefined
       },
-      scopedAssets,
-      resolveAssets: treeResolveCollectionAssets,
     }) as WorkspaceFileNode[]
-  }, [getCollection, filterCollectionAssets, filterByAccess, scopedAssets, treeResolveCollectionAssets])
+  }, [fileTree])
   const workspaceTreeRoots = useMemo(() => {
     return resolveReferenceNodes(
       fileTree.filter((node): node is WorkspaceFileNode => node.type === 'folder' && node.id !== SHARED_MOUNT_FOLDER_ID),
@@ -341,6 +338,17 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
       fileTreeCreateFile(folderId, file.name, file.name.split('.').pop())
     })
   }, [fileTreeCreateFile])
+
+  const handleMountFolderToDrive = useCallback((node: WorkspaceFileNode) => {
+    if (node.type !== 'folder' || node.id === SHARED_MOUNT_FOLDER_ID || isReferenceFolder(node)) return
+
+    fileTreeCreateReferenceFolder(SHARED_MOUNT_FOLDER_ID, node.name, {
+      resourceId: node.id,
+      resourceType: 'folder',
+      domainId: findDomainIdForNode(node, getFileTreeDomainFiles),
+    })
+    showToast(`Mounted "${node.name}" to /Shared/${node.name}`)
+  }, [fileTreeCreateReferenceFolder, getFileTreeDomainFiles, showToast])
 
   const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
     { field: 'name', direction: 'asc' },
@@ -854,6 +862,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                                     <DropdownMenuItem icon={<RefreshCw className="w-4 h-4" />} label={managedFolderIds.has(node.id) ? 'Disable Sync' : 'Enable Sync'} onClick={() => toggleManagedZone(node.id)} />
                                     <DropdownMenuDivider />
                                     <DropdownMenuItem icon={<Share2 className="w-4 h-4" />} label="Share" onClick={() => setAccessModalNode(node)} />
+                                    <DropdownMenuItem icon={<FolderInput className="w-4 h-4" />} label="Mount to Drive" onClick={() => handleMountFolderToDrive(node)} />
                                     <DropdownMenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete" onClick={() => fileTreeDeleteNode(node.id)} destructive />
                                   </div>
                                 )}

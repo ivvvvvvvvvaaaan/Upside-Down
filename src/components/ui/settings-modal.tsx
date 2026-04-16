@@ -576,6 +576,7 @@ function GroupsTab({
       TEAMS.filter((team) => team.kind === 'group'),
       activeUserId,
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- version is an intentional cache buster to re-read mutable TEAMS after mutations
     [activeUserId, version],
   )
   const manageableGroups = useMemo(
@@ -1315,6 +1316,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       TEAMS.filter((team) => team.kind === 'group'),
       activeUserId,
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- directoryVersion is an intentional cache buster to re-read mutable TEAMS after mutations
     [activeUserId, directoryVersion],
   )
   const workspaceFolderOptions = useMemo(() => [

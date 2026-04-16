@@ -93,7 +93,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
       results.push({ collection: { id: collection.id, name: collection.name }, grants })
     }
     return results
-  }, [collections, assetId, getResourceGrants])
+  }, [collections, assetId, getResourceGrants, resolveCollectionAssetIds])
 
   const hasAnything = domainEntries.length > 0 || directGrants.length > 0 || sharedCollections.length > 0
   const canManageAccess = isAdmin || (resourceRef ? canShare(resourceRef) : false)

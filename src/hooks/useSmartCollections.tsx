@@ -142,7 +142,7 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
     }
     setCollections(prev => [...prev, newCollection])
     return newCollection
-  }, [personaEmail])
+  }, [personaEmail, setCollections])
 
   const updateCollection = useCallback((
     id: string,
@@ -158,7 +158,7 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
 
       return { ...collection, ...updates }
     }))
-  }, [activePersona, personaEmail, canEditAcl])
+  }, [activePersona, personaEmail, canEditAcl, setCollections])
 
   const deleteCollection = useCallback((id: string): boolean => {
     const target = collections.find(c => c.id === id)
@@ -168,7 +168,7 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
     if (!isOwner && !canEditAcl(resourceRef)) return false
     setCollections(prev => prev.filter(c => c.id !== id))
     return true
-  }, [collections, personaEmail, activePersona, canEditAcl])
+  }, [collections, personaEmail, activePersona, canEditAcl, setCollections])
 
   const getCollection = useCallback((id: string): SmartCollection | undefined => {
     return [...visibleCollections, ...childCollections].find(c => c.id === id)

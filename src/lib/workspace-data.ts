@@ -1,12 +1,9 @@
 import type { DomainId, ProductionDomainId } from '@/components/department/types'
-import type { ShareMode } from '@/lib/grants'
 
 export interface ReferenceFolderSource {
   resourceId: string
-  resourceType: 'folder' | 'collection' | 'smart-collection'
+  resourceType: 'folder'
   domainId?: DomainId
-  shareMode?: ShareMode
-  snapshotAssetIds?: string[]
 }
 
 /** File-level reference: this node is a pointer to a file in another location */
@@ -592,7 +589,7 @@ export const DOMAIN_FOLDER_MAP: Record<ProductionDomainId, { id: string; name: s
  * Build the full Finder workspace tree:
  *   Single project root > [domain folders wrapping domainFileMap arrays]
  */
-/** Well-known folder ID for per-persona mounted shared collections */
+/** Well-known folder ID for per-persona mounted workspace folders */
 export const SHARED_MOUNT_FOLDER_ID = 'ws-shared-mounts'
 
 export function getFinderWorkspaceTree(): UnifiedFileNode[] {
@@ -607,7 +604,7 @@ export function getFinderWorkspaceTree(): UnifiedFileNode[] {
     }
   })
 
-  // "Shared" folder — mount point for collections added into the local drive view
+  // "Shared" folder — mount point for workspace folders added into the local drive view.
   const sharedFolder: UnifiedFileNode = {
     id: SHARED_MOUNT_FOLDER_ID,
     name: 'Shared',

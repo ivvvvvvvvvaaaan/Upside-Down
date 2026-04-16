@@ -549,7 +549,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       results.push({ collection: { id: collection.id, name: collection.name }, grants: collGrants })
     }
     return results
-  }, [isAssetResource, resourceId, collections, getResourceGrants, inheritedGrants])
+  }, [isAssetResource, resourceId, collections, getResourceGrants, inheritedGrants, resolveCollectionAssetIds])
 
   const addRoleOptions = useMemo(() => {
     if (!resourceRef) return roleOptionsForResource(roleGroups)
@@ -856,7 +856,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       roleGroups,
       activePersona?.id,
     )
-  }, [grants, canManageGrant, inheritedGrants, roleGroups, activePersona?.id, isAssetResource])
+  }, [grants, canManageGrant, inheritedGrants, roleGroups, activePersona?.id])
 
   const directEntries = useMemo(() => allEntries.filter(e => !e.sourceName), [allEntries])
   const inheritedEntries = useMemo(() => allEntries.filter(e => !!e.sourceName), [allEntries])
