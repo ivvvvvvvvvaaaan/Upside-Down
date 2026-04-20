@@ -6,6 +6,8 @@ import { cn, formatDate, formatFileSize } from '@/lib/utils'
 import type { WindowState, SyncStatus } from '../view'
 import type { UnifiedFileNode } from '@/lib/workspace-data'
 import { DOMAIN_FOLDER_MAP, SHARED_MOUNT_FOLDER_ID, isReferenceFolder } from '@/lib/workspace-data'
+import { collectAccessibleWorkspaceRoots } from '@/lib/workspace-roots'
+import { FolderSymlink } from 'lucide-react'
 import { useAccess, useFileTree, usePersona } from '@/hooks'
 import { materializeReferenceFolders } from '@/lib/reference-folder-utils'
 import { useToast } from '@/components/ui/toast'
@@ -274,6 +276,9 @@ function filterWorkspaceNodeByAccess(
 
 function getFileIcon(node: FileNode, sizeClass: string = 'w-4 h-4') {
   if (node.type === 'folder') {
+    if (isReferenceFolder(node)) {
+      return <FolderSymlink className={cn(sizeClass, 'text-blue-500')} />
+    }
     return <Folder className={cn(sizeClass, 'text-blue-500')} />
   }
 
@@ -492,24 +497,29 @@ export function FinderWindow({
     })
   }, [workspaceFiles])
 
-  const visibleWorkspaceFiles = useMemo(() => {
-    return resolvedWorkspaceFiles
-      .map((node) => {
-        if (DOMAIN_ROOT_IDS.has(node.id) && !canAccess(node.id)) {
-          return null
-        }
-        return filterWorkspaceNodeByAccess(node, canAccess, canSeeRestrictedFolders)
-      })
+  // Team roots: folders the user owns via team membership
+  const teamRoots = useMemo(() => {
+    const nonShared = resolvedWorkspaceFiles.filter((n) => n.id !== SHARED_MOUNT_FOLDER_ID)
+    return collectAccessibleWorkspaceRoots(nonShared as FileNode[], canAccess)
+      .map((node) => filterWorkspaceNodeByAccess(node, canAccess, canSeeRestrictedFolders))
       .filter((node): node is FileNode => node !== null)
   }, [resolvedWorkspaceFiles, canAccess, canSeeRestrictedFolders])
 
-  const rootFiles = selectedSidebar === 'workspace' ? visibleWorkspaceFiles : mockFiles
-
-  const folderPath = folderPathIds.map(id => findNodeById(rootFiles, id)).filter((n): n is FileNode => n !== null)
+  // Mounted folders: explicitly mounted shared folders
   const mountedFolders = useMemo(() => {
-    const sharedRoot = visibleWorkspaceFiles.find((node) => node.id === SHARED_MOUNT_FOLDER_ID)
-    return sharedRoot?.children?.filter(isReferenceFolder) ?? []
-  }, [visibleWorkspaceFiles])
+    const sharedRoot = resolvedWorkspaceFiles.find((node) => node.id === SHARED_MOUNT_FOLDER_ID)
+    return (sharedRoot?.children?.filter(isReferenceFolder) ?? []) as FileNode[]
+  }, [resolvedWorkspaceFiles])
+
+  // Curated project view: team roots + mounted shared folders (flat list)
+  const visibleWorkspaceFiles = useMemo(() => {
+    return [...teamRoots, ...mountedFolders]
+  }, [teamRoots, mountedFolders])
+
+  const mountedFolderIds = useMemo(() => new Set(mountedFolders.map((f) => f.id)), [mountedFolders])
+
+  const rootFiles = selectedSidebar === 'workspace' ? visibleWorkspaceFiles : mockFiles
+  const folderPath = folderPathIds.map(id => findNodeById(rootFiles, id)).filter((n): n is FileNode => n !== null)
 
   const handleStartRename = useCallback((item: FileNode) => {
     if (isReferenceFolder(item)) {
@@ -1007,49 +1017,6 @@ export function FinderWindow({
                   )
                 })}
             </div>
-
-            {mountedFolders.length > 0 && (
-              <div className="py-2">
-                <div className="px-3 py-1 text-label-0-bold text-foreground-dim uppercase tracking-wider">
-                  Mounted
-                </div>
-                {mountedFolders.map((folder) => {
-                  const isSelected = selectedSidebar === 'workspace' && folderPathIds.includes(folder.id)
-                  return (
-                    <div
-                      key={folder.id}
-                      className={cn(
-                        'group flex items-center gap-1 mx-2 rounded transition-colors',
-                        isSelected ? 'bg-surface-selected text-foreground' : 'text-foreground-dim hover:bg-surface-2',
-                      )}
-                    >
-                      <button
-                        onClick={() => {
-                          setSelectedSidebar('workspace')
-                          setFolderPathIds([SHARED_MOUNT_FOLDER_ID, folder.id])
-                          setColumnPath([])
-                          setSelectedFile(null)
-                        }}
-                        className="min-w-0 flex-1 flex items-center gap-2 px-1 py-1 text-left"
-                      >
-                        <FolderOpen className="w-4 h-4 text-foreground-dim flex-shrink-0" />
-                        <span className="text-body-0-regular truncate">{folder.name}</span>
-                      </button>
-                      <button
-                        aria-label={`Unmount ${folder.name}`}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          handleUnmountFolderFromDrive(folder)
-                        }}
-                        className="flex-shrink-0 p-1 rounded text-foreground-dim opacity-70 transition-colors hover:opacity-100 hover:bg-surface-selected-subtle hover:text-foreground"
-                      >
-                        <EjectIcon className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
           </div>
 
           {/* File list */}
@@ -1128,27 +1095,38 @@ export function FinderWindow({
               <ContextMenuDivider />
               {contextMenu.item.type === 'folder' && (
                 <>
-                  <ContextMenuItem
-                    label="Mount to Drive"
-                    disabled={selectedSidebar !== 'workspace' || contextMenu.item.id === SHARED_MOUNT_FOLDER_ID}
-                    onClick={() => handleMountFolderToDrive(contextMenu.item)}
-                  />
+                  {isReferenceFolder(contextMenu.item) ? (
+                    <ContextMenuItem
+                      label="Remove from Finder"
+                      onClick={() => handleUnmountFolderFromDrive(contextMenu.item)}
+                    />
+                  ) : (
+                    <ContextMenuItem
+                      label="Mount to Finder"
+                      disabled={selectedSidebar !== 'workspace' || mountedFolderIds.has(contextMenu.item.id)}
+                      onClick={() => handleMountFolderToDrive(contextMenu.item)}
+                    />
+                  )}
                   <ContextMenuDivider />
-                  <ContextMenuItem
-                    label="New Folder"
-                    shortcut="⇧⌘N"
-                    disabled={selectedSidebar !== 'workspace'}
-                    onClick={() => handleCreateFolder(contextMenu.item.id)}
-                  />
-                  <ContextMenuItem
-                    label="New File"
-                    disabled={selectedSidebar !== 'workspace'}
-                    onClick={() => {
-                      const names = ['SEQ010_SH040_comp_v1.exr', 'hero_closeup_final.dpx', 'ambience_pit_lane.wav', 'grade_pass_02.mov', 'concept_sketch_v3.psd', 'lens_calibration_data.csv']
-                      contextCreateFile(contextMenu.item.id, names[Math.floor(Math.random() * names.length)])
-                    }}
-                  />
-                  <ContextMenuDivider />
+                  {!isReferenceFolder(contextMenu.item) && (
+                    <>
+                      <ContextMenuItem
+                        label="New Folder"
+                        shortcut="⇧⌘N"
+                        disabled={selectedSidebar !== 'workspace'}
+                        onClick={() => handleCreateFolder(contextMenu.item.id)}
+                      />
+                      <ContextMenuItem
+                        label="New File"
+                        disabled={selectedSidebar !== 'workspace'}
+                        onClick={() => {
+                          const names = ['SEQ010_SH040_comp_v1.exr', 'hero_closeup_final.dpx', 'ambience_pit_lane.wav', 'grade_pass_02.mov', 'concept_sketch_v3.psd', 'lens_calibration_data.csv']
+                          contextCreateFile(contextMenu.item.id, names[Math.floor(Math.random() * names.length)])
+                        }}
+                      />
+                      <ContextMenuDivider />
+                    </>
+                  )}
                 </>
               )}
               <ContextMenuItem
