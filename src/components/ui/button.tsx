@@ -55,7 +55,7 @@ const buttonVariants = cva(
         // Hawkins: label-1-bold (12px/18px/600)
         compact: "h-8 px-2 text-label-1-bold",
         icon: "h-10 w-10",
-        "compact-icon": "h-7 w-7",
+        "compact-icon": "h-8 w-8",
       },
     },
     compoundVariants: [

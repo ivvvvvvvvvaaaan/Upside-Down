@@ -9,7 +9,7 @@ export interface MoveWarningModalProps {
   onClose: () => void
   onConfirm: () => void
   fileName: string
-  impactedCollections: { id: string; name: string; grantCount: number }[]
+  impactedFolders: { id: string; name: string; grantCount: number }[]
 }
 
 export function MoveWarningModal({
@@ -17,14 +17,14 @@ export function MoveWarningModal({
   onClose,
   onConfirm,
   fileName,
-  impactedCollections,
+  impactedFolders,
 }: MoveWarningModalProps) {
-  const totalPeople = impactedCollections.reduce((sum, c) => sum + c.grantCount, 0)
+  const totalPeople = impactedFolders.reduce((sum, c) => sum + c.grantCount, 0)
 
   return (
     <Modal open={open} onOpenChange={(v) => { if (!v) onClose() }} size="xs">
       <Modal.Header
-        title="Move will affect shared collections"
+        title="Move will affect shared folders"
         onClose={onClose}
       />
       <Modal.Body>
@@ -35,20 +35,20 @@ export function MoveWarningModal({
             </div>
             <p className="text-body-1-regular text-foreground">
               Moving <span className="text-body-1-bold">{fileName}</span> will remove it from{' '}
-              {impactedCollections.length} shared {impactedCollections.length === 1 ? 'collection' : 'collections'}.{' '}
+              {impactedFolders.length} shared {impactedFolders.length === 1 ? 'folder' : 'folders'}.{' '}
               {totalPeople} {totalPeople === 1 ? 'person' : 'people'} may lose access.
             </p>
           </div>
 
           <div className="space-y-1">
-            {impactedCollections.map((collection) => (
+            {impactedFolders.map((folder) => (
               <div
-                key={collection.id}
+                key={folder.id}
                 className="flex items-center justify-between px-3 py-2 rounded bg-surface-mid"
               >
-                <span className="text-body-0-regular text-foreground truncate">{collection.name}</span>
+                <span className="text-body-0-regular text-foreground truncate">{folder.name}</span>
                 <span className="text-label-0-regular text-foreground-subtle flex-shrink-0">
-                  {collection.grantCount} {collection.grantCount === 1 ? 'share' : 'shares'}
+                  {folder.grantCount} {folder.grantCount === 1 ? 'share' : 'shares'}
                 </span>
               </div>
             ))}

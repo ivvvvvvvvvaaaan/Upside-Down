@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { PanelRight, Info, MoreVertical, HardDrive } from 'lucide-react'
-import Image from 'next/image'
+import { PanelRight, Info } from 'lucide-react'
+import { ShareIcon } from '@/components/ui/share-icon'
+import { PERSONAS } from '@/lib/personas'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import {
@@ -19,26 +20,20 @@ import {
   HawkinsSearch,
   SortDropdown,
   AppearanceDropdown,
-  CompactBar,
   MobileToolbar,
-  Dropdown,
-  DropdownMenuItem,
 } from '@/components/ui'
 import type { CollectionCardType } from '@/components/ui/collection-card'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
-import { getGridColumns, useAssetSelection, useViewPreferences, useCompactBar, useResourceSelection, useSmartCollections, usePersona, useMobilePanel, useUserCollections } from '@/hooks'
+import { getGridColumns, useAssetSelection, useViewPreferences, useResourceSelection, useSmartCollections, usePersona, useMobilePanel, useUserCollections } from '@/hooks'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { matchesFilter } from '@/hooks/useSmartCollections'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import type { Asset, AssetFilter } from '@/lib/data'
 import { assetToSelectionEntity, collectionToSelectionEntity } from '@/lib/selection-actions'
 import { getContextAssetGroups } from '@/lib/context-relationships'
-import { useAccess, useFileTree } from '@/hooks'
+import { useAccess } from '@/hooks'
 import { AccessModal } from '@/components/ui/access-modal'
 import type { ResourceRef } from '@/lib/grants'
-import { SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
-import { useToast } from '@/components/ui/toast'
-import { getSmartShareSnapshotCollections } from '@/lib/smart-collection-share-utils'
 
 interface SmartCollectionDetailViewProps {
   collectionId: string
@@ -75,12 +70,9 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   } = useResourceSelection<{ id: string; name: string }>()
   const { layout, setLayout, cardSize, setCardSize, sidePanelOpen, setSidePanelOpen, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
-  const { scrollRef, headerRef, showCompactBar } = useCompactBar()
   const isMobile = useIsMobile()
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
-  const { canShare, canEditAcl, getCurrentUserGrant, isSensitiveAsset } = useAccess()
-  const { createReferenceFolder } = useFileTree()
-  const { showToast } = useToast()
+  const { canShare, canEditAcl, getResourceGrants, sharesReceivedByMe, allProjectShares, isSensitiveAsset } = useAccess()
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const collectionResourceRef: ResourceRef = { id: collectionId, type: 'smart-collection' }
 
@@ -92,7 +84,9 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const collection = getCollection(collectionId)
   const linkedSnapshotCollections = useMemo(() => {
     if (!collection) return []
-    return getSmartShareSnapshotCollections(userCollections, collection)
+    return userCollections
+      .filter((userCollection) => userCollection.sourceSmartCollectionId === collection.id)
+      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
   }, [collection, userCollections])
   const shareTargetCollection = linkedSnapshotCollections.length === 1
     ? linkedSnapshotCollections[0]
@@ -104,6 +98,30 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const isOwner = collection?.createdBy === activePersona?.email
   const canManageCurrentCollection = Boolean(collection && (isOwner || isAdmin || canEditAcl(collectionResourceRef)))
   const canDeleteCurrentCollection = Boolean(collection && (isOwner || isAdmin))
+
+  const subtitle = useMemo(() => {
+    // Received from someone else
+    if (!isOwner && collection) {
+      const shares = isAdmin ? allProjectShares : sharesReceivedByMe
+      const share = shares.find(s => s.resourceId === collectionId)
+      if (share) {
+        const grantor = PERSONAS.find(p => p.id === share.grantedByUserId)
+        return `Shared by ${grantor?.name ?? share.grantedByUserId}`
+      }
+    }
+    // Owned: show sharing status
+    if (isOwner && collection) {
+      const grants = getResourceGrants(shareResourceRef.id)
+      const directGrants = grants.filter(g => !g.reviewLinkId)
+      const linkGrants = grants.filter(g => g.reviewLinkId)
+      if (directGrants.length === 0 && linkGrants.length === 0) return 'Private'
+      const parts: string[] = []
+      if (directGrants.length > 0) parts.push(`Shared with ${directGrants.length} ${directGrants.length === 1 ? 'person' : 'people'}`)
+      if (linkGrants.length > 0) parts.push('Link sharing on')
+      return parts.join(' · ')
+    }
+    return undefined
+  }, [isOwner, isAdmin, collection, collectionId, sharesReceivedByMe, allProjectShares, getResourceGrants, shareResourceRef.id])
 
   useEffect(() => {
     void ensureAssetsLoaded()
@@ -164,7 +182,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
         collection: child,
         assetCount: assets.length,
         mainImage: assets[0]?.thumbnail,
-        thumbnailImages: assets.slice(1, 3).map(a => a.thumbnail).filter(Boolean) as string[],
+        thumbnailImages: assets.slice(1, 3).map(a => a.thumbnail).filter((t): t is string => t != null),
         avatarSrc: `https://i.pravatar.cc/150?img=${(i * 7 + 3) % 70}`,
       }
     })
@@ -183,17 +201,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     if (collection && deleteCollection(collection.id)) {
       router.push('/nextgen')
     }
-  }
-
-  const handleMount = (resourceId: string, name: string) => {
-    const grant = getCurrentUserGrant(resourceId)
-    createReferenceFolder(SHARED_MOUNT_FOLDER_ID, name, {
-      resourceId,
-      resourceType: 'smart-collection',
-      shareMode: grant?.shareMode ?? 'live',
-      snapshotAssetIds: grant?.snapshotAssetIds,
-    })
-    showToast(`Mounted "${name}" to /Shared/${name}`)
   }
 
   const handleUpdateCollection = (updates: { name?: string; filter?: AssetFilter }) => {
@@ -337,25 +344,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     <div className="h-full flex">
       {/* Main content area */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto">
-            <CompactBar
-              visible={showCompactBar}
-              title={pageTitle}
-              count={itemCount}
-              countLabel={countLabel}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              filterOptions={filterOptions}
-              sortFields={sortFields}
-              sortCriteria={sortCriteria}
-              onSortChange={setSortCriteria}
-              layout={layout}
-              onLayoutChange={setLayout}
-              cardSize={cardSize}
-              onCardSizeChange={setCardSize}
-              showLayoutOptions={false}
-            />
-
+        <div className="flex-1 min-h-0 overflow-auto">
             <div className="p-6">
               <div className="max-w-7xl mx-auto">
                 <Stack spacing="lg">
@@ -393,9 +382,13 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                   </div>
 
                   {/* Header */}
-                  <div ref={headerRef} className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between gap-4">
-                      <PageHeader title={pageTitle} hideTitleOnMobile />
+                      <PageHeader
+                        title={pageTitle}
+                        description={[subtitle, !loading ? `${itemCount} ${countLabel}${itemCount !== 1 ? 's' : ''}` : undefined].filter(Boolean).join(' · ')}
+                        hideTitleOnMobile
+                      />
                       <div className="hidden md:flex items-center gap-2">
                         <SortDropdown
                           fields={sortFields}
@@ -418,20 +411,22 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                         {showShareButton && (
                           <Button
                             variant="primary"
-                            icon={<Image src="/Icons/Icons-share.svg" alt="" width={16} height={16} />}
+                            compact
+                            icon={<ShareIcon />}
                             onClick={() => setShareModalOpen(true)}
                           >
                             Share
                           </Button>
                         )}
-                        <Button
-                          variant="icon"
-                          onClick={togglePanel}
-                          aria-label={panelOpen ? 'Close panel' : 'Open panel'}
-                          
-                        >
-                          <PanelRight className="w-4 h-4" />
-                        </Button>
+                        {!panelOpen && (
+                          <Button
+                            variant="icon"
+                            onClick={togglePanel}
+                            aria-label="Open panel"
+                          >
+                            <PanelRight className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -439,7 +434,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                   <ContextualActionBar
                     selectedEntities={activeSelectionEntities}
                     onClearSelection={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
-                    metadata={loading ? undefined : `${itemCount} ${countLabel}${itemCount !== 1 ? 's' : ''}`}
                   />
 
                   {/* Content */}
@@ -531,15 +525,9 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
           collection={(selectedChildCollection)}
           open={panelOpen && !primaryAsset && !!selectedChildCollection}
           onClose={() => { clearCollectionSelection(); closePanel() }}
-          onAction={(action) => {
-            if (action.type === 'mount') {
-              handleMount(selectedChildCollection.id, selectedChildCollection.name)
-            }
-          }}
           actionPermissions={{
             canEdit: false,
             canDelete: false,
-            canMount: true,
           }}
           matchingCount={childData.find(c => c.collection.id === selectedCollectionId)?.assetCount}
           relationships={selectedChildRelationships}
@@ -555,12 +543,10 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
           onAction={(action) => {
             if (action.type === 'update') handleUpdateCollection(action.updates)
             else if (action.type === 'delete') handleDeleteCollection()
-            else if (action.type === 'mount') handleMount(collection.id, collection.name)
           }}
           actionPermissions={{
             canEdit: canManageCurrentCollection,
             canDelete: canDeleteCurrentCollection,
-            canMount: true,
           }}
           matchingCount={filteredAssets.length}
           relationships={relationships}

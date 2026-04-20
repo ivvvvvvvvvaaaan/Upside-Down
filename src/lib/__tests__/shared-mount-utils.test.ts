@@ -27,8 +27,8 @@ describe('shared mount utils', () => {
         name: 'Framestore',
         type: 'folder',
         reference: {
-          resourceId: 'coll-vfx-vendor-drop',
-          resourceType: 'collection',
+          resourceId: 'ws-vfx-vendor-framestore',
+          resourceType: 'folder',
         },
         children: [],
       },
@@ -51,8 +51,8 @@ describe('shared mount utils', () => {
         type: 'folder',
         mountedByUserId: 'schen',
         reference: {
-          resourceId: 'coll-vfx-vendor-drop',
-          resourceType: 'collection',
+          resourceId: 'ws-vfx-vendor-framestore',
+          resourceType: 'folder',
         },
         children: [],
       },
@@ -62,8 +62,8 @@ describe('shared mount utils', () => {
         type: 'folder',
         mountedByUserId: 'vendor-framestore',
         reference: {
-          resourceId: 'coll-vfx-vendor-drop',
-          resourceType: 'collection',
+          resourceId: 'ws-vfx-vendor-framestore',
+          resourceType: 'folder',
         },
         children: [],
       },
@@ -84,8 +84,8 @@ describe('shared mount utils', () => {
         type: 'folder',
         mountedByUserId: 'vendor-framestore',
         reference: {
-          resourceId: 'coll-vfx-vendor-drop',
-          resourceType: 'collection',
+          resourceId: 'ws-vfx-vendor-framestore',
+          resourceType: 'folder',
         },
         children: [],
       },

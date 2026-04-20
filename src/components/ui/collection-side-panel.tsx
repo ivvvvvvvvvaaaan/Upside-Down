@@ -26,7 +26,6 @@ import { PERSONAS } from '@/lib/personas'
 import { TEAMS, isUserInTeam } from '@/lib/teams'
 import { getOntologyMeta } from '@/lib/ontology-meta'
 import type { OntologyMeta } from '@/lib/ontology-meta'
-import { getSmartShareSnapshotCollections } from '@/lib/smart-collection-share-utils'
 
 const PANEL_ICONS: Record<string, typeof LayoutGrid> = {
   collection: LayoutGrid,
@@ -116,7 +115,6 @@ export type CollectionAction =
   | { type: 'update-filter'; filter: AssetFilter }
   | { type: 'update'; updates: { name?: string; filter?: AssetFilter } }
   | { type: 'delete' }
-  | { type: 'mount' }
 
 interface CollectionSidePanelProps {
   collection: Collection
@@ -127,7 +125,6 @@ interface CollectionSidePanelProps {
   actionPermissions?: {
     canEdit?: boolean
     canDelete?: boolean
-    canMount?: boolean
   }
   relationships?: RelatedCollections
   suppressDimension?: SmartCollectionGroupBy
@@ -170,7 +167,6 @@ export function CollectionSidePanel({
   const caps = getCollectionCapabilities(collection)
   const canEdit = Boolean(onAction && (actionPermissions?.canEdit ?? true) && (caps.canRename || caps.canEditFilter))
   const canDelete = Boolean(onAction && (actionPermissions?.canDelete ?? true) && caps.canDelete)
-  const canMount = Boolean(onAction && (actionPermissions?.canMount ?? true) && caps.canMount)
 
   const ontologyMeta = smart ? getOntologyMeta(collection.name, smart.icon) : null
 
@@ -189,7 +185,9 @@ export function CollectionSidePanel({
 
   const linkedSnapshotCollections = useMemo(() => {
     if (!smart) return []
-    return getSmartShareSnapshotCollections(userCollections, smart)
+    return userCollections
+      .filter((collection) => collection.sourceSmartCollectionId === smart.id)
+      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
   }, [smart, userCollections])
 
   const accessCollection = smart && linkedSnapshotCollections.length === 1
@@ -393,7 +391,6 @@ export function CollectionSidePanel({
                 const capabilities: string[] = ['Preview']
                 if (myGrant?.allowDownload) capabilities.push('Download')
                 if (myGrant?.allowComment) capabilities.push('Comment')
-                if (myGrant?.allowUpload) capabilities.push('Upload')
                 return (
                   <div className="space-y-2">
                     <p className="text-body-0-regular text-foreground">{capabilities.join(', ')}</p>

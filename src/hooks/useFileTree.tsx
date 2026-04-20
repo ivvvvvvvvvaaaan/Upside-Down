@@ -5,6 +5,8 @@ import { usePersona } from './usePersona'
 import type { DomainId, ProductionDomainId } from '@/components/department/types'
 import {
   getFinderWorkspaceTree,
+  findNodeInTree,
+  DOMAIN_FOLDER_MAP,
   type ReferenceFolderSource,
   type FileReference,
   type UnifiedFileNode,
@@ -49,16 +51,12 @@ function persistTree(tree: UnifiedFileNode[]) {
   } catch {}
 }
 
-/** Map workspace domain IDs to their wrapper folder IDs in the Finder tree */
-const DOMAIN_TO_FOLDER_ID: Record<ProductionDomainId, string> = {
-  'art-design': 'ws-art',
-  'vfx': 'ws-vfx',
-  'camera': 'ws-camera',
-  'editorial': 'ws-editorial',
-  'audio-sound': 'ws-audio',
-}
+/** Domain ID to wrapper folder ID, derived from DOMAIN_FOLDER_MAP */
+const DOMAIN_TO_FOLDER_ID: Record<ProductionDomainId, string> = Object.fromEntries(
+  (Object.entries(DOMAIN_FOLDER_MAP) as [ProductionDomainId, { id: string }][])
+    .map(([domainId, folder]) => [domainId, folder.id]),
+) as Record<ProductionDomainId, string>
 
-// --- Tree helpers ---
 
 function generateId(): string {
   return `ws-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
@@ -126,6 +124,24 @@ function renameNodeInTree(
   })
 }
 
+function toggleManagedZoneInTree(
+  nodes: UnifiedFileNode[],
+  nodeId: string,
+): UnifiedFileNode[] {
+  return nodes.map((node) => {
+    if (node.id === nodeId && node.type === 'folder') {
+      return {
+        ...node,
+        zone: node.zone === 'wip' ? 'managed' : 'wip',
+      }
+    }
+    if (node.children) {
+      return { ...node, children: toggleManagedZoneInTree(node.children, nodeId) }
+    }
+    return node
+  })
+}
+
 function deleteNodeFromTree(
   nodes: UnifiedFileNode[],
   nodeId: string,
@@ -140,22 +156,11 @@ function deleteNodeFromTree(
     })
 }
 
-function findNodeInUnifiedTree(nodes: UnifiedFileNode[], id: string): UnifiedFileNode | null {
-  for (const node of nodes) {
-    if (node.id === id) return node
-    if (node.children) {
-      const found = findNodeInUnifiedTree(node.children, id)
-      if (found) return found
-    }
-  }
-  return null
-}
-
 /** Check if a node (by id) is a descendant of a folder (by id) in a tree */
 function isDescendantOf(nodes: UnifiedFileNode[], nodeId: string, ancestorId: string): boolean {
-  const ancestor = findNodeInUnifiedTree(nodes, ancestorId)
+  const ancestor = findNodeInTree(nodes, ancestorId)
   if (!ancestor || !ancestor.children) return false
-  return findNodeInUnifiedTree(ancestor.children, nodeId) !== null
+  return findNodeInTree(ancestor.children, nodeId) !== null
 }
 
 function moveNodeInTree(
@@ -164,7 +169,7 @@ function moveNodeInTree(
   targetParentId: string,
 ): UnifiedFileNode[] {
   // First, extract the node
-  const node = findNodeInUnifiedTree(nodes, nodeId)
+  const node = findNodeInTree(nodes, nodeId)
   if (!node) return nodes
 
   // Remove from current location
@@ -224,12 +229,11 @@ function findReferenceFolder(
   return null
 }
 
-// --- Context ---
 
-export type MoveImpactCollection = { id: string; name: string; grantCount: number }
+export type MoveImpactShare = { id: string; name: string; grantCount: number }
 
 export type MoveImpact = {
-  impactedCollections: MoveImpactCollection[]
+  impactedFolders: MoveImpactShare[]
 }
 
 interface FileTreeContextValue {
@@ -238,10 +242,11 @@ interface FileTreeContextValue {
   createFolder: (parentId: string | null, name: string, children?: UnifiedFileNode[]) => string
   createFile: (parentId: string, name: string, extension?: string) => string
   createReferenceFolder: (parentId: string | null, name: string, reference: ReferenceFolderSource) => string
+  toggleManagedZone: (folderId: string) => void
   renameNode: (nodeId: string, newName: string) => void
   deleteNode: (nodeId: string) => void
-  /** Analyze impact of moving a node — which shared collections would be affected */
-  getMoveImpact: (nodeId: string, collections: { id: string; name: string; boundFolderId?: string }[], getGrantCount: (collectionId: string) => number) => MoveImpact
+  /** Analyze impact of moving a node — which shared folders would be affected */
+  getMoveImpact: (nodeId: string, sharedFolders: { id: string; name: string }[], getGrantCount: (folderId: string) => number) => MoveImpact
   /** Execute a move operation */
   confirmMove: (nodeId: string, targetParentId: string) => void
   /** Create a file reference (same asset, different location) */
@@ -333,16 +338,12 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
   }, [rawTree])
 
   const getAssetsByIdsFromTree = useCallback((ids: string[]): Asset[] => {
-    return ids.map(id => assetById.get(id)).filter(Boolean) as Asset[]
+    return ids.map(id => assetById.get(id)).filter((a): a is Asset => a != null)
   }, [assetById])
 
   const resolveCollectionAssetIdsFromTree = useCallback((collection: UserCollection): string[] => {
-    if (collection.boundFolderId) {
-      const children = findSubtree(rawTree, collection.boundFolderId)
-      if (children) return collectFileNodes(children).map(n => n.id)
-    }
     return collection.assetIds
-  }, [rawTree])
+  }, [])
 
   const resolveCollectionAssetsFromTree = useCallback((collection: UserCollection): Asset[] => {
     return getAssetsByIdsFromTree(resolveCollectionAssetIdsFromTree(collection))
@@ -414,6 +415,10 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     return id
   }, [activePersona, rawTree, updateTree])
 
+  const toggleManagedZone = useCallback((folderId: string) => {
+    updateTree((prev) => toggleManagedZoneInTree(prev, folderId))
+  }, [updateTree])
+
   const renameNode = useCallback((nodeId: string, newName: string) => {
     updateTree((prev) => renameNodeInTree(prev, nodeId, newName))
   }, [updateTree])
@@ -424,25 +429,23 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
 
   const getMoveImpact = useCallback((
     nodeId: string,
-    collections: { id: string; name: string; boundFolderId?: string }[],
-    getGrantCount: (collectionId: string) => number,
+    sharedFolders: { id: string; name: string }[],
+    getGrantCount: (folderId: string) => number,
   ): MoveImpact => {
-    const impactedCollections: MoveImpactCollection[] = []
-    for (const collection of collections) {
-      if (!collection.boundFolderId) continue
-      // Check if the node lives inside this collection's bound folder
-      if (isDescendantOf(tree, nodeId, collection.boundFolderId)) {
-        const grantCount = getGrantCount(collection.id)
+    const impactedFolders: MoveImpactShare[] = []
+    for (const folder of sharedFolders) {
+      if (isDescendantOf(tree, nodeId, folder.id)) {
+        const grantCount = getGrantCount(folder.id)
         if (grantCount > 0) {
-          impactedCollections.push({
-            id: collection.id,
-            name: collection.name,
+          impactedFolders.push({
+            id: folder.id,
+            name: folder.name,
             grantCount,
           })
         }
       }
     }
-    return { impactedCollections }
+    return { impactedFolders }
   }, [tree])
 
   const confirmMove = useCallback((nodeId: string, targetParentId: string) => {
@@ -450,7 +453,7 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
   }, [updateTree])
 
   const createFileReference = useCallback((sourceFileId: string, targetParentId: string): string | null => {
-    const sourceNode = findNodeInUnifiedTree(rawTree, sourceFileId)
+    const sourceNode = findNodeInTree(rawTree, sourceFileId)
     if (!sourceNode || sourceNode.type !== 'file') return null
     const refId = `ref-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const refNode: UnifiedFileNode = {
@@ -488,6 +491,7 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     createFolder,
     createFile,
     createReferenceFolder,
+    toggleManagedZone,
     renameNode,
     deleteNode,
     getMoveImpact,
@@ -500,7 +504,7 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     resolveCollectionAssets: resolveCollectionAssetsFromTree,
     getAssetsByIds: getAssetsByIdsFromTree,
     getRecentAssets: getRecentAssetsFromTree,
-  }), [tree, getDomainFiles, createFolder, createFile, createReferenceFolder, renameNode, deleteNode, getMoveImpact, confirmMove, createFileReference, getFileNodesForFolder, allAssets, assetById, resolveCollectionAssetIdsFromTree, resolveCollectionAssetsFromTree, getAssetsByIdsFromTree, getRecentAssetsFromTree])
+  }), [tree, getDomainFiles, createFolder, createFile, createReferenceFolder, toggleManagedZone, renameNode, deleteNode, getMoveImpact, confirmMove, createFileReference, getFileNodesForFolder, allAssets, assetById, resolveCollectionAssetIdsFromTree, resolveCollectionAssetsFromTree, getAssetsByIdsFromTree, getRecentAssetsFromTree])
 
   return (
     <FileTreeContext.Provider value={value}>

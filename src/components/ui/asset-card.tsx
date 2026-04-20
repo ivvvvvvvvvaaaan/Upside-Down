@@ -138,8 +138,6 @@ export function AssetCard({
     )
   }
 
-  // Processing state: asset uploaded but metadata/preview extraction in progress
-  // Shows skeleton thumbnail with "Processing" badge, asset name, and "Processing" tag
   if (processing) {
     return (
       <div
@@ -200,10 +198,8 @@ export function AssetCard({
     ? asset.audioMeta?.duration
     : asset.videoMeta?.duration
 
-  // Show file extension badge when there's no duration — production formats, documents, archives
   const extBadge = !duration && asset.extension && BADGE_EXTENSIONS.has(asset.extension) ? asset.extension.toUpperCase() : undefined
 
-  // Get type tag label
   const getTypeTag = (): string => {
     switch (asset.type) {
       case 'shot': return 'Shot'
@@ -215,7 +211,6 @@ export function AssetCard({
     }
   }
 
-  // Render type tag
   const renderTypeTag = () => {
     const tagLabel = getTypeTag()
     return <Tag variant="glass">{tagLabel}</Tag>
@@ -227,9 +222,7 @@ export function AssetCard({
   const releaseTags = asset.tags?.filter(t => t.source === 'system' && !STATUS_LABELS.has(t.label) && t !== typeTag) ?? []
   const showField = (f: keyof MetadataFieldVisibility) => metadataFields?.[f] !== false
 
-  // Render thumbnail based on type
   const renderThumbnail = () => {
-    // Audio assets get icon placeholder
     if (asset.type === 'audio') {
       return (
         <div className="absolute inset-0 bg-surface-2 flex items-center justify-center">

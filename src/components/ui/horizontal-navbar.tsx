@@ -126,7 +126,7 @@ export function HorizontalNavbar({
   const primaryItems = [...topLevelItems, ...allItems.slice(0, 5)] // First 5 items for tier 1
   const secondaryItems = allItems.slice(5) // Rest for tier 2
 
-  // For demo, if no config, show placeholder items
+
   const hasPrimaryNav = primaryItems.length > 0
   const hasSecondaryNav = showSecondaryNav && secondaryItems.length > 0
 

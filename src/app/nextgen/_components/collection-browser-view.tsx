@@ -9,7 +9,6 @@ import {
   CardGrid,
   CollectionsGalleryView,
   CollectionsListView,
-  CompactBar,
   ContextualActionBar,
   EmptyState,
   HawkinsSearch,
@@ -30,7 +29,6 @@ import {
   useAccess,
   useAssetSelection,
   useCollectionAssets,
-  useCompactBar,
   useResourceSelection,
   useViewPreferences,
 } from '@/hooks'
@@ -105,8 +103,6 @@ export function CollectionBrowserView({
     retry: retryLoad,
     goBack,
   } = useCollectionAssets({ onNavigate: clearAssetSelection })
-  const { scrollRef, headerRef, showCompactBar } = useCompactBar()
-  const isCompactBarVisible = !selectedCollection && showCompactBar
   const {
     layout,
     setLayout,
@@ -258,7 +254,7 @@ export function CollectionBrowserView({
   if (selectedCollection) {
     return (
       <div className="h-full flex flex-col">
-        <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto">
+        <div className="flex-1 min-h-0 overflow-auto">
           <div className="p-6">
             <div className="max-w-7xl mx-auto">
               <Stack spacing="lg">
@@ -353,25 +349,7 @@ export function CollectionBrowserView({
 
   return (
     <div className="h-full flex flex-col">
-      <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto">
-        <CompactBar
-          visible={isCompactBarVisible}
-          title={title}
-          count={visibleCollections.length}
-          countLabel="collection"
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          filterOptions={filterOptions}
-          sortFields={sortFields}
-          sortCriteria={sortCriteria}
-          onSortChange={setSortCriteria}
-          layout={layout}
-          onLayoutChange={setLayout}
-          cardSize={cardSize}
-          onCardSizeChange={setCardSize}
-          {...hideEmptyProps}
-        />
-
+      <div className="flex-1 min-h-0 overflow-auto">
         <div className="p-6">
           <div className="max-w-7xl mx-auto">
             <Stack spacing="lg">
@@ -401,7 +379,7 @@ export function CollectionBrowserView({
                   {...hideEmptyProps}
                 />
               </div>
-              <div ref={headerRef} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-4">
                   <PageHeader title={title} description={description} hideTitleOnMobile />
                   <div className="hidden md:flex items-center gap-2">

@@ -278,14 +278,15 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
                 >
                   Back
                 </Button>
-                <Button
-                  variant="icon"
-                  onClick={togglePanel}
-                  aria-label={panelOpen ? 'Close panel' : 'Open panel'}
-                  
-                >
-                  <PanelRight className="w-4 h-4" />
-                </Button>
+                {!panelOpen && (
+                  <Button
+                    variant="icon"
+                    onClick={togglePanel}
+                    aria-label="Open panel"
+                  >
+                    <PanelRight className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
 
               {/* Asset Preview */}

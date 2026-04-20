@@ -12,9 +12,7 @@ import type { SmartCollection, SmartCollectionGroupBy, Asset } from '@/lib/data'
 import type { RelatedAssetGroup } from '@/lib/context-relationships'
 import { getCutStageLabel } from '@/lib/cuts'
 
-// ---------------------------------------------------------------------------
 // Info tooltip for section headings
-// ---------------------------------------------------------------------------
 
 function SectionHeading({ label, tip }: { label: string; tip?: string }) {
   return (
@@ -42,9 +40,7 @@ const SECTION_TIPS: Record<string, string> = {
   containers: 'Collections and folders containing this asset',
 }
 
-// ---------------------------------------------------------------------------
 // Shared sub-components (extracted from smart-collection-side-panel)
-// ---------------------------------------------------------------------------
 
 function getCollectionImages(collectionId: string, dimension?: ImageDimension) {
   return {
@@ -106,9 +102,7 @@ function EntityCards({ items, dimension }: { items: SmartCollection[]; dimension
   )
 }
 
-// ---------------------------------------------------------------------------
 // Shot Context — asset-to-asset relationships
-// ---------------------------------------------------------------------------
 
 function AssetThumbnailCard({ asset, onClick }: { asset: Asset; onClick?: (asset: Asset) => void }) {
   const thumbnail = asset.thumbnail ?? pick(IMAGE_POOL, asset.id, 1)[0]
@@ -150,9 +144,7 @@ function ShotContextRow({
   )
 }
 
-// ---------------------------------------------------------------------------
 // Cut cards
-// ---------------------------------------------------------------------------
 
 function CutCards({ cuts }: { cuts: Asset[] }) {
   if (cuts.length === 0) return null
@@ -191,9 +183,7 @@ function CutCards({ cuts }: { cuts: Asset[] }) {
   )
 }
 
-// ---------------------------------------------------------------------------
 // Container links (workspace folders + user collections)
-// ---------------------------------------------------------------------------
 
 export interface ContainerItem {
   key: string
@@ -242,9 +232,7 @@ function ContainerCards({ items }: { items: ContainerItem[] }) {
   )
 }
 
-// ---------------------------------------------------------------------------
 // Main OntologySection
-// ---------------------------------------------------------------------------
 
 export interface OntologySectionProps {
   /** Semantic dimension links — smart collections grouped by type */

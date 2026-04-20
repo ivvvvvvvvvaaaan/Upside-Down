@@ -2,12 +2,15 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { DesktopWindow } from './desktop-window'
-import { cn, formatDate } from '@/lib/utils'
+import { cn, formatDate, formatFileSize } from '@/lib/utils'
 import type { WindowState, SyncStatus } from '../view'
 import type { UnifiedFileNode } from '@/lib/workspace-data'
-import { DOMAIN_FOLDER_MAP, isReferenceFolder } from '@/lib/workspace-data'
-import { useAccess, useCollections, useFileTree, usePersona } from '@/hooks'
+import { DOMAIN_FOLDER_MAP, SHARED_MOUNT_FOLDER_ID, isReferenceFolder } from '@/lib/workspace-data'
+import { collectAccessibleWorkspaceRoots } from '@/lib/workspace-roots'
+import { FolderSymlink } from 'lucide-react'
+import { useAccess, useFileTree, usePersona } from '@/hooks'
 import { materializeReferenceFolders } from '@/lib/reference-folder-utils'
+import { useToast } from '@/components/ui/toast'
 import {
   ChevronLeft,
   ChevronRight,
@@ -253,7 +256,12 @@ function filterWorkspaceNodeByAccess(
   canAccess: (id: string) => boolean,
   canSeeRestrictedFolders: boolean,
 ): FileNode | null {
-  const isVisible = canAccess(node.id) || (node.type === 'folder' && canSeeRestrictedFolders)
+  const isSharedMountRoot = node.id === SHARED_MOUNT_FOLDER_ID
+  const referenceResourceId = isReferenceFolder(node) ? node.reference.resourceId : null
+  const isVisible = isSharedMountRoot
+    || canAccess(node.id)
+    || (referenceResourceId ? canAccess(referenceResourceId) : false)
+    || (node.type === 'folder' && canSeeRestrictedFolders)
   if (!isVisible) return null
 
   if (!node.children) return node
@@ -268,6 +276,9 @@ function filterWorkspaceNodeByAccess(
 
 function getFileIcon(node: FileNode, sizeClass: string = 'w-4 h-4') {
   if (node.type === 'folder') {
+    if (isReferenceFolder(node)) {
+      return <FolderSymlink className={cn(sizeClass, 'text-blue-500')} />
+    }
     return <Folder className={cn(sizeClass, 'text-blue-500')} />
   }
 
@@ -284,7 +295,6 @@ function getFileIcon(node: FileNode, sizeClass: string = 'w-4 h-4') {
   return <File className={cn(sizeClass, 'text-foreground/70')} />
 }
 
-// Render folder sync indicators.
 function FolderIndicators({
   node,
   className,
@@ -302,7 +312,6 @@ function FolderIndicators({
     return null
   }
 
-  // Get sync icon based on status
   const getSyncIcon = () => {
     switch (syncStatus) {
       case 'synced':
@@ -325,14 +334,14 @@ function FolderIndicators({
   )
 }
 
-function formatFileSize(bytes?: number): string {
-  if (!bytes) return '—'
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+function EjectIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M8 3 3.5 9h9L8 3Z" />
+      <path d="M3.5 11h9v1.5h-9V11Z" />
+    </svg>
+  )
 }
-
 
 interface FinderWindowProps {
   window: WindowState
@@ -366,12 +375,13 @@ export function FinderWindow({
 
   // Folder navigation state (for icons view) - stores folder IDs to avoid stale references
   const [folderPathIds, setFolderPathIds] = useState<string[]>([])
+  const [columnPath, setColumnPath] = useState<FileNode[]>([])
 
   // Shared file tree from context
-  const { tree: workspaceFiles, createFolder: contextCreateFolder, createFile: contextCreateFile, renameNode: contextRenameNode, deleteNode: contextDeleteNode, resolveCollectionAssets: treeResolveCollectionAssets } = useFileTree()
-  const { canAccess, sharesReceivedByMe, filterByAccess } = useAccess()
-  const { getCollection, filterAssets, scopedAssets } = useCollections()
+  const { tree: workspaceFiles, createFolder: contextCreateFolder, createFile: contextCreateFile, createReferenceFolder: contextCreateReferenceFolder, renameNode: contextRenameNode, deleteNode: contextDeleteNode } = useFileTree()
+  const { canAccess } = useAccess()
   const { activePersona } = usePersona()
+  const { showToast } = useToast()
 
   // Rename state
   const [renamingId, setRenamingId] = useState<string | null>(null)
@@ -422,7 +432,6 @@ export function FinderWindow({
     }
   }, [contextMenu])
 
-  // Handle right-click on file/folder
   const handleContextMenu = useCallback((e: React.MouseEvent, item: FileNode) => {
     e.preventDefault()
     e.stopPropagation()
@@ -434,7 +443,6 @@ export function FinderWindow({
     })
   }, [])
 
-  // Handle right-click on empty background area
   const handleBackgroundContextMenu = useCallback((e: React.MouseEvent) => {
     // Only trigger if the click target is the container itself (not a file/folder row)
     if ((e.target as HTMLElement).closest('[data-file-node]')) return
@@ -451,7 +459,6 @@ export function FinderWindow({
     })
   }, [folderPathIds])
 
-  // Create a new folder inside the specified parent folder
   const handleCreateFolder = useCallback((parentId: string | null) => {
     if (selectedSidebar !== 'workspace') {
       setContextMenu(null)
@@ -460,7 +467,7 @@ export function FinderWindow({
 
     if (parentId) {
       const parentFolder = findNodeById(workspaceFiles, parentId)
-      if (isReferenceFolder(parentFolder)) {
+      if (isReferenceFolder(parentFolder) || parentFolder?.id === SHARED_MOUNT_FOLDER_ID) {
         setContextMenu(null)
         return
       }
@@ -483,65 +490,37 @@ export function FinderWindow({
 
   const resolvedWorkspaceFiles = useMemo(() => {
     return materializeReferenceFolders(workspaceFiles, {
-      getCollection,
-      filterAssets,
-      filterByAccess,
-      scopedAssets,
-      resolveAssets: treeResolveCollectionAssets,
+      getFolderChildren: (resourceId) => {
+        const sourceNode = findNodeById(workspaceFiles, resourceId)
+        return sourceNode?.type === 'folder' ? sourceNode.children : undefined
+      },
     })
-  }, [workspaceFiles, getCollection, filterAssets, filterByAccess, scopedAssets, treeResolveCollectionAssets])
+  }, [workspaceFiles])
 
-  const visibleSharedWorkspaceFiles = useMemo(() => {
-    return sharesReceivedByMe
-      .filter((entry) => {
-        if (entry.resourceType !== 'folder') return false
-        if (DOMAIN_ROOT_IDS.has(entry.resourceId)) return false
-        if (activePersona?.domainId && entry.domainId === activePersona.domainId) return false
-        return true
-      })
-      .map((entry) => {
-        const sourceNode = findNodeById(resolvedWorkspaceFiles, entry.resourceId)
-        const sharedNode = sourceNode?.type === 'folder'
-          ? sourceNode
-          : {
-              id: entry.resourceId,
-              name: entry.label,
-              type: 'folder' as const,
-              modifiedAt: entry.grantedAt,
-              children: [],
-            }
-
-        return filterWorkspaceNodeByAccess(sharedNode, canAccess, canSeeRestrictedFolders)
-      })
+  // Team roots: folders the user owns via team membership
+  const teamRoots = useMemo(() => {
+    const nonShared = resolvedWorkspaceFiles.filter((n) => n.id !== SHARED_MOUNT_FOLDER_ID)
+    return collectAccessibleWorkspaceRoots(nonShared as FileNode[], canAccess)
+      .map((node) => filterWorkspaceNodeByAccess(node, canAccess, canSeeRestrictedFolders))
       .filter((node): node is FileNode => node !== null)
-  }, [sharesReceivedByMe, activePersona, resolvedWorkspaceFiles, canAccess, canSeeRestrictedFolders])
+  }, [resolvedWorkspaceFiles, canAccess, canSeeRestrictedFolders])
 
+  // Mounted folders: explicitly mounted shared folders
+  const mountedFolders = useMemo(() => {
+    const sharedRoot = resolvedWorkspaceFiles.find((node) => node.id === SHARED_MOUNT_FOLDER_ID)
+    return (sharedRoot?.children?.filter(isReferenceFolder) ?? []) as FileNode[]
+  }, [resolvedWorkspaceFiles])
+
+  // Curated project view: team roots + mounted shared folders (flat list)
   const visibleWorkspaceFiles = useMemo(() => {
-    const roots = resolvedWorkspaceFiles
-      .map((node) => {
-        if (DOMAIN_ROOT_IDS.has(node.id) && !canAccess(node.id)) {
-          return null
-        }
-        return filterWorkspaceNodeByAccess(node, canAccess, canSeeRestrictedFolders)
-      })
-      .filter((node): node is FileNode => node !== null)
+    return [...teamRoots, ...mountedFolders]
+  }, [teamRoots, mountedFolders])
 
-    for (const sharedNode of visibleSharedWorkspaceFiles) {
-      if (!roots.some((rootNode) => rootNode.id === sharedNode.id)) {
-        roots.push(sharedNode)
-      }
-    }
+  const mountedFolderIds = useMemo(() => new Set(mountedFolders.map((f) => f.id)), [mountedFolders])
 
-    return roots
-  }, [resolvedWorkspaceFiles, canAccess, canSeeRestrictedFolders, visibleSharedWorkspaceFiles])
-
-  // Get root files based on selected sidebar location.
   const rootFiles = selectedSidebar === 'workspace' ? visibleWorkspaceFiles : mockFiles
-
-  // Build folder path from IDs (to get fresh references from current state)
   const folderPath = folderPathIds.map(id => findNodeById(rootFiles, id)).filter((n): n is FileNode => n !== null)
 
-  // Start renaming an item
   const handleStartRename = useCallback((item: FileNode) => {
     if (isReferenceFolder(item)) {
       setContextMenu(null)
@@ -552,7 +531,6 @@ export function FinderWindow({
     setContextMenu(null)
   }, [])
 
-  // Finish renaming (save)
   const handleFinishRename = useCallback(() => {
     if (renamingId && renameValue.trim()) {
       const item = findNodeById(rootFiles, renamingId)
@@ -567,13 +545,11 @@ export function FinderWindow({
     setRenameValue('')
   }, [renamingId, renameValue, contextRenameNode, rootFiles])
 
-  // Cancel renaming
   const handleCancelRename = useCallback(() => {
     setRenamingId(null)
     setRenameValue('')
   }, [])
 
-  // Delete an item
   const handleDeleteItem = useCallback((itemId: string) => {
     const item = findNodeById(rootFiles, itemId)
     if (isReferenceFolder(item)) {
@@ -587,12 +563,49 @@ export function FinderWindow({
     }
   }, [selectedFile, contextDeleteNode, rootFiles])
 
-  // Get current files based on folder path (for icons view navigation)
+  const handleMountFolderToDrive = useCallback((item: FileNode) => {
+    if (
+      selectedSidebar !== 'workspace'
+      || item.type !== 'folder'
+      || item.id === SHARED_MOUNT_FOLDER_ID
+      || isReferenceFolder(item)
+    ) {
+      setContextMenu(null)
+      return
+    }
+
+    contextCreateReferenceFolder(SHARED_MOUNT_FOLDER_ID, item.name, {
+      resourceId: item.id,
+      resourceType: 'folder',
+      domainId: item.domainId,
+    })
+    showToast(`Mounted "${item.name}" to /Shared/${item.name}`)
+    setContextMenu(null)
+  }, [contextCreateReferenceFolder, selectedSidebar, showToast])
+
+  const handleUnmountFolderFromDrive = useCallback((item: FileNode) => {
+    if (!isReferenceFolder(item)) {
+      setContextMenu(null)
+      return
+    }
+
+    contextDeleteNode(item.id)
+    showToast(`Unmounted "${item.name}" from Shared`)
+    setContextMenu(null)
+    setFolderPathIds((prev) => {
+      if (!prev.includes(item.id)) return prev
+      return []
+    })
+    setColumnPath((prev) => prev.filter((node) => node.id !== item.id))
+    if (selectedFile === item.id) {
+      setSelectedFile(null)
+    }
+  }, [contextDeleteNode, selectedFile, showToast])
+
   const currentFiles = folderPath.length > 0
     ? folderPath[folderPath.length - 1].children || []
     : rootFiles
 
-  // Navigate into a folder (for icons view).
   const navigateIntoFolder = useCallback((folder: FileNode) => {
     if (folder.type === 'folder' && folder.children) {
       setFolderPathIds((prev) => [...prev, folder.id])
@@ -600,16 +613,13 @@ export function FinderWindow({
     }
   }, [])
 
-  // Navigate back one folder
   const navigateBack = useCallback(() => {
     setFolderPathIds((prev) => prev.slice(0, -1))
     setSelectedFile(null)
   }, [])
 
-  // Check if we can go back
   const canGoBack = folderPath.length > 0
 
-  // Get display name for current location
   const getLocationName = () => {
     if (folderPath.length > 0) {
       return folderPath[folderPath.length - 1].name
@@ -767,8 +777,6 @@ export function FinderWindow({
   )
 
   // Columns view
-  const [columnPath, setColumnPath] = useState<FileNode[]>([])
-
   useEffect(() => {
     setFolderPathIds([])
     setColumnPath([])
@@ -778,7 +786,6 @@ export function FinderWindow({
   const renderColumnsView = () => {
     const columns: FileNode[][] = [currentFiles]
 
-    // Build columns from selected path.
     for (const node of columnPath) {
       if (node.type === 'folder' && node.children) {
         columns.push(node.children)
@@ -800,7 +807,6 @@ export function FinderWindow({
                   data-file-node
                   onClick={() => {
                     setSelectedFile(node.id)
-                    // Update column path.
                     const newPath = columnPath.slice(0, colIndex)
                     if (node.type === 'folder') {
                       newPath.push(node)
@@ -1060,8 +1066,14 @@ export function FinderWindow({
             </>
           ) : (
             <>
-              {isReferenceFolder(contextMenu.item) ? (
+              {contextMenu.item.id === SHARED_MOUNT_FOLDER_ID ? (
                 <ContextMenuItem label="Open" shortcut="⌘O" onClick={() => setContextMenu(null)} />
+              ) : isReferenceFolder(contextMenu.item) ? (
+                <>
+                  <ContextMenuItem label="Open" shortcut="⌘O" onClick={() => setContextMenu(null)} />
+                  <ContextMenuDivider />
+                  <ContextMenuItem label="Unmount from Drive" onClick={() => handleUnmountFolderFromDrive(contextMenu.item)} />
+                </>
               ) : (
                 <>
               <ContextMenuItem label="Open" shortcut="⌘O" onClick={() => setContextMenu(null)} />
@@ -1083,21 +1095,38 @@ export function FinderWindow({
               <ContextMenuDivider />
               {contextMenu.item.type === 'folder' && (
                 <>
-                  <ContextMenuItem
-                    label="New Folder"
-                    shortcut="⇧⌘N"
-                    disabled={selectedSidebar !== 'workspace'}
-                    onClick={() => handleCreateFolder(contextMenu.item.id)}
-                  />
-                  <ContextMenuItem
-                    label="New File"
-                    disabled={selectedSidebar !== 'workspace'}
-                    onClick={() => {
-                      const names = ['SEQ010_SH040_comp_v1.exr', 'hero_closeup_final.dpx', 'ambience_pit_lane.wav', 'grade_pass_02.mov', 'concept_sketch_v3.psd', 'lens_calibration_data.csv']
-                      contextCreateFile(contextMenu.item.id, names[Math.floor(Math.random() * names.length)])
-                    }}
-                  />
+                  {isReferenceFolder(contextMenu.item) ? (
+                    <ContextMenuItem
+                      label="Remove from Finder"
+                      onClick={() => handleUnmountFolderFromDrive(contextMenu.item)}
+                    />
+                  ) : (
+                    <ContextMenuItem
+                      label="Mount to Finder"
+                      disabled={selectedSidebar !== 'workspace' || mountedFolderIds.has(contextMenu.item.id)}
+                      onClick={() => handleMountFolderToDrive(contextMenu.item)}
+                    />
+                  )}
                   <ContextMenuDivider />
+                  {!isReferenceFolder(contextMenu.item) && (
+                    <>
+                      <ContextMenuItem
+                        label="New Folder"
+                        shortcut="⇧⌘N"
+                        disabled={selectedSidebar !== 'workspace'}
+                        onClick={() => handleCreateFolder(contextMenu.item.id)}
+                      />
+                      <ContextMenuItem
+                        label="New File"
+                        disabled={selectedSidebar !== 'workspace'}
+                        onClick={() => {
+                          const names = ['SEQ010_SH040_comp_v1.exr', 'hero_closeup_final.dpx', 'ambience_pit_lane.wav', 'grade_pass_02.mov', 'concept_sketch_v3.psd', 'lens_calibration_data.csv']
+                          contextCreateFile(contextMenu.item.id, names[Math.floor(Math.random() * names.length)])
+                        }}
+                      />
+                      <ContextMenuDivider />
+                    </>
+                  )}
                 </>
               )}
               <ContextMenuItem

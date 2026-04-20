@@ -1,6 +1,6 @@
 import type { SmartCollection } from '@/lib/data'
 
-export const SYSTEM_DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [
+const SYSTEM_DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [
   {
     flavor: 'smart',
     id: 'smart-character',
@@ -53,7 +53,7 @@ export const SYSTEM_DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [
   },
 ]
 
-export const SEED_USER_SMART_COLLECTIONS: SmartCollection[] = [
+const SEED_USER_SMART_COLLECTIONS: SmartCollection[] = [
   {
     flavor: 'smart',
     id: 'smart-finals',

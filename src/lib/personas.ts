@@ -26,14 +26,18 @@ export const DIRECTORY_UPDATED_EVENT = 'prototype-directory-updated'
 export const PERSONAS: User[] = buildPersonas()
 
 const DESKTOP_ELIGIBLE_PERSONA_IDS = [
-  'vfx-coordinator',
-  'editorial-artist',
-  'editorial-coordinator',
-  'art-artist',
+  'studio-alex',
+  'creative-david',
   'vfx-supervisor',
-  'vendor-framestore',
+  'vfx-coordinator',
+  'editorial-coordinator',
+  'editorial-artist',
+  'art-artist',
   'camera-dit',
   'audio-supervisor',
+  'vendor-framestore',
+  'marketing-coordinator',
+  'legal-reviewer',
 ] as const
 
 const DESKTOP_ELIGIBLE_PERSONA_ID_SET = new Set<string>(DESKTOP_ELIGIBLE_PERSONA_IDS)

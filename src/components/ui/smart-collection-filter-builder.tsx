@@ -210,7 +210,6 @@ export function SmartCollectionFilterBuilder({
   )
 }
 
-// --- Filter row ---
 
 interface FilterRowProps {
   type: FilterType
@@ -240,7 +239,6 @@ function FilterRow({ type, filter, onUpdate, onRemove }: FilterRowProps) {
   )
 }
 
-// --- Filter value editors ---
 
 interface FilterEditorProps {
   type: FilterType
@@ -381,7 +379,6 @@ function FilterEditor({ type, filter, onUpdate }: FilterEditorProps) {
   }
 }
 
-// --- Shared components ---
 
 interface TypeTagsEditorProps {
   tags: string[]

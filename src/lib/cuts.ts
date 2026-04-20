@@ -1,5 +1,5 @@
 import type { Asset, CutStage } from '@/lib/data'
-import { pickForDepartment } from '@/lib/images'
+import { pickForDomain } from '@/lib/images'
 import type { SeedCut } from '@/lib/scenario'
 
 const CUT_STAGE_LABELS: Record<CutStage, string> = {
@@ -60,7 +60,7 @@ export function seedCutToAsset(cut: SeedCut, releaseInfo?: ReleaseTagInfo): Asse
     versionGroupId: cut.cutGroupId ?? `cut:${cut.episode}`,
     episode: cut.episode,
     constituents: cut.constituents,
-    thumbnail: pickForDepartment('editorial', cut.id)[0],
+    thumbnail: pickForDomain('editorial', cut.id)[0],
     tags: [
       { label: typeTag, source: 'system' },
       ...(releaseInfo ? buildCutReleaseTags(releaseInfo) : []),

@@ -20,27 +20,21 @@ import { useIsMobile } from '@/hooks/useMediaQuery'
  * Child components can append extra crumbs via useBreadcrumbExtras().
  */
 
-// Route to display name mapping
+
 const routeLabels: Record<string, string> = {
   '/nextgen': 'Search',
   '/nextgen/inbox': 'Inbox',
   '/nextgen/library': 'Cuts',
   '/nextgen/shared': 'Shared',
   '/nextgen/workspace': 'Workspace',
-  '/nextgen/departments/art-design': 'Art & Design',
-  '/nextgen/departments/camera': 'Camera',
-  '/nextgen/departments/editorial': 'Editorial',
-  '/nextgen/departments/vfx': 'VFX',
-  '/nextgen/departments/audio-sound': 'Audio & Sound',
   '/nextgen/collections': 'All Collections',
   '/nextgen/collections/characters': 'Characters',
   '/nextgen/collections/locations': 'Locations',
   '/nextgen/collections/scenes': 'Scenes',
 }
 
-// Section groupings for breadcrumb hierarchy
+
 const sectionPrefixes: { prefix: string; label: string }[] = [
-  { prefix: '/nextgen/departments/', label: 'Departments' },
   { prefix: '/nextgen/collections/', label: 'Collections' },
   { prefix: '/nextgen/sharing/', label: 'Sharing' },
 ]
@@ -51,7 +45,6 @@ export interface BreadcrumbItem {
   onClick?: () => void
 }
 
-// --- Breadcrumb extras context ---
 
 interface BreadcrumbExtrasContextValue {
   extras: BreadcrumbItem[]
@@ -87,7 +80,6 @@ export function useBreadcrumbExtras() {
   return { setBreadcrumbExtras, clearBreadcrumbExtras }
 }
 
-// --- Core breadcrumb logic ---
 
 function getBreadcrumbs(pathname: string): BreadcrumbItem[] {
   const crumbs: BreadcrumbItem[] = [

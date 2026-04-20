@@ -14,8 +14,6 @@ export type { UserCollection } from './useUserCollections'
 
 export { useSmartCollections, SmartCollectionsProvider, matchesFilter } from './useSmartCollections'
 
-export { useWorkspaceState } from './useWorkspaceState'
-
 export { FileTreeProvider, useFileTree } from './useFileTree'
 
 export { PersonaProvider, usePersona } from './usePersona'

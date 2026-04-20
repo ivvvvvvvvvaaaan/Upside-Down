@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { Download, HardDrive, MoreVertical, PanelRight, Info, Trash2 } from 'lucide-react'
-import Image from 'next/image'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { Download, MoreVertical, PanelRight, Info, Trash2 } from 'lucide-react'
+import { ShareIcon } from '@/components/ui/share-icon'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import {
@@ -23,10 +23,8 @@ import {
   AppearanceDropdown,
   HawkinsSearch,
   PageHeader,
-  Tooltip,
 } from '@/components/ui'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
-import { Upload } from 'lucide-react'
 import { getGridColumns, useAccess, useAssetSelection, usePersona, useViewPreferences, useUserCollections, useSmartCollections, useMobilePanel, useFileTree } from '@/hooks'
 import type { Asset } from '@/lib/data'
 import { PERSONAS } from '@/lib/personas'
@@ -34,17 +32,7 @@ import { assetToSelectionEntity } from '@/lib/selection-actions'
 import { getContextAssetGroups } from '@/lib/context-relationships'
 import { AccessModal } from '@/components/ui/access-modal'
 import type { ResourceRef } from '@/lib/grants'
-import { SHARED_MOUNT_FOLDER_ID } from '@/lib/workspace-data'
 import { useToast } from '@/components/ui/toast'
-import type { DomainId } from '@/components/department/types'
-import type { AssetType } from '@/lib/data'
-
-function inferAssetType(ext: string): AssetType {
-  if (['mp4', 'mov', 'avi', 'mkv', 'webm', 'mxf'].includes(ext)) return 'video'
-  if (['jpg', 'jpeg', 'png', 'psd', 'tiff', 'exr', 'dpx', 'svg', 'webp'].includes(ext)) return 'image'
-  if (['wav', 'mp3', 'aac', 'flac', 'aiff'].includes(ext)) return 'audio'
-  return 'text'
-}
 
 interface UserCollectionDetailViewProps {
   collectionId: string
@@ -59,15 +47,13 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     sharesReceivedByMe,
     allProjectShares,
     getVisibleCollection,
-    getCurrentUserGrant,
     canShare,
     canDownload,
     getResourceGrants,
-    canUploadToCollection,
     isSensitiveAsset,
   } = useAccess()
-  const { getCollection, deleteCollection, addAssetsToCollection, removeAssetFromCollection } = useUserCollections()
-  const { createReferenceFolder, resolveCollectionAssets } = useFileTree()
+  const { getCollection, deleteCollection, removeAssetFromCollection } = useUserCollections()
+  const { resolveCollectionAssets } = useFileTree()
   const { showToast } = useToast()
   const { getRelatedCollectionsForAssets, scopedAssets, ensureAssetsLoaded } = useSmartCollections()
   const { selectedIds, primaryId, handleAssetClick, selectOnly, clearSelection } = useAssetSelection()
@@ -88,82 +74,13 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const showShareButton = hasCollectionAccess && canShare(collectionResourceRef)
   const canDownloadCollection = hasCollectionAccess && canDownload(collectionResourceRef)
 
-  // Upload (dropbox) state
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [uploadingAssets, setUploadingAssets] = useState<Map<string, { asset: Asset; processing: boolean }>>(new Map())
-  const [isDragging, setIsDragging] = useState(false)
-  const dragCounterRef = useRef(0)
-  const showUpload = canUploadToCollection(collectionId)
-
-  const processFiles = useCallback((files: FileList | File[]) => {
-    const fileArray = Array.from(files)
-    const newEntries = new Map(uploadingAssets)
-
-    fileArray.forEach((file, i) => {
-      const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
-      const asset: Asset = {
-        id: `upload-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        name: file.name.replace(/\.[^.]+$/, ''),
-        type: inferAssetType(ext),
-        extension: ext,
-        thumbnail: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
-        created_at: new Date().toISOString(),
-      }
-      newEntries.set(asset.id, { asset, processing: true })
-
-      // Transition out of processing after staggered delay
-      setTimeout(() => {
-        setUploadingAssets(prev => {
-          const next = new Map(prev)
-          const entry = next.get(asset.id)
-          if (entry) next.set(asset.id, { ...entry, processing: false })
-          return next
-        })
-      }, 2000 + i * 800)
-    })
-
-    setUploadingAssets(newEntries)
-    addAssetsToCollection(collectionId, Array.from(newEntries.keys()).filter(id => !uploadingAssets.has(id)))
-  }, [uploadingAssets, addAssetsToCollection, collectionId])
-
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.length) processFiles(e.target.files)
-    e.target.value = '' // reset so same file can be re-selected
-  }, [processFiles])
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(false)
-    dragCounterRef.current = 0
-    if (e.dataTransfer.files.length) processFiles(e.dataTransfer.files)
-  }, [processFiles])
-
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    dragCounterRef.current++
-    if (dragCounterRef.current === 1) setIsDragging(true)
-  }, [])
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    dragCounterRef.current--
-    if (dragCounterRef.current === 0) setIsDragging(false)
-  }, [])
-
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Merge uploaded assets with resolved collection assets
   const displayAssets = useMemo(() => {
-    const uploaded = Array.from(uploadingAssets.values()).map(u => u.asset)
-    const uploadedIds = new Set(uploaded.map(a => a.id))
-    const merged = [...uploaded, ...assets.filter(a => !uploadedIds.has(a.id))]
-    if (!searchQuery.trim()) return merged
+    if (!searchQuery.trim()) return assets
     const q = searchQuery.toLowerCase()
-    return merged.filter(a => a.name.toLowerCase().includes(q))
-  }, [assets, uploadingAssets, searchQuery])
+    return assets.filter(a => a.name.toLowerCase().includes(q))
+  }, [assets, searchQuery])
 
   useEffect(() => {
     void ensureAssetsLoaded()
@@ -186,8 +103,13 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     if (sharedBy) return `Shared by ${sharedBy}`
     if (!isOwner || !collection) return undefined
     const grants = getResourceGrants(collectionId)
-    if (grants.length === 0) return 'Private'
-    return `Shared with ${grants.length} ${grants.length === 1 ? 'person' : 'people'}`
+    const directGrants = grants.filter(g => !g.reviewLinkId)
+    const linkGrants = grants.filter(g => g.reviewLinkId)
+    if (directGrants.length === 0 && linkGrants.length === 0) return 'Private'
+    const parts: string[] = []
+    if (directGrants.length > 0) parts.push(`Shared with ${directGrants.length} ${directGrants.length === 1 ? 'person' : 'people'}`)
+    if (linkGrants.length > 0) parts.push('Link sharing on')
+    return parts.join(' · ')
   }, [sharedBy, isOwner, collection, collectionId, getResourceGrants])
 
   // Sync collection name to top-level breadcrumb
@@ -205,20 +127,6 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
       router.push('/nextgen')
     }
   }
-  const handleMountToDrive = () => {
-    if (!collection) return
-    const grant = getCurrentUserGrant(collection.id)
-    createReferenceFolder(SHARED_MOUNT_FOLDER_ID, collection.name, {
-      resourceId: collection.id,
-      resourceType: 'collection',
-      shareMode: grant?.shareMode ?? 'live',
-      snapshotAssetIds: grant?.snapshotAssetIds,
-      domainId: collection.boundDomainId as DomainId | undefined,
-    })
-    showToast(`Mounted "${collection.name}" to /Shared/${collection.name}`)
-  }
-
-
 
   // Resolve assets from the unified tree-derived index
   useEffect(() => {
@@ -281,7 +189,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     }
     showToast(`Download started for ${selectedAssets.length} assets.`)
   }, [selectedAssets, showToast])
-  const isCurated = !!collection && !collection.boundFolderId
+  const isCurated = !!collection
   const canRemoveFromCollection = isCurated && isOwner
   const handleRemoveSelectedAssets = useCallback(() => {
     if (!collection || selectedAssets.length === 0) return
@@ -345,22 +253,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   return (
     <div className="h-full flex">
       {/* Main content area */}
-      <div
-        className="flex-1 min-w-0 flex flex-col relative"
-        onDragEnter={showUpload ? handleDragEnter : undefined}
-        onDragLeave={showUpload ? handleDragLeave : undefined}
-        onDragOver={showUpload ? (e) => { e.preventDefault(); e.stopPropagation() } : undefined}
-        onDrop={showUpload ? handleDrop : undefined}
-      >
-        {/* Drag overlay */}
-        {isDragging && (
-          <div className="absolute inset-0 z-30 border-2 border-dashed border-indigo-500 rounded-lg bg-indigo-500/5 flex items-center justify-center pointer-events-none">
-            <div className="flex flex-col items-center gap-2">
-              <Upload className="w-10 h-10 text-indigo-500" />
-              <p className="text-body-1-bold text-indigo-500">Drop files to upload</p>
-            </div>
-          </div>
-        )}
+      <div className="flex-1 min-w-0 flex flex-col relative">
         <div className="flex-1 min-h-0 overflow-auto">
           <div className="p-6">
             <div className="max-w-7xl mx-auto">
@@ -378,24 +271,13 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                 } />
 
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
                     <PageHeader
                       title={displayName || 'Loading...'}
-                      description={subtitle}
+                      description={[subtitle, !loading ? `${assets.length} asset${assets.length !== 1 ? 's' : ''}` : undefined].filter(Boolean).join(' · ')}
                       hideTitleOnMobile
                     />
-                    <div className="hidden md:flex items-center gap-2">
-                      {showUpload && (
-                        <Tooltip label="Upload">
-                          <Button
-                            variant="icon"
-                            onClick={() => fileInputRef.current?.click()}
-                            aria-label="Upload"
-                          >
-                            <Upload className="w-4 h-4" />
-                          </Button>
-                        </Tooltip>
-                      )}
+                    <div className="hidden md:flex items-center gap-2 flex-shrink-0">
                       <SortDropdown
                         fields={[
                           { value: 'name', label: 'Name' },
@@ -418,13 +300,12 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         metadataFields={metadataFields}
                         onMetadataFieldChange={setMetadataField}
                       />
-                      {(isOwner || hasCollectionAccess) && (
+                      {(isOwner || canDownloadCollection) && (
                         <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly align="end" width="sm">
                           <div className="py-1">
                             {canDownloadCollection && (
                               <DropdownMenuItem icon={<Download className="w-4 h-4" />} label="Download" onClick={handleDownloadCollection} />
                             )}
-                            <DropdownMenuItem icon={<HardDrive className="w-4 h-4" />} label="Mount to Drive" onClick={handleMountToDrive} />
                             {isOwner && (
                               <>
                                 <DropdownMenuDivider />
@@ -437,19 +318,22 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                       {showShareButton && (
                         <Button
                           variant="primary"
-                          icon={<Image src="/Icons/Icons-share.svg" alt="" width={16} height={16} />}
+                          compact
+                          icon={<ShareIcon />}
                           onClick={() => setShareModalOpen(true)}
                         >
                           Share
                         </Button>
                       )}
-                      <Button
-                        variant="icon"
-                        onClick={togglePanel}
-                        aria-label={panelOpen ? 'Close panel' : 'Open panel'}
-                      >
-                        <PanelRight className="w-4 h-4" />
-                      </Button>
+                      {!panelOpen && (
+                        <Button
+                          variant="icon"
+                          onClick={togglePanel}
+                          aria-label="Open panel"
+                        >
+                          <PanelRight className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -467,7 +351,6 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                     onClick: handleRemoveSelectedAssets,
                     reason: canRemoveFromCollection ? undefined : "Only the collection owner can remove assets.",
                   } : undefined}
-                  metadata={loading ? undefined : `${assets.length} asset${assets.length !== 1 ? 's' : ''}`}
                 />
 
                 {loading ? (
@@ -488,7 +371,6 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         onMenuClick={handleMenuClick}
                         showDepartment
                         shared={sharedBy ? false : undefined}
-                        processing={uploadingAssets.get(asset.id)?.processing}
                         sensitive={isSensitiveAsset(asset.id)}
                         allSelectedIds={selectedIds}
                       />
@@ -501,16 +383,6 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                   />
                 )}
 
-                {/* Hidden file input for upload */}
-                {showUpload && (
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    className="hidden"
-                    onChange={handleFileSelect}
-                  />
-                )}
               </Stack>
             </div>
           </div>
@@ -533,6 +405,13 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
           collection={collection}
           open={panelOpen && !primaryAsset}
           onClose={closePanel}
+          onAction={(action) => {
+            if (action.type === 'delete') handleDeleteCollection()
+          }}
+          actionPermissions={{
+            canEdit: false,
+            canDelete: isOwner,
+          }}
           relationships={relationships}
         />
       )}

@@ -19,7 +19,7 @@ export interface PageHeaderProps {
  */
 export function PageHeader({ title, description, backHref, className, hideTitleOnMobile }: PageHeaderProps) {
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
+    <div className={cn('flex flex-col gap-0.5 min-w-0', className)}>
       <div className={cn('flex items-center', backHref && 'gap-3', hideTitleOnMobile && 'hidden md:flex')}>
         {backHref && (
           <Button asChild variant="icon" size="icon" aria-label="Back" className="-my-4">
@@ -28,9 +28,9 @@ export function PageHeader({ title, description, backHref, className, hideTitleO
             </Link>
           </Button>
         )}
-        <Text variant="headline-1" weight="bold">
+        <h2 className="truncate text-lg font-bold md:text-2xl">
           {title}
-        </Text>
+        </h2>
       </div>
       {description && (
         <Text variant="body-2" color="secondary">

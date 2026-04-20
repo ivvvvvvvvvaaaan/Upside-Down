@@ -14,7 +14,6 @@ import type {
 } from '@/lib/grants'
 import type { UserCollection } from '@/hooks/useUserCollections'
 
-// --- Scenario shape types ---
 
 type ScenarioPerson = {
   id: string
@@ -31,9 +30,11 @@ type ScenarioPerson = {
 type ScenarioTeam = {
   id: string
   name: string
-  kind: 'department' | 'domain' | 'team'
+  kind: 'group' | 'domain'
   members: string[]
+  managers?: string[]
   domain?: DomainId
+  rootFolderId?: string
 }
 
 type ScenarioRoleGroup = {
@@ -62,8 +63,6 @@ type ScenarioShare = {
   allowDownload?: boolean
   /** Allow recipient to comment and annotate */
   allowComment?: boolean
-  /** Allow recipient to upload into this collection */
-  allowUpload?: boolean
   /** Review link ID for direct review access */
   reviewLinkId?: string
   /** Version number for versioned re-shares (turnovers) */
@@ -91,9 +90,6 @@ type ScenarioCollection = {
   createdBy: string
   assetIds: string[]
   sourceSmartCollectionId?: string
-  /** If set, this collection resolves assets from a folder at query time */
-  boundFolderId?: string
-  boundDomainId?: string
 }
 
 type ScenarioCut = {
@@ -116,12 +112,6 @@ type ScenarioCut = {
   cutGroupId?: string
 }
 
-type ScenarioDomainAccess = {
-  domain: DomainId
-  defaultTeamId: string
-  defaultProfile: AccessProfileId
-}
-
 type DiscoveryResourceType = 'asset' | 'cut'
 
 type ScenarioDiscoveryRule = {
@@ -138,8 +128,8 @@ type ScenarioReleaseDomain = {
   group: ReleaseDomainGroup
   /** Which asset types can be released to this domain */
   assetTypes: string[]
-  /** The production department this release domain maps to (filtered from release pills for own-department assets) */
-  originDepartmentId?: string
+  /** The production domain this release domain maps to (filtered from release pills for own-department assets) */
+  originDomainId?: string
   /** Teams that receive grants when content is released to this domain */
   granteeTeamIds: string[]
   /** Individual users that receive grants */
@@ -157,7 +147,6 @@ type Scenario = {
   roleGroups: ScenarioRoleGroup[]
   people: ScenarioPerson[]
   teams: ScenarioTeam[]
-  domainAccess: ScenarioDomainAccess[]
   projectRoles: {
     people: Record<string, AccessProfileId>
     teams: Record<string, AccessProfileId>
@@ -170,7 +159,6 @@ type Scenario = {
   sensitiveAssetIds: string[]
 }
 
-// --- The scenario ---
 
 export const SCENARIO: Scenario = {
   projectName: 'Apex S1',
@@ -191,10 +179,10 @@ export const SCENARIO: Scenario = {
   // Each domain defines WHO gets grants when content is released to that domain
   releaseDomains: [
     // Studio tier — internal Netflix studio teams
-    { id: 'studio-creative',    name: 'Studio Creative',    group: 'Studio', assetTypes: ['cut', 'asset'], originDepartmentId: 'art-design',  granteeTeamIds: ['studio-leadership'],  defaultProfile: 'viewer' },
-    { id: 'studio-post',        name: 'Studio Post',        group: 'Studio', assetTypes: ['cut', 'asset'], originDepartmentId: 'editorial',   granteeTeamIds: ['netflix-post'],       defaultProfile: 'viewer' },
+    { id: 'studio-creative',    name: 'Studio Creative',    group: 'Studio', assetTypes: ['cut', 'asset'], originDomainId: 'art-design',  granteeTeamIds: ['studio-leadership'],  defaultProfile: 'viewer' },
+    { id: 'studio-post',        name: 'Studio Post',        group: 'Studio', assetTypes: ['cut', 'asset'], originDomainId: 'editorial',   granteeTeamIds: ['netflix-post'],       defaultProfile: 'viewer' },
     { id: 'studio-production',  name: 'Studio Production',  group: 'Studio', assetTypes: ['cut', 'asset'],                                    granteeTeamIds: ['super-prod'],         defaultProfile: 'viewer' },
-    { id: 'studio-vfx',         name: 'Studio VFX',         group: 'Studio', assetTypes: ['cut'],          originDepartmentId: 'vfx',         granteeTeamIds: ['vfx-core'],           defaultProfile: 'viewer' },
+    { id: 'studio-vfx',         name: 'Studio VFX',         group: 'Studio', assetTypes: ['cut'],          originDomainId: 'vfx',         granteeTeamIds: ['vfx-core'],           defaultProfile: 'viewer' },
     // Wide tier — broader Netflix org
     { id: 'globalization',      name: 'Globalization',       group: 'Wide',   assetTypes: ['cut'],          granteeTeamIds: ['team-globalization'],      defaultProfile: 'viewer' },
     { id: 'marketing',          name: 'Marketing',           group: 'Wide',   assetTypes: ['cut', 'asset'], granteeTeamIds: ['team-marketing'],          defaultProfile: 'viewer' },
@@ -228,33 +216,25 @@ export const SCENARIO: Scenario = {
   ],
 
   teams: [
-    { id: 'vfx-core',       name: 'VFX',            kind: 'department', members: ['vfx-supervisor', 'vfx-coordinator'],                        domain: 'vfx' },
-    { id: 'editorial',      name: 'Editorial',      kind: 'department', members: ['editorial-coordinator', 'editorial-artist'],                 domain: 'editorial' },
-    { id: 'art-design',     name: 'Art & Design',   kind: 'department', members: ['art-artist'],                                               domain: 'art-design' },
-    { id: 'camera-team',    name: 'Camera',         kind: 'department', members: ['camera-dit'],                                                domain: 'camera' },
-    { id: 'audio-team',     name: 'Audio & Sound',  kind: 'department', members: ['audio-supervisor'],                                           domain: 'audio-sound' },
+    { id: 'vfx-core',       name: 'VFX',            kind: 'group', members: ['vfx-supervisor', 'vfx-coordinator'],                        managers: ['vfx-supervisor', 'vfx-coordinator'],           domain: 'vfx',         rootFolderId: 'ws-vfx' },
+    { id: 'editorial',      name: 'Editorial',      kind: 'group', members: ['editorial-coordinator', 'editorial-artist'],                 managers: ['editorial-coordinator', 'editorial-artist'],   domain: 'editorial',   rootFolderId: 'ws-editorial' },
+    { id: 'art-design',     name: 'Art & Design',   kind: 'group', members: ['art-artist'],                                               managers: ['art-artist'],                                domain: 'art-design',  rootFolderId: 'ws-art' },
+    { id: 'camera-team',    name: 'Camera',         kind: 'group', members: ['camera-dit'],                                                managers: ['camera-dit'],                                 domain: 'camera',      rootFolderId: 'ws-camera' },
+    { id: 'audio-team',     name: 'Audio & Sound',  kind: 'group', members: ['audio-supervisor'],                                           managers: ['audio-supervisor'],                           domain: 'audio-sound', rootFolderId: 'ws-audio' },
     // Vendor teams
-    { id: 'framestore-io',  name: 'Framestore',     kind: 'team',    members: ['vendor-framestore'] },
+    { id: 'framestore-io',  name: 'Framestore',     kind: 'group',   members: ['vendor-framestore'],                                       managers: ['vendor-framestore'] },
     // Internal cross-department teams
-    { id: 'studio-leadership', name: 'Studio Leadership', kind: 'team', members: ['studio-alex', 'creative-david'] },
-    { id: 'netflix-studio',    name: 'Netflix Studio',    kind: 'team', members: ['studio-alex'] },
-    { id: 'netflix-post',      name: 'Netflix Post',      kind: 'team', members: ['vfx-supervisor', 'editorial-coordinator', 'audio-supervisor'] },
-    { id: 'super-prod',        name: 'Super Prod',        kind: 'team', members: ['studio-alex', 'creative-david', 'vfx-coordinator', 'editorial-coordinator'] },
+    { id: 'studio-leadership', name: 'Studio Leadership', kind: 'group', members: ['studio-alex', 'creative-david'],                       managers: ['studio-alex'] },
+    { id: 'netflix-studio',    name: 'Netflix Studio',    kind: 'group', members: ['studio-alex'],                                          managers: ['studio-alex'] },
+    { id: 'netflix-post',      name: 'Netflix Post',      kind: 'group', members: ['vfx-supervisor', 'editorial-coordinator', 'audio-supervisor'], managers: ['vfx-supervisor', 'editorial-coordinator', 'audio-supervisor'] },
+    { id: 'super-prod',        name: 'Super Prod',        kind: 'group', members: ['studio-alex', 'creative-david', 'vfx-coordinator', 'editorial-coordinator'], managers: ['studio-alex', 'creative-david'] },
     // Release domain groups (managed by CAM)
-    { id: 'team-globalization',     name: 'Globalization',      kind: 'domain', members: [] },
-    { id: 'team-marketing',         name: 'Marketing',          kind: 'domain', members: ['marketing-coordinator'] },
-    { id: 'team-legal',             name: 'Legal',              kind: 'domain', members: ['legal-reviewer'] },
-    { id: 'team-music',             name: 'Music',              kind: 'domain', members: [] },
-    { id: 'team-consumer-insights', name: 'Consumer Insights',  kind: 'domain', members: [] },
-    { id: 'team-content-preview',   name: 'Content Preview',    kind: 'domain', members: [] },
-  ],
-
-  domainAccess: [
-    { domain: 'vfx', defaultTeamId: 'vfx-core', defaultProfile: 'manager' },
-    { domain: 'editorial', defaultTeamId: 'editorial', defaultProfile: 'manager' },
-    { domain: 'art-design', defaultTeamId: 'art-design', defaultProfile: 'manager' },
-    { domain: 'camera', defaultTeamId: 'camera-team', defaultProfile: 'manager' },
-    { domain: 'audio-sound', defaultTeamId: 'audio-team', defaultProfile: 'manager' },
+    { id: 'team-globalization',     name: 'Globalization',      kind: 'domain', members: [],                        managers: ['studio-alex'] },
+    { id: 'team-marketing',         name: 'Marketing',          kind: 'domain', members: ['marketing-coordinator'], managers: ['marketing-coordinator', 'studio-alex'] },
+    { id: 'team-legal',             name: 'Legal',              kind: 'domain', members: ['legal-reviewer'],        managers: ['legal-reviewer', 'studio-alex'] },
+    { id: 'team-music',             name: 'Music',              kind: 'domain', members: [],                        managers: ['studio-alex'] },
+    { id: 'team-consumer-insights', name: 'Consumer Insights',  kind: 'domain', members: [],                        managers: ['studio-alex'] },
+    { id: 'team-content-preview',   name: 'Content Preview',    kind: 'domain', members: [],                        managers: ['studio-alex'] },
   ],
 
   projectRoles: {
@@ -288,18 +268,15 @@ export const SCENARIO: Scenario = {
       ],
     },
     {
-      resource: { id: 'coll-vfx-vendor-drop', type: 'collection', domain: 'vfx' },
+      resource: { id: 'ws-vfx-vendor-framestore', type: 'folder', domain: 'vfx' },
       label: 'Framestore',
       by: 'vfx-coordinator',
       date: '2026-01-15',
       expiresAt: '2026-06-15',
-      allowUpload: true,
-      shareMode: 'snapshot',
-      version: 1,
-      note: 'EP301 plates, first turnover. Smoke reference still coming in a follow-up.',
-      context: 'Sarah shares the Framestore workspace folder. James can see the brief, download plates, and upload comp deliveries. Time-boxed to the delivery window.',
+      note: 'Shared vendor delivery folder for comp turnover and submissions.',
+      context: 'Sarah shares the Framestore workspace folder directly. James can work inside the delivery space during the delivery window because the vendor group has manager access on this folder.',
       grants: [
-        { toTeam: 'framestore-io', as: 'viewer' },
+        { toTeam: 'framestore-io', as: 'manager' },
       ],
     },
     // --- Cut shares (composite entities, not raw files) ---
@@ -380,7 +357,7 @@ export const SCENARIO: Scenario = {
         { to: 'creative-david', as: 'viewer' },
       ],
     },
-    // (Camera selects shared via collection, not per-asset — Alex and David added to Camera Selects collection instead)
+    // Camera selects now share from the workspace folder directly, so no per-asset seed entry lives here.
     // Smart collection share: Sarah snapshots "Finals" into a curated collection for editorial
     {
       resource: { id: 'coll-smart-finals-shared', type: 'collection', domain: 'vfx' },
@@ -416,31 +393,15 @@ export const SCENARIO: Scenario = {
         { toTeam: 'vfx-core', as: 'viewer' },
       ],
     },
-    // Vendor drop v2: re-turnover after locked cut 2
-    {
-      resource: { id: 'coll-vfx-vendor-drop', type: 'collection', domain: 'vfx' },
-      label: 'Framestore',
-      by: 'vfx-coordinator',
-      date: '2026-02-15',
-      context: 'Sarah re-shares after locked cut 2. Three new shots added from the updated edit, one dropped (client approved alternate take).',
-      allowUpload: true,
-      shareMode: 'snapshot',
-      version: 2,
-      versionNote: 're-turnover: +3 shots from LC2, dropped SQ03_SH0020',
-      grants: [
-        { toTeam: 'framestore-io', as: 'viewer' },
-      ],
-    },
     // (Stale cut shares removed — VFX timing now via cut-ep301-lc-1 share)
     // --- Camera department shares ---
     // Camera DIT shares selected takes with editorial + director
     {
-      resource: { id: 'coll-cam-selects', type: 'collection', domain: 'camera' },
+      resource: { id: 'ws-cam-selects', type: 'folder', domain: 'camera' },
       label: 'Camera Selects',
       by: 'camera-dit',
       date: '2026-02-05',
-      shareMode: 'live',
-      context: 'Tom shares camera selects as a live collection with editorial, plus David and Alex for review. New selects appear automatically as Tom adds them.',
+      context: 'Tom shares the Camera Selects folder directly with editorial, plus David and Alex for review. New selects appear automatically as he adds them.',
       grants: [
         { toTeam: 'editorial', as: 'viewer' },
         { to: 'creative-david', as: 'viewer' },
@@ -449,12 +410,11 @@ export const SCENARIO: Scenario = {
     },
     // Camera DIT shares lens distortion data with VFX for comp accuracy
     {
-      resource: { id: 'coll-cam-lens-data', type: 'collection', domain: 'camera' },
+      resource: { id: 'ws-cam-lensmaps', type: 'folder', domain: 'camera' },
       label: 'Lens Data',
       by: 'camera-dit',
       date: '2026-01-25',
-      shareMode: 'live',
-      context: 'Tom shares lens distortion maps and test charts as a live collection with VFX. Mike and Sarah need these for accurate lens-matching in Nuke — new lens data auto-syncs as Tom adds it.',
+      context: 'Tom shares the Lens Data folder directly with VFX. Mike and Sarah need new lens maps and charts to show up automatically as camera publishes them.',
       grants: [
         { to: 'vfx-supervisor', as: 'viewer' },
         { to: 'vfx-coordinator', as: 'viewer' },
@@ -547,23 +507,19 @@ export const SCENARIO: Scenario = {
 
   collections: [
     // Shared collections (referenced by grants)
-    { id: 'ws-vfx-coll-for-editorial', name: 'EP301 VFX Pulls - Edit Review',  createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-020-010'], boundDomainId: 'vfx' },
-    { id: 'coll-smart-finals-shared',  name: 'Finals',                createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020'], sourceSmartCollectionId: 'smart-finals', boundDomainId: 'vfx' },
-    { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', assetIds: ['ws-edit-cut-1', 'ws-edit-cut-2', 'ws-edit-cut-3'], boundDomainId: 'editorial' },
+    { id: 'ws-vfx-coll-for-editorial', name: 'EP301 VFX Pulls - Edit Review',  createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-020-010'] },
+    { id: 'coll-smart-finals-shared',  name: 'Finals (shared)',                createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020'], sourceSmartCollectionId: 'smart-finals' },
+    { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', assetIds: ['ws-edit-cut-1', 'ws-edit-cut-2', 'ws-edit-cut-3'] },
     // Camera collections
-    { id: 'ws-cam-coll-broll', name: 'B-Roll Highlights', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-broll-town', 'ws-cam-broll-forest', 'ws-cam-aerial-dawn', 'ws-cam-aerial-quarry'], boundDomainId: 'camera' },
+    { id: 'ws-cam-coll-broll', name: 'B-Roll Highlights', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-broll-town', 'ws-cam-broll-forest', 'ws-cam-aerial-dawn', 'ws-cam-aerial-quarry'] },
     // Audio collections
-    { id: 'ws-audio-coll-for-editorial', name: 'Temp Sound Kit', createdBy: 'robi@netflix.com', assetIds: ['ws-audio-sfx-1', 'ws-audio-sfx-2', 'ws-audio-music-1', 'ws-audio-music-2', 'ws-audio-sfx-ambience'], boundDomainId: 'audio-sound' },
+    { id: 'ws-audio-coll-for-editorial', name: 'Temp Sound Kit', createdBy: 'robi@netflix.com', assetIds: ['ws-audio-sfx-1', 'ws-audio-sfx-2', 'ws-audio-music-1', 'ws-audio-music-2', 'ws-audio-sfx-ambience'] },
     // Everyday organising collections
-    { id: 'coll-creature-designs',  name: 'Car Designs', createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-demogorgon', 'ws-art-concept-creature', 'ws-art-char-eleven'], boundDomainId: 'art-design' },
-    { id: 'coll-key-locations',     name: 'Key Circuits',    createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-ud-env', 'ws-art-concept-lab', 'ws-art-env-byers', 'ws-art-env-starcourt'], boundDomainId: 'art-design' },
-    { id: 'coll-hero-shots',        name: 'Hero Shots',       createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-020-010', 'ws-vfx-comp-eleven'], boundDomainId: 'vfx' },
-    // Workspace collections (folder-bound, live sync) — ongoing cross-department workflows
-    { id: 'coll-cam-selects',      name: 'Camera Selects',   createdBy: 'tnakamura@netflix.com', assetIds: [], boundFolderId: 'ws-cam-selects', boundDomainId: 'camera' },
-    { id: 'coll-cam-lens-data',    name: 'Lens Data',        createdBy: 'tnakamura@netflix.com', assetIds: [], boundFolderId: 'ws-cam-lensmaps', boundDomainId: 'camera' },
+    { id: 'coll-creature-designs',  name: 'Car Designs', createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-demogorgon', 'ws-art-concept-creature', 'ws-art-char-eleven'] },
+    { id: 'coll-key-locations',     name: 'Key Circuits',    createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-ud-env', 'ws-art-concept-lab', 'ws-art-env-byers', 'ws-art-env-starcourt'] },
+    { id: 'coll-hero-shots',        name: 'Hero Shots',       createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-020-010', 'ws-vfx-comp-eleven'] },
     // Curated collections (snapshot shares — discrete handoffs)
-    { id: 'coll-cam-dailies',      name: 'Dailies (concept reference)', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'], boundDomainId: 'camera' },
-    { id: 'coll-vfx-vendor-drop',  name: 'Framestore',  createdBy: 'schen@netflix.com', assetIds: [], boundFolderId: 'ws-vfx-vendor-framestore', boundDomainId: 'vfx' },
+    { id: 'coll-cam-dailies',      name: 'Dailies (concept reference)', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'] },
   ],
 
   sensitiveAssetIds: ['ws-edit-cut-1', 'ws-edit-cut-2'],
@@ -598,7 +554,6 @@ export const SCENARIO: Scenario = {
   ],
 }
 
-// --- Builder functions ---
 
 export function buildPersonas(): User[] {
   return SCENARIO.people.map((p) => ({
@@ -622,7 +577,9 @@ export function buildTeams(): Team[] {
     name: t.name,
     kind: t.kind,
     memberUserIds: t.members,
+    managerUserIds: t.managers ?? [],
     domainId: t.domain,
+    rootFolderId: t.rootFolderId,
   }))
 }
 
@@ -640,12 +597,17 @@ export function buildLabels(): Record<string, string> {
     project: SCENARIO.projectName,
   }
 
+  for (const root of Object.values(DOMAIN_FOLDER_MAP)) {
+    labels[root.id] = root.name
+  }
+
   // Build a flat lookup of all workspace nodes across domains
   const allDomainIds: ProductionDomainId[] = Object.keys(DOMAIN_FOLDER_MAP) as ProductionDomainId[]
-  const walk = (nodes: { id: string; name: string; children?: { id: string; name: string; children?: unknown[] }[] }[]) => {
+  type LabelNode = { id: string; name: string; children?: LabelNode[] }
+  const walk = (nodes: LabelNode[]) => {
     for (const node of nodes) {
       labels[node.id] = node.name
-      if (node.children) walk(node.children as typeof nodes)
+      if (node.children) walk(node.children)
     }
   }
   for (const domainId of allDomainIds) {
@@ -726,8 +688,9 @@ export function buildGrants(): Grant[] {
         grantedByUserId: share.by,
         grantedAt: share.date,
       }
-      // Smart defaults for viewer grants: persons get +Download +Comment, domains get +Download
-      if (g.as === 'viewer' && !share.allowDownload && !share.allowComment && !share.allowUpload) {
+      const supportsShareExtras = share.resource.type !== 'folder'
+      // Smart defaults for non-folder viewer grants: persons get +Download +Comment, domains get +Download
+      if (g.as === 'viewer' && share.resource.type !== 'folder' && !share.allowDownload && !share.allowComment) {
         if (principal.type === 'user' || principal.type === 'team') {
           grant.allowDownload = true
           grant.allowComment = true
@@ -743,25 +706,19 @@ export function buildGrants(): Grant[] {
       if (share.expiresAt) {
         grant.expiresAt = share.expiresAt
       }
-      if (share.shareMode) {
+      if (supportsShareExtras && share.shareMode) {
         grant.shareMode = share.shareMode
       }
-      if (share.snapshotAssetIds) {
+      if (supportsShareExtras && share.snapshotAssetIds) {
         grant.snapshotAssetIds = share.snapshotAssetIds
       }
-      if (share.allowDownload) {
+      if (supportsShareExtras && share.allowDownload) {
         grant.allowDownload = true
         if (!grant.permissions.includes('download')) grant.permissions = [...grant.permissions, 'download']
       }
-      if (share.allowComment) {
+      if (supportsShareExtras && share.allowComment) {
         grant.allowComment = true
         if (!grant.permissions.includes('comment')) grant.permissions = [...grant.permissions, 'comment']
-      }
-      if (share.allowUpload) {
-        grant.allowUpload = true
-        grant.allowDownload = grant.allowDownload ?? true
-        if (!grant.permissions.includes('upload')) grant.permissions = [...grant.permissions, 'upload']
-        if (!grant.permissions.includes('download')) grant.permissions = [...grant.permissions, 'download']
       }
       if (share.reviewLinkId) {
         grant.reviewLinkId = share.reviewLinkId
@@ -811,7 +768,7 @@ export function buildGrants(): Grant[] {
     })
   }
 
-  // Project-level department-team grants (unused in the simplified prototype, but kept for compatibility)
+  // Project-level group grants
   for (const [teamId, profileId] of Object.entries(SCENARIO.projectRoles.teams)) {
     grants.push({
       id: grantId(),
@@ -824,17 +781,16 @@ export function buildGrants(): Grant[] {
     })
   }
 
-  // Department root folder grants — each department has a single team default.
-  for (const policy of SCENARIO.domainAccess) {
-    const folderId = DOMAIN_FOLDER_MAP[policy.domain]?.id
-    if (!folderId) continue
+  // Workspace root grants — root folders are just folders shared to groups.
+  for (const team of SCENARIO.teams) {
+    if (!team.rootFolderId) continue
 
     grants.push({
       id: grantId(),
-      resource: { id: folderId, type: 'folder' as const, domainId: policy.domain },
-      principal: { type: 'team', teamId: policy.defaultTeamId },
-      templateId: policy.defaultProfile,
-      permissions: permissionsForTemplate(policy.defaultProfile),
+      resource: { id: team.rootFolderId, type: 'folder' as const, domainId: team.domain },
+      principal: { type: 'team', teamId: team.id },
+      templateId: 'manager',
+      permissions: permissionsForTemplate('manager'),
       grantedByUserId: 'studio-alex',
       grantedAt: '2026-01-01',
     })
@@ -883,8 +839,8 @@ export type ReleaseDomain = {
   name: string
   group: 'Studio' | 'Wide' | 'Other'
   assetTypes: string[]
-  /** The production department this release domain maps to (for filtering own-domain releases) */
-  originDepartmentId?: string
+  /** The production domain this release domain maps to (for filtering own-domain releases) */
+  originDomainId?: string
   granteeTeamIds: string[]
   granteeUserIds?: string[]
   defaultProfile: AccessProfileId
@@ -922,7 +878,5 @@ export function buildSeedCollections(): UserCollection[] {
     createdAt: new Date('2026-02-14'),
     createdBy: c.createdBy,
     sourceSmartCollectionId: c.sourceSmartCollectionId,
-    boundFolderId: c.boundFolderId,
-    boundDomainId: c.boundDomainId,
   }))
 }

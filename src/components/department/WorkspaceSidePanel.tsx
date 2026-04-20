@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { Card } from '@/components/ui/card'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
-import { AccessSummary } from '@/components/ui/access-summary'
+import { AccessModal } from '@/components/ui/access-modal'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import type { DomainId } from '@/components/department/types'
 import type { ResourceRef } from '@/lib/grants'
-import { formatDate } from '@/lib/utils'
-import { useAccess, useFileTree } from '@/hooks'
+import { formatDate, formatFileSize } from '@/lib/utils'
+import { useAccess, useFileTree, usePersona } from '@/hooks'
+import { PERSONAS } from '@/lib/personas'
 import { DOMAIN_FOLDER_MAP, isReferenceFolder } from '@/lib/workspace-data'
 import { domainConfigs } from '@/lib/domain-configs'
 
@@ -26,14 +27,6 @@ interface WorkspaceSidePanelProps {
   onDelete?: (nodeId: string) => void
   /** Called when user renames this folder */
   onRename?: (nodeId: string, newName: string) => void
-}
-
-function formatFileSize(bytes?: number): string {
-  if (!bytes) return '\u2014'
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }
 
 
@@ -73,6 +66,7 @@ export function WorkspaceSidePanel({
   onRename,
 }: WorkspaceSidePanelProps) {
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const [accessModalOpen, setAccessModalOpen] = useState(false)
   const [draftName, setDraftName] = useState('')
   const isFolder = node?.type === 'folder'
   const isCollectionProjection = isReferenceFolder(node)
@@ -80,7 +74,8 @@ export function WorkspaceSidePanel({
     : folderVariant === 'restricted' ? FolderLock
     : Folder
   const fileCount = isFolder && node ? countChildFiles(node) : 0
-  const { getInheritedGrants } = useAccess()
+  const { getInheritedGrants, getResourceGrants, canShare } = useAccess()
+  const { isAdmin } = usePersona()
   const { tree: fileTree } = useFileTree()
   const nodePath = useMemo(() => {
     return node ? findNodePath(fileTree as WorkspaceFileNode[], node.id) : null
@@ -107,6 +102,14 @@ export function WorkspaceSidePanel({
     grant,
     fromResourceName,
   })) : []
+
+  const sharedByName = useMemo(() => {
+    if (!node || folderVariant !== 'shared') return null
+    const grants = getResourceGrants(node.id)
+    if (grants.length === 0) return null
+    const grantor = PERSONAS.find(p => p.id === grants[0].grantedByUserId)
+    return grantor?.name ?? null
+  }, [node, folderVariant, getResourceGrants])
 
   const fullPath = useMemo(() => {
     if (!node) return null
@@ -185,6 +188,12 @@ export function WorkspaceSidePanel({
                 <span className="text-foreground">{formatDate(node.modifiedAt)}</span>
               </div>
               )}
+              {sharedByName && (
+              <div className="flex justify-between text-body-0-regular">
+                <span className="text-foreground-dim">Shared by</span>
+                <span className="text-foreground">{sharedByName}</span>
+              </div>
+              )}
               {fullPath && (
               <div className="flex justify-between text-body-0-regular">
                 <span className="text-foreground-dim">Path</span>
@@ -196,15 +205,19 @@ export function WorkspaceSidePanel({
         </section>
 
 
-        <AccessSummary
-          resourceId={node?.id ?? ''}
-          resourceRef={resourceRef}
-          inheritedGrants={inheritedGrants}
-          resourceName={node.name}
-        />
       </div>
       )}
       {/* Edit modal */}
+      {node && resourceRef && (
+        <AccessModal
+          open={accessModalOpen}
+          onClose={() => setAccessModalOpen(false)}
+          resourceId={node.id}
+          resourceRef={resourceRef}
+          inheritedGrants={inheritedGrants}
+          title={node.name}
+        />
+      )}
       {node && onRename && (
         <Modal open={editModalOpen} onOpenChange={setEditModalOpen} size="sm">
           <Modal.Header title={isCollectionProjection ? 'Edit Collection' : 'Edit Folder'} />

@@ -54,7 +54,7 @@ export function buildShareSearchResults({
   const teamResults: ShareSearchResult[] = TEAMS
     .filter((team) =>
       !existingTeamIds?.has(team.id) &&
-      !team.domainId &&
+      team.kind !== 'domain' &&
       !domainBackingTeamIds.has(team.id) &&
       team.name.toLowerCase().includes(trimmed),
     )

@@ -33,9 +33,7 @@ export type OntologyMeta =
   | { type: 'scene'; data: SceneMeta }
   | { type: 'location'; data: LocationMeta }
 
-// ---------------------------------------------------------------------------
 // Characters
-// ---------------------------------------------------------------------------
 
 const CHARACTERS: Record<string, CharacterMeta> = {
   'Luca Ferreira': {
@@ -78,9 +76,7 @@ const CHARACTERS: Record<string, CharacterMeta> = {
   },
 }
 
-// ---------------------------------------------------------------------------
 // Scenes
-// ---------------------------------------------------------------------------
 
 const SCENES: Record<string, SceneMeta> = {
   'EXT. GRID WALK - PRE-RACE': {
@@ -151,9 +147,7 @@ const SCENES: Record<string, SceneMeta> = {
   },
 }
 
-// ---------------------------------------------------------------------------
 // Locations
-// ---------------------------------------------------------------------------
 
 const LOCATIONS: Record<string, LocationMeta> = {
   'Pit Lane': {
@@ -190,9 +184,7 @@ const LOCATIONS: Record<string, LocationMeta> = {
   },
 }
 
-// ---------------------------------------------------------------------------
 // Lookup
-// ---------------------------------------------------------------------------
 
 export function getOntologyMeta(name: string, icon: string): OntologyMeta | null {
   if (icon === 'character' && CHARACTERS[name]) {

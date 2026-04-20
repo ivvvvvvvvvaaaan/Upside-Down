@@ -86,7 +86,7 @@ describe('evaluateSelectionActions', () => {
     })
 
     expect(result.actions.addToCollection.enabled).toBe(false)
-    expect(result.actions.addToCollection.reason).toBe('You can only add items you can access to a collection.')
+    expect(result.actions.addToCollection.reason).toBe('You don\'t have access to Restricted Plate.')
   })
 
   it('disables batch share when selected items do not have a common role', () => {

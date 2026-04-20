@@ -2,7 +2,7 @@
  * Unified Collection Type System
  *
  * Two source types, one union:
- * - UserCollection (flavor: 'collection') — manual or folder-bound asset collections
+ * - UserCollection (flavor: 'collection') — curated asset collections
  * - SmartCollection (flavor: 'smart') — filter/AI-based dynamic collections
  *
  * No conversion layer. The storage types ARE the display types.
@@ -11,14 +11,12 @@
 import type { UserCollection } from '@/hooks/useUserCollections'
 import type { SmartCollection } from '@/lib/data-client'
 
-// SmartCollectionEntry is just SmartCollection — kept as alias for backward compat
+
 export type SmartCollectionEntry = SmartCollection
 
 export type Collection = UserCollection | SmartCollectionEntry
 
-// ---------------------------------------------------------------------------
 // Type guards
-// ---------------------------------------------------------------------------
 
 export function isCollection(c: Collection): c is UserCollection {
   return c.flavor === 'collection'
@@ -28,9 +26,7 @@ export function isSmart(c: Collection): c is SmartCollectionEntry {
   return c.flavor === 'smart'
 }
 
-// ---------------------------------------------------------------------------
 // Capabilities — what operations a collection supports, derived from its data
-// ---------------------------------------------------------------------------
 
 export interface CollectionCapabilities {
   canRename: boolean
@@ -38,7 +34,6 @@ export interface CollectionCapabilities {
   canDelete: boolean
   canAddAssets: boolean
   canShare: boolean
-  canMount: boolean
   showAccessTab: boolean
   /** Display label for the entity type in panels — keep collection as the primary concept. */
   typeLabel: string
@@ -66,7 +61,6 @@ export function getCollectionCapabilities(c: Collection): CollectionCapabilities
         canDelete: false,
         canAddAssets: false,
         canShare: !isDerived,
-        canMount: true,
         showAccessTab: !isDerived,
         typeLabel: ontology.label,
         icon: ontology.icon,
@@ -79,7 +73,6 @@ export function getCollectionCapabilities(c: Collection): CollectionCapabilities
       canDelete: isUserCreated,
       canAddAssets: false,
       canShare: isUserCreated,
-      canMount: true,
       showAccessTab: isUserCreated,
       typeLabel: 'Collection',
       icon: 'smart',
@@ -93,9 +86,8 @@ export function getCollectionCapabilities(c: Collection): CollectionCapabilities
     canDelete: true,
     canAddAssets: true,
     canShare: true,
-    canMount: true,
     showAccessTab: true,
     typeLabel: 'Collection',
-    icon: c.boundFolderId ? 'folder' : 'collection',
+    icon: 'collection',
   }
 }

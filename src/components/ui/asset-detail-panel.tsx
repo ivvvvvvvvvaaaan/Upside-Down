@@ -11,7 +11,6 @@ import { Tag } from './tag'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import { CreativeReviewCard } from './creative-review-card'
 import type { Asset, DomainId } from '@/lib/data'
-import { getAssetIdVariants } from '@/lib/data'
 import type { ResourceRef, Grant, RoleGroup, PrincipalRef } from '@/lib/grants'
 import { isGrantActive, RELEASE_DOMAINS } from '@/lib/grants'
 import { GrantBadge } from './grant-badge'
@@ -45,11 +44,6 @@ function resolvePrincipalName(principal: Grant['principal']): string {
   return TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
 }
 
-function resolvePrincipalKey(principal: Grant['principal']): string {
-  if (principal.type === 'user') return `user:${principal.userId}`
-  if (principal.type === 'team') return `team:${principal.teamId}`
-  return `domain:${principal.domainId}`
-}
 
 function CapabilityLabels({ grant, roleGroups }: { grant: Grant; roleGroups: RoleGroup[] }) {
   return (
@@ -72,8 +66,6 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
   const { resolveCollectionAssetIds } = useFileTree()
   const [modalOpen, setModalOpen] = useState(false)
 
-  const assetVariants = useMemo(() => new Set(getAssetIdVariants(assetId)), [assetId])
-
   // Domain/inherited access (structural — not revocable from here)
   const domainEntries = useMemo(() => {
     return inheritedGrants.map(({ grant, fromResourceName }) => {
@@ -92,7 +84,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
     const results: { collection: { id: string; name: string }; grants: Grant[] }[] = []
     for (const collection of collections) {
       const collectionAssetIds = new Set(resolveCollectionAssetIds(collection))
-      const hasAsset = Array.from(assetVariants).some(v => collectionAssetIds.has(v))
+      const hasAsset = collectionAssetIds.has(assetId)
       if (!hasAsset) continue
       const grants = getResourceGrants(collection.id)
         .filter(g => isGrantActive(g))
@@ -101,7 +93,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
       results.push({ collection: { id: collection.id, name: collection.name }, grants })
     }
     return results
-  }, [collections, assetVariants, getResourceGrants])
+  }, [collections, assetId, getResourceGrants, resolveCollectionAssetIds])
 
   const hasAnything = domainEntries.length > 0 || directGrants.length > 0 || sharedCollections.length > 0
   const canManageAccess = isAdmin || (resourceRef ? canShare(resourceRef) : false)
@@ -112,7 +104,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
       {domainEntries.length > 0 && (
         <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-body-0-regular text-foreground-dim">Workspace</span>
+            <span className="text-body-0-regular text-foreground-dim">Group</span>
           </div>
           {domainEntries.map(({ grant, name }) => (
             <div key={grant.id} className="flex items-center justify-between gap-2">
@@ -488,7 +480,7 @@ export function AssetDetailPanelContent({
       const domainRootId = DOMAIN_FOLDER_MAP[asset.department]?.id
       return {
         label: fullLabel,
-        href: `/nextgen/workspace/${asset.department}`,
+        href: domainRootId ? `/nextgen/workspace/${domainRootId}` : null,
         folderId: domainRootId,
       }
     }
@@ -505,14 +497,17 @@ export function AssetDetailPanelContent({
       currentNodes = match.children ?? []
     }
 
+    const domainRootId = DOMAIN_FOLDER_MAP[asset.department]?.id
+    if (!domainRootId) {
+      return { label: fullLabel, href: null, folderId: folderIds[folderIds.length - 1] }
+    }
+
     return {
       label: fullLabel,
-      href: `/nextgen/workspace/${asset.department}/${folderIds.join('/')}`,
+      href: `/nextgen/workspace/${domainRootId}/${folderIds.join('/')}`,
       folderId: folderIds[folderIds.length - 1],
     }
   }, [asset, getDomainFiles])
-
-  const assetIdVariants = useMemo(() => asset ? new Set(getAssetIdVariants(asset.id)) : new Set<string>(), [asset])
 
   // Determine the active collection's dimension (for suppressing redundant context groups)
   const activeCollectionDimension = useMemo(() => {
@@ -562,7 +557,7 @@ export function AssetDetailPanelContent({
   const duration = getDuration(asset)
 
   const assetCollections = visibleCollections.filter(c =>
-    c.assetIds.some(aid => assetIdVariants.has(aid))
+    asset ? c.assetIds.includes(asset.id) : false
   )
 
   const orderedCollectionItems = [...assetCollections]
@@ -617,7 +612,7 @@ export function AssetDetailPanelContent({
       href: workspaceFolderInfo.href,
       kind: 'Collection',
       icon: 'collection' as const,
-      locked: workspaceFolderInfo.folderId ? !canAccess(workspaceFolderInfo.folderId) : false,
+      locked: false,
     }] : []),
     ...orderedCollectionItems
       .filter(item => !item.isActive)
