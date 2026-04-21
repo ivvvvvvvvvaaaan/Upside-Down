@@ -203,7 +203,7 @@ export function CollectionCard({
     : Folder
 
   const renderThumbnails = () => {
-    if (type === 'folder') {
+    if (type === 'folder' && !mainImage) {
       return (
         <div
           className={cn(
@@ -318,11 +318,13 @@ export function CollectionCard({
               {thumbnailImages[1] ? (
                 <>
                   <Image src={thumbnailImages[1]} alt="" fill sizes="25vw" className="object-cover" />
-                  <div className="absolute bg-surface-overlay inset-0" />
                   {remainingAssets > 0 && (
-                    <div className="absolute inset-0 flex items-center justify-center text-foreground text-body-2-bold">
-                      +{remainingAssets}
-                    </div>
+                    <>
+                      <div className="absolute bg-surface-overlay inset-0" />
+                      <div className="absolute inset-0 flex items-center justify-center text-foreground text-body-2-bold">
+                        +{remainingAssets}
+                      </div>
+                    </>
                   )}
                 </>
               ) : (

@@ -3,6 +3,8 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
 import { X, Plus, EyeOff } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { ActivityFeed } from './activity-feed'
+import type { ActivityEvent } from './activity-feed'
 import { Button } from './button'
 import { Dropdown, DropdownMenuItem } from './dropdown'
 import { ResponsivePanel } from './responsive-panel'
@@ -131,7 +133,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
             <span className="text-body-0-regular text-foreground">
               {collection.id === currentCollectionId
                 ? <span className="text-foreground-dim">This collection</span>
-                : <a href={`/nextgen/collections/${collection.id}`} className="text-foreground hover:text-foreground-subtle transition-colors">{collection.name}</a>
+                : <span className="text-foreground-dim">{collection.name}</span>
               }
             </span>
             {collection.id !== currentCollectionId && getCollection(collection.id) && (

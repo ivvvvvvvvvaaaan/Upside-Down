@@ -338,54 +338,59 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                   </div>
                 </div>
 
-                {/* Row 2: Item count + actions */}
+                {/* Row 2: Item count / Selection actions */}
                 <div className="flex items-center justify-between">
                   <span className="text-body-0-regular text-foreground-subtle">
-                    {!loading ? `${assets.length} asset${assets.length !== 1 ? 's' : ''}` : 'Loading...'}
+                    {selectedIds.size > 0
+                      ? `${selectedIds.size} selected`
+                      : !loading ? `${assets.length} asset${assets.length !== 1 ? 's' : ''}` : 'Loading...'}
                   </span>
-                  <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-                    {(isOwner || canDownloadCollection) && (
-                      <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly align="end" width="sm">
-                        <div className="py-1">
-                          {canDownloadCollection && (
-                            <DropdownMenuItem icon={<Download className="w-4 h-4" />} label="Download" onClick={handleDownloadCollection} />
-                          )}
-                          {isOwner && (
-                            <>
-                              <DropdownMenuDivider />
-                              <DropdownMenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete Collection" onClick={handleDeleteCollection} destructive />
-                            </>
-                          )}
-                        </div>
-                      </Dropdown>
-                    )}
-                    {showShareButton && (
-                      <Button
-                        variant="primary"
-                        compact
-                        icon={<ShareIcon />}
-                        onClick={() => setShareModalOpen(true)}
-                      >
-                        Share
-                      </Button>
-                    )}
-                  </div>
+                  {selectedIds.size > 0 ? (
+                    <ContextualActionBar
+                      selectedEntities={selectedEntities}
+                      onClearSelection={clearSelection}
+                      downloadAction={selectedAssets.length > 0 ? {
+                        enabled: canDownloadSelectedAssets,
+                        onClick: handleDownloadSelectedAssets,
+                        reason: canDownloadSelectedAssets ? undefined : "You don't have permission to download all selected assets.",
+                      } : undefined}
+                      removeAction={selectedAssets.length > 0 && isCurated ? {
+                        enabled: canRemoveFromCollection,
+                        onClick: handleRemoveSelectedAssets,
+                        reason: canRemoveFromCollection ? undefined : "Only the collection owner can remove assets.",
+                      } : undefined}
+                      inline
+                    />
+                  ) : (
+                    <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+                      {(isOwner || canDownloadCollection) && (
+                        <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
+                          <div className="py-1">
+                            {canDownloadCollection && (
+                              <DropdownMenuItem icon={<Download className="w-4 h-4" />} label="Download" onClick={handleDownloadCollection} />
+                            )}
+                            {isOwner && (
+                              <>
+                                <DropdownMenuDivider />
+                                <DropdownMenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete Collection" onClick={handleDeleteCollection} destructive />
+                              </>
+                            )}
+                          </div>
+                        </Dropdown>
+                      )}
+                      {showShareButton && (
+                        <Button
+                          variant="primary"
+                          compact
+                          icon={<ShareIcon />}
+                          onClick={() => setShareModalOpen(true)}
+                        >
+                          Share
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
-
-                <ContextualActionBar
-                  selectedEntities={selectedEntities}
-                  onClearSelection={clearSelection}
-                  downloadAction={selectedAssets.length > 0 ? {
-                    enabled: canDownloadSelectedAssets,
-                    onClick: handleDownloadSelectedAssets,
-                    reason: canDownloadSelectedAssets ? undefined : "You don't have permission to download all selected assets.",
-                  } : undefined}
-                  removeAction={selectedAssets.length > 0 && isCurated ? {
-                    enabled: canRemoveFromCollection,
-                    onClick: handleRemoveSelectedAssets,
-                    reason: canRemoveFromCollection ? undefined : "Only the collection owner can remove assets.",
-                  } : undefined}
-                />
 
                 {loading ? (
                   <CardGrid columns={getGridColumns(cardSize)} gap="4">

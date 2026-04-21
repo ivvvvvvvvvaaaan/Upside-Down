@@ -423,29 +423,34 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                     </div>
                   </div>
 
-                  {/* Row 2: Item count + actions */}
+                  {/* Row 2: Item count / Selection actions */}
                   <div className="flex items-center justify-between">
                     <span className="text-body-0-regular text-foreground-subtle">
-                      {!loading ? `${itemCount} ${countLabel}${itemCount !== 1 ? 's' : ''}` : 'Loading...'}
+                      {(selectedAssetIds.size > 0 || selectedCollectionIds.size > 0)
+                        ? `${selectedAssetIds.size + selectedCollectionIds.size} selected`
+                        : !loading ? `${itemCount} ${countLabel}${itemCount !== 1 ? 's' : ''}` : 'Loading...'}
                     </span>
-                    <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-                      {showShareButton && (
-                        <Button
-                          variant="primary"
-                          compact
-                          icon={<ShareIcon />}
-                          onClick={() => setShareModalOpen(true)}
-                        >
-                          Share
-                        </Button>
-                      )}
-                    </div>
+                    {(selectedAssetIds.size > 0 || selectedCollectionIds.size > 0) ? (
+                      <ContextualActionBar
+                        selectedEntities={activeSelectionEntities}
+                        onClearSelection={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
+                        inline
+                      />
+                    ) : (
+                      <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+                        {showShareButton && (
+                          <Button
+                            variant="primary"
+                            compact
+                            icon={<ShareIcon />}
+                            onClick={() => setShareModalOpen(true)}
+                          >
+                            Share
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
-
-                  <ContextualActionBar
-                    selectedEntities={activeSelectionEntities}
-                    onClearSelection={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
-                  />
 
                   {/* Content */}
                   <div className="min-h-[400px]">

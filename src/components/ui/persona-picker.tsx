@@ -45,13 +45,13 @@ export function PersonaPicker({
       {avatarOnly ? (
         <button
           onClick={() => setOpen(!open)}
-          className="w-10 h-10 rounded-full overflow-hidden hover:ring-2 hover:ring-border-subtle transition-all"
+          className="w-10 h-10 rounded-full flex items-center justify-center hover:opacity-80 transition-opacity"
           aria-label="Switch persona"
         >
           {activePersona ? (
             <Avatar name={activePersona.name} size="md" />
           ) : (
-            <div className="w-full h-full bg-indigo-500 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center">
               <Shield className="w-4 h-4 text-white" />
             </div>
           )}

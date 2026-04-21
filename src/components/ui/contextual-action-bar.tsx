@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Download, FolderInput, MoreVertical, Plus, X } from 'lucide-react'
+import { ArrowRight, Download, FolderInput, MoreVertical, Plus, X } from 'lucide-react'
 import { ShareIcon } from './share-icon'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
@@ -40,6 +40,10 @@ interface ContextualActionBarProps {
   }
   /** Called when user places assets into a folder via the folder picker */
   onPlaceInFolder?: (folderId: string, folderName: string, assetIds: string[]) => void
+  /** Full menu items -- first 3 shown inline as buttons, rest in overflow three-dot menu. When provided, replaces the default inline buttons. */
+  menuItems?: { label: string; icon?: React.ReactNode; onClick: () => void; destructive?: boolean; dividerAfter?: boolean }[]
+  /** Render inline (as row content) instead of floating bar */
+  inline?: boolean
   className?: string
 }
 
@@ -49,6 +53,8 @@ export function ContextualActionBar({
   downloadAction,
   removeAction,
   onPlaceInFolder,
+  menuItems,
+  inline = false,
   className,
 }: ContextualActionBarProps) {
   const { canShare, getGrantableProfiles, getInheritedGrants } = useAccess()
@@ -101,76 +107,104 @@ export function ContextualActionBar({
 
   return (
     <>
-      {/* Floating bottom bar when selection is active */}
       {hasSelection && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-          <div className="flex items-center gap-2 pl-4 pr-2 py-2 rounded-lg bg-surface-high border border-border-dim shadow-lg">
-            <span className="text-body-0-bold text-foreground whitespace-nowrap">{selectionLabel}</span>
-            <Button
-              variant="icon"
-              compact
-              onClick={onClearSelection}
-              aria-label="Clear selection"
-            >
-              <X className="w-4 h-4" />
-            </Button>
-
-            <div className="w-px h-5 bg-border-dim mx-1" />
-
-            {downloadAction && (
-              <DisabledTooltip reason={!downloadAction.enabled ? downloadAction.reason : undefined}>
+        <div className={inline
+          ? cn('flex items-center gap-2', className)
+          : 'fixed bottom-6 left-1/2 -translate-x-1/2 z-50'
+        }>
+          <div className={inline
+            ? 'flex items-center gap-2'
+            : 'flex items-center gap-2 pl-4 pr-2 py-2 rounded-lg bg-surface-high border border-border-dim shadow-lg'
+          }>
+            {!inline && (
+              <>
+                <span className="text-body-0-bold text-foreground whitespace-nowrap">{selectionLabel}</span>
                 <Button
-                  variant="secondary"
+                  variant="icon"
                   compact
-                  icon={<Download className="w-4 h-4" />}
-                  onClick={downloadAction.onClick}
-                  disabled={!downloadAction.enabled}
+                  onClick={onClearSelection}
+                  aria-label="Clear selection"
                 >
-                  {downloadAction.label ?? 'Download'}
+                  <X className="w-4 h-4" />
                 </Button>
-              </DisabledTooltip>
+                <div className="w-px h-5 bg-border-dim mx-1" />
+              </>
             )}
-            {evaluation.actions.share.visible && (
-              <DisabledTooltip reason={!evaluation.actions.share.enabled ? evaluation.actions.share.reason : undefined}>
-                <Button
-                  variant="secondary"
-                  compact
-                  icon={<ShareIcon />}
-                  onClick={handleShare}
-                  disabled={!evaluation.actions.share.enabled}
-                >
-                  {evaluation.actions.share.label}
-                </Button>
-              </DisabledTooltip>
-            )}
-            {onPlaceInFolder && (
-              <Button
-                variant="secondary"
-                compact
-                icon={<FolderInput className="w-4 h-4" />}
-                onClick={() => setShowFolderPicker(true)}
-              >
-                Place in folder
-              </Button>
-            )}
-            {evaluation.actions.addToCollection.visible && evaluation.actions.addToCollection.enabled && (
-              <Button
-                variant="secondary"
-                compact
-                icon={<Plus className="w-4 h-4" />}
-                onClick={() => setShowCollectionModal(true)}
-              >
-                {evaluation.actions.addToCollection.label}
-              </Button>
-            )}
-            {removeAction && removeAction.enabled && (
-              <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
-                <DropdownMenuItem
-                  label="Remove from collection"
-                  onClick={removeAction.onClick}
-                  destructive
-                />
-              </Dropdown>
+
+            {menuItems ? (
+              <>
+                {menuItems.slice(0, 3).map((item, i) => (
+                  <Button key={i} variant="secondary" compact icon={item.icon} onClick={item.onClick}>
+                    {item.label}
+                  </Button>
+                ))}
+                {menuItems.length > 3 && (
+                  <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
+                    <div className="py-1">
+                      {menuItems.slice(3).map((item, i) => (
+                        <DropdownMenuItem key={i} icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} />
+                      ))}
+                    </div>
+                  </Dropdown>
+                )}
+              </>
+            ) : (
+              <>
+                {evaluation.actions.share.visible && (
+                  <DisabledTooltip reason={!evaluation.actions.share.enabled ? evaluation.actions.share.reason : undefined}>
+                    <Button
+                      variant="secondary"
+                      compact
+                      icon={<ShareIcon />}
+                      onClick={handleShare}
+                      disabled={!evaluation.actions.share.enabled}
+                    >
+                      {evaluation.actions.share.label}
+                    </Button>
+                  </DisabledTooltip>
+                )}
+                {onPlaceInFolder && (
+                  <Button
+                    variant="secondary"
+                    compact
+                    icon={<FolderInput className="w-4 h-4" />}
+                    onClick={() => setShowFolderPicker(true)}
+                  >
+                    Copy to
+                  </Button>
+                )}
+                {downloadAction && (
+                  <DisabledTooltip reason={!downloadAction.enabled ? downloadAction.reason : undefined}>
+                    <Button
+                      variant="secondary"
+                      compact
+                      icon={<Download className="w-4 h-4" />}
+                      onClick={downloadAction.onClick}
+                      disabled={!downloadAction.enabled}
+                    >
+                      {downloadAction.label ?? 'Download'}
+                    </Button>
+                  </DisabledTooltip>
+                )}
+                <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
+                  <div className="py-1">
+                    {evaluation.actions.addToCollection.visible && evaluation.actions.addToCollection.enabled && (
+                      <DropdownMenuItem
+                        icon={<Plus className="w-4 h-4" />}
+                        label={evaluation.actions.addToCollection.label}
+                        onClick={() => setShowCollectionModal(true)}
+                      />
+                    )}
+                    {removeAction && removeAction.enabled && (
+                      <DropdownMenuItem
+                        label="Remove from collection"
+                        onClick={removeAction.onClick}
+                        destructive
+                      />
+                    )}
+                  </div>
+                </Dropdown>
+              </>
             )}
           </div>
         </div>

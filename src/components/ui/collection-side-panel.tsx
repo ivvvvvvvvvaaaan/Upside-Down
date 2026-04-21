@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { X, LayoutGrid, Pencil, MapPin, Film, Zap, Folder, Users } from 'lucide-react'
+import { ActivityFeed } from './activity-feed'
+import type { ActivityEvent } from './activity-feed'
 import { Button } from './button'
 import { Avatar } from './avatar'
 import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
@@ -207,6 +209,39 @@ export function CollectionSidePanel({
     ? (PERSONAS.find(p => p.email === collection.createdBy)?.name ?? collection.createdBy)
     : null
 
+  const collectionActivity = useMemo((): ActivityEvent[] => {
+    const events: ActivityEvent[] = []
+    const collGrants = getResourceGrants(accessResourceId)
+    const seen = new Set<string>()
+    for (const grant of collGrants) {
+      const key = `${grant.grantedByUserId}:${grant.grantedAt}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      const sharer = PERSONAS.find(p => p.id === grant.grantedByUserId)
+      const recipientName = grant.principal.type === 'user'
+        ? PERSONAS.find(p => p.id === grant.principal.userId)?.name ?? 'someone'
+        : grant.principal.type === 'team'
+        ? TEAMS.find(t => t.id === grant.principal.teamId)?.name ?? 'a team'
+        : 'a group'
+      events.push({
+        id: `share-${grant.id}`,
+        icon: 'share',
+        text: `${sharer?.name ?? 'Someone'} shared with ${recipientName}`,
+        date: grant.grantedAt,
+        detail: grant.note ?? undefined,
+      })
+    }
+    if (collection.createdAt) {
+      events.push({
+        id: 'created',
+        icon: 'collection-add',
+        text: `${createdByName ?? 'Someone'} created this collection`,
+        date: collection.createdAt.toISOString(),
+      })
+    }
+    return events.sort((a, b) => b.date.localeCompare(a.date))
+  }, [accessResourceId, getResourceGrants, collection.createdAt, createdByName])
+
   const grants = useMemo(() => {
     if (!smart || linkedSnapshotCollections.length <= 1) {
       return getResourceGrants(accessResourceId)
@@ -408,6 +443,8 @@ export function CollectionSidePanel({
             )}
           </section>
         )}
+
+        <ActivityFeed events={collectionActivity} />
       </div>
 
       <AccessModal

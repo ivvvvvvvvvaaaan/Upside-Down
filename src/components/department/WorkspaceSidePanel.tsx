@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { X, Folder, FolderSymlink, FolderLock, File, FilePlus, MessageSquare } from 'lucide-react'
+import { X, Folder, FolderSymlink, FolderLock, File } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ActivityFeed } from '@/components/ui/activity-feed'
+import type { ActivityEvent } from '@/components/ui/activity-feed'
 import { Modal } from '@/components/ui/modal'
 import { Card } from '@/components/ui/card'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
@@ -111,25 +113,17 @@ export function WorkspaceSidePanel({
     return grantor?.name ?? null
   }, [node, folderVariant, getResourceGrants])
 
-  type FeedEvent = { id: string; icon: 'share' | 'file' | 'note'; text: string; date: string; detail?: string }
-
-  const activityFeed = useMemo((): FeedEvent[] => {
+  const activityFeed = useMemo((): ActivityEvent[] => {
     if (!node || !isFolder) return []
-    const events: FeedEvent[] = []
+    const events: ActivityEvent[] = []
 
+    // Share events (deduplicated by sharer+time)
     const grants = getResourceGrants(node.id)
-    const inherited = getInheritedGrants(node.id)
-    const allGrants = [...grants, ...inherited.map(({ grant }) => grant)]
-
-    const sharesByKey = new Map<string, typeof allGrants[0]>()
-    for (const grant of allGrants) {
+    const seen = new Set<string>()
+    for (const grant of grants) {
       const key = `${grant.grantedByUserId}:${grant.grantedAt}`
-      const existing = sharesByKey.get(key)
-      if (!existing || (grant.note && !existing.note)) {
-        sharesByKey.set(key, grant)
-      }
-    }
-    for (const grant of Array.from(sharesByKey.values())) {
+      if (seen.has(key)) continue
+      seen.add(key)
       const sharer = PERSONAS.find((p) => p.id === grant.grantedByUserId)
       events.push({
         id: `share-${grant.id}`,
@@ -140,6 +134,7 @@ export function WorkspaceSidePanel({
       })
     }
 
+    // Recent file additions
     const collectFiles = (children: WorkspaceFileNode[]): WorkspaceFileNode[] => {
       const files: WorkspaceFileNode[] = []
       for (const child of children) {
@@ -149,21 +144,17 @@ export function WorkspaceSidePanel({
       return files
     }
 
-    const recentFiles = collectFiles(node.children ?? [])
-      .sort((a, b) => (b.modifiedAt ?? '').localeCompare(a.modifiedAt ?? ''))
-      .slice(0, 5)
-
-    for (const file of recentFiles) {
+    for (const file of collectFiles(node.children ?? []).sort((a, b) => (b.modifiedAt ?? '').localeCompare(a.modifiedAt ?? '')).slice(0, 5)) {
       events.push({
         id: `file-${file.id}`,
-        icon: 'file',
+        icon: 'file-add',
         text: file.name,
         date: file.modifiedAt!,
       })
     }
 
     return events.sort((a, b) => b.date.localeCompare(a.date))
-  }, [node, isFolder, getResourceGrants, getInheritedGrants])
+  }, [node, isFolder, getResourceGrants])
 
   const fullPath = useMemo(() => {
     if (!node) return null
@@ -258,29 +249,7 @@ export function WorkspaceSidePanel({
           </div>
         </section>
 
-        {activityFeed.length > 0 && (
-          <section className="space-y-2">
-            <h3 className="text-label-0-bold text-foreground-dim uppercase">Activity</h3>
-            <div className="space-y-0">
-              {activityFeed.map((event) => (
-                <div key={event.id} className="flex gap-2 py-1.5">
-                  <div className="flex-shrink-0 mt-0.5">
-                    {event.icon === 'share' && <FolderSymlink className="w-3.5 h-3.5 text-foreground-dim" />}
-                    {event.icon === 'file' && <FilePlus className="w-3.5 h-3.5 text-foreground-dim" />}
-                    {event.icon === 'note' && <MessageSquare className="w-3.5 h-3.5 text-foreground-dim" />}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-body-0-regular text-foreground truncate">{event.text}</p>
-                    {event.detail && (
-                      <p className="text-body-0-regular text-foreground-dim mt-0.5">{event.detail}</p>
-                    )}
-                    <p className="text-label-0-regular text-foreground-subtle">{formatDate(event.date)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        <ActivityFeed events={activityFeed} />
 
       </div>
       )}
