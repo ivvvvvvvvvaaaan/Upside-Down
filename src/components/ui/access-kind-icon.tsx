@@ -1,6 +1,6 @@
 'use client'
 
-import { FileText, Film, Folder, LayoutGrid } from 'lucide-react'
+import { FileText, Film, Folder, Layers } from 'lucide-react'
 import type { AccessEntryKind } from '@/lib/access'
 
 interface AccessKindIconProps {
@@ -17,7 +17,7 @@ export function AccessKindIcon({ kind, size = 'sm' }: AccessKindIconProps) {
   const className = `${SIZE_CLASS[size]} text-foreground-dim flex-shrink-0`
 
   if (kind === 'folder') return <Folder className={className} />
-  if (kind === 'collection' || kind === 'smart-collection') return <LayoutGrid className={className} />
+  if (kind === 'collection' || kind === 'smart-collection') return <Layers className={className} />
   if (kind === 'cut') return <Film className={className} />
   return <FileText className={className} />
 }

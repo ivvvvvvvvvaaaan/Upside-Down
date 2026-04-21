@@ -53,6 +53,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     canDownload,
     getResourceGrants,
     isSensitiveAsset,
+    createGuestLink,
   } = useAccess()
   const { getCollection, deleteCollection, removeAssetFromCollection } = useUserCollections()
   const { resolveCollectionAssets } = useFileTree()
@@ -205,12 +206,18 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
       : `Removed ${selectedAssets.length} assets from ${collection.name}.`)
     clearSelection()
   }, [collection, selectedAssets, removeAssetFromCollection, showToast, clearSelection])
-  type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; destructive?: boolean; dividerAfter?: boolean }
+  type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; destructive?: boolean; disabled?: boolean; dividerAfter?: boolean }
 
+  const collectionShareable = showShareButton
   const collectionMenuItems = useMemo((): MenuItem[] => {
     const items: MenuItem[] = [
-      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setShareModalOpen(true) },
-      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, onClick: () => { navigator.clipboard.writeText(window.location.href); showToast('Link copied') } },
+      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setShareModalOpen(true), disabled: !collectionShareable },
+      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, disabled: !collectionShareable, onClick: () => {
+        const link = createGuestLink(collectionResourceRef, { allowDownload: false, passcode: false, expiresInDays: 7, label: collection?.name ?? collectionId })
+        if (!link) return
+        navigator.clipboard.writeText(`${window.location.origin}/nextgen/share/${link.id}`)
+        showToast('Link copied', 'success', { label: 'Share settings', onClick: () => setShareModalOpen(true) })
+      } },
       { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: handleDownloadCollection },
     ]
     if (isOwner) {
@@ -219,13 +226,19 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
       )
     }
     return items
-  }, [isOwner, showToast, handleDownloadCollection, handleDeleteCollection])
+  }, [isOwner, collectionShareable, collectionResourceRef, createGuestLink, showToast, handleDownloadCollection, handleDeleteCollection])
 
   const buildAssetMenuItems = useCallback((asset: Asset): MenuItem[] => {
     const ref = toAssetResourceRef(asset)
+    const shareable = canShare(ref)
     const items: MenuItem[] = [
-      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setAssetShareTarget({ ref, title: asset.name }) },
-      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, onClick: () => { navigator.clipboard.writeText(`${window.location.origin}/nextgen/assets/${asset.id}`); showToast('Link copied') } },
+      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setAssetShareTarget({ ref, title: asset.name }), disabled: !shareable },
+      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, disabled: !shareable, onClick: () => {
+        const link = createGuestLink(ref, { allowDownload: false, passcode: false, expiresInDays: 7, label: asset.name })
+        if (!link) return
+        navigator.clipboard.writeText(`${window.location.origin}/nextgen/share/${link.id}`)
+        showToast('Link copied', 'success', { label: 'Share settings', onClick: () => setAssetShareTarget({ ref, title: asset.name }) })
+      } },
       { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: () => showToast(`Downloading "${asset.name}"...`), dividerAfter: true },
       { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => showToast('Copy to not implemented yet') },
       { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => showToast('Move not implemented yet') },
@@ -235,7 +248,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
       items.push({ label: 'Remove from collection', icon: <Trash2 className="w-4 h-4" />, onClick: () => { removeAssetFromCollection(collection.id, asset.id); showToast(`Removed "${asset.name}" from ${collection.name}.`) }, destructive: true })
     }
     return items
-  }, [toAssetResourceRef, showToast, selectOnly, setSidePanelOpen, isOwner, collection, removeAssetFromCollection])
+  }, [toAssetResourceRef, canShare, createGuestLink, showToast, selectOnly, setSidePanelOpen, isOwner, collection, removeAssetFromCollection])
 
   const primaryAsset = useMemo(() => {
     if (!primaryId) return null

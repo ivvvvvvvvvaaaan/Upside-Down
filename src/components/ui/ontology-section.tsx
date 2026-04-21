@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Folder, Lock, LayoutGrid, Info } from 'lucide-react'
+import { Folder, Lock, Layers, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tag } from './tag'
 import { Tooltip } from './tooltip'
@@ -197,7 +197,7 @@ export interface ContainerItem {
 }
 
 function ContainerCard({ item }: { item: ContainerItem }) {
-  const Icon = item.icon === 'folder' ? Folder : LayoutGrid
+  const Icon = item.icon === 'folder' ? Folder : Layers
   const cardClasses = cn(
     'shrink-0 w-[140px] rounded border border-border-dim group transition-colors block',
     !item.locked && 'hover:border-border-subtle',

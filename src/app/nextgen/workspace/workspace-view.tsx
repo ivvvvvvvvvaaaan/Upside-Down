@@ -215,7 +215,7 @@ interface WorkspaceViewProps {
 
 export function WorkspaceView({ folderPath: urlPath, landingFolderId }: WorkspaceViewProps) {
   const router = useRouter()
-  const { canAccess, canShare: canShareResource, canEdit: canEditResource, getInheritedGrants, getResourceGrants, isSensitiveAsset } = useAccess()
+  const { canAccess, canShare: canShareResource, canEdit: canEditResource, getInheritedGrants, getResourceGrants, isSensitiveAsset, createGuestLink } = useAccess()
   const { activePersona } = usePersona()
   const { scopedAssets, ensureAssetsLoaded } = useCollections()
   const { layout, setLayout, cardSize, setCardSize, viewMode, setViewMode, sidePanelOpen: showPanel, setSidePanelOpen: setShowPanel, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
@@ -684,19 +684,25 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
   const buildFolderContextMenuItems = useCallback((node: WorkspaceFileNode): ContextMenuItem[] => {
     const isRefFolder = isReferenceFolder(node)
     const canEdit = canEditResource(getAclResourceId(node))
+    const resourceRef: ResourceRef = { id: getAclResourceId(node), type: 'folder', domainId: findDomainIdForNode(node, getFileTreeDomainFiles) }
+    const shareable = canShareResource(resourceRef)
     const items: ContextMenuItem[] = [
       {
         label: 'Share',
         icon: <ShareIcon className="w-4 h-4" />,
         onClick: () => setAccessModalNode(node),
+        disabled: !shareable,
       },
       {
         label: 'Copy link',
         icon: <Link2 className="w-4 h-4" />,
+        disabled: !shareable,
         onClick: () => {
-          const href = `${window.location.origin}${buildLandingFolderHref(landingFolderId ?? node.id, landingFolderId ? [...urlPath, node.id] : [])}`
+          const link = createGuestLink(resourceRef, { allowDownload: false, passcode: false, expiresInDays: 7, label: node.name })
+          if (!link) return
+          const href = `${window.location.origin}/nextgen/share/${link.id}`
           navigator.clipboard.writeText(href)
-          showToast('Link copied')
+          showToast('Link copied', 'success', { label: 'Share settings', onClick: () => setAccessModalNode(node) })
         },
       },
       {
@@ -717,23 +723,30 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
         { label: 'Rename', icon: <Pencil className="w-4 h-4" />, onClick: () => fileTreeRenameNode(node.id, prompt('New name', node.name) ?? node.name) },
         { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => showToast('Copy to not implemented yet') },
         { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => showToast('Move not implemented yet') },
-        { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(node.id); if (entry) { selectOnly(entry.entity); setShowPanel(true) } }, dividerAfter: true },
+        { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(node.id); if (entry) { selectOnly(entry.entity) } setShowPanel(true) }, dividerAfter: true },
         { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => fileTreeDeleteNode(node.id) },
       )
     } else {
       items.push(
-        { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(node.id); if (entry) { selectOnly(entry.entity); setShowPanel(true) } } },
+        { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(node.id); if (entry) { selectOnly(entry.entity) } setShowPanel(true) } },
       )
     }
 
     return items
-  }, [canEditResource, getAclResourceId, landingFolderId, urlPath, showToast, fileTreeRenameNode, fileTreeDeleteNode, selectionEntryById, selectOnly, setShowPanel, handleMountFolderToDrive])
+  }, [canEditResource, canShareResource, createGuestLink, getAclResourceId, getFileTreeDomainFiles, findDomainIdForNode, landingFolderId, urlPath, showToast, fileTreeRenameNode, fileTreeDeleteNode, selectionEntryById, selectOnly, setShowPanel, handleMountFolderToDrive])
 
   const buildAssetMenuItems = useCallback((node: WorkspaceFileNode, asset: Asset): ContextMenuItem[] => {
     const canEdit = canEditResource(node.id)
+    const assetRef: ResourceRef = { id: asset.id, type: asset.kind === 'cut' ? 'cut' : 'asset', domainId: asset.department }
+    const shareable = canShareResource(assetRef)
     const items: ContextMenuItem[] = [
-      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setAccessModalNode(node) },
-      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, onClick: () => { navigator.clipboard.writeText(`${window.location.origin}/nextgen/assets/${asset.id}`); showToast('Link copied') } },
+      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setAccessModalNode(node), disabled: !shareable },
+      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, disabled: !shareable, onClick: () => {
+        const link = createGuestLink(assetRef, { allowDownload: false, passcode: false, expiresInDays: 7, label: asset.name })
+        if (!link) return
+        navigator.clipboard.writeText(`${window.location.origin}/nextgen/share/${link.id}`)
+        showToast('Link copied', 'success', { label: 'Share settings', onClick: () => setAccessModalNode(node) })
+      } },
       { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: () => showToast(`Downloading "${asset.name}"...`), dividerAfter: canEdit },
     ]
     if (canEdit) {
@@ -749,7 +762,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
       )
     }
     return items
-  }, [canEditResource, showToast, fileTreeDeleteNode, selectionEntryById, selectOnly, setShowPanel])
+  }, [canEditResource, canShareResource, createGuestLink, showToast, fileTreeDeleteNode, selectionEntryById, selectOnly, setShowPanel])
 
   const backgroundContextMenuItems = useMemo((): ContextMenuItem[] => {
     if (!canEditCurrentFolder) return []

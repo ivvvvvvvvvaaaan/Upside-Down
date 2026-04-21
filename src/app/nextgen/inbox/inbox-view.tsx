@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { Folder, LayoutGrid, FileText, Film } from 'lucide-react'
+import { Folder, Layers, FileText, Film } from 'lucide-react'
 import { PageHeader, EmptyState, ToggleButtonGroup, Card, Button, MobileToolbar } from '@/components/ui'
 import { SharedDetailContent } from '@/components/ui/shared-side-panel'
 import { useAccess, usePersona } from '@/hooks'
@@ -156,7 +156,7 @@ export function InboxView() {
                       </div>
                       <div className="flex items-center gap-1.5">
                         {kind === 'folder' && <Folder className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />}
-                        {(kind === 'collection' || kind === 'smart-collection') && <LayoutGrid className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />}
+                        {(kind === 'collection' || kind === 'smart-collection') && <Layers className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />}
                         {kind === 'cut' && <Film className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />}
                         {(kind !== 'folder' && kind !== 'collection' && kind !== 'smart-collection' && kind !== 'cut') && <FileText className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />}
                         <span className={cn(
