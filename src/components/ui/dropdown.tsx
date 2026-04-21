@@ -144,6 +144,7 @@ export function Dropdown({
       <PopoverContent
         align={align}
         className={cn(widthClasses[width], 'bg-surface-mid p-0')}
+        onClick={() => handleOpenChange(false)}
       >
         {children}
       </PopoverContent>

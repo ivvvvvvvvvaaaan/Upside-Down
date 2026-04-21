@@ -441,7 +441,7 @@ export function AssetDetailPanelContent({
       events.push({
         id: 'created',
         icon: 'file-add',
-        text: asset.modifiedBy ? `${asset.modifiedBy} added this file` : 'File added',
+        text: asset.modifiedBy ? `Created by ${asset.modifiedBy}` : 'File created',
         date: asset.created_at,
       })
     }
@@ -865,7 +865,7 @@ export function AssetDetailPanelContent({
               )
             })()}
 
-            <ActivityFeed events={assetActivity} />
+            {!activeCollectionId && <ActivityFeed events={assetActivity} />}
           </TabsContent>
 
           <TabsContent value="connections" className="px-4 pb-4 space-y-4">

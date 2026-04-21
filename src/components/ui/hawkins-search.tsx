@@ -1,7 +1,7 @@
 'use client'
 
-import { forwardRef, useState } from 'react'
-import { Bookmark, ChevronDown, X } from 'lucide-react'
+import { forwardRef, useRef, useState } from 'react'
+import { Bookmark, ChevronDown, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverTrigger, PopoverContent, PopoverAnchor } from './popover'
 import { Button } from './button'
@@ -147,6 +147,8 @@ export interface HawkinsSearchProps extends Omit<React.InputHTMLAttributes<HTMLI
   showSavedFilters?: boolean
   /** Start compact and animate wider on focus */
   expandable?: boolean
+  /** On small screens, collapse to a search icon button */
+  collapsible?: boolean
 }
 
 const HawkinsSearch = forwardRef<HTMLInputElement, HawkinsSearchProps>(
@@ -160,6 +162,7 @@ const HawkinsSearch = forwardRef<HTMLInputElement, HawkinsSearchProps>(
     onSavedFiltersClick,
     showSavedFilters = true,
     expandable = false,
+    collapsible = false,
     placeholder = 'Search...',
     onChange,
     ...props
@@ -167,6 +170,8 @@ const HawkinsSearch = forwardRef<HTMLInputElement, HawkinsSearchProps>(
     const [inputPopoverOpen, setInputPopoverOpen] = useState(false)
     const [openChips, setOpenChips] = useState<Set<string>>(new Set())
     const [expanded, setExpanded] = useState(false)
+    const [mobileExpanded, setMobileExpanded] = useState(false)
+    const inputRef = useRef<HTMLInputElement | null>(null)
 
     const handleChipOpenChange = (filterId: string, open: boolean) => {
       setOpenChips(prev => {
@@ -189,7 +194,7 @@ const HawkinsSearch = forwardRef<HTMLInputElement, HawkinsSearchProps>(
 
     const isExpanded = expanded || !!value
 
-    return (
+    const searchBar = (
       <div
         data-hawkins-search
         className={cn(
@@ -199,6 +204,7 @@ const HawkinsSearch = forwardRef<HTMLInputElement, HawkinsSearchProps>(
           expandable
             ? isExpanded ? 'w-80' : 'w-48'
             : 'flex-1',
+          collapsible && 'hidden md:flex',
           className
         )}
         onFocus={() => expandable && setExpanded(true)}
@@ -270,6 +276,55 @@ const HawkinsSearch = forwardRef<HTMLInputElement, HawkinsSearchProps>(
           </PopoverContent>
         </Popover>
       </div>
+    )
+
+    if (!collapsible) return searchBar
+
+    return (
+      <>
+        {!mobileExpanded && (
+          <Button
+            variant="icon"
+            className="md:hidden"
+            onClick={() => {
+              setMobileExpanded(true)
+              requestAnimationFrame(() => inputRef.current?.focus())
+            }}
+            aria-label="Search"
+          >
+            <Search className="w-4 h-4" />
+          </Button>
+        )}
+        {mobileExpanded && (
+          <div className="md:hidden absolute inset-0 z-10 flex items-center gap-2 bg-surface-flat">
+            <div
+              data-hawkins-search
+              className={cn(
+                'flex items-center gap-2 h-10 px-2 rounded border border-border-subtle dark:border-border-inverse-subtle flex-1',
+                className
+              )}
+            >
+              <input
+                ref={inputRef}
+                type="text"
+                value={value}
+                onChange={handleChange}
+                placeholder={placeholder}
+                className="flex-1 min-w-0 h-5 bg-transparent text-body-0-regular text-foreground placeholder:text-foreground-subtle focus:outline-none"
+                {...props}
+              />
+            </div>
+            <Button
+              variant="icon"
+              onClick={() => { onValueChange?.(''); setMobileExpanded(false) }}
+              aria-label="Close search"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
+        {searchBar}
+      </>
     )
   }
 )

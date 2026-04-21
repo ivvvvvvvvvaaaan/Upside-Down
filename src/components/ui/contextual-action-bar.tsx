@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { Tooltip } from './tooltip'
 import { Dropdown, DropdownMenuItem } from './dropdown'
+import { InlineActionBar } from './inline-action-bar'
 import { AccessModal } from './access-modal'
 import { CollectionMembershipModal } from './collection-membership-modal'
 import { FolderPickerModal } from './folder-picker-modal'
@@ -132,22 +133,7 @@ export function ContextualActionBar({
             )}
 
             {menuItems ? (
-              <>
-                {menuItems.slice(0, 3).map((item, i) => (
-                  <Button key={i} variant="secondary" compact icon={item.icon} onClick={item.onClick}>
-                    {item.label}
-                  </Button>
-                ))}
-                {menuItems.length > 3 && (
-                  <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
-                    <div className="py-1">
-                      {menuItems.slice(3).map((item, i) => (
-                        <DropdownMenuItem key={i} icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} />
-                      ))}
-                    </div>
-                  </Dropdown>
-                )}
-              </>
+              <InlineActionBar items={menuItems} />
             ) : (
               <>
                 {evaluation.actions.share.visible && (
@@ -159,7 +145,7 @@ export function ContextualActionBar({
                       onClick={handleShare}
                       disabled={!evaluation.actions.share.enabled}
                     >
-                      {evaluation.actions.share.label}
+                      <span className="hidden lg:inline">{evaluation.actions.share.label}</span>
                     </Button>
                   </DisabledTooltip>
                 )}
@@ -170,7 +156,7 @@ export function ContextualActionBar({
                     icon={<FolderInput className="w-4 h-4" />}
                     onClick={() => setShowFolderPicker(true)}
                   >
-                    Copy to
+                    <span className="hidden lg:inline">Copy to</span>
                   </Button>
                 )}
                 {downloadAction && (
@@ -182,7 +168,7 @@ export function ContextualActionBar({
                       onClick={downloadAction.onClick}
                       disabled={!downloadAction.enabled}
                     >
-                      {downloadAction.label ?? 'Download'}
+                      <span className="hidden lg:inline">{downloadAction.label ?? 'Download'}</span>
                     </Button>
                   </DisabledTooltip>
                 )}

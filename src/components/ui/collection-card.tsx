@@ -503,7 +503,7 @@ export function CollectionCard({
         'border border-border-elevation',
         'items-start',
         isSelected
-          ? 'bg-surface-selected hover:bg-surface-selected-hover ring-2 ring-border-selected'
+          ? 'ring-2 ring-border-selected'
           : cn('bg-surface-2', isHovered && 'bg-surface-3', 'hover:bg-surface-3'),
         'transition-colors',
         onClick && 'cursor-pointer',
@@ -513,11 +513,18 @@ export function CollectionCard({
       onDoubleClick={onDoubleClick}
       {...props}
     >
-      {/* Card wrapper for selected states */}
+      {/* Selection gradient overlay */}
       {isSelected && (
-        <div
-          className="absolute inset-0 pointer-events-none rounded border-1 border-primary z-0"
-        />
+        <>
+          <div
+            className="absolute inset-0 pointer-events-none rounded z-0 group-hover:opacity-0 transition-opacity"
+            style={{ background: 'linear-gradient(to bottom right, rgb(var(--surface-selected)), rgb(var(--surface-selected-hover)))' }}
+          />
+          <div
+            className="absolute inset-0 pointer-events-none rounded z-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ background: 'linear-gradient(to bottom right, rgb(var(--surface-selected-hover)), rgb(var(--surface-selected)))' }}
+          />
+        </>
       )}
       
       {/* Thumbnail grid */}

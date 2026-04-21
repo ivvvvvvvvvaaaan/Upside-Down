@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Download, MoreVertical, PanelRight, Info, Trash2, Link2, FolderPlus, ArrowRight } from 'lucide-react'
+import { Download, PanelRight, Info, Trash2, Link2, FolderPlus, ArrowRight } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
 import { SelectAllRow } from '@/components/ui/select-all-row'
 import { useRouter } from 'next/navigation'
@@ -18,6 +18,7 @@ import {
   Dropdown,
   DropdownMenuItem,
   DropdownMenuDivider,
+  InlineActionBar,
   SortDropdown,
   AppearanceDropdown,
   HawkinsSearch,
@@ -30,6 +31,8 @@ import { PERSONAS } from '@/lib/personas'
 import { assetToSelectionEntity } from '@/lib/selection-actions'
 import { getContextAssetGroups } from '@/lib/context-relationships'
 import { AccessModal } from '@/components/ui/access-modal'
+import { ContextMenu } from '@/components/ui/context-menu'
+import type { ContextMenuItem } from '@/components/ui/context-menu'
 import type { ResourceRef } from '@/lib/grants'
 import { useToast } from '@/components/ui/toast'
 
@@ -65,6 +68,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
 
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; asset: Asset } | null>(null)
 
   const rawCollection = getCollection(collectionId)
   const collection = getVisibleCollection(collectionId)
@@ -225,7 +229,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
       { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: () => showToast(`Downloading "${asset.name}"...`), dividerAfter: true },
       { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => showToast('Copy to not implemented yet') },
       { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => showToast('Move not implemented yet') },
-      { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => { selectOnly(asset); setSidePanelOpen(true) } },
+      { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { selectOnly(asset); setSidePanelOpen(true) } },
     ]
     if (isOwner && collection) {
       items.push({ label: 'Remove from collection', icon: <Trash2 className="w-4 h-4" />, onClick: () => { removeAssetFromCollection(collection.id, asset.id); showToast(`Removed "${asset.name}" from ${collection.name}.`) }, destructive: true })
@@ -291,44 +295,44 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
             <div className="max-w-7xl mx-auto">
               <Stack spacing="lg">
                 <MobileToolbar title={displayName || 'Collection'} actions={
-                  <Button
-                    variant="icon"
-                    size="icon"
-                    onClick={togglePanel}
-                    aria-label={panelOpen ? 'Close info' : 'Open info'}
-
-                  >
-                    <Info className="w-4 h-4" />
-                  </Button>
+                  <>
+                    <HawkinsSearch
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                      collapsible
+                    />
+                    <SortDropdown
+                      fields={[
+                        { value: 'name', label: 'Name' },
+                        { value: 'date-modified', label: 'Date Modified' },
+                        { value: 'kind', label: 'Kind' },
+                      ]}
+                      value={sortCriteria}
+                      onChange={setSortCriteria}
+                      iconOnly
+                    />
+                    <AppearanceDropdown
+                      iconOnly
+                      layout="grid"
+                      onLayoutChange={() => {}}
+                      cardSize={cardSize}
+                      onCardSizeChange={setCardSize}
+                      showLayoutOptions={false}
+                      showTags={showTags}
+                      onShowTagsChange={setShowTags}
+                      metadataFields={metadataFields}
+                      onMetadataFieldChange={setMetadataField}
+                    />
+                    <Button
+                      variant="icon"
+                      size="icon"
+                      onClick={togglePanel}
+                      aria-label={panelOpen ? 'Close info' : 'Open info'}
+                    >
+                      <Info className="w-4 h-4" />
+                    </Button>
+                  </>
                 } />
-                <div className="flex items-center gap-2 md:hidden">
-                  <HawkinsSearch
-                    value={searchQuery}
-                    onValueChange={setSearchQuery}
-                  />
-                  <SortDropdown
-                    fields={[
-                      { value: 'name', label: 'Name' },
-                      { value: 'date-modified', label: 'Date Modified' },
-                      { value: 'kind', label: 'Kind' },
-                    ]}
-                    value={sortCriteria}
-                    onChange={setSortCriteria}
-                    iconOnly
-                  />
-                  <AppearanceDropdown
-                    iconOnly
-                    layout="grid"
-                    onLayoutChange={() => {}}
-                    cardSize={cardSize}
-                    onCardSizeChange={setCardSize}
-                    showLayoutOptions={false}
-                    showTags={showTags}
-                    onShowTagsChange={setShowTags}
-                    metadataFields={metadataFields}
-                    onMetadataFieldChange={setMetadataField}
-                  />
-                </div>
 
                 {/* Row 1: Title + Search + Sort + Appearance + Panel toggle */}
                 <div className="flex flex-wrap items-center justify-between gap-4">
@@ -370,7 +374,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between min-h-8">
                   <SelectAllRow
                     selectedCount={selectedIds.size}
                     totalCount={displayAssets.length}
@@ -404,13 +408,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                       inline
                     />
                   ) : (
-                    <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-                      {collectionMenuItems.map((item, i) => (
-                        <Button key={i} variant={item.destructive ? 'secondary-destructive' : 'secondary'} compact icon={item.icon} onClick={item.onClick}>
-                          {item.label}
-                        </Button>
-                      ))}
-                    </div>
+                    <InlineActionBar items={collectionMenuItems} />
                   )}
                 </div>
 
@@ -421,29 +419,43 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                     ))}
                   </CardGrid>
                 ) : displayAssets.length > 0 ? (
-                  <CardGrid columns={getGridColumns(cardSize)} gap="4">
+                  <CardGrid
+                    columns={getGridColumns(cardSize)}
+                    gap="4"
+                    onContextMenu={(e) => {
+                      const card = (e.target as HTMLElement).closest('[data-asset-id]')
+                      if (!card) return
+                      const assetId = card.getAttribute('data-asset-id')
+                      const asset = assetId ? displayAssets.find(a => a.id === assetId) : null
+                      if (asset) {
+                        e.preventDefault()
+                        setContextMenu({ x: e.clientX, y: e.clientY, asset })
+                      }
+                    }}
+                  >
                     {displayAssets.map((asset) => (
-                      <AssetCard
-                        key={asset.id}
-                        asset={asset}
-                        selected={selectedIds.has(asset.id)}
-                        primary={primaryId === asset.id}
-                        onClick={(a, e) => handleAssetClick(a, e, displayAssets)}
-                        menuContent={
-                          <div className="py-1">
-                            {buildAssetMenuItems(asset).map((item, i) => (
-                              <div key={i}>
-                                <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} />
-                                {item.dividerAfter && <DropdownMenuDivider />}
-                              </div>
-                            ))}
-                          </div>
-                        }
-                        showDepartment
-                        shared={sharedBy ? false : undefined}
-                        sensitive={isSensitiveAsset(asset.id)}
-                        allSelectedIds={selectedIds}
-                      />
+                      <div key={asset.id} data-asset-id={asset.id}>
+                        <AssetCard
+                          asset={asset}
+                          selected={selectedIds.has(asset.id)}
+                          primary={primaryId === asset.id}
+                          onClick={(a, e) => handleAssetClick(a, e, displayAssets)}
+                          menuContent={
+                            <div className="py-1">
+                              {buildAssetMenuItems(asset).map((item, i) => (
+                                <div key={i}>
+                                  <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} />
+                                  {item.dividerAfter && <DropdownMenuDivider />}
+                                </div>
+                              ))}
+                            </div>
+                          }
+                          showDepartment
+                          shared={sharedBy ? false : undefined}
+                          sensitive={isSensitiveAsset(asset.id)}
+                          allSelectedIds={selectedIds}
+                        />
+                      </div>
                     ))}
                   </CardGrid>
                 ) : (
@@ -500,6 +512,14 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
           resourceId={assetShareTarget.ref.id}
           resourceRef={assetShareTarget.ref}
           title={assetShareTarget.title}
+        />
+      )}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={buildAssetMenuItems(contextMenu.asset)}
+          onClose={() => setContextMenu(null)}
         />
       )}
     </div>

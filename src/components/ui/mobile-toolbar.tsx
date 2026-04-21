@@ -24,7 +24,7 @@ export function MobileToolbar({ title, actions }: MobileToolbarProps) {
   const menuHref = `/nextgen/menu?return=${encodeURIComponent(pathname)}`
 
   return (
-    <div className="flex items-center justify-between w-full md:hidden">
+    <div className="flex items-center justify-between w-full md:hidden relative">
       <div className="flex items-center gap-2 min-w-0">
         <Button asChild variant="icon" size="icon" aria-label="Menu" className="flex-shrink-0">
           <Link href={menuHref}>
