@@ -898,6 +898,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                       downloadAction={{
                         enabled: true,
                         onClick: () => showToast(`Downloading ${selectedIds.size} item${selectedIds.size !== 1 ? 's' : ''}...`),
+                        label: `Download ${selectedIds.size} item${selectedIds.size !== 1 ? 's' : ''}`,
                       }}
                       onPlaceInFolder={(folderId, folderName, assetIds) => {
                         for (const assetId of assetIds) {
@@ -909,9 +910,16 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                         if (selectedIds.size !== 1) return undefined
                         const selectedNode = findNodeById(currentGridItems, Array.from(selectedIds)[0])
                         if (!selectedNode) return undefined
-                        if (selectedNode.type === 'folder') return buildFolderContextMenuItems(selectedNode)
-                        const asset = assetBySourceFileId.get(selectedNode.id) ?? folderNodeToAsset(selectedNode, findDomainIdForNode(selectedNode, getFileTreeDomainFiles) ?? activePersona?.domainId)
-                        return buildAssetMenuItems(selectedNode, asset)
+                        const kind = selectedNode.type === 'folder' ? 'folder' : 'asset'
+                        const suffix = `1 ${kind}`
+                        const countLabels = new Map([['Share', `Share ${suffix}`], ['Download', `Download ${suffix}`], ['Copy link', `Copy link`]])
+                        const items = selectedNode.type === 'folder'
+                          ? buildFolderContextMenuItems(selectedNode)
+                          : buildAssetMenuItems(selectedNode, assetBySourceFileId.get(selectedNode.id) ?? folderNodeToAsset(selectedNode, findDomainIdForNode(selectedNode, getFileTreeDomainFiles) ?? activePersona?.domainId))
+                        return items.map(item => countLabels.has(item.label)
+                          ? { ...item, label: countLabels.get(item.label)! }
+                          : item
+                        )
                       })()}
                       inline
                     />

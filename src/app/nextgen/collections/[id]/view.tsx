@@ -386,13 +386,21 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         enabled: canDownloadSelectedAssets,
                         onClick: handleDownloadSelectedAssets,
                         reason: canDownloadSelectedAssets ? undefined : "You don't have permission to download all selected assets.",
+                        label: `Download ${selectedAssets.length} asset${selectedAssets.length !== 1 ? 's' : ''}`,
                       } : undefined}
                       removeAction={selectedAssets.length > 0 && isCurated ? {
                         enabled: canRemoveFromCollection,
                         onClick: handleRemoveSelectedAssets,
                         reason: canRemoveFromCollection ? undefined : "Only the collection owner can remove assets.",
                       } : undefined}
-                      menuItems={selectedAssets.length === 1 ? buildAssetMenuItems(selectedAssets[0]) : collectionMenuItems}
+                      menuItems={(() => {
+                        if (selectedAssets.length === 1) {
+                          const items = buildAssetMenuItems(selectedAssets[0])
+                          const countLabels = new Map([['Share', 'Share 1 asset'], ['Download', 'Download 1 asset']])
+                          return items.map(item => countLabels.has(item.label) ? { ...item, label: countLabels.get(item.label)! } : item)
+                        }
+                        return collectionMenuItems
+                      })()}
                       inline
                     />
                   ) : (

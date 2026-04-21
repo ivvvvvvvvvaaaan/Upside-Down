@@ -201,7 +201,9 @@ export function evaluateSelectionActions({
       },
       share: {
         id: 'share',
-        label: 'Share',
+        label: selectedEntities.length <= 1
+          ? 'Share'
+          : `Share ${selectedEntities.length} items`,
         visible: showShare,
         enabled: shareEnabled,
         reason: shareReason,

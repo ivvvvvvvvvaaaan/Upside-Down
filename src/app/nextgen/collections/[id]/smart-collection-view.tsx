@@ -108,17 +108,16 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; destructive?: boolean; dividerAfter?: boolean }
 
   const smartCollectionMenuItems = useMemo((): MenuItem[] => {
-    const items: MenuItem[] = [
-      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setShareModalOpen(true) },
-      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, onClick: () => { navigator.clipboard.writeText(window.location.href); showToast('Link copied') } },
-      { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => togglePanel() },
-    ]
+    const items: MenuItem[] = []
+    if (showShareButton) {
+      items.push({ label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setShareModalOpen(true) })
+    }
     if (canDeleteCurrentCollection) {
-      items[items.length - 1].dividerAfter = true
+      if (items.length > 0) items[items.length - 1].dividerAfter = true
       items.push({ label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => { if (collection) { deleteCollection(collection.id); router.push('/nextgen') } }, destructive: true })
     }
     return items
-  }, [showShareButton, showToast, togglePanel, canDeleteCurrentCollection, collection, deleteCollection, router])
+  }, [showShareButton, canDeleteCurrentCollection, collection, deleteCollection, router])
 
   const subtitle = useMemo(() => {
     // Received from someone else
@@ -482,7 +481,18 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                       <ContextualActionBar
                         selectedEntities={activeSelectionEntities}
                         onClearSelection={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
-                        menuItems={!isParentWithChildren && selectedAssets.length === 1 ? buildAssetMenuItems(selectedAssets[0]) : smartCollectionMenuItems}
+                        menuItems={(() => {
+                          if (!isParentWithChildren && selectedAssets.length === 1) {
+                            const items = buildAssetMenuItems(selectedAssets[0])
+                            const countLabels = new Map([['Share', 'Share 1 asset'], ['Download', 'Download 1 asset']])
+                            return items.map(item => countLabels.has(item.label) ? { ...item, label: countLabels.get(item.label)! } : item)
+                          }
+                          if (isParentWithChildren && selectedCollectionIds.size === 1) {
+                            const countLabels = new Map([['Share', 'Share 1 collection'], ['Download', 'Download 1 collection']])
+                            return smartCollectionMenuItems.map(item => countLabels.has(item.label) ? { ...item, label: countLabels.get(item.label)! } : item)
+                          }
+                          return smartCollectionMenuItems
+                        })()}
                         inline
                       />
                     ) : (
@@ -492,16 +502,18 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                             Share
                           </Button>
                         )}
-                        <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
-                          <div className="py-1">
-                            {smartCollectionMenuItems.slice(1).map((item, i) => (
-                              <div key={i}>
-                                <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} />
-                                {item.dividerAfter && <DropdownMenuDivider />}
-                              </div>
-                            ))}
-                          </div>
-                        </Dropdown>
+                        {smartCollectionMenuItems.length > 1 && (
+                          <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
+                            <div className="py-1">
+                              {smartCollectionMenuItems.slice(1).map((item, i) => (
+                                <div key={i}>
+                                  <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} />
+                                  {item.dividerAfter && <DropdownMenuDivider />}
+                                </div>
+                              ))}
+                            </div>
+                          </Dropdown>
+                        )}
                       </div>
                     )}
                   </div>
@@ -540,7 +552,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                               : child.assetCount === 2 ? 'Two'
                               : 'Many'
                             }
-                            isSelected={!isMobile && selectedCollectionId === child.collection.id}
+                            isSelected={!isMobile && selectedCollectionIds.has(child.collection.id)}
                             onClick={isMobile
                               ? () => router.push(`/nextgen/collections/${child.collection.id}`)
                               : (event) => handleCollectionCardClick(child.collection, event)
