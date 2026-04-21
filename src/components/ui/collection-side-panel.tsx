@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { X, LayoutGrid, Pencil, MapPin, Film, Zap, Folder, Users } from 'lucide-react'
+import { X, Layers, Pencil, MapPin, Film, Zap, Folder, Users } from 'lucide-react'
 import { ActivityFeed } from './activity-feed'
 import type { ActivityEvent } from './activity-feed'
 import { Button } from './button'
@@ -27,8 +27,8 @@ import { TEAMS, isUserInTeam } from '@/lib/teams'
 import { getOntologyMeta } from '@/lib/ontology-meta'
 import type { OntologyMeta } from '@/lib/ontology-meta'
 
-const PANEL_ICONS: Record<string, typeof LayoutGrid> = {
-  collection: LayoutGrid,
+const PANEL_ICONS: Record<string, typeof Layers> = {
+  collection: Layers,
   smart: Zap,
   location: MapPin,
   scene: Film,
@@ -37,7 +37,7 @@ const PANEL_ICONS: Record<string, typeof LayoutGrid> = {
 
 function PanelHeaderIcon({ icon, name, isEntity, avatarSrc }: { icon: string; name: string; isEntity?: boolean; avatarSrc?: string }) {
   if (icon === 'character' && isEntity) return <Avatar name={name} src={avatarSrc} size="lg" />
-  const Icon = icon === 'character' ? Users : (PANEL_ICONS[icon] ?? LayoutGrid)
+  const Icon = icon === 'character' ? Users : (PANEL_ICONS[icon] ?? Layers)
   return <Icon className="w-8 h-8 text-foreground flex-shrink-0" />
 }
 

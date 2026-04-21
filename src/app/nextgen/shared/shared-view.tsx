@@ -11,7 +11,7 @@ import type { GrantView } from '@/lib/grants'
 import type { GuestLinkSeed } from '@/lib/scenario'
 import { kindLabel, kindTagType } from '@/lib/access'
 import type { AccessEntryKind } from '@/lib/access'
-import { profileLabel } from '@/lib/grants'
+import { profileLabel, getResourceLabel } from '@/lib/grants'
 import { PERSONAS } from '@/lib/personas'
 import { cn, formatDate } from '@/lib/utils'
 
@@ -122,7 +122,7 @@ function GuestLinksSection({ links, selectedId, onRowClick, activeUserId }: { li
             >
               <span className="flex items-center gap-2 min-w-0">
                 <Link2 className="w-4 h-4 text-foreground-dim flex-shrink-0" />
-                <span className="text-body-0-bold text-foreground truncate">{link.label}</span>
+                <span className="text-body-0-bold text-foreground truncate">{getResourceLabel(link.resource.id)}</span>
                 {link.passcode && <Lock className="w-3 h-3 text-foreground-dim flex-shrink-0" />}
               </span>
               <span className="flex items-center">
@@ -182,7 +182,7 @@ function GuestLinkDetailPanel({
         <div className="space-y-2">
           <div>
             <p className="text-body-0-regular text-foreground-dim">Resource</p>
-            <p className="text-body-0-regular text-foreground">{link.label}</p>
+            <p className="text-body-0-regular text-foreground">{getResourceLabel(link.resource.id)}</p>
           </div>
           <div>
             <p className="text-body-0-regular text-foreground-dim">Permission</p>

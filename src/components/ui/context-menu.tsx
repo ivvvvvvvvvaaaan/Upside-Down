@@ -10,6 +10,7 @@ export interface ContextMenuItem {
   icon?: ReactNode
   /** For toggle items like "Auto-promote" */
   checked?: boolean
+  disabled?: boolean
   dividerAfter?: boolean
   onClick: () => void
 }
@@ -71,9 +72,11 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
               item.onClick()
               onClose()
             }}
+            disabled={item.disabled}
             className={cn(
               'w-full flex items-center gap-2 px-3 py-2.5 text-body-0-regular text-foreground',
-              'hover:bg-surface-highlight transition-colors text-left'
+              'hover:bg-surface-highlight transition-colors text-left',
+              item.disabled && 'opacity-40 pointer-events-none',
             )}
           >
             {item.checked !== undefined ? (

@@ -51,15 +51,18 @@ export interface DropdownMenuItemProps {
   label: string
   onClick: () => void
   destructive?: boolean
+  disabled?: boolean
 }
 
-export function DropdownMenuItem({ icon, label, onClick, destructive }: DropdownMenuItemProps) {
+export function DropdownMenuItem({ icon, label, onClick, destructive, disabled }: DropdownMenuItemProps) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       className={cn(
         'w-full flex items-center gap-2 px-3 py-2.5 text-body-0-regular hover:bg-surface-highlight transition-colors text-left',
         destructive ? 'text-foreground-system-error' : 'text-foreground',
+        disabled && 'opacity-40 pointer-events-none',
       )}
     >
       {icon && <span className="w-4 h-4 flex items-center justify-center flex-shrink-0">{icon}</span>}

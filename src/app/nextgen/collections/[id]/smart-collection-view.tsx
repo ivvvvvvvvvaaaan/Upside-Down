@@ -79,7 +79,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
   const isMobile = useIsMobile()
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
-  const { canShare, canEditAcl, getResourceGrants, sharesReceivedByMe, allProjectShares, isSensitiveAsset } = useAccess()
+  const { canShare, canEditAcl, getResourceGrants, sharesReceivedByMe, allProjectShares, isSensitiveAsset, createGuestLink } = useAccess()
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const { showToast } = useToast()
   const collectionResourceRef: ResourceRef = { id: collectionId, type: 'smart-collection' }
@@ -108,7 +108,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const canManageCurrentCollection = Boolean(collection && (isOwner || isAdmin || canEditAcl(collectionResourceRef)))
   const canDeleteCurrentCollection = Boolean(collection && (isOwner || isAdmin))
 
-  type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; destructive?: boolean; dividerAfter?: boolean }
+  type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; destructive?: boolean; disabled?: boolean; dividerAfter?: boolean }
 
   const smartCollectionMenuItems = useMemo((): MenuItem[] => {
     const items: MenuItem[] = []
@@ -242,16 +242,22 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
 
   const buildAssetMenuItems = useCallback((asset: Asset): MenuItem[] => {
     const ref = toAssetResourceRef(asset)
+    const shareable = canShare(ref)
     const items: MenuItem[] = [
-      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setAssetShareTarget({ ref, title: asset.name }) },
-      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, onClick: () => { navigator.clipboard.writeText(`${window.location.origin}/nextgen/assets/${asset.id}`); showToast('Link copied') } },
+      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setAssetShareTarget({ ref, title: asset.name }), disabled: !shareable },
+      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, disabled: !shareable, onClick: () => {
+        const link = createGuestLink(ref, { allowDownload: false, passcode: false, expiresInDays: 7, label: asset.name })
+        if (!link) return
+        navigator.clipboard.writeText(`${window.location.origin}/nextgen/share/${link.id}`)
+        showToast('Link copied', 'success', { label: 'Share settings', onClick: () => setAssetShareTarget({ ref, title: asset.name }) })
+      } },
       { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: () => showToast(`Downloading "${asset.name}"...`), dividerAfter: true },
       { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => showToast('Copy to not implemented yet') },
       { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => showToast('Move not implemented yet') },
       { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { selectOnlyAsset(asset); setSidePanelOpen(true) } },
     ]
     return items
-  }, [toAssetResourceRef, showToast, selectOnlyAsset, setSidePanelOpen])
+  }, [toAssetResourceRef, canShare, createGuestLink, showToast, selectOnlyAsset, setSidePanelOpen])
 
   const handleAssetCardClick = (asset: typeof filteredAssets[number], event: React.MouseEvent) => {
     clearCollectionSelection()

@@ -37,7 +37,7 @@ export function useGuestLinks(
     return canManageGuestLinkForState(link, grants)
   }, [canManageGuestLinkForState, grants])
 
-  const createGuestLink = useCallback((resource: ResourceRef, options: { allowDownload: boolean; passcode: boolean; expiresInDays: number }) => {
+  const createGuestLink = useCallback((resource: ResourceRef, options: { allowDownload: boolean; passcode: boolean; expiresInDays: number; label?: string }) => {
     if (!activePersona) return
     if (!canShareFn(resource, grants)) return
 
@@ -47,7 +47,7 @@ export function useGuestLinks(
     const link: GuestLinkSeed = {
       id: `link-${Date.now()}`,
       resource: { id: resource.id, type: resource.type, domainId: resource.domainId },
-      label: resource.id,
+      label: options.label ?? resource.id,
       permissions: options.allowDownload ? ['open', 'download'] : ['open'],
       templateId: 'link-viewer',
       createdByUserId: activePersona.id,

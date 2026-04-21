@@ -9,6 +9,7 @@ export interface ActionMenuItem {
   icon?: React.ReactNode
   onClick: () => void
   destructive?: boolean
+  disabled?: boolean
   dividerAfter?: boolean
 }
 
@@ -29,7 +30,7 @@ export function InlineActionBar({ items, maxInline = 3, className }: InlineActio
   return (
     <div className={className ?? 'flex items-center gap-2 flex-shrink-0'}>
       {inlineItems.map((item, i) => (
-        <Button key={i} variant="secondary" compact icon={item.icon} onClick={item.onClick}>
+        <Button key={i} variant="secondary" compact icon={item.icon} onClick={item.onClick} disabled={item.disabled}>
           <span className="hidden lg:inline">{item.label}</span>
         </Button>
       ))}
@@ -38,7 +39,7 @@ export function InlineActionBar({ items, maxInline = 3, className }: InlineActio
           <div className="py-1">
             {overflowItems.map((item, i) => (
               <div key={i}>
-                <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} />
+                <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} disabled={item.disabled} />
                 {item.dividerAfter && <DropdownMenuDivider />}
               </div>
             ))}

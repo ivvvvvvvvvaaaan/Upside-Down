@@ -148,7 +148,7 @@ interface AccessContextValue {
   guestLinks: GuestLinkSeed[]
   getResourceGuestLinks: (resourceId: string) => GuestLinkSeed[]
   canManageGuestLink: (link: GuestLinkSeed) => boolean
-  createGuestLink: (resource: ResourceRef, options: { allowDownload: boolean; passcode: boolean; expiresInDays: number }) => GuestLinkSeed | undefined
+  createGuestLink: (resource: ResourceRef, options: { allowDownload: boolean; passcode: boolean; expiresInDays: number; label?: string }) => GuestLinkSeed | undefined
   updateGuestLink: (linkId: string, updates: Partial<Pick<GuestLinkSeed, 'allowDownload' | 'passcode' | 'expiresAt'>>) => void
   revokeGuestLink: (linkId: string) => void
 
