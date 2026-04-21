@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { X, ArrowRight, Layers, FileText, Film, Clock, Link2, Lock } from 'lucide-react'
+import { X, ArrowRight, Layers, Folder, FileText, Film, Clock, Link2, Lock } from 'lucide-react'
 import { Button } from './button'
 import { Modal } from './modal'
 import { Tag } from './tag'
@@ -33,6 +33,7 @@ function formatDate(dateStr: string) {
 }
 
 function ResourceIcon({ type }: { type: string }) {
+  if (type === 'folder') return <Folder className="w-3.5 h-3.5" />
   if (type === 'collection' || type === 'smart-collection') return <Layers className="w-3.5 h-3.5" />
   if (type === 'cut') return <Film className="w-3.5 h-3.5" />
   return <FileText className="w-3.5 h-3.5" />
