@@ -88,6 +88,7 @@ type ScenarioCollection = {
   id: string
   name: string
   createdBy: string
+  createdAt: string
   assetIds: string[]
   sourceSmartCollectionId?: string
 }
@@ -272,7 +273,6 @@ export const SCENARIO: Scenario = {
       label: 'Framestore',
       by: 'vfx-coordinator',
       date: '2026-01-15',
-      expiresAt: '2026-06-15',
       note: 'Shared vendor delivery folder for comp turnover and submissions.',
       context: 'Sarah shares the Framestore workspace folder directly. James can work inside the delivery space during the delivery window because the vendor group has manager access on this folder.',
       grants: [
@@ -509,19 +509,19 @@ export const SCENARIO: Scenario = {
 
   collections: [
     // Shared collections (referenced by grants)
-    { id: 'ws-vfx-coll-for-editorial', name: 'EP301 VFX Pulls - Edit Review',  createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-020-010'] },
-    { id: 'coll-smart-finals-shared',  name: 'Finals (shared)',                createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020'], sourceSmartCollectionId: 'smart-finals' },
-    { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', assetIds: ['ws-edit-cut-1', 'ws-edit-cut-2', 'ws-edit-cut-3'] },
+    { id: 'ws-vfx-coll-for-editorial', name: 'EP301 VFX Pulls - Edit Review',  createdBy: 'schen@netflix.com',   createdAt: '2026-01-27', assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-020-010'] },
+    { id: 'coll-smart-finals-shared',  name: 'Finals (shared)',                createdBy: 'schen@netflix.com',   createdAt: '2026-02-11', assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020'], sourceSmartCollectionId: 'smart-finals' },
+    { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', createdAt: '2026-01-19', assetIds: ['ws-edit-cut-1', 'ws-edit-cut-2', 'ws-edit-cut-3'] },
     // Camera collections
-    { id: 'ws-cam-coll-broll', name: 'B-Roll Highlights', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-broll-town', 'ws-cam-broll-forest', 'ws-cam-aerial-dawn', 'ws-cam-aerial-quarry'] },
+    { id: 'ws-cam-coll-broll', name: 'B-Roll Highlights', createdBy: 'tnakamura@netflix.com', createdAt: '2026-02-10', assetIds: ['ws-cam-broll-town', 'ws-cam-broll-forest', 'ws-cam-aerial-dawn', 'ws-cam-aerial-quarry'] },
     // Audio collections
-    { id: 'ws-audio-coll-for-editorial', name: 'Temp Sound Kit', createdBy: 'robi@netflix.com', assetIds: ['ws-audio-sfx-1', 'ws-audio-sfx-2', 'ws-audio-music-1', 'ws-audio-music-2', 'ws-audio-sfx-ambience'] },
+    { id: 'ws-audio-coll-for-editorial', name: 'Temp Sound Kit', createdBy: 'robi@netflix.com', createdAt: '2026-02-06', assetIds: ['ws-audio-sfx-1', 'ws-audio-sfx-2', 'ws-audio-music-1', 'ws-audio-music-2', 'ws-audio-sfx-ambience'] },
     // Everyday organising collections
-    { id: 'coll-creature-designs',  name: 'Car Designs', createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-demogorgon', 'ws-art-concept-creature', 'ws-art-char-eleven'] },
-    { id: 'coll-key-locations',     name: 'Key Circuits',    createdBy: 'psharma@netflix.com', assetIds: ['ws-art-concept-ud-env', 'ws-art-concept-lab', 'ws-art-env-byers', 'ws-art-env-starcourt'] },
-    { id: 'coll-hero-shots',        name: 'Hero Shots',       createdBy: 'schen@netflix.com',   assetIds: ['ws-vfx-010-010', 'ws-vfx-020-010', 'ws-vfx-comp-eleven'] },
+    { id: 'coll-creature-designs',  name: 'Car Designs', createdBy: 'psharma@netflix.com', createdAt: '2026-01-14', assetIds: ['ws-art-concept-demogorgon', 'ws-art-concept-creature', 'ws-art-char-eleven'] },
+    { id: 'coll-key-locations',     name: 'Key Circuits',    createdBy: 'psharma@netflix.com', createdAt: '2026-01-14', assetIds: ['ws-art-concept-ud-env', 'ws-art-concept-lab', 'ws-art-env-byers', 'ws-art-env-starcourt'] },
+    { id: 'coll-hero-shots',        name: 'Hero Shots',       createdBy: 'schen@netflix.com',   createdAt: '2026-01-20', assetIds: ['ws-vfx-010-010', 'ws-vfx-020-010', 'ws-vfx-comp-eleven'] },
     // Curated collections (snapshot shares — discrete handoffs)
-    { id: 'coll-cam-dailies',      name: 'Dailies (concept reference)', createdBy: 'tnakamura@netflix.com', assetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'] },
+    { id: 'coll-cam-dailies',      name: 'Dailies (concept reference)', createdBy: 'tnakamura@netflix.com', createdAt: '2026-02-09', assetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'] },
   ],
 
   sensitiveAssetIds: ['ws-edit-cut-1', 'ws-edit-cut-2'],
@@ -877,7 +877,7 @@ export function buildSeedCollections(): UserCollection[] {
     id: c.id,
     name: c.name,
     assetIds: c.assetIds,
-    createdAt: new Date('2026-02-14'),
+    createdAt: new Date(c.createdAt),
     createdBy: c.createdBy,
     sourceSmartCollectionId: c.sourceSmartCollectionId,
   }))
