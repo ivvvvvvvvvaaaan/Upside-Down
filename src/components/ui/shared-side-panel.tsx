@@ -108,7 +108,6 @@ export function SharedDetailContent({ entry, showAccess = true, onLeave }: Share
           )}
         </div>
 
-        {/* Details section */}
         <section className="space-y-2">
           <h3 className="text-body-0-bold text-foreground-dim">Details</h3>
           <div className="space-y-3">
@@ -124,6 +123,12 @@ export function SharedDetailContent({ entry, showAccess = true, onLeave }: Share
               <span className="text-body-0-regular text-foreground-dim">Permission</span>
               <span className="text-body-0-regular text-foreground">{profileLabel(entry.templateId)}</span>
             </div>
+            {entry.note && (
+              <div className="flex items-start justify-between gap-4">
+                <span className="text-body-0-regular text-foreground-dim flex-shrink-0">Note</span>
+                <span className="text-body-0-regular text-foreground text-right">{entry.note}</span>
+              </div>
+            )}
           </div>
         </section>
 

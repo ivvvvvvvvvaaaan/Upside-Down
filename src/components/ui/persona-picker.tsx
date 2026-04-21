@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, Shield, Map } from 'lucide-react'
+import { ChevronDown, Shield, Map, Monitor } from 'lucide-react'
+import Link from 'next/link'
 import { UserJourneyModal } from './user-journey-modal'
 import { usePersona } from '@/hooks'
 import type { User } from '@/lib/personas'
@@ -11,12 +12,14 @@ import { cn } from '@/lib/utils'
 export function PersonaPicker({
   compact = false,
   showLabel = false,
+  avatarOnly = false,
   personas,
   allowAdmin = true,
   compactSingleLine = false,
 }: {
   compact?: boolean
   showLabel?: boolean
+  avatarOnly?: boolean
   personas?: User[]
   allowAdmin?: boolean
   compactSingleLine?: boolean
@@ -39,7 +42,21 @@ export function PersonaPicker({
 
   return (
     <div ref={ref} className="relative">
-      {compact ? (
+      {avatarOnly ? (
+        <button
+          onClick={() => setOpen(!open)}
+          className="w-10 h-10 rounded-full overflow-hidden hover:ring-2 hover:ring-border-subtle transition-all"
+          aria-label="Switch persona"
+        >
+          {activePersona ? (
+            <Avatar name={activePersona.name} size="md" />
+          ) : (
+            <div className="w-full h-full bg-indigo-500 flex items-center justify-center">
+              <Shield className="w-4 h-4 text-white" />
+            </div>
+          )}
+        </button>
+      ) : compact ? (
         <button
           onClick={() => setOpen(!open)}
           className={cn(
@@ -114,8 +131,8 @@ export function PersonaPicker({
 
       {open && (
         <div className={cn(
-          'absolute w-72 bg-surface-1 border border-border-dim rounded shadow-lg z-50 overflow-hidden',
-          compact ? 'top-full right-0 mt-1' : 'bottom-full left-0 mb-1'
+          'absolute w-72 bg-surface-1 border border-border-dim rounded shadow-lg z-50 overflow-hidden max-h-[70vh] overflow-y-auto',
+          avatarOnly ? 'bottom-0 left-full ml-2' : compact ? 'top-full right-0 mt-1' : 'bottom-full left-0 mb-1'
         )}>
           {/* Admin option */}
           {allowAdmin && (
@@ -158,23 +175,19 @@ export function PersonaPicker({
             </button>
           ))}
 
-          {activePersona && (
-            <>
-              <div className="border-t border-border-dim" />
-              <button
-                onClick={() => { setJourneyOpen(true); setOpen(false) }}
-                className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-surface-2 transition-colors"
-              >
-                <span className="w-8 h-8 rounded-full bg-surface-3 flex items-center justify-center flex-shrink-0">
-                  <Map className="w-4 h-4 text-foreground-dim" />
-                </span>
-                <div className="min-w-0">
-                  <div className="text-body-0-bold text-foreground">Sharing Map</div>
-                  <div className="text-label-0-regular text-foreground-dim">View project sharing timeline</div>
-                </div>
-              </button>
-            </>
-          )}
+          <div className="border-t border-border-dim" />
+          <Link
+            href="/nextgen/desktop"
+            onClick={() => setOpen(false)}
+            className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-surface-2 transition-colors"
+          >
+            <span className="w-8 h-8 rounded-full bg-surface-3 flex items-center justify-center flex-shrink-0">
+              <Monitor className="w-4 h-4 text-foreground-dim" />
+            </span>
+            <div className="min-w-0">
+              <div className="text-body-0-bold text-foreground">Desktop Environment</div>
+            </div>
+          </Link>
         </div>
       )}
 

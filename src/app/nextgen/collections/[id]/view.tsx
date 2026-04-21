@@ -60,7 +60,16 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const { cardSize, setCardSize, sidePanelOpen, setSidePanelOpen, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const [sortCriteria, setSortCriteria] = useState<import('@/components/ui').SortCriterion[]>([{ field: 'name', direction: 'asc' as const }])
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
-  const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
+  const { setBreadcrumbExtras, clearBreadcrumbExtras, setBreadcrumbActions, clearBreadcrumbActions } = useBreadcrumbExtras()
+
+  useEffect(() => {
+    setBreadcrumbActions(
+      <Button variant="icon" compact onClick={togglePanel} aria-label={panelOpen ? 'Close panel' : 'Open panel'}>
+        <PanelRight className="w-4 h-4" />
+      </Button>
+    )
+    return () => clearBreadcrumbActions()
+  }, [panelOpen, togglePanel, setBreadcrumbActions, clearBreadcrumbActions])
 
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)

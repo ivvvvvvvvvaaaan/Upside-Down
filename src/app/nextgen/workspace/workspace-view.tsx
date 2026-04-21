@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { cn } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 import {
   Stack,
   AssetCard,
@@ -43,7 +43,7 @@ import { WorkspaceSidePanel } from '@/components/department/WorkspaceSidePanel'
 import { AssetDetailPanel } from '@/components/ui/asset-detail-panel'
 import { getContextAssetGroups } from '@/lib/context-relationships'
 import { useIsMobile } from '@/hooks/useMediaQuery'
-import { List, Columns, LayoutGrid, PanelRight, Info, Lock, Users, FolderPlus, FolderSymlink, Share2, RefreshCw, Trash2, FilePlus, Upload, FolderInput, MoreVertical } from 'lucide-react'
+import { List, Columns, LayoutGrid, PanelRight, Info, Lock, Users, FolderPlus, FolderSymlink, Share2, RefreshCw, Trash2, FilePlus, Upload, FolderInput, HardDriveDownload, Download, Check, Minus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { assetToSelectionEntity, folderToSelectionEntity } from '@/lib/selection-actions'
 import type { SelectionEntity } from '@/lib/selection-actions'
@@ -223,9 +223,10 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     primaryId,
     handleSelectionClick,
     selectOnly,
+    selectAll,
     clearSelection,
   } = useResourceSelection<{ id: string }>()
-  const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
+  const { setBreadcrumbExtras, clearBreadcrumbExtras, setBreadcrumbActions, clearBreadcrumbActions } = useBreadcrumbExtras()
 
   const {
     toggleManagedZone,
@@ -381,6 +382,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     setBreadcrumbExtras(extras)
     return () => clearBreadcrumbExtras()
   }, [landingFolderId, landingDrillPath, setBreadcrumbExtras, clearBreadcrumbExtras])
+
 
   const sortFields = [
     { value: 'name', label: 'Name' },
@@ -633,6 +635,24 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     return { kind: 'owner', subtitle: `Shared with ${sharedGrants.length} ${sharedGrants.length === 1 ? 'person' : 'people'}` }
   }, [currentLocationNode, getAclResourceId, getResourceGrants, getInheritedGrants, isCurrentFolderOwner, effectiveNodeDomainId])
 
+  const shareBanner = useMemo(() => {
+    if (!currentLocationNode || isCurrentFolderOwner) return null
+    const nodeId = getAclResourceId(currentLocationNode)
+    const direct = getResourceGrants(nodeId)
+    const inherited = getInheritedGrants(nodeId)
+    const allGrants = [...direct, ...inherited.map(({ grant }) => grant)]
+
+    const grantWithNote = allGrants.find((g) => g.note)
+    if (!grantWithNote) return null
+
+    const sharer = PERSONAS.find((p) => p.id === grantWithNote.grantedByUserId)
+    return {
+      note: grantWithNote.note!,
+      sharerName: sharer?.name,
+      date: grantWithNote.grantedAt,
+    }
+  }, [currentLocationNode, isCurrentFolderOwner, getAclResourceId, getResourceGrants, getInheritedGrants])
+
   const isGridView = viewMode === 'grid'
   const explorerViewMode = (isGridView ? 'list' : viewMode) as FileViewMode
 
@@ -679,19 +699,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
               <Stack spacing="lg">
                 {/* Mobile nav */}
                 <MobileToolbar title={pageTitle} actions={
-                  <div className="flex items-center gap-2">
-                    {canMountCurrentFolder && currentLocationNode && (
-                      <Dropdown label="Folder options" icon={<MoreVertical className="w-4 h-4" />} iconOnly align="end" width="sm">
-                        <div className="py-1">
-                          <DropdownMenuItem
-                            icon={<FolderInput className="w-4 h-4" />}
-                            label="Mount to Drive"
-                            onClick={() => handleMountFolderToDrive(currentLocationNode)}
-                          />
-                        </div>
-                      </Dropdown>
-                    )}
-                    {!panelOpen && (
+                  !panelOpen ? (
                       <Button
                         variant="icon"
                         size="icon"
@@ -700,8 +708,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                       >
                         <Info className="w-4 h-4" />
                       </Button>
-                    )}
-                  </div>
+                  ) : undefined
                 } />
                 <div className="flex items-center gap-2 md:hidden">
                   <HawkinsSearch
@@ -729,90 +736,131 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                   />
                 </div>
 
-                {/* Header */}
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <PageHeader
-                      title={pageTitle}
-                      description={[
-                        pageAccessTag?.subtitle,
-                        landingFolderId
-                          ? `${filteredFileCount} item${filteredFileCount !== 1 ? 's' : ''}`
-                          : `${workspaceRootNodes.length} workspace${workspaceRootNodes.length !== 1 ? 's' : ''}`,
-                      ].filter(Boolean).join(' · ')}
-                      hideTitleOnMobile
-                    />
-                    <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-                      <SortDropdown
-                        fields={sortFields}
-                        value={sortCriteria}
-                        onChange={setSortCriteria}
-                        iconOnly
-                      />
-                      <AppearanceDropdown
-                        layout={layout}
-                        onLayoutChange={setLayout}
-                        cardSize={cardSize}
-                        onCardSizeChange={setCardSize}
-                        showLayoutOptions={false}
-                        viewModeOptions={VIEW_MODE_OPTIONS}
-                        viewMode={viewMode}
-                        onViewModeChange={setViewMode}
-                        iconOnly
-                        showTags={showTags}
-                        onShowTagsChange={setShowTags}
-                        metadataFields={metadataFields}
-                        onMetadataFieldChange={setMetadataField}
-                      />
-                      {landingFolderId && canShareCurrentFolder && (
-                        <Button variant="secondary" compact onClick={() => setPageAccessModalOpen(true)}>
-                          <ShareIcon className="w-4 h-4" />
-                          Share
-                        </Button>
-                      )}
-                      {canMountCurrentFolder && currentLocationNode && (
-                        <Dropdown label="Folder options" icon={<MoreVertical className="w-4 h-4" />} iconOnly align="end" width="sm">
-                          <div className="py-1">
-                            <DropdownMenuItem
-                              icon={<FolderInput className="w-4 h-4" />}
-                              label="Mount to Drive"
-                              onClick={() => handleMountFolderToDrive(currentLocationNode)}
-                            />
-                          </div>
-                        </Dropdown>
-                      )}
-                      {canEditCurrentFolder && (
-                        <Button
-                          variant="secondary"
-                          compact
-                          onClick={() => {
-                            setNewFolderParentPath(urlPath)
-                            setNewFolderModalOpen(true)
-                          }}
-                        >
-                          <FolderPlus className="w-4 h-4" />
-                          New Folder
-                        </Button>
-                      )}
-                      {!panelOpen && (
-                        <Button
-                          variant="icon"
-                          aria-label="Open panel"
-                          onClick={togglePanel}
-                        >
-                          <PanelRight className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="hidden md:block">
+                {/* Row 1: Title + Search + Appearance */}
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <PageHeader
+                    title={pageTitle}
+                    description={pageAccessTag?.subtitle}
+                    hideTitleOnMobile
+                  />
+                  <div className="hidden md:flex items-center gap-2 flex-shrink-0">
                     <HawkinsSearch
                       value={searchQuery}
                       onValueChange={setSearchQuery}
                       filters={filterOptions}
                     />
+                    <SortDropdown
+                      fields={sortFields}
+                      value={sortCriteria}
+                      onChange={setSortCriteria}
+                      iconOnly
+                    />
+                    <AppearanceDropdown
+                      layout={layout}
+                      onLayoutChange={setLayout}
+                      cardSize={cardSize}
+                      onCardSizeChange={setCardSize}
+                      showLayoutOptions={false}
+                      viewModeOptions={VIEW_MODE_OPTIONS}
+                      viewMode={viewMode}
+                      onViewModeChange={setViewMode}
+                      iconOnly
+                      showTags={showTags}
+                      onShowTagsChange={setShowTags}
+                      metadataFields={metadataFields}
+                      onMetadataFieldChange={setMetadataField}
+                    />
+                    <Button variant="icon" onClick={togglePanel} aria-label={panelOpen ? 'Close panel' : 'Open panel'}>
+                      <PanelRight className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
+
+                {/* Row 2: Select all + Item count + Root actions */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        if (selectedIds.size > 0) {
+                          clearSelection()
+                        } else {
+                          selectAll(currentGridSelectionEntities)
+                        }
+                      }}
+                      className={cn(
+                        'w-4 h-4 rounded flex-shrink-0 flex items-center justify-center transition-colors cursor-pointer',
+                        selectedIds.size > 0
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-transparent border border-white/40',
+                      )}
+                      aria-label="Select all"
+                    >
+                      {selectedIds.size > 0 && selectedIds.size >= topLevelSelectionEntries.length ? (
+                        <Check className="w-3 h-3" strokeWidth={3} />
+                      ) : selectedIds.size > 0 ? (
+                        <Minus className="w-3 h-3" strokeWidth={3} />
+                      ) : null}
+                    </button>
+                    <span className="text-body-0-regular text-foreground-subtle">
+                      {landingFolderId
+                        ? `${filteredFileCount} item${filteredFileCount !== 1 ? 's' : ''}`
+                        : `${workspaceRootNodes.length} workspace${workspaceRootNodes.length !== 1 ? 's' : ''}`}
+                    </span>
+                  </div>
+                  <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+                    {landingFolderId && currentLocationNode && (
+                      <Dropdown label="Download" icon={<Download className="w-4 h-4" />} iconOnly align="end" width="sm">
+                        <div className="py-1">
+                          <DropdownMenuItem
+                            icon={<Download className="w-4 h-4" />}
+                            label="Download folder"
+                            onClick={() => showToast(`Downloading "${currentLocationNode.name}"...`)}
+                          />
+                          {canMountCurrentFolder && (
+                            <DropdownMenuItem
+                              icon={<HardDriveDownload className="w-4 h-4" />}
+                              label="Mount to Drive"
+                              onClick={() => handleMountFolderToDrive(currentLocationNode)}
+                            />
+                          )}
+                        </div>
+                      </Dropdown>
+                    )}
+                    {landingFolderId && canShareCurrentFolder && (
+                      <Button variant="secondary" compact onClick={() => setPageAccessModalOpen(true)}>
+                        <ShareIcon className="w-4 h-4" />
+                        Share
+                      </Button>
+                    )}
+                    {canEditCurrentFolder && (
+                      <Button
+                        variant="secondary"
+                        compact
+                        onClick={() => {
+                          setNewFolderParentPath(urlPath)
+                          setNewFolderModalOpen(true)
+                        }}
+                      >
+                        <FolderPlus className="w-4 h-4" />
+                        New Folder
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {shareBanner && (
+                  <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-surface-mid border border-border-dim">
+                    <div className="min-w-0">
+                      <p className="text-body-0-regular text-foreground">{shareBanner.note}</p>
+                      {shareBanner.sharerName && (
+                        <p className="text-label-0-regular text-foreground-dim mt-0.5">
+                          {shareBanner.sharerName}{shareBanner.date ? ` · ${formatDate(shareBanner.date)}` : ''}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
 
                 <ContextualActionBar
                   selectedEntities={selectedEntities}
@@ -881,7 +929,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                                     <DropdownMenuItem icon={<RefreshCw className="w-4 h-4" />} label={managedFolderIds.has(node.id) ? 'Disable Sync' : 'Enable Sync'} onClick={() => toggleManagedZone(node.id)} />
                                     <DropdownMenuDivider />
                                     <DropdownMenuItem icon={<Share2 className="w-4 h-4" />} label="Share" onClick={() => setAccessModalNode(node)} />
-                                    <DropdownMenuItem icon={<FolderInput className="w-4 h-4" />} label="Mount to Drive" onClick={() => handleMountFolderToDrive(node)} />
+                                    <DropdownMenuItem icon={<HardDriveDownload className="w-4 h-4" />} label="Mount to Drive" onClick={() => handleMountFolderToDrive(node)} />
                                     <DropdownMenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete" onClick={() => fileTreeDeleteNode(node.id)} destructive />
                                   </div>
                                 )}
