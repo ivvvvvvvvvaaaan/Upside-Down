@@ -61,7 +61,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   const menu = (
     <div
       ref={menuRef}
-      className="fixed z-50 min-w-[180px] bg-surface-high border border-border-dim rounded shadow-lg py-1"
+      className="fixed z-50 min-w-[180px] bg-surface-mid rounded shadow-lg py-1"
       style={{ left: x, top: y }}
     >
       {items.map((item, i) => (
@@ -72,8 +72,8 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
               onClose()
             }}
             className={cn(
-              'w-full flex items-center gap-2 px-3 py-1.5 text-body-0-regular text-foreground',
-              'hover:bg-surface-2 transition-colors text-left'
+              'w-full flex items-center gap-2 px-3 py-2.5 text-body-0-regular text-foreground',
+              'hover:bg-surface-highlight transition-colors text-left'
             )}
           >
             {item.checked !== undefined ? (

@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { PanelRight, Info } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { PanelRight, Info, Link2, Download, Trash2, MoreVertical, FolderPlus, ArrowRight } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
 import { PERSONAS } from '@/lib/personas'
+import { SelectAllRow } from '@/components/ui/select-all-row'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import {
@@ -34,6 +35,8 @@ import { getContextAssetGroups } from '@/lib/context-relationships'
 import { useAccess } from '@/hooks'
 import { AccessModal } from '@/components/ui/access-modal'
 import type { ResourceRef } from '@/lib/grants'
+import { useToast } from '@/components/ui/toast'
+import { Dropdown, DropdownMenuItem, DropdownMenuDivider } from '@/components/ui'
 
 interface SmartCollectionDetailViewProps {
   collectionId: string
@@ -60,12 +63,14 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     primaryId: primaryAssetId,
     handleSelectionClick: handleAssetClick,
     selectOnly: selectOnlyAsset,
+    selectAll: selectAllAssets,
     clearSelection: clearAssetSelection,
   } = useAssetSelection()
   const {
     selectedIds: selectedCollectionIds,
     primaryId: selectedCollectionId,
     handleSelectionClick: handleCollectionSelectionClick,
+    selectAll: selectAllCollections,
     clearSelection: clearCollectionSelection,
   } = useResourceSelection<{ id: string; name: string }>()
   const { layout, setLayout, cardSize, setCardSize, sidePanelOpen, setSidePanelOpen, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
@@ -74,6 +79,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
   const { canShare, canEditAcl, getResourceGrants, sharesReceivedByMe, allProjectShares, isSensitiveAsset } = useAccess()
   const [shareModalOpen, setShareModalOpen] = useState(false)
+  const { showToast } = useToast()
   const collectionResourceRef: ResourceRef = { id: collectionId, type: 'smart-collection' }
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -98,6 +104,21 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const isOwner = collection?.createdBy === activePersona?.email
   const canManageCurrentCollection = Boolean(collection && (isOwner || isAdmin || canEditAcl(collectionResourceRef)))
   const canDeleteCurrentCollection = Boolean(collection && (isOwner || isAdmin))
+
+  type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; destructive?: boolean; dividerAfter?: boolean }
+
+  const smartCollectionMenuItems = useMemo((): MenuItem[] => {
+    const items: MenuItem[] = [
+      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setShareModalOpen(true) },
+      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, onClick: () => { navigator.clipboard.writeText(window.location.href); showToast('Link copied') } },
+      { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => togglePanel() },
+    ]
+    if (canDeleteCurrentCollection) {
+      items[items.length - 1].dividerAfter = true
+      items.push({ label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => { if (collection) { deleteCollection(collection.id); router.push('/nextgen') } }, destructive: true })
+    }
+    return items
+  }, [showShareButton, showToast, togglePanel, canDeleteCurrentCollection, collection, deleteCollection, router])
 
   const subtitle = useMemo(() => {
     // Received from someone else
@@ -209,7 +230,27 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     }
   }
 
-  const handleMenuClick = () => {}
+  const [assetShareTarget, setAssetShareTarget] = useState<{ ref: ResourceRef; title: string } | null>(null)
+
+  const toAssetResourceRef = useCallback((asset: Asset): ResourceRef => ({
+    id: asset.id,
+    type: asset.kind === 'cut' ? 'cut' : 'asset',
+    domainId: asset.department,
+  }), [])
+
+  const buildAssetMenuItems = useCallback((asset: Asset): MenuItem[] => {
+    const ref = toAssetResourceRef(asset)
+    const items: MenuItem[] = [
+      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setAssetShareTarget({ ref, title: asset.name }) },
+      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, onClick: () => { navigator.clipboard.writeText(`${window.location.origin}/nextgen/assets/${asset.id}`); showToast('Link copied') } },
+      { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: () => showToast(`Downloading "${asset.name}"...`), dividerAfter: true },
+      { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => showToast('Copy to not implemented yet') },
+      { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => showToast('Move not implemented yet') },
+      { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => { selectOnlyAsset(asset); setSidePanelOpen(true) } },
+    ]
+    return items
+  }, [toAssetResourceRef, showToast, selectOnlyAsset, setSidePanelOpen])
+
   const handleAssetCardClick = (asset: typeof filteredAssets[number], event: React.MouseEvent) => {
     clearCollectionSelection()
     handleAssetClick(asset, event, filteredAssets)
@@ -355,12 +396,17 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                       size="icon"
                       onClick={togglePanel}
                       aria-label={panelOpen ? 'Close panel' : 'Open panel'}
-                      
+
                     >
                       <Info className="w-4 h-4" />
                     </Button>
                   } />
                   <div className="flex items-center gap-2 md:hidden">
+                    <HawkinsSearch
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                      filters={filterOptions}
+                    />
                     <SortDropdown
                       fields={sortFields}
                       value={sortCriteria}
@@ -381,60 +427,84 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                     />
                   </div>
 
-                  {/* Header */}
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center justify-between gap-4">
-                      <PageHeader
-                        title={pageTitle}
-                        description={[subtitle, !loading ? `${itemCount} ${countLabel}${itemCount !== 1 ? 's' : ''}` : undefined].filter(Boolean).join(' · ')}
-                        hideTitleOnMobile
+                  {/* Row 1: Title + Search + Sort + Appearance + Panel toggle */}
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <PageHeader
+                      title={pageTitle}
+                      description={subtitle}
+                      hideTitleOnMobile
+                    />
+                    <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+                      <HawkinsSearch
+                        value={searchQuery}
+                        onValueChange={setSearchQuery}
+                        filters={filterOptions}
                       />
-                      <div className="hidden md:flex items-center gap-2">
-                        <SortDropdown
-                          fields={sortFields}
-                          value={sortCriteria}
-                          onChange={setSortCriteria}
-                          iconOnly
-                        />
-                        <AppearanceDropdown
-                          layout={layout}
-                          onLayoutChange={setLayout}
-                          cardSize={cardSize}
-                          onCardSizeChange={setCardSize}
-                          showLayoutOptions={false}
-                          iconOnly
-                          showTags={showTags}
-                          onShowTagsChange={setShowTags}
-                          metadataFields={metadataFields}
-                          onMetadataFieldChange={setMetadataField}
-                        />
-                        {showShareButton && (
-                          <Button
-                            variant="primary"
-                            compact
-                            icon={<ShareIcon />}
-                            onClick={() => setShareModalOpen(true)}
-                          >
-                            Share
-                          </Button>
-                        )}
-                        {!panelOpen && (
-                          <Button
-                            variant="icon"
-                            onClick={togglePanel}
-                            aria-label="Open panel"
-                          >
-                            <PanelRight className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
+                      <SortDropdown
+                        fields={sortFields}
+                        value={sortCriteria}
+                        onChange={setSortCriteria}
+                        iconOnly
+                      />
+                      <AppearanceDropdown
+                        layout={layout}
+                        onLayoutChange={setLayout}
+                        cardSize={cardSize}
+                        onCardSizeChange={setCardSize}
+                        showLayoutOptions={false}
+                        iconOnly
+                        showTags={showTags}
+                        onShowTagsChange={setShowTags}
+                        metadataFields={metadataFields}
+                        onMetadataFieldChange={setMetadataField}
+                      />
+                      <Button variant="icon" onClick={togglePanel} aria-label={panelOpen ? 'Close panel' : 'Open panel'}>
+                        <PanelRight className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
 
-                  <ContextualActionBar
-                    selectedEntities={activeSelectionEntities}
-                    onClearSelection={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
-                  />
+                  <div className="flex items-center justify-between">
+                    <SelectAllRow
+                      selectedCount={selectedAssetIds.size + selectedCollectionIds.size}
+                      totalCount={itemCount}
+                      onSelectAll={() => {
+                        if (isParentWithChildren) {
+                          selectAllCollections(childData.map(c => c.collection))
+                        } else {
+                          selectAllAssets(filteredAssets)
+                        }
+                      }}
+                      onClearSelection={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
+                      label={!loading ? `${itemCount} ${countLabel}${itemCount !== 1 ? 's' : ''}` : 'Loading...'}
+                    />
+                    {(selectedAssetIds.size > 0 || selectedCollectionIds.size > 0) ? (
+                      <ContextualActionBar
+                        selectedEntities={activeSelectionEntities}
+                        onClearSelection={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
+                        menuItems={!isParentWithChildren && selectedAssets.length === 1 ? buildAssetMenuItems(selectedAssets[0]) : smartCollectionMenuItems}
+                        inline
+                      />
+                    ) : (
+                      <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+                        {showShareButton && (
+                          <Button variant="secondary" compact icon={<ShareIcon />} onClick={() => setShareModalOpen(true)}>
+                            Share
+                          </Button>
+                        )}
+                        <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
+                          <div className="py-1">
+                            {smartCollectionMenuItems.slice(1).map((item, i) => (
+                              <div key={i}>
+                                <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} />
+                                {item.dividerAfter && <DropdownMenuDivider />}
+                              </div>
+                            ))}
+                          </div>
+                        </Dropdown>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Content */}
                   <div className="min-h-[400px]">
@@ -488,7 +558,16 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                             selected={selectedAssetIds.has(asset.id)}
                             primary={primaryAssetId === asset.id}
                             onClick={(a, e) => handleAssetCardClick(a, e)}
-                            onMenuClick={handleMenuClick}
+                            menuContent={
+                              <div className="py-1">
+                                {buildAssetMenuItems(asset).map((item, i) => (
+                                  <div key={i}>
+                                    <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} />
+                                    {item.dividerAfter && <DropdownMenuDivider />}
+                                  </div>
+                                ))}
+                              </div>
+                            }
                             showDepartment
                             shared={asset.department != null && activePersona?.domainId != null && asset.department !== activePersona.domainId}
                             sensitive={isSensitiveAsset(asset.id)}
@@ -561,6 +640,15 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
         resourceRef={shareResourceRef}
         title={shareTargetCollection?.name ?? collection?.name}
       />
+      {assetShareTarget && (
+        <AccessModal
+          open
+          onClose={() => setAssetShareTarget(null)}
+          resourceId={assetShareTarget.ref.id}
+          resourceRef={assetShareTarget.ref}
+          title={assetShareTarget.title}
+        />
+      )}
     </div>
   )
 }

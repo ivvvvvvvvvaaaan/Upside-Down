@@ -10,6 +10,7 @@ import {
 
   Grid,
   Folder,
+  FolderOpen,
   FolderSymlink,
   Search,
   FileText,
@@ -194,6 +195,8 @@ interface TreeNavLinkProps {
   href?: string
   label: string
   icon?: React.ReactNode
+  /** Icon shown when the node is expanded (replaces icon) */
+  iconExpanded?: React.ReactNode
   badge?: number
   /** 'unread' = indigo fill (inbox/shared), 'count' = border + dim text (collections) */
   badgeStyle?: 'unread' | 'count'
@@ -217,6 +220,7 @@ function TreeNavLink({
   href,
   label,
   icon,
+  iconExpanded,
   badge,
   badgeStyle = 'count',
   children,
@@ -244,15 +248,14 @@ function TreeNavLink({
   const [isExpanded, setIsExpanded] = usePersistedExpand(
     storageKey,
     hasActiveCollapsedPreview ? false : defaultExpanded,
-    hasActiveCollapsedPreview, // skip localStorage restore when showing collapsed preview
   )
 
-  // Force-expand only
+  // Force-expand when prop says so, or when a child route becomes active
   useEffect(() => {
-    if (forceExpand && !isExpanded) {
+    if ((forceExpand || shouldAutoExpandOnActiveChild) && !isExpanded) {
       setIsExpanded(true)
     }
-  }, [forceExpand, isExpanded, setIsExpanded])
+  }, [forceExpand, shouldAutoExpandOnActiveChild, isExpanded, setIsExpanded])
 
   const hasChevron = !!children
   const hasLeadingIcon = !!icon
@@ -285,6 +288,8 @@ function TreeNavLink({
     </>
   )
 
+  const resolvedIcon = (effectiveExpanded && iconExpanded) ? iconExpanded : icon
+
   const chevronIcon = effectiveExpanded
     ? <ChevronDown className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
     : <ChevronRight className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
@@ -297,12 +302,12 @@ function TreeNavLink({
         className="flex items-center gap-0.5 pl-1 py-2 flex-shrink-0"
       >
         {chevronIcon}
-        {icon}
+        {resolvedIcon}
       </button>
     ) : (
       <span className="flex items-center gap-0.5 pl-1 py-2 flex-shrink-0">
         <span className="w-3.5 flex-shrink-0" />
-        {icon}
+        {resolvedIcon}
       </span>
     )
   ) : hasChevron ? (
@@ -485,13 +490,14 @@ function FolderNavTree({ nodes, basePath, sharedFolderIds, onAssetDropToFolder }
         const isShared = sharedFolderIds?.has(folder.id)
         const FolderIcon = isShared ? FolderSymlink : Folder
         const folderIcon = <FolderIcon className="w-4 h-4 flex-shrink-0" />
+        const folderOpenIcon = <FolderOpen className="w-4 h-4 flex-shrink-0" />
         const subfolders = (folder.children ?? []).filter((n) => n.type === 'folder')
         const folderDrop = onAssetDropToFolder
           ? (assetIds: string[]) => onAssetDropToFolder(folder.id, folder.name, assetIds)
           : undefined
         if (subfolders.length > 0) {
           return (
-            <TreeNavLink key={folder.id} href={href} label={folder.name} icon={folderIcon} defaultExpanded={false} onAssetDrop={folderDrop}>
+            <TreeNavLink key={folder.id} href={href} label={folder.name} icon={folderIcon} iconExpanded={folderOpenIcon} defaultExpanded={false} onAssetDrop={folderDrop}>
               <FolderNavTree nodes={folder.children ?? []} basePath={href} sharedFolderIds={sharedFolderIds} onAssetDropToFolder={onAssetDropToFolder} />
             </TreeNavLink>
           )
@@ -541,6 +547,7 @@ function WorkspaceRootNavItem({ root }: { root: WorkspaceFileNode }) {
   const folderIcon = sharedFolderIds.has(root.id)
     ? <FolderSymlink className="w-4 h-4 flex-shrink-0" />
     : <Folder className="w-4 h-4 flex-shrink-0" />
+  const folderOpenIcon = <FolderOpen className="w-4 h-4 flex-shrink-0" />
 
   if (hasFolders) {
     const activePath: WorkspaceFileNode[] = []
@@ -571,6 +578,7 @@ function WorkspaceRootNavItem({ root }: { root: WorkspaceFileNode }) {
         href={href}
         label={root.name}
         icon={folderIcon}
+        iconExpanded={folderOpenIcon}
         defaultExpanded={false}
         autoExpandOnActiveChild={false}
         collapsedPreview={preview}

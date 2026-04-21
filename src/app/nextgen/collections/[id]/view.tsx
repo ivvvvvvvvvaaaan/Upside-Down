@@ -1,13 +1,12 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Download, MoreVertical, PanelRight, Info, Trash2 } from 'lucide-react'
+import { Download, MoreVertical, PanelRight, Info, Trash2, Link2, FolderPlus, ArrowRight } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
-import { cn } from '@/lib/utils'
+import { SelectAllRow } from '@/components/ui/select-all-row'
 import { useRouter } from 'next/navigation'
 import {
   Stack,
-  Text,
   Button,
   CardGrid,
   AssetCard,
@@ -56,11 +55,13 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const { resolveCollectionAssets } = useFileTree()
   const { showToast } = useToast()
   const { getRelatedCollectionsForAssets, scopedAssets, ensureAssetsLoaded } = useSmartCollections()
-  const { selectedIds, primaryId, handleAssetClick, selectOnly, clearSelection } = useAssetSelection()
+  const { selectedIds, primaryId, handleAssetClick, selectOnly, selectAll, clearSelection } = useAssetSelection()
   const { cardSize, setCardSize, sidePanelOpen, setSidePanelOpen, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const [sortCriteria, setSortCriteria] = useState<import('@/components/ui').SortCriterion[]>([{ field: 'name', direction: 'asc' as const }])
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
+
+  // Panel toggle is now inline in row 1, no breadcrumb action needed
 
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
@@ -152,9 +153,8 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     setLoading(false)
   }, [hydrated, collection, hasCollectionAccess, filterByAccess, resolveCollectionAssets])
 
-  const handleMenuClick = (asset: Asset) => {
-    console.log('Menu clicked for:', asset.name)
-  }
+  const [assetShareTarget, setAssetShareTarget] = useState<{ ref: ResourceRef; title: string } | null>(null)
+
   const toAssetResourceRef = useCallback((asset: Asset): ResourceRef => ({
     id: asset.id,
     type: asset.kind === 'cut' ? 'cut' : 'asset',
@@ -201,6 +201,38 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
       : `Removed ${selectedAssets.length} assets from ${collection.name}.`)
     clearSelection()
   }, [collection, selectedAssets, removeAssetFromCollection, showToast, clearSelection])
+  type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; destructive?: boolean; dividerAfter?: boolean }
+
+  const collectionMenuItems = useMemo((): MenuItem[] => {
+    const items: MenuItem[] = [
+      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setShareModalOpen(true) },
+      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, onClick: () => { navigator.clipboard.writeText(window.location.href); showToast('Link copied') } },
+      { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: handleDownloadCollection },
+    ]
+    if (isOwner) {
+      items.push(
+        { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: handleDeleteCollection, destructive: true },
+      )
+    }
+    return items
+  }, [isOwner, showToast, handleDownloadCollection, handleDeleteCollection])
+
+  const buildAssetMenuItems = useCallback((asset: Asset): MenuItem[] => {
+    const ref = toAssetResourceRef(asset)
+    const items: MenuItem[] = [
+      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setAssetShareTarget({ ref, title: asset.name }) },
+      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, onClick: () => { navigator.clipboard.writeText(`${window.location.origin}/nextgen/assets/${asset.id}`); showToast('Link copied') } },
+      { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: () => showToast(`Downloading "${asset.name}"...`), dividerAfter: true },
+      { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => showToast('Copy to not implemented yet') },
+      { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => showToast('Move not implemented yet') },
+      { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => { selectOnly(asset); setSidePanelOpen(true) } },
+    ]
+    if (isOwner && collection) {
+      items.push({ label: 'Remove from collection', icon: <Trash2 className="w-4 h-4" />, onClick: () => { removeAssetFromCollection(collection.id, asset.id); showToast(`Removed "${asset.name}" from ${collection.name}.`) }, destructive: true })
+    }
+    return items
+  }, [toAssetResourceRef, showToast, selectOnly, setSidePanelOpen, isOwner, collection, removeAssetFromCollection])
+
   const primaryAsset = useMemo(() => {
     if (!primaryId) return null
     return assets.find(a => a.id === primaryId) ?? null
@@ -264,94 +296,115 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                     size="icon"
                     onClick={togglePanel}
                     aria-label={panelOpen ? 'Close info' : 'Open info'}
-                    
+
                   >
                     <Info className="w-4 h-4" />
                   </Button>
                 } />
+                <div className="flex items-center gap-2 md:hidden">
+                  <HawkinsSearch
+                    value={searchQuery}
+                    onValueChange={setSearchQuery}
+                  />
+                  <SortDropdown
+                    fields={[
+                      { value: 'name', label: 'Name' },
+                      { value: 'date-modified', label: 'Date Modified' },
+                      { value: 'kind', label: 'Kind' },
+                    ]}
+                    value={sortCriteria}
+                    onChange={setSortCriteria}
+                    iconOnly
+                  />
+                  <AppearanceDropdown
+                    iconOnly
+                    layout="grid"
+                    onLayoutChange={() => {}}
+                    cardSize={cardSize}
+                    onCardSizeChange={setCardSize}
+                    showLayoutOptions={false}
+                    showTags={showTags}
+                    onShowTagsChange={setShowTags}
+                    metadataFields={metadataFields}
+                    onMetadataFieldChange={setMetadataField}
+                  />
+                </div>
 
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <PageHeader
-                      title={displayName || 'Loading...'}
-                      description={[subtitle, !loading ? `${assets.length} asset${assets.length !== 1 ? 's' : ''}` : undefined].filter(Boolean).join(' · ')}
-                      hideTitleOnMobile
+                {/* Row 1: Title + Search + Sort + Appearance + Panel toggle */}
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <PageHeader
+                    title={displayName || 'Loading...'}
+                    description={subtitle}
+                    hideTitleOnMobile
+                  />
+                  <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+                    <HawkinsSearch
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
                     />
-                    <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-                      <SortDropdown
-                        fields={[
-                          { value: 'name', label: 'Name' },
-                          { value: 'date-modified', label: 'Date Modified' },
-                          { value: 'kind', label: 'Kind' },
-                        ]}
-                        value={sortCriteria}
-                        onChange={setSortCriteria}
-                        iconOnly
-                      />
-                      <AppearanceDropdown
-                        iconOnly
-                        layout="grid"
-                        onLayoutChange={() => {}}
-                        cardSize={cardSize}
-                        onCardSizeChange={setCardSize}
-                        showLayoutOptions={false}
-                        showTags={showTags}
-                        onShowTagsChange={setShowTags}
-                        metadataFields={metadataFields}
-                        onMetadataFieldChange={setMetadataField}
-                      />
-                      {(isOwner || canDownloadCollection) && (
-                        <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly align="end" width="sm">
-                          <div className="py-1">
-                            {canDownloadCollection && (
-                              <DropdownMenuItem icon={<Download className="w-4 h-4" />} label="Download" onClick={handleDownloadCollection} />
-                            )}
-                            {isOwner && (
-                              <>
-                                <DropdownMenuDivider />
-                                <DropdownMenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete Collection" onClick={handleDeleteCollection} destructive />
-                              </>
-                            )}
-                          </div>
-                        </Dropdown>
-                      )}
-                      {showShareButton && (
-                        <Button
-                          variant="primary"
-                          compact
-                          icon={<ShareIcon />}
-                          onClick={() => setShareModalOpen(true)}
-                        >
-                          Share
-                        </Button>
-                      )}
-                      {!panelOpen && (
-                        <Button
-                          variant="icon"
-                          onClick={togglePanel}
-                          aria-label="Open panel"
-                        >
-                          <PanelRight className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
+                    <SortDropdown
+                      fields={[
+                        { value: 'name', label: 'Name' },
+                        { value: 'date-modified', label: 'Date Modified' },
+                        { value: 'kind', label: 'Kind' },
+                      ]}
+                      value={sortCriteria}
+                      onChange={setSortCriteria}
+                      iconOnly
+                    />
+                    <AppearanceDropdown
+                      iconOnly
+                      layout="grid"
+                      onLayoutChange={() => {}}
+                      cardSize={cardSize}
+                      onCardSizeChange={setCardSize}
+                      showLayoutOptions={false}
+                      showTags={showTags}
+                      onShowTagsChange={setShowTags}
+                      metadataFields={metadataFields}
+                      onMetadataFieldChange={setMetadataField}
+                    />
+                    <Button variant="icon" onClick={togglePanel} aria-label={panelOpen ? 'Close panel' : 'Open panel'}>
+                      <PanelRight className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
 
-                <ContextualActionBar
-                  selectedEntities={selectedEntities}
-                  onClearSelection={clearSelection}
-                  downloadAction={selectedAssets.length > 0 ? {
-                    enabled: canDownloadSelectedAssets,
-                    onClick: handleDownloadSelectedAssets,
-                    reason: canDownloadSelectedAssets ? undefined : "You don't have permission to download all selected assets.",
-                  } : undefined}
-                  removeAction={selectedAssets.length > 0 && isCurated ? {
-                    enabled: canRemoveFromCollection,
-                    onClick: handleRemoveSelectedAssets,
-                    reason: canRemoveFromCollection ? undefined : "Only the collection owner can remove assets.",
-                  } : undefined}
-                />
+                <div className="flex items-center justify-between">
+                  <SelectAllRow
+                    selectedCount={selectedIds.size}
+                    totalCount={displayAssets.length}
+                    onSelectAll={() => selectAll(displayAssets)}
+                    onClearSelection={clearSelection}
+                    label={!loading ? `${assets.length} asset${assets.length !== 1 ? 's' : ''}` : 'Loading...'}
+                  />
+                  {selectedIds.size > 0 ? (
+                    <ContextualActionBar
+                      selectedEntities={selectedEntities}
+                      onClearSelection={clearSelection}
+                      downloadAction={selectedAssets.length > 0 ? {
+                        enabled: canDownloadSelectedAssets,
+                        onClick: handleDownloadSelectedAssets,
+                        reason: canDownloadSelectedAssets ? undefined : "You don't have permission to download all selected assets.",
+                      } : undefined}
+                      removeAction={selectedAssets.length > 0 && isCurated ? {
+                        enabled: canRemoveFromCollection,
+                        onClick: handleRemoveSelectedAssets,
+                        reason: canRemoveFromCollection ? undefined : "Only the collection owner can remove assets.",
+                      } : undefined}
+                      menuItems={selectedAssets.length === 1 ? buildAssetMenuItems(selectedAssets[0]) : collectionMenuItems}
+                      inline
+                    />
+                  ) : (
+                    <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+                      {collectionMenuItems.map((item, i) => (
+                        <Button key={i} variant={item.destructive ? 'secondary-destructive' : 'secondary'} compact icon={item.icon} onClick={item.onClick}>
+                          {item.label}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {loading ? (
                   <CardGrid columns={getGridColumns(cardSize)} gap="4">
@@ -368,7 +421,16 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         selected={selectedIds.has(asset.id)}
                         primary={primaryId === asset.id}
                         onClick={(a, e) => handleAssetClick(a, e, displayAssets)}
-                        onMenuClick={handleMenuClick}
+                        menuContent={
+                          <div className="py-1">
+                            {buildAssetMenuItems(asset).map((item, i) => (
+                              <div key={i}>
+                                <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} />
+                                {item.dividerAfter && <DropdownMenuDivider />}
+                              </div>
+                            ))}
+                          </div>
+                        }
                         showDepartment
                         shared={sharedBy ? false : undefined}
                         sensitive={isSensitiveAsset(asset.id)}
@@ -423,6 +485,15 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
         resourceRef={collectionResourceRef}
         title={collection?.name}
       />
+      {assetShareTarget && (
+        <AccessModal
+          open
+          onClose={() => setAssetShareTarget(null)}
+          resourceId={assetShareTarget.ref.id}
+          resourceRef={assetShareTarget.ref}
+          title={assetShareTarget.title}
+        />
+      )}
     </div>
   )
 }

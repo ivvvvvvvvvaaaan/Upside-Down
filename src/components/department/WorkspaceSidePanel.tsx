@@ -3,6 +3,8 @@
 import { useState, useMemo } from 'react'
 import { X, Folder, FolderSymlink, FolderLock, File } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ActivityFeed } from '@/components/ui/activity-feed'
+import type { ActivityEvent } from '@/components/ui/activity-feed'
 import { Modal } from '@/components/ui/modal'
 import { Card } from '@/components/ui/card'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
@@ -111,6 +113,49 @@ export function WorkspaceSidePanel({
     return grantor?.name ?? null
   }, [node, folderVariant, getResourceGrants])
 
+  const activityFeed = useMemo((): ActivityEvent[] => {
+    if (!node || !isFolder) return []
+    const events: ActivityEvent[] = []
+
+    // Share events (deduplicated by sharer+time)
+    const grants = getResourceGrants(node.id)
+    const seen = new Set<string>()
+    for (const grant of grants) {
+      const key = `${grant.grantedByUserId}:${grant.grantedAt}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      const sharer = PERSONAS.find((p) => p.id === grant.grantedByUserId)
+      events.push({
+        id: `share-${grant.id}`,
+        icon: 'share',
+        text: `${sharer?.name ?? 'Someone'} shared this folder`,
+        date: grant.grantedAt,
+        detail: grant.note ?? undefined,
+      })
+    }
+
+    // Recent file additions
+    const collectFiles = (children: WorkspaceFileNode[]): WorkspaceFileNode[] => {
+      const files: WorkspaceFileNode[] = []
+      for (const child of children) {
+        if (child.type === 'file' && child.modifiedAt) files.push(child)
+        if (child.children) files.push(...collectFiles(child.children))
+      }
+      return files
+    }
+
+    for (const file of collectFiles(node.children ?? []).sort((a, b) => (b.modifiedAt ?? '').localeCompare(a.modifiedAt ?? '')).slice(0, 5)) {
+      events.push({
+        id: `file-${file.id}`,
+        icon: 'file-add',
+        text: file.name,
+        date: file.modifiedAt!,
+      })
+    }
+
+    return events.sort((a, b) => b.date.localeCompare(a.date))
+  }, [node, isFolder, getResourceGrants])
+
   const fullPath = useMemo(() => {
     if (!node) return null
 
@@ -204,6 +249,7 @@ export function WorkspaceSidePanel({
           </div>
         </section>
 
+        <ActivityFeed events={activityFeed} />
 
       </div>
       )}

@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { X, LayoutGrid, Pencil, MapPin, Film, Zap, Folder, Users } from 'lucide-react'
+import { ActivityFeed } from './activity-feed'
+import type { ActivityEvent } from './activity-feed'
 import { Button } from './button'
 import { Avatar } from './avatar'
 import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
@@ -11,13 +13,11 @@ import { Modal } from './modal'
 import { Card } from './card'
 import { ResponsivePanel } from './responsive-panel'
 import { AccessModal } from './access-modal'
-import { CreativeReviewCard } from './creative-review-card'
 import { OntologySection } from './ontology-section'
 import { SmartCollectionFilterBuilder } from './smart-collection-filter-builder'
 import { Tag } from './tag'
 import type { Collection } from '@/lib/collection-types'
 import { isSmart, isCollection, getCollectionCapabilities } from '@/lib/collection-types'
-import { getCollectionReviewSummary } from '@/lib/review-notes'
 import type { ResourceRef, Grant } from '@/lib/grants'
 import type { AssetFilter, SmartCollectionGroupBy } from '@/lib/data'
 import type { RelatedCollections } from '@/hooks/useSmartCollections'
@@ -180,7 +180,6 @@ export function CollectionSidePanel({
   ), [curated, resolveCollectionAssetIds])
   const assetCount = matchingCount ?? resolvedAssetIds.length
   const assetIds = resolvedAssetIds
-  const reviewNoteSummary = curated ? getCollectionReviewSummary(collection.id, assetIds) : null
   const [accessModalOpen, setAccessModalOpen] = useState(false)
 
   const linkedSnapshotCollections = useMemo(() => {
@@ -206,6 +205,43 @@ export function CollectionSidePanel({
   const createdByName = collection.createdBy
     ? (PERSONAS.find(p => p.email === collection.createdBy)?.name ?? collection.createdBy)
     : null
+
+  const collectionActivity = useMemo((): ActivityEvent[] => {
+    const events: ActivityEvent[] = []
+    const collGrants = getResourceGrants(accessResourceId)
+    const seen = new Set<string>()
+    for (const grant of collGrants) {
+      // Skip self-shares (grantor is also the recipient)
+      if (grant.principal.type === 'user' && grant.principal.userId === grant.grantedByUserId) continue
+
+      const key = `${grant.grantedByUserId}:${grant.grantedAt}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      const sharer = PERSONAS.find(p => p.id === grant.grantedByUserId)
+      const p = grant.principal
+      const recipientName = p.type === 'user'
+        ? PERSONAS.find(persona => persona.id === p.userId)?.name ?? 'someone'
+        : p.type === 'team'
+        ? TEAMS.find(t => t.id === p.teamId)?.name ?? 'a team'
+        : 'a group'
+      events.push({
+        id: `share-${grant.id}`,
+        icon: 'share',
+        text: `${sharer?.name ?? 'Someone'} shared with ${recipientName}`,
+        date: grant.grantedAt,
+        detail: grant.note ?? undefined,
+      })
+    }
+    if (curated && collection.createdAt) {
+      events.push({
+        id: 'created',
+        icon: 'collection-add',
+        text: `${createdByName ?? 'Someone'} created this collection`,
+        date: collection.createdAt.toISOString(),
+      })
+    }
+    return events.sort((a, b) => b.date.localeCompare(a.date))
+  }, [accessResourceId, getResourceGrants, collection.createdAt, createdByName])
 
   const grants = useMemo(() => {
     if (!smart || linkedSnapshotCollections.length <= 1) {
@@ -312,10 +348,6 @@ export function CollectionSidePanel({
           ) : null
         })()}
 
-        {reviewNoteSummary && (
-          <CreativeReviewCard summary={reviewNoteSummary} />
-        )}
-
         {/* Connections */}
         {relationships && connectionsCount > 0 && (
           <section className="space-y-2">
@@ -326,88 +358,8 @@ export function CollectionSidePanel({
           </section>
         )}
 
-        {/* Access */}
-        {caps.showAccessTab && (
-          <section className="space-y-3">
-            <h3 className="text-body-0-bold text-foreground-dim">Access</h3>
-            {canManageAccess ? (
-              <>
-                {smart && linkedSnapshotCollections.length > 1 && (
-                  <div className="bg-surface-low rounded-lg px-3 py-2.5 space-y-1">
-                    <span className="text-body-0-regular text-foreground-dim">Sharing</span>
-                    <p className="text-body-0-regular text-foreground">
-                      Shared as {linkedSnapshotCollections.length} separate snapshot collections.
-                    </p>
-                  </div>
-                )}
 
-                {grants.length > 0 && (
-                  <div className="space-y-2">
-                    {grants.map(grant => {
-                      const name = resolvePrincipalName(grant.principal)
-                      return (
-                        <div key={grant.id} className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <PrincipalAvatar principal={grant.principal} />
-                            <span className="text-body-0-regular text-foreground truncate">{name}</span>
-                          </div>
-                          <div className="flex-shrink-0">
-                            <GrantBadge grant={grant} roleGroups={roleGroups} />
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {guestLinks.length > 0 && (
-                  <div className="space-y-2">
-                    <span className="text-body-0-regular text-foreground-dim">Guest links</span>
-                    {guestLinks.map(link => (
-                      <div key={link.id} className="flex items-center justify-between gap-2">
-                        <span className="text-body-0-regular text-foreground truncate">
-                          {link.allowDownload ? 'View + Download' : 'View only'}
-                          {link.expiresAt && <span className="text-foreground-dim"> · expires {link.expiresAt}</span>}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {grants.length === 0 && guestLinks.length === 0 && (
-                  <p className="text-body-0-regular text-foreground-dim">Not shared</p>
-                )}
-
-                <Button variant="secondary" compact onClick={() => setAccessModalOpen(true)}>
-                  Manage Access
-                </Button>
-              </>
-            ) : (
-              (() => {
-                const myGrant = activePersona ? grants.find(g =>
-                  (g.principal.type === 'user' && g.principal.userId === activePersona.id) ||
-                  (g.principal.type === 'team' && isUserInTeam(activePersona.id, g.principal.teamId))
-                ) : undefined
-                const capabilities: string[] = ['Preview']
-                if (myGrant?.allowDownload) capabilities.push('Download')
-                if (myGrant?.allowComment) capabilities.push('Comment')
-                return (
-                  <div className="space-y-2">
-                    <p className="text-body-0-regular text-foreground">{capabilities.join(', ')}</p>
-                    {sharedBy && (
-                      <p className="text-body-0-regular text-foreground-dim">
-                        Shared by {sharedBy}
-                      </p>
-                    )}
-                    {myGrant?.note && (
-                      <p className="text-body-0-regular text-foreground-dim italic">{myGrant.note}</p>
-                    )}
-                  </div>
-                )
-              })()
-            )}
-          </section>
-        )}
+        <ActivityFeed events={collectionActivity} />
       </div>
 
       <AccessModal

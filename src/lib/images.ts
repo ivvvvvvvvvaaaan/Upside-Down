@@ -34,11 +34,13 @@ const ART_IMAGES = [
 ]
 
 const VFX_IMAGES: string[] = [
-  // Drop composited frames, CGI renders into /images/vfx/shots/ and /images/vfx/assets/
+  '/images/vfx/s3-poster-alt.jpg',
 ]
 
 const CAMERA_IMAGES: string[] = [
-  // Drop on-set stills into /images/camera/scenes/ and /images/camera/broll/
+  '/images/camera/broll/netflix-f1-drive-to-survive-season-7_f.webp',
+  '/images/camera/scenes/s8e6-the-duel.jpg',
+  '/images/camera/scenes/s8e8-call-me-chucky.jpg',
 ]
 
 const EDITORIAL_IMAGES = [

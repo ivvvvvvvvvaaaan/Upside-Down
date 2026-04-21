@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo } from 'react'
-import { Stack, CardGrid, AssetCard, EmptyState, MobileToolbar, PageHeader, Tag } from '@/components/ui'
+import { useMemo, useState } from 'react'
+import { Stack, CardGrid, AssetCard, EmptyState, MobileToolbar, PageHeader, Tag, HawkinsSearch, SortDropdown, AppearanceDropdown } from '@/components/ui'
+import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import { ContextualActionBar } from '@/components/ui/contextual-action-bar'
 import { getGridColumns, useAssetSelection, useViewPreferences, useAccess, useFileTree } from '@/hooks'
 import { assetToSelectionEntity } from '@/lib/selection-actions'
@@ -17,9 +18,19 @@ interface SharedFolderViewProps {
 
 export function SharedFolderView({ folderId }: SharedFolderViewProps) {
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
-  const { cardSize } = useViewPreferences()
+  const { cardSize, setCardSize, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const { getResourceGrants, canAccess } = useAccess()
   const { tree } = useFileTree()
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
+    { field: 'name', direction: 'asc' },
+  ])
+
+  const sortFields = [
+    { value: 'name', label: 'Name' },
+    { value: 'date-modified', label: 'Date Modified' },
+    { value: 'kind', label: 'Kind' },
+  ]
 
   // Find the folder in the tree to get its name and domain
   const folderInfo = useMemo(() => {
@@ -94,15 +105,69 @@ export function SharedFolderView({ folderId }: SharedFolderViewProps) {
           <div className="max-w-7xl mx-auto">
             <Stack spacing="lg">
               <MobileToolbar title={folderName} />
+              <div className="flex items-center gap-2 md:hidden">
+                <HawkinsSearch
+                  value={searchQuery}
+                  onValueChange={setSearchQuery}
+                />
+                <SortDropdown
+                  fields={sortFields}
+                  value={sortCriteria}
+                  onChange={setSortCriteria}
+                  iconOnly
+                />
+                <AppearanceDropdown
+                  iconOnly
+                  layout="grid"
+                  onLayoutChange={() => {}}
+                  cardSize={cardSize}
+                  onCardSizeChange={setCardSize}
+                  showLayoutOptions={false}
+                  showTags={showTags}
+                  onShowTagsChange={setShowTags}
+                  metadataFields={metadataFields}
+                  onMetadataFieldChange={setMetadataField}
+                />
+              </div>
 
-              <div className="hidden md:block">
+              {/* Row 1: Title + Search + Sort + Appearance */}
+              <div className="flex flex-wrap items-center justify-between gap-4">
                 <PageHeader
                   title={folderName}
-                  description={[
-                    sharedBy ? `Shared by ${sharedBy} · View only` : 'View only',
-                    `${assets.length} asset${assets.length !== 1 ? 's' : ''}`,
-                  ].join(' · ')}
+                  description={sharedBy ? `Shared by ${sharedBy} · View only` : 'View only'}
+                  hideTitleOnMobile
                 />
+                <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+                  <HawkinsSearch
+                    value={searchQuery}
+                    onValueChange={setSearchQuery}
+                  />
+                  <SortDropdown
+                    fields={sortFields}
+                    value={sortCriteria}
+                    onChange={setSortCriteria}
+                    iconOnly
+                  />
+                  <AppearanceDropdown
+                    iconOnly
+                    layout="grid"
+                    onLayoutChange={() => {}}
+                    cardSize={cardSize}
+                    onCardSizeChange={setCardSize}
+                    showLayoutOptions={false}
+                    showTags={showTags}
+                    onShowTagsChange={setShowTags}
+                    metadataFields={metadataFields}
+                    onMetadataFieldChange={setMetadataField}
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Item count */}
+              <div className="flex items-center justify-between">
+                <span className="text-body-0-regular text-foreground-subtle">
+                  {assets.length} asset{assets.length !== 1 ? 's' : ''}
+                </span>
               </div>
 
               <ContextualActionBar

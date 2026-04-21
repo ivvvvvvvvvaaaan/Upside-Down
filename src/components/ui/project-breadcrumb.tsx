@@ -3,12 +3,10 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronRight, Settings, Map } from 'lucide-react'
+import { ChevronRight, Map } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
-import { SettingsModal } from './settings-modal'
 import { UserJourneyModal } from './user-journey-modal'
-import { PersonaPicker } from './persona-picker'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 
 /**
@@ -49,17 +47,22 @@ export interface BreadcrumbItem {
 interface BreadcrumbExtrasContextValue {
   extras: BreadcrumbItem[]
   setExtras: (items: BreadcrumbItem[]) => void
+  actions: React.ReactNode
+  setActions: (node: React.ReactNode) => void
 }
 
 const BreadcrumbExtrasContext = createContext<BreadcrumbExtrasContextValue>({
   extras: [],
   setExtras: () => {},
+  actions: null,
+  setActions: () => {},
 })
 
 export function BreadcrumbExtrasProvider({ children }: { children: React.ReactNode }) {
   const [extras, setExtras] = useState<BreadcrumbItem[]>([])
+  const [actions, setActions] = useState<React.ReactNode>(null)
   return (
-    <BreadcrumbExtrasContext.Provider value={{ extras, setExtras }}>
+    <BreadcrumbExtrasContext.Provider value={{ extras, setExtras, actions, setActions }}>
       {children}
     </BreadcrumbExtrasContext.Provider>
   )
@@ -77,7 +80,16 @@ export function useBreadcrumbExtras() {
     setExtras([])
   }, [setExtras])
 
-  return { setBreadcrumbExtras, clearBreadcrumbExtras }
+  const { setActions } = useContext(BreadcrumbExtrasContext)
+  const setBreadcrumbActions = useCallback((node: React.ReactNode) => {
+    setActions(node)
+  }, [setActions])
+
+  const clearBreadcrumbActions = useCallback(() => {
+    setActions(null)
+  }, [setActions])
+
+  return { setBreadcrumbExtras, clearBreadcrumbExtras, setBreadcrumbActions, clearBreadcrumbActions }
 }
 
 
@@ -138,8 +150,7 @@ function BreadcrumbCrumb({ crumb, isLast }: { crumb: BreadcrumbItem; isLast: boo
 
 export function ProjectBreadcrumb() {
   const pathname = usePathname()
-  const { extras } = useContext(BreadcrumbExtrasContext)
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const { extras, actions } = useContext(BreadcrumbExtrasContext)
   const [journeyOpen, setJourneyOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const isMobile = useIsMobile()
@@ -203,26 +214,9 @@ export function ProjectBreadcrumb() {
       </nav>
 
       <div className="flex items-center gap-2 flex-shrink-0">
-        <Button
-          variant="tertiary"
-          compact
-          icon={<Map className="w-3.5 h-3.5" />}
-          onClick={() => setJourneyOpen(true)}
-        >
-          <span className="hidden md:inline">Sharing Map</span>
-        </Button>
-        <Button
-          variant="icon"
-          compact
-          onClick={() => setSettingsOpen(true)}
-          aria-label="Permissions settings"
-        >
-          <Settings className="w-4 h-4" />
-        </Button>
-        <PersonaPicker compact showLabel />
+        {actions}
       </div>
 
-      <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
       <UserJourneyModal open={journeyOpen} onClose={() => setJourneyOpen(false)} />
     </div>
   )

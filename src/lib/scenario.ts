@@ -401,6 +401,7 @@ export const SCENARIO: Scenario = {
       label: 'Camera Selects',
       by: 'camera-dit',
       date: '2026-02-05',
+      note: 'Daily selects from set. New takes land here as we shoot.',
       context: 'Tom shares the Camera Selects folder directly with editorial, plus David and Alex for review. New selects appear automatically as he adds them.',
       grants: [
         { toTeam: 'editorial', as: 'viewer' },
@@ -414,6 +415,7 @@ export const SCENARIO: Scenario = {
       label: 'Lens Data',
       by: 'camera-dit',
       date: '2026-01-25',
+      note: 'Lens distortion maps and test charts for comp accuracy. Updated as we change glass.',
       context: 'Tom shares the Lens Data folder directly with VFX. Mike and Sarah need new lens maps and charts to show up automatically as camera publishes them.',
       grants: [
         { to: 'vfx-supervisor', as: 'viewer' },
