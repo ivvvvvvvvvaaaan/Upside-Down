@@ -3,11 +3,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Download, MoreVertical, PanelRight, Info, Trash2 } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
-import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import {
   Stack,
-  Text,
   Button,
   CardGrid,
   AssetCard,
@@ -60,16 +58,9 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const { cardSize, setCardSize, sidePanelOpen, setSidePanelOpen, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const [sortCriteria, setSortCriteria] = useState<import('@/components/ui').SortCriterion[]>([{ field: 'name', direction: 'asc' as const }])
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
-  const { setBreadcrumbExtras, clearBreadcrumbExtras, setBreadcrumbActions, clearBreadcrumbActions } = useBreadcrumbExtras()
+  const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
 
-  useEffect(() => {
-    setBreadcrumbActions(
-      <Button variant="icon" compact onClick={togglePanel} aria-label={panelOpen ? 'Close panel' : 'Open panel'}>
-        <PanelRight className="w-4 h-4" />
-      </Button>
-    )
-    return () => clearBreadcrumbActions()
-  }, [panelOpen, togglePanel, setBreadcrumbActions, clearBreadcrumbActions])
+  // Panel toggle is now inline in row 1, no breadcrumb action needed
 
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
@@ -273,77 +264,111 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                     size="icon"
                     onClick={togglePanel}
                     aria-label={panelOpen ? 'Close info' : 'Open info'}
-                    
+
                   >
                     <Info className="w-4 h-4" />
                   </Button>
                 } />
+                <div className="flex items-center gap-2 md:hidden">
+                  <HawkinsSearch
+                    value={searchQuery}
+                    onValueChange={setSearchQuery}
+                  />
+                  <SortDropdown
+                    fields={[
+                      { value: 'name', label: 'Name' },
+                      { value: 'date-modified', label: 'Date Modified' },
+                      { value: 'kind', label: 'Kind' },
+                    ]}
+                    value={sortCriteria}
+                    onChange={setSortCriteria}
+                    iconOnly
+                  />
+                  <AppearanceDropdown
+                    iconOnly
+                    layout="grid"
+                    onLayoutChange={() => {}}
+                    cardSize={cardSize}
+                    onCardSizeChange={setCardSize}
+                    showLayoutOptions={false}
+                    showTags={showTags}
+                    onShowTagsChange={setShowTags}
+                    metadataFields={metadataFields}
+                    onMetadataFieldChange={setMetadataField}
+                  />
+                </div>
 
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <PageHeader
-                      title={displayName || 'Loading...'}
-                      description={[subtitle, !loading ? `${assets.length} asset${assets.length !== 1 ? 's' : ''}` : undefined].filter(Boolean).join(' · ')}
-                      hideTitleOnMobile
+                {/* Row 1: Title + Search + Sort + Appearance + Panel toggle */}
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <PageHeader
+                    title={displayName || 'Loading...'}
+                    description={subtitle}
+                    hideTitleOnMobile
+                  />
+                  <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+                    <HawkinsSearch
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
                     />
-                    <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-                      <SortDropdown
-                        fields={[
-                          { value: 'name', label: 'Name' },
-                          { value: 'date-modified', label: 'Date Modified' },
-                          { value: 'kind', label: 'Kind' },
-                        ]}
-                        value={sortCriteria}
-                        onChange={setSortCriteria}
-                        iconOnly
-                      />
-                      <AppearanceDropdown
-                        iconOnly
-                        layout="grid"
-                        onLayoutChange={() => {}}
-                        cardSize={cardSize}
-                        onCardSizeChange={setCardSize}
-                        showLayoutOptions={false}
-                        showTags={showTags}
-                        onShowTagsChange={setShowTags}
-                        metadataFields={metadataFields}
-                        onMetadataFieldChange={setMetadataField}
-                      />
-                      {(isOwner || canDownloadCollection) && (
-                        <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly align="end" width="sm">
-                          <div className="py-1">
-                            {canDownloadCollection && (
-                              <DropdownMenuItem icon={<Download className="w-4 h-4" />} label="Download" onClick={handleDownloadCollection} />
-                            )}
-                            {isOwner && (
-                              <>
-                                <DropdownMenuDivider />
-                                <DropdownMenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete Collection" onClick={handleDeleteCollection} destructive />
-                              </>
-                            )}
-                          </div>
-                        </Dropdown>
-                      )}
-                      {showShareButton && (
-                        <Button
-                          variant="primary"
-                          compact
-                          icon={<ShareIcon />}
-                          onClick={() => setShareModalOpen(true)}
-                        >
-                          Share
-                        </Button>
-                      )}
-                      {!panelOpen && (
-                        <Button
-                          variant="icon"
-                          onClick={togglePanel}
-                          aria-label="Open panel"
-                        >
-                          <PanelRight className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
+                    <SortDropdown
+                      fields={[
+                        { value: 'name', label: 'Name' },
+                        { value: 'date-modified', label: 'Date Modified' },
+                        { value: 'kind', label: 'Kind' },
+                      ]}
+                      value={sortCriteria}
+                      onChange={setSortCriteria}
+                      iconOnly
+                    />
+                    <AppearanceDropdown
+                      iconOnly
+                      layout="grid"
+                      onLayoutChange={() => {}}
+                      cardSize={cardSize}
+                      onCardSizeChange={setCardSize}
+                      showLayoutOptions={false}
+                      showTags={showTags}
+                      onShowTagsChange={setShowTags}
+                      metadataFields={metadataFields}
+                      onMetadataFieldChange={setMetadataField}
+                    />
+                    <Button variant="icon" onClick={togglePanel} aria-label={panelOpen ? 'Close panel' : 'Open panel'}>
+                      <PanelRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Row 2: Item count + actions */}
+                <div className="flex items-center justify-between">
+                  <span className="text-body-0-regular text-foreground-subtle">
+                    {!loading ? `${assets.length} asset${assets.length !== 1 ? 's' : ''}` : 'Loading...'}
+                  </span>
+                  <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+                    {(isOwner || canDownloadCollection) && (
+                      <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly align="end" width="sm">
+                        <div className="py-1">
+                          {canDownloadCollection && (
+                            <DropdownMenuItem icon={<Download className="w-4 h-4" />} label="Download" onClick={handleDownloadCollection} />
+                          )}
+                          {isOwner && (
+                            <>
+                              <DropdownMenuDivider />
+                              <DropdownMenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete Collection" onClick={handleDeleteCollection} destructive />
+                            </>
+                          )}
+                        </div>
+                      </Dropdown>
+                    )}
+                    {showShareButton && (
+                      <Button
+                        variant="primary"
+                        compact
+                        icon={<ShareIcon />}
+                        onClick={() => setShareModalOpen(true)}
+                      >
+                        Share
+                      </Button>
+                    )}
                   </div>
                 </div>
 

@@ -355,12 +355,17 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                       size="icon"
                       onClick={togglePanel}
                       aria-label={panelOpen ? 'Close panel' : 'Open panel'}
-                      
+
                     >
                       <Info className="w-4 h-4" />
                     </Button>
                   } />
                   <div className="flex items-center gap-2 md:hidden">
+                    <HawkinsSearch
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                      filters={filterOptions}
+                    />
                     <SortDropdown
                       fields={sortFields}
                       value={sortCriteria}
@@ -381,53 +386,59 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                     />
                   </div>
 
-                  {/* Header */}
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center justify-between gap-4">
-                      <PageHeader
-                        title={pageTitle}
-                        description={[subtitle, !loading ? `${itemCount} ${countLabel}${itemCount !== 1 ? 's' : ''}` : undefined].filter(Boolean).join(' · ')}
-                        hideTitleOnMobile
+                  {/* Row 1: Title + Search + Sort + Appearance + Panel toggle */}
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <PageHeader
+                      title={pageTitle}
+                      description={subtitle}
+                      hideTitleOnMobile
+                    />
+                    <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+                      <HawkinsSearch
+                        value={searchQuery}
+                        onValueChange={setSearchQuery}
+                        filters={filterOptions}
                       />
-                      <div className="hidden md:flex items-center gap-2">
-                        <SortDropdown
-                          fields={sortFields}
-                          value={sortCriteria}
-                          onChange={setSortCriteria}
-                          iconOnly
-                        />
-                        <AppearanceDropdown
-                          layout={layout}
-                          onLayoutChange={setLayout}
-                          cardSize={cardSize}
-                          onCardSizeChange={setCardSize}
-                          showLayoutOptions={false}
-                          iconOnly
-                          showTags={showTags}
-                          onShowTagsChange={setShowTags}
-                          metadataFields={metadataFields}
-                          onMetadataFieldChange={setMetadataField}
-                        />
-                        {showShareButton && (
-                          <Button
-                            variant="primary"
-                            compact
-                            icon={<ShareIcon />}
-                            onClick={() => setShareModalOpen(true)}
-                          >
-                            Share
-                          </Button>
-                        )}
-                        {!panelOpen && (
-                          <Button
-                            variant="icon"
-                            onClick={togglePanel}
-                            aria-label="Open panel"
-                          >
-                            <PanelRight className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
+                      <SortDropdown
+                        fields={sortFields}
+                        value={sortCriteria}
+                        onChange={setSortCriteria}
+                        iconOnly
+                      />
+                      <AppearanceDropdown
+                        layout={layout}
+                        onLayoutChange={setLayout}
+                        cardSize={cardSize}
+                        onCardSizeChange={setCardSize}
+                        showLayoutOptions={false}
+                        iconOnly
+                        showTags={showTags}
+                        onShowTagsChange={setShowTags}
+                        metadataFields={metadataFields}
+                        onMetadataFieldChange={setMetadataField}
+                      />
+                      <Button variant="icon" onClick={togglePanel} aria-label={panelOpen ? 'Close panel' : 'Open panel'}>
+                        <PanelRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Item count + actions */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-body-0-regular text-foreground-subtle">
+                      {!loading ? `${itemCount} ${countLabel}${itemCount !== 1 ? 's' : ''}` : 'Loading...'}
+                    </span>
+                    <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+                      {showShareButton && (
+                        <Button
+                          variant="primary"
+                          compact
+                          icon={<ShareIcon />}
+                          onClick={() => setShareModalOpen(true)}
+                        >
+                          Share
+                        </Button>
+                      )}
                     </div>
                   </div>
 

@@ -379,35 +379,42 @@ export function CollectionBrowserView({
                   {...hideEmptyProps}
                 />
               </div>
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-4">
-                  <PageHeader title={title} description={description} hideTitleOnMobile />
-                  <div className="hidden md:flex items-center gap-2">
-                    <SortDropdown
-                      fields={sortFields}
-                      value={sortCriteria}
-                      onChange={setSortCriteria}
-                    />
-                    <AppearanceDropdown
-                      layout={layout}
-                      onLayoutChange={setLayout}
-                      cardSize={cardSize}
-                      onCardSizeChange={setCardSize}
-                      showTags={showTags}
-                      onShowTagsChange={setShowTags}
-                      metadataFields={metadataFields}
-                      onMetadataFieldChange={setMetadataField}
-                      {...hideEmptyProps}
-                    />
-                  </div>
-                </div>
-                <div className="hidden md:block">
+
+              {/* Row 1: Title + Search + Sort + Appearance */}
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <PageHeader title={title} hideTitleOnMobile />
+                <div className="hidden md:flex items-center gap-2 flex-shrink-0">
                   <HawkinsSearch
                     value={searchQuery}
                     onValueChange={setSearchQuery}
                     filters={filterOptions}
                   />
+                  <SortDropdown
+                    fields={sortFields}
+                    value={sortCriteria}
+                    onChange={setSortCriteria}
+                    iconOnly
+                  />
+                  <AppearanceDropdown
+                    layout={layout}
+                    onLayoutChange={setLayout}
+                    cardSize={cardSize}
+                    onCardSizeChange={setCardSize}
+                    iconOnly
+                    showTags={showTags}
+                    onShowTagsChange={setShowTags}
+                    metadataFields={metadataFields}
+                    onMetadataFieldChange={setMetadataField}
+                    {...hideEmptyProps}
+                  />
                 </div>
+              </div>
+
+              {/* Row 2: Item count */}
+              <div className="flex items-center justify-between">
+                <span className="text-body-0-regular text-foreground-subtle">
+                  {visibleCollections.length} collection{visibleCollections.length !== 1 ? 's' : ''}
+                </span>
               </div>
 
               {layout === 'list' ? (
