@@ -353,7 +353,6 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
         asset={asset}
         open={panelOpen}
         onClose={closePanel}
-        reviewNoteSummary={reviewNoteSummary}
         contextGroups={contextGroups}
         onContextAssetClick={handlePanelAssetSwitch}
         onVersionSelect={handlePanelAssetSwitch}

@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Download, MoreVertical, PanelRight, Info, Trash2, Link2 } from 'lucide-react'
+import { Download, MoreVertical, PanelRight, Info, Trash2, Link2, FolderPlus, ArrowRight } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
+import { SelectAllRow } from '@/components/ui/select-all-row'
 import { useRouter } from 'next/navigation'
 import {
   Stack,
@@ -54,7 +55,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const { resolveCollectionAssets } = useFileTree()
   const { showToast } = useToast()
   const { getRelatedCollectionsForAssets, scopedAssets, ensureAssetsLoaded } = useSmartCollections()
-  const { selectedIds, primaryId, handleAssetClick, selectOnly, clearSelection } = useAssetSelection()
+  const { selectedIds, primaryId, handleAssetClick, selectOnly, selectAll, clearSelection } = useAssetSelection()
   const { cardSize, setCardSize, sidePanelOpen, setSidePanelOpen, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const [sortCriteria, setSortCriteria] = useState<import('@/components/ui').SortCriterion[]>([{ field: 'name', direction: 'asc' as const }])
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
@@ -152,9 +153,8 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     setLoading(false)
   }, [hydrated, collection, hasCollectionAccess, filterByAccess, resolveCollectionAssets])
 
-  const handleMenuClick = (asset: Asset) => {
-    console.log('Menu clicked for:', asset.name)
-  }
+  const [assetShareTarget, setAssetShareTarget] = useState<{ ref: ResourceRef; title: string } | null>(null)
+
   const toAssetResourceRef = useCallback((asset: Asset): ResourceRef => ({
     id: asset.id,
     type: asset.kind === 'cut' ? 'cut' : 'asset',
@@ -207,20 +207,31 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     const items: MenuItem[] = [
       { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setShareModalOpen(true) },
       { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, onClick: () => { navigator.clipboard.writeText(window.location.href); showToast('Link copied') } },
-      { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: handleDownloadCollection, dividerAfter: isOwner },
+      { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: handleDownloadCollection },
     ]
     if (isOwner) {
       items.push(
-        { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => { togglePanel() }, dividerAfter: true },
         { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: handleDeleteCollection, destructive: true },
-      )
-    } else {
-      items.push(
-        { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => { togglePanel() } },
       )
     }
     return items
-  }, [isOwner, showToast, handleDownloadCollection, handleDeleteCollection, togglePanel])
+  }, [isOwner, showToast, handleDownloadCollection, handleDeleteCollection])
+
+  const buildAssetMenuItems = useCallback((asset: Asset): MenuItem[] => {
+    const ref = toAssetResourceRef(asset)
+    const items: MenuItem[] = [
+      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setAssetShareTarget({ ref, title: asset.name }) },
+      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, onClick: () => { navigator.clipboard.writeText(`${window.location.origin}/nextgen/assets/${asset.id}`); showToast('Link copied') } },
+      { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: () => showToast(`Downloading "${asset.name}"...`), dividerAfter: true },
+      { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => showToast('Copy to not implemented yet') },
+      { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => showToast('Move not implemented yet') },
+      { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => { selectOnly(asset); setSidePanelOpen(true) } },
+    ]
+    if (isOwner && collection) {
+      items.push({ label: 'Remove from collection', icon: <Trash2 className="w-4 h-4" />, onClick: () => { removeAssetFromCollection(collection.id, asset.id); showToast(`Removed "${asset.name}" from ${collection.name}.`) }, destructive: true })
+    }
+    return items
+  }, [toAssetResourceRef, showToast, selectOnly, setSidePanelOpen, isOwner, collection, removeAssetFromCollection])
 
   const primaryAsset = useMemo(() => {
     if (!primaryId) return null
@@ -359,13 +370,14 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                   </div>
                 </div>
 
-                {/* Row 2: Item count / Selection actions */}
                 <div className="flex items-center justify-between">
-                  <span className="text-body-0-regular text-foreground-subtle">
-                    {selectedIds.size > 0
-                      ? `${selectedIds.size} selected`
-                      : !loading ? `${assets.length} asset${assets.length !== 1 ? 's' : ''}` : 'Loading...'}
-                  </span>
+                  <SelectAllRow
+                    selectedCount={selectedIds.size}
+                    totalCount={displayAssets.length}
+                    onSelectAll={() => selectAll(displayAssets)}
+                    onClearSelection={clearSelection}
+                    label={!loading ? `${assets.length} asset${assets.length !== 1 ? 's' : ''}` : 'Loading...'}
+                  />
                   {selectedIds.size > 0 ? (
                     <ContextualActionBar
                       selectedEntities={selectedEntities}
@@ -380,26 +392,16 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         onClick: handleRemoveSelectedAssets,
                         reason: canRemoveFromCollection ? undefined : "Only the collection owner can remove assets.",
                       } : undefined}
-                      menuItems={collectionMenuItems}
+                      menuItems={selectedAssets.length === 1 ? buildAssetMenuItems(selectedAssets[0]) : collectionMenuItems}
                       inline
                     />
                   ) : (
                     <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-                      {showShareButton && (
-                        <Button variant="secondary" compact icon={<ShareIcon />} onClick={() => setShareModalOpen(true)}>
-                          Share
+                      {collectionMenuItems.map((item, i) => (
+                        <Button key={i} variant={item.destructive ? 'secondary-destructive' : 'secondary'} compact icon={item.icon} onClick={item.onClick}>
+                          {item.label}
                         </Button>
-                      )}
-                      <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
-                        <div className="py-1">
-                          {collectionMenuItems.slice(1).map((item, i) => (
-                            <div key={i}>
-                              <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} />
-                              {item.dividerAfter && <DropdownMenuDivider />}
-                            </div>
-                          ))}
-                        </div>
-                      </Dropdown>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -419,7 +421,16 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         selected={selectedIds.has(asset.id)}
                         primary={primaryId === asset.id}
                         onClick={(a, e) => handleAssetClick(a, e, displayAssets)}
-                        onMenuClick={handleMenuClick}
+                        menuContent={
+                          <div className="py-1">
+                            {buildAssetMenuItems(asset).map((item, i) => (
+                              <div key={i}>
+                                <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} />
+                                {item.dividerAfter && <DropdownMenuDivider />}
+                              </div>
+                            ))}
+                          </div>
+                        }
                         showDepartment
                         shared={sharedBy ? false : undefined}
                         sensitive={isSensitiveAsset(asset.id)}
@@ -474,6 +485,15 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
         resourceRef={collectionResourceRef}
         title={collection?.name}
       />
+      {assetShareTarget && (
+        <AccessModal
+          open
+          onClose={() => setAssetShareTarget(null)}
+          resourceId={assetShareTarget.ref.id}
+          resourceRef={assetShareTarget.ref}
+          title={assetShareTarget.title}
+        />
+      )}
     </div>
   )
 }

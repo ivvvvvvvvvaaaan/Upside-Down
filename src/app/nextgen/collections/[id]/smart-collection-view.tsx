@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { PanelRight, Info, Link2, Download, Trash2, MoreVertical } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { PanelRight, Info, Link2, Download, Trash2, MoreVertical, FolderPlus, ArrowRight } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
 import { PERSONAS } from '@/lib/personas'
+import { SelectAllRow } from '@/components/ui/select-all-row'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import {
@@ -62,12 +63,14 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     primaryId: primaryAssetId,
     handleSelectionClick: handleAssetClick,
     selectOnly: selectOnlyAsset,
+    selectAll: selectAllAssets,
     clearSelection: clearAssetSelection,
   } = useAssetSelection()
   const {
     selectedIds: selectedCollectionIds,
     primaryId: selectedCollectionId,
     handleSelectionClick: handleCollectionSelectionClick,
+    selectAll: selectAllCollections,
     clearSelection: clearCollectionSelection,
   } = useResourceSelection<{ id: string; name: string }>()
   const { layout, setLayout, cardSize, setCardSize, sidePanelOpen, setSidePanelOpen, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
@@ -227,7 +230,27 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     }
   }
 
-  const handleMenuClick = () => {}
+  const [assetShareTarget, setAssetShareTarget] = useState<{ ref: ResourceRef; title: string } | null>(null)
+
+  const toAssetResourceRef = useCallback((asset: Asset): ResourceRef => ({
+    id: asset.id,
+    type: asset.kind === 'cut' ? 'cut' : 'asset',
+    domainId: asset.department,
+  }), [])
+
+  const buildAssetMenuItems = useCallback((asset: Asset): MenuItem[] => {
+    const ref = toAssetResourceRef(asset)
+    const items: MenuItem[] = [
+      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setAssetShareTarget({ ref, title: asset.name }) },
+      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, onClick: () => { navigator.clipboard.writeText(`${window.location.origin}/nextgen/assets/${asset.id}`); showToast('Link copied') } },
+      { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: () => showToast(`Downloading "${asset.name}"...`), dividerAfter: true },
+      { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => showToast('Copy to not implemented yet') },
+      { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => showToast('Move not implemented yet') },
+      { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => { selectOnlyAsset(asset); setSidePanelOpen(true) } },
+    ]
+    return items
+  }, [toAssetResourceRef, showToast, selectOnlyAsset, setSidePanelOpen])
+
   const handleAssetCardClick = (asset: typeof filteredAssets[number], event: React.MouseEvent) => {
     clearCollectionSelection()
     handleAssetClick(asset, event, filteredAssets)
@@ -441,18 +464,25 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                     </div>
                   </div>
 
-                  {/* Row 2: Item count / Selection actions */}
                   <div className="flex items-center justify-between">
-                    <span className="text-body-0-regular text-foreground-subtle">
-                      {(selectedAssetIds.size > 0 || selectedCollectionIds.size > 0)
-                        ? `${selectedAssetIds.size + selectedCollectionIds.size} selected`
-                        : !loading ? `${itemCount} ${countLabel}${itemCount !== 1 ? 's' : ''}` : 'Loading...'}
-                    </span>
+                    <SelectAllRow
+                      selectedCount={selectedAssetIds.size + selectedCollectionIds.size}
+                      totalCount={itemCount}
+                      onSelectAll={() => {
+                        if (isParentWithChildren) {
+                          selectAllCollections(childData.map(c => c.collection))
+                        } else {
+                          selectAllAssets(filteredAssets)
+                        }
+                      }}
+                      onClearSelection={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
+                      label={!loading ? `${itemCount} ${countLabel}${itemCount !== 1 ? 's' : ''}` : 'Loading...'}
+                    />
                     {(selectedAssetIds.size > 0 || selectedCollectionIds.size > 0) ? (
                       <ContextualActionBar
                         selectedEntities={activeSelectionEntities}
                         onClearSelection={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
-                        menuItems={smartCollectionMenuItems}
+                        menuItems={!isParentWithChildren && selectedAssets.length === 1 ? buildAssetMenuItems(selectedAssets[0]) : smartCollectionMenuItems}
                         inline
                       />
                     ) : (
@@ -528,7 +558,16 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                             selected={selectedAssetIds.has(asset.id)}
                             primary={primaryAssetId === asset.id}
                             onClick={(a, e) => handleAssetCardClick(a, e)}
-                            onMenuClick={handleMenuClick}
+                            menuContent={
+                              <div className="py-1">
+                                {buildAssetMenuItems(asset).map((item, i) => (
+                                  <div key={i}>
+                                    <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} />
+                                    {item.dividerAfter && <DropdownMenuDivider />}
+                                  </div>
+                                ))}
+                              </div>
+                            }
                             showDepartment
                             shared={asset.department != null && activePersona?.domainId != null && asset.department !== activePersona.domainId}
                             sensitive={isSensitiveAsset(asset.id)}
@@ -601,6 +640,15 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
         resourceRef={shareResourceRef}
         title={shareTargetCollection?.name ?? collection?.name}
       />
+      {assetShareTarget && (
+        <AccessModal
+          open
+          onClose={() => setAssetShareTarget(null)}
+          resourceId={assetShareTarget.ref.id}
+          resourceRef={assetShareTarget.ref}
+          title={assetShareTarget.title}
+        />
+      )}
     </div>
   )
 }

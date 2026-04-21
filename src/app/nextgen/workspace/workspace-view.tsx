@@ -52,6 +52,7 @@ import type { SelectionEntity } from '@/lib/selection-actions'
 import { materializeReferenceFolders } from '@/lib/reference-folder-utils'
 import { collectAccessibleWorkspaceRoots, collectSharedFolderIds } from '@/lib/workspace-roots'
 import { useToast } from '@/components/ui/toast'
+import { SelectAllRow } from '@/components/ui/select-all-row'
 
 interface WorkspaceSelectionEntry {
   id: string
@@ -727,6 +728,28 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     return items
   }, [canEditResource, getAclResourceId, landingFolderId, urlPath, showToast, fileTreeRenameNode, fileTreeDeleteNode, selectionEntryById, selectOnly, setShowPanel, handleMountFolderToDrive])
 
+  const buildAssetMenuItems = useCallback((node: WorkspaceFileNode, asset: Asset): ContextMenuItem[] => {
+    const canEdit = canEditResource(node.id)
+    const items: ContextMenuItem[] = [
+      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setAccessModalNode(node) },
+      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, onClick: () => { navigator.clipboard.writeText(`${window.location.origin}/nextgen/assets/${asset.id}`); showToast('Link copied') } },
+      { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: () => showToast(`Downloading "${asset.name}"...`), dividerAfter: canEdit },
+    ]
+    if (canEdit) {
+      items.push(
+        { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => showToast('Copy to not implemented yet') },
+        { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => showToast('Move not implemented yet') },
+        { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(asset.id); if (entry) { selectOnly(entry.entity); setShowPanel(true) } }, dividerAfter: true },
+        { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => fileTreeDeleteNode(node.id) },
+      )
+    } else {
+      items.push(
+        { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(asset.id); if (entry) { selectOnly(entry.entity); setShowPanel(true) } } },
+      )
+    }
+    return items
+  }, [canEditResource, showToast, fileTreeDeleteNode, selectionEntryById, selectOnly, setShowPanel])
+
   const backgroundContextMenuItems = useMemo((): ContextMenuItem[] => {
     if (!canEditCurrentFolder) return []
     return [
@@ -858,39 +881,16 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                   </div>
                 </div>
 
-                {/* Row 2: Select all + Item count / Selection actions */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        if (selectedIds.size > 0) {
-                          clearSelection()
-                        } else {
-                          selectAll(currentGridSelectionEntities)
-                        }
-                      }}
-                      className={cn(
-                        'w-4 h-4 rounded flex-shrink-0 flex items-center justify-center transition-colors cursor-pointer',
-                        selectedIds.size > 0
-                          ? 'bg-indigo-500 text-white'
-                          : 'bg-transparent border border-white/40',
-                      )}
-                      aria-label="Select all"
-                    >
-                      {selectedIds.size > 0 && selectedIds.size >= topLevelSelectionEntries.length ? (
-                        <Check className="w-3 h-3" strokeWidth={3} />
-                      ) : selectedIds.size > 0 ? (
-                        <Minus className="w-3 h-3" strokeWidth={3} />
-                      ) : null}
-                    </button>
-                    <span className="text-body-0-regular text-foreground-subtle">
-                      {selectedIds.size > 0
-                        ? `${selectedIds.size} selected`
-                        : landingFolderId
-                          ? `${filteredFileCount} item${filteredFileCount !== 1 ? 's' : ''}`
-                          : `${workspaceRootNodes.length} workspace${workspaceRootNodes.length !== 1 ? 's' : ''}`}
-                    </span>
-                  </div>
+                  <SelectAllRow
+                    selectedCount={selectedIds.size}
+                    totalCount={topLevelSelectionEntries.length}
+                    onSelectAll={() => selectAll(currentGridSelectionEntities)}
+                    onClearSelection={clearSelection}
+                    label={landingFolderId
+                      ? `${filteredFileCount} item${filteredFileCount !== 1 ? 's' : ''}`
+                      : `${workspaceRootNodes.length} workspace${workspaceRootNodes.length !== 1 ? 's' : ''}`}
+                  />
                   {selectedIds.size > 0 ? (
                     <ContextualActionBar
                       selectedEntities={selectedEntities}
@@ -908,37 +908,39 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                       menuItems={(() => {
                         if (selectedIds.size !== 1) return undefined
                         const selectedNode = findNodeById(currentGridItems, Array.from(selectedIds)[0])
-                        if (!selectedNode || selectedNode.type !== 'folder') return undefined
-                        return buildFolderContextMenuItems(selectedNode)
+                        if (!selectedNode) return undefined
+                        if (selectedNode.type === 'folder') return buildFolderContextMenuItems(selectedNode)
+                        const asset = assetBySourceFileId.get(selectedNode.id) ?? folderNodeToAsset(selectedNode, findDomainIdForNode(selectedNode, getFileTreeDomainFiles) ?? activePersona?.domainId)
+                        return buildAssetMenuItems(selectedNode, asset)
                       })()}
                       inline
                     />
                   ) : (
                     <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-                      {landingFolderId && canShareCurrentFolder && (
-                        <Button variant="secondary" compact onClick={() => setPageAccessModalOpen(true)}>
-                          <ShareIcon className="w-4 h-4" />
-                          Share
-                        </Button>
-                      )}
-                      {landingFolderId && currentLocationNode && (
-                        <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
-                          <div className="py-1">
-                            <DropdownMenuItem
-                              icon={<Download className="w-4 h-4" />}
-                              label="Download folder"
-                              onClick={() => showToast(`Downloading "${currentLocationNode.name}"...`)}
-                            />
-                            {canMountCurrentFolder && (
-                              <DropdownMenuItem
-                                icon={<HardDriveDownload className="w-4 h-4" />}
-                                label="Mount to Drive"
-                                onClick={() => handleMountFolderToDrive(currentLocationNode)}
-                              />
+                      {landingFolderId && currentLocationNode && (() => {
+                        const items = buildFolderContextMenuItems(currentLocationNode)
+                        return (
+                          <>
+                            {items.slice(0, 3).map((item, i) => (
+                              <Button key={i} variant="secondary" compact icon={item.icon} onClick={item.onClick}>
+                                {item.label}
+                              </Button>
+                            ))}
+                            {items.length > 3 && (
+                              <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
+                                <div className="py-1">
+                                  {items.slice(3).map((item, i) => (
+                                    <div key={i}>
+                                      <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} />
+                                      {item.dividerAfter && <DropdownMenuDivider />}
+                                    </div>
+                                  ))}
+                                </div>
+                              </Dropdown>
                             )}
-                          </div>
-                        </Dropdown>
-                      )}
+                          </>
+                        )
+                      })()}
                     </div>
                   )}
                 </div>
@@ -972,7 +974,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                     const nodeId = card.getAttribute('data-card')
                     if (nodeId) {
                       const wsNode = findNodeById(currentGridItems, nodeId)
-                      if (wsNode && wsNode.type === 'folder') {
+                      if (wsNode) {
                         e.preventDefault()
                         setContextMenu({ x: e.clientX, y: e.clientY, node: wsNode })
                       }
@@ -1056,6 +1058,16 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                                   handleSelectionClick(selectionEntry.entity, e, currentGridSelectionEntities)
                                 }
                               }}
+                              menuContent={
+                                <div className="py-1">
+                                  {buildAssetMenuItems(node, workspaceAsset).map((item, i) => (
+                                    <div key={i}>
+                                      <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} />
+                                      {item.dividerAfter && <DropdownMenuDivider />}
+                                    </div>
+                                  ))}
+                                </div>
+                              }
                               sensitive={isSensitiveAsset(workspaceAsset.id)}
                               allSelectedIds={selectedIds}
                             />
@@ -1182,7 +1194,11 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
-          items={contextMenu.node.id === '__background__' ? backgroundContextMenuItems : buildFolderContextMenuItems(contextMenu.node)}
+          items={contextMenu.node.id === '__background__'
+            ? backgroundContextMenuItems
+            : contextMenu.node.type === 'folder'
+              ? buildFolderContextMenuItems(contextMenu.node)
+              : buildAssetMenuItems(contextMenu.node, assetBySourceFileId.get(contextMenu.node.id) ?? folderNodeToAsset(contextMenu.node, findDomainIdForNode(contextMenu.node, getFileTreeDomainFiles) ?? activePersona?.domainId))}
           onClose={() => setContextMenu(null)}
         />
       )}

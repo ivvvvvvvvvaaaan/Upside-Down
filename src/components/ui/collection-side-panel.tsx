@@ -18,7 +18,6 @@ import { SmartCollectionFilterBuilder } from './smart-collection-filter-builder'
 import { Tag } from './tag'
 import type { Collection } from '@/lib/collection-types'
 import { isSmart, isCollection, getCollectionCapabilities } from '@/lib/collection-types'
-import { getCollectionReviewSummary } from '@/lib/review-notes'
 import type { ResourceRef, Grant } from '@/lib/grants'
 import type { AssetFilter, SmartCollectionGroupBy } from '@/lib/data'
 import type { RelatedCollections } from '@/hooks/useSmartCollections'
@@ -348,10 +347,6 @@ export function CollectionSidePanel({
             </section>
           ) : null
         })()}
-
-        {reviewNoteSummary && (
-          <CreativeReviewCard summary={reviewNoteSummary} />
-        )}
 
         {/* Connections */}
         {relationships && connectionsCount > 0 && (

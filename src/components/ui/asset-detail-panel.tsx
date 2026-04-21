@@ -65,12 +65,23 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
   const { resolveCollectionAssetIds } = useFileTree()
   const [modalOpen, setModalOpen] = useState(false)
 
-  // Domain/inherited access (structural — not revocable from here)
-  const domainEntries = useMemo(() => {
-    return inheritedGrants.map(({ grant, fromResourceName }) => {
+  // Separate inherited grants into structural team access vs folder shares
+  const { domainEntries, folderShareEntries } = useMemo(() => {
+    const domain: { grant: Grant; name: string; source: string }[] = []
+    const folderShares: { grant: Grant; name: string; source: string }[] = []
+    for (const { grant, fromResourceName } of inheritedGrants) {
       const name = resolvePrincipalName(grant.principal)
-      return { grant, name, source: fromResourceName }
-    })
+      const entry = { grant, name, source: fromResourceName }
+      // Team with a root folder = structural domain access
+      const isStructuralTeam = grant.principal.type === 'team'
+        && TEAMS.some(t => t.id === (grant.principal as { teamId: string }).teamId && t.rootFolderId)
+      if (isStructuralTeam) {
+        domain.push(entry)
+      } else {
+        folderShares.push(entry)
+      }
+    }
+    return { domainEntries: domain, folderShareEntries: folderShares }
   }, [inheritedGrants])
 
   // Direct grants on this asset
@@ -94,7 +105,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
     return results
   }, [collections, assetId, getResourceGrants, resolveCollectionAssetIds])
 
-  const hasAnything = domainEntries.length > 0 || directGrants.length > 0 || sharedCollections.length > 0
+  const hasAnything = domainEntries.length > 0 || folderShareEntries.length > 0 || directGrants.length > 0 || sharedCollections.length > 0
   const canManageAccess = isAdmin || (resourceRef ? canShare(resourceRef) : false)
 
   return (
@@ -106,6 +117,24 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
             <span className="text-body-0-regular text-foreground-dim">Group</span>
           </div>
           {domainEntries.map(({ grant, name }) => (
+            <div key={grant.id} className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <PrincipalAvatar principal={grant.principal} />
+                <span className="text-body-0-regular text-foreground truncate">{name}</span>
+              </div>
+              <CapabilityLabels grant={grant} roleGroups={roleGroups} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Folder shares — individual users/teams shared on parent folders */}
+      {folderShareEntries.length > 0 && (
+        <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-body-0-regular text-foreground-dim">From folder</span>
+          </div>
+          {folderShareEntries.map(({ grant, name }) => (
             <div key={grant.id} className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <PrincipalAvatar principal={grant.principal} />

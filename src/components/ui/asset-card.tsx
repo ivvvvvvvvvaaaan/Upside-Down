@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import { Button } from './button'
+import { Dropdown } from './dropdown'
 import { Tag } from './tag'
 import { Tooltip } from './tooltip'
 import { MoreVertical, Music, FileText, ImageIcon, Film, File, EyeOff, Box } from 'lucide-react'
@@ -60,6 +61,8 @@ export interface AssetCardProps {
   asset?: Asset
   onClick?: (asset: Asset, event: React.MouseEvent) => void
   onMenuClick?: (asset: Asset) => void
+  /** Dropdown menu content for the three-dot button */
+  menuContent?: React.ReactNode
   className?: string
   loading?: boolean
   /** Card is selected (blue background) */
@@ -97,6 +100,7 @@ export function AssetCard({
   asset,
   onClick,
   onMenuClick,
+  menuContent,
   className,
   loading = false,
   selected = false,
@@ -175,18 +179,25 @@ export function AssetCard({
             </div>
           </div>
 
-          {/* Right: Menu button (appears on hover) */}
-          <Button
-            variant="icon"
-            compact
-            onClick={(e) => {
-              e.stopPropagation()
-              onMenuClick?.(asset)
-            }}
-            className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <MoreVertical />
-          </Button>
+          {menuContent ? (
+            <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+              <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
+                {menuContent}
+              </Dropdown>
+            </div>
+          ) : (
+            <Button
+              variant="icon"
+              compact
+              onClick={(e) => {
+                e.stopPropagation()
+                onMenuClick?.(asset)
+              }}
+              className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <MoreVertical />
+            </Button>
+          )}
         </div>
       </div>
     )
@@ -350,17 +361,25 @@ export function AssetCard({
               </Link>
             )}
           </div>
-          <Button
-            variant="icon"
-            compact
-            onClick={(e) => {
-              e.stopPropagation()
-              onMenuClick?.(asset)
-            }}
-            className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <MoreVertical />
-          </Button>
+          {menuContent ? (
+            <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+              <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
+                {menuContent}
+              </Dropdown>
+            </div>
+          ) : (
+            <Button
+              variant="icon"
+              compact
+              onClick={(e) => {
+                e.stopPropagation()
+                onMenuClick?.(asset)
+              }}
+              className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <MoreVertical />
+            </Button>
+          )}
         </div>
 
         {/* Tags + Metadata chips */}
