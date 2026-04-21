@@ -15,6 +15,7 @@ import {
   FileExplorer,
   CollectionCard,
   ContextualActionBar,
+  InlineActionBar,
   NewFolderModal,
   AccessModal,
   MobileToolbar,
@@ -716,12 +717,12 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
         { label: 'Rename', icon: <Pencil className="w-4 h-4" />, onClick: () => fileTreeRenameNode(node.id, prompt('New name', node.name) ?? node.name) },
         { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => showToast('Copy to not implemented yet') },
         { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => showToast('Move not implemented yet') },
-        { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(node.id); if (entry) { selectOnly(entry.entity); setShowPanel(true) } }, dividerAfter: true },
+        { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(node.id); if (entry) { selectOnly(entry.entity); setShowPanel(true) } }, dividerAfter: true },
         { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => fileTreeDeleteNode(node.id) },
       )
     } else {
       items.push(
-        { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(node.id); if (entry) { selectOnly(entry.entity); setShowPanel(true) } } },
+        { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(node.id); if (entry) { selectOnly(entry.entity); setShowPanel(true) } } },
       )
     }
 
@@ -739,12 +740,12 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
       items.push(
         { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => showToast('Copy to not implemented yet') },
         { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => showToast('Move not implemented yet') },
-        { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(asset.id); if (entry) { selectOnly(entry.entity); setShowPanel(true) } }, dividerAfter: true },
+        { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(asset.id); if (entry) { selectOnly(entry.entity); setShowPanel(true) } }, dividerAfter: true },
         { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => fileTreeDeleteNode(node.id) },
       )
     } else {
       items.push(
-        { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(asset.id); if (entry) { selectOnly(entry.entity); setShowPanel(true) } } },
+        { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(asset.id); if (entry) { selectOnly(entry.entity); setShowPanel(true) } } },
       )
     }
     return items
@@ -804,7 +805,32 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
               <Stack spacing="lg">
                 {/* Mobile nav */}
                 <MobileToolbar title={pageTitle} actions={
-                  !panelOpen ? (
+                  <>
+                    <HawkinsSearch
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                      filters={filterOptions}
+                      collapsible
+                    />
+                    <SortDropdown
+                      fields={sortFields}
+                      value={sortCriteria}
+                      onChange={setSortCriteria}
+                      iconOnly
+                    />
+                    <AppearanceDropdown
+                      iconOnly
+                      layout={layout}
+                      onLayoutChange={setLayout}
+                      cardSize={cardSize}
+                      onCardSizeChange={setCardSize}
+                      showLayoutOptions={false}
+                      showTags={showTags}
+                      onShowTagsChange={setShowTags}
+                      metadataFields={metadataFields}
+                      onMetadataFieldChange={setMetadataField}
+                    />
+                    {!panelOpen && (
                       <Button
                         variant="icon"
                         size="icon"
@@ -813,33 +839,9 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                       >
                         <Info className="w-4 h-4" />
                       </Button>
-                  ) : undefined
+                    )}
+                  </>
                 } />
-                <div className="flex items-center gap-2 md:hidden">
-                  <HawkinsSearch
-                    value={searchQuery}
-                    onValueChange={setSearchQuery}
-                    filters={filterOptions}
-                  />
-                  <SortDropdown
-                    fields={sortFields}
-                    value={sortCriteria}
-                    onChange={setSortCriteria}
-                    iconOnly
-                  />
-                  <AppearanceDropdown
-                    iconOnly
-                    layout={layout}
-                    onLayoutChange={setLayout}
-                    cardSize={cardSize}
-                    onCardSizeChange={setCardSize}
-                    showLayoutOptions={false}
-                    showTags={showTags}
-                    onShowTagsChange={setShowTags}
-                    metadataFields={metadataFields}
-                    onMetadataFieldChange={setMetadataField}
-                  />
-                </div>
 
                 {/* Row 1: Title + Search + Appearance */}
                 <div className="flex flex-wrap items-center justify-between gap-4">
@@ -881,7 +883,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between min-h-8">
                   <SelectAllRow
                     selectedCount={selectedIds.size}
                     totalCount={topLevelSelectionEntries.length}
@@ -923,34 +925,9 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                       })()}
                       inline
                     />
-                  ) : (
-                    <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-                      {landingFolderId && currentLocationNode && (() => {
-                        const items = buildFolderContextMenuItems(currentLocationNode)
-                        return (
-                          <>
-                            {items.slice(0, 3).map((item, i) => (
-                              <Button key={i} variant="secondary" compact icon={item.icon} onClick={item.onClick}>
-                                {item.label}
-                              </Button>
-                            ))}
-                            {items.length > 3 && (
-                              <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
-                                <div className="py-1">
-                                  {items.slice(3).map((item, i) => (
-                                    <div key={i}>
-                                      <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} />
-                                      {item.dividerAfter && <DropdownMenuDivider />}
-                                    </div>
-                                  ))}
-                                </div>
-                              </Dropdown>
-                            )}
-                          </>
-                        )
-                      })()}
-                    </div>
-                  )}
+                  ) : landingFolderId && currentLocationNode ? (
+                    <InlineActionBar items={buildFolderContextMenuItems(currentLocationNode)} />
+                  ) : null}
                 </div>
 
                 {shareBanner && (

@@ -353,32 +353,34 @@ export function CollectionBrowserView({
         <div className="p-6">
           <div className="max-w-7xl mx-auto">
             <Stack spacing="lg">
-              <MobileToolbar title={title} />
-              <div className="flex items-center gap-2 md:hidden">
-                <HawkinsSearch
-                  value={searchQuery}
-                  onValueChange={setSearchQuery}
-                  filters={filterOptions}
-                />
-                <SortDropdown
-                  fields={sortFields}
-                  value={sortCriteria}
-                  onChange={setSortCriteria}
-                  iconOnly
-                />
-                <AppearanceDropdown
-                  iconOnly
-                  layout={layout}
-                  onLayoutChange={setLayout}
-                  cardSize={cardSize}
-                  onCardSizeChange={setCardSize}
-                  showTags={showTags}
-                  onShowTagsChange={setShowTags}
-                  metadataFields={metadataFields}
-                  onMetadataFieldChange={setMetadataField}
-                  {...hideEmptyProps}
-                />
-              </div>
+              <MobileToolbar title={title} actions={
+                <>
+                  <HawkinsSearch
+                    value={searchQuery}
+                    onValueChange={setSearchQuery}
+                    filters={filterOptions}
+                    collapsible
+                  />
+                  <SortDropdown
+                    fields={sortFields}
+                    value={sortCriteria}
+                    onChange={setSortCriteria}
+                    iconOnly
+                  />
+                  <AppearanceDropdown
+                    iconOnly
+                    layout={layout}
+                    onLayoutChange={setLayout}
+                    cardSize={cardSize}
+                    onCardSizeChange={setCardSize}
+                    showTags={showTags}
+                    onShowTagsChange={setShowTags}
+                    metadataFields={metadataFields}
+                    onMetadataFieldChange={setMetadataField}
+                    {...hideEmptyProps}
+                  />
+                </>
+              } />
 
               {/* Row 1: Title + Search + Sort + Appearance */}
               <div className="flex flex-wrap items-center justify-between gap-4">

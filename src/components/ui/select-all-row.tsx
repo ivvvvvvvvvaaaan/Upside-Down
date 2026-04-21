@@ -16,7 +16,7 @@ export function SelectAllRow({ selectedCount, totalCount, onSelectAll, onClearSe
   const allSelected = hasSelection && selectedCount >= totalCount
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
       <button
         onClick={hasSelection ? onClearSelection : onSelectAll}
         className={cn(
@@ -33,7 +33,7 @@ export function SelectAllRow({ selectedCount, totalCount, onSelectAll, onClearSe
           <Minus className="w-3 h-3" strokeWidth={3} />
         ) : null}
       </button>
-      <span className="text-body-0-regular text-foreground-subtle">
+      <span className="text-body-0-regular text-foreground-subtle truncate">
         {hasSelection ? `${selectedCount} selected` : label}
       </span>
     </div>

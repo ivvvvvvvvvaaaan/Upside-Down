@@ -104,31 +104,33 @@ export function SharedFolderView({ folderId }: SharedFolderViewProps) {
         <div className="p-6">
           <div className="max-w-7xl mx-auto">
             <Stack spacing="lg">
-              <MobileToolbar title={folderName} />
-              <div className="flex items-center gap-2 md:hidden">
-                <HawkinsSearch
-                  value={searchQuery}
-                  onValueChange={setSearchQuery}
-                />
-                <SortDropdown
-                  fields={sortFields}
-                  value={sortCriteria}
-                  onChange={setSortCriteria}
-                  iconOnly
-                />
-                <AppearanceDropdown
-                  iconOnly
-                  layout="grid"
-                  onLayoutChange={() => {}}
-                  cardSize={cardSize}
-                  onCardSizeChange={setCardSize}
-                  showLayoutOptions={false}
-                  showTags={showTags}
-                  onShowTagsChange={setShowTags}
-                  metadataFields={metadataFields}
-                  onMetadataFieldChange={setMetadataField}
-                />
-              </div>
+              <MobileToolbar title={folderName} actions={
+                <>
+                  <HawkinsSearch
+                    value={searchQuery}
+                    onValueChange={setSearchQuery}
+                    collapsible
+                  />
+                  <SortDropdown
+                    fields={sortFields}
+                    value={sortCriteria}
+                    onChange={setSortCriteria}
+                    iconOnly
+                  />
+                  <AppearanceDropdown
+                    iconOnly
+                    layout="grid"
+                    onLayoutChange={() => {}}
+                    cardSize={cardSize}
+                    onCardSizeChange={setCardSize}
+                    showLayoutOptions={false}
+                    showTags={showTags}
+                    onShowTagsChange={setShowTags}
+                    metadataFields={metadataFields}
+                    onMetadataFieldChange={setMetadataField}
+                  />
+                </>
+              } />
 
               {/* Row 1: Title + Search + Sort + Appearance */}
               <div className="flex flex-wrap items-center justify-between gap-4">
