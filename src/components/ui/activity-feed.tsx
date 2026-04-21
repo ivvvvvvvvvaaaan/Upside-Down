@@ -1,6 +1,7 @@
 'use client'
 
-import { Share2, FilePlus, UserPlus, UserMinus, Layers, FolderInput, Upload, Pencil } from 'lucide-react'
+import { FilePlus, UserMinus, Layers, Upload, Pencil } from 'lucide-react'
+import { ShareIcon } from './share-icon'
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
@@ -12,14 +13,20 @@ export interface ActivityEvent {
   detail?: string
 }
 
-const ICON_MAP = {
-  'share': Share2,
+const LUCIDE_ICON_MAP: Record<string, typeof FilePlus> = {
   'unshare': UserMinus,
   'file-add': FilePlus,
   'upload': Upload,
   'collection-add': Layers,
   'collection-remove': Layers,
   'edit': Pencil,
+}
+
+function EventIcon({ icon }: { icon: ActivityEvent['icon'] }) {
+  if (icon === 'share') return <ShareIcon size={14} className="opacity-50" />
+  const LucideIcon = LUCIDE_ICON_MAP[icon]
+  if (!LucideIcon) return null
+  return <LucideIcon className={cn('w-3.5 h-3.5', icon === 'unshare' || icon === 'collection-remove' ? 'text-foreground-system-error' : 'text-foreground-dim')} />
 }
 
 export function ActivityFeed({ events, className }: { events: ActivityEvent[]; className?: string }) {
@@ -30,11 +37,10 @@ export function ActivityFeed({ events, className }: { events: ActivityEvent[]; c
       <h3 className="text-body-0-bold text-foreground-dim">Activity</h3>
       <div className="space-y-0">
         {events.map((event) => {
-          const Icon = ICON_MAP[event.icon]
           return (
             <div key={event.id} className="flex gap-2 py-1.5">
               <div className="flex-shrink-0 mt-0.5">
-                <Icon className={cn('w-3.5 h-3.5', event.icon === 'unshare' || event.icon === 'collection-remove' ? 'text-foreground-system-error' : 'text-foreground-dim')} />
+                <EventIcon icon={event.icon} />
               </div>
               <div className="min-w-0">
                 <p className="text-body-0-regular text-foreground truncate">{event.text}</p>

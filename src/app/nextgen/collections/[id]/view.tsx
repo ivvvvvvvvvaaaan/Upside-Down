@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Download, MoreVertical, PanelRight, Info, Trash2 } from 'lucide-react'
+import { Download, MoreVertical, PanelRight, Info, Trash2, Link2 } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
 import { useRouter } from 'next/navigation'
 import {
@@ -201,6 +201,27 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
       : `Removed ${selectedAssets.length} assets from ${collection.name}.`)
     clearSelection()
   }, [collection, selectedAssets, removeAssetFromCollection, showToast, clearSelection])
+  type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; destructive?: boolean; dividerAfter?: boolean }
+
+  const collectionMenuItems = useMemo((): MenuItem[] => {
+    const items: MenuItem[] = [
+      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setShareModalOpen(true) },
+      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, onClick: () => { navigator.clipboard.writeText(window.location.href); showToast('Link copied') } },
+      { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: handleDownloadCollection, dividerAfter: isOwner },
+    ]
+    if (isOwner) {
+      items.push(
+        { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => { togglePanel() }, dividerAfter: true },
+        { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: handleDeleteCollection, destructive: true },
+      )
+    } else {
+      items.push(
+        { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => { togglePanel() } },
+      )
+    }
+    return items
+  }, [isOwner, showToast, handleDownloadCollection, handleDeleteCollection, togglePanel])
+
   const primaryAsset = useMemo(() => {
     if (!primaryId) return null
     return assets.find(a => a.id === primaryId) ?? null
@@ -359,35 +380,26 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         onClick: handleRemoveSelectedAssets,
                         reason: canRemoveFromCollection ? undefined : "Only the collection owner can remove assets.",
                       } : undefined}
+                      menuItems={collectionMenuItems}
                       inline
                     />
                   ) : (
                     <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-                      {(isOwner || canDownloadCollection) && (
-                        <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
-                          <div className="py-1">
-                            {canDownloadCollection && (
-                              <DropdownMenuItem icon={<Download className="w-4 h-4" />} label="Download" onClick={handleDownloadCollection} />
-                            )}
-                            {isOwner && (
-                              <>
-                                <DropdownMenuDivider />
-                                <DropdownMenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete Collection" onClick={handleDeleteCollection} destructive />
-                              </>
-                            )}
-                          </div>
-                        </Dropdown>
-                      )}
                       {showShareButton && (
-                        <Button
-                          variant="primary"
-                          compact
-                          icon={<ShareIcon />}
-                          onClick={() => setShareModalOpen(true)}
-                        >
+                        <Button variant="secondary" compact icon={<ShareIcon />} onClick={() => setShareModalOpen(true)}>
                           Share
                         </Button>
                       )}
+                      <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
+                        <div className="py-1">
+                          {collectionMenuItems.slice(1).map((item, i) => (
+                            <div key={i}>
+                              <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} />
+                              {item.dividerAfter && <DropdownMenuDivider />}
+                            </div>
+                          ))}
+                        </div>
+                      </Dropdown>
                     </div>
                   )}
                 </div>

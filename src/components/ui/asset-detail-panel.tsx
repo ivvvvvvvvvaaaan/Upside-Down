@@ -11,7 +11,6 @@ import { ResponsivePanel } from './responsive-panel'
 import { AccessModal } from './access-modal'
 import { Tag } from './tag'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
-import { CreativeReviewCard } from './creative-review-card'
 import type { Asset, DomainId } from '@/lib/data'
 import type { ResourceRef, Grant, RoleGroup, PrincipalRef } from '@/lib/grants'
 import { isGrantActive, RELEASE_DOMAINS } from '@/lib/grants'
@@ -20,8 +19,6 @@ import { useAccess, useFileTree, usePersona, useSmartCollections, useCuts } from
 import { getCutStageLabel } from '@/lib/cuts'
 import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
 import { useUserCollections } from '@/hooks/useUserCollections'
-import { getReviewNoteSummary } from '@/lib/review-notes'
-import type { ReviewNoteSummary } from '@/lib/review-notes'
 import { PERSONAS } from '@/lib/personas'
 import { TEAMS } from '@/lib/teams'
 import { slugify } from '@/lib/smart-collection-filters'
@@ -357,7 +354,6 @@ interface AssetDetailPanelProps {
   asset: Asset | null
   open: boolean
   onClose: () => void
-  reviewNoteSummary?: ReviewNoteSummary | null
   /** ID of the collection this asset is currently being viewed from */
   activeCollectionId?: string
   /** The context the panel was opened from — suppresses that item in "Found in" */
@@ -388,7 +384,6 @@ export type AssetDetailPanelContentProps = Omit<AssetDetailPanelProps, 'open' | 
 export function AssetDetailPanelContent({
   asset,
   onClose,
-  reviewNoteSummary = null,
   activeCollectionId,
   activeContext,
   contextGroups,
@@ -409,14 +404,20 @@ export function AssetDetailPanelContent({
     return getVersionsForGroup(asset.versionGroupId)
   }, [asset, getVersionsForGroup])
 
-  // Auto-resolve review note summary if not passed as prop
-  const resolvedReviewNoteSummary = useMemo(() => {
-    if (reviewNoteSummary !== undefined && reviewNoteSummary !== null) return reviewNoteSummary
-    if (!asset) return null
-    // Check by asset ID, then by source file IDs
-    return getReviewNoteSummary(asset.id)
-      ?? (asset.sourceFolderIds?.map(id => getReviewNoteSummary(id)).find(Boolean) ?? null)
-  }, [reviewNoteSummary, asset])
+
+  const assetActivity = useMemo((): ActivityEvent[] => {
+    if (!asset) return []
+    const events: ActivityEvent[] = []
+    if (asset.created_at) {
+      events.push({
+        id: 'created',
+        icon: 'file-add',
+        text: asset.modifiedBy ? `${asset.modifiedBy} added this file` : 'File added',
+        date: asset.created_at,
+      })
+    }
+    return events.sort((a, b) => b.date.localeCompare(a.date))
+  }, [asset])
 
   const resourceRef: ResourceRef | undefined = asset ? {
     id: asset.id,
@@ -835,9 +836,7 @@ export function AssetDetailPanelContent({
               )
             })()}
 
-            {resolvedReviewNoteSummary && (
-              <CreativeReviewCard summary={resolvedReviewNoteSummary} />
-            )}
+            <ActivityFeed events={assetActivity} />
           </TabsContent>
 
           <TabsContent value="connections" className="px-4 pb-4 space-y-4">

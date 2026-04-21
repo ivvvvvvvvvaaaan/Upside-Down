@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { PanelRight, Info } from 'lucide-react'
+import { PanelRight, Info, Link2, Download, Trash2, MoreVertical } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
 import { PERSONAS } from '@/lib/personas'
 import { cn } from '@/lib/utils'
@@ -34,6 +34,8 @@ import { getContextAssetGroups } from '@/lib/context-relationships'
 import { useAccess } from '@/hooks'
 import { AccessModal } from '@/components/ui/access-modal'
 import type { ResourceRef } from '@/lib/grants'
+import { useToast } from '@/components/ui/toast'
+import { Dropdown, DropdownMenuItem, DropdownMenuDivider } from '@/components/ui'
 
 interface SmartCollectionDetailViewProps {
   collectionId: string
@@ -74,6 +76,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
   const { canShare, canEditAcl, getResourceGrants, sharesReceivedByMe, allProjectShares, isSensitiveAsset } = useAccess()
   const [shareModalOpen, setShareModalOpen] = useState(false)
+  const { showToast } = useToast()
   const collectionResourceRef: ResourceRef = { id: collectionId, type: 'smart-collection' }
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -98,6 +101,21 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const isOwner = collection?.createdBy === activePersona?.email
   const canManageCurrentCollection = Boolean(collection && (isOwner || isAdmin || canEditAcl(collectionResourceRef)))
   const canDeleteCurrentCollection = Boolean(collection && (isOwner || isAdmin))
+
+  type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; destructive?: boolean; dividerAfter?: boolean }
+
+  const smartCollectionMenuItems = useMemo((): MenuItem[] => {
+    const items: MenuItem[] = [
+      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setShareModalOpen(true) },
+      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, onClick: () => { navigator.clipboard.writeText(window.location.href); showToast('Link copied') } },
+      { label: 'View details', icon: <PanelRight className="w-4 h-4" />, onClick: () => togglePanel() },
+    ]
+    if (canDeleteCurrentCollection) {
+      items[items.length - 1].dividerAfter = true
+      items.push({ label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => { if (collection) { deleteCollection(collection.id); router.push('/nextgen') } }, destructive: true })
+    }
+    return items
+  }, [showShareButton, showToast, togglePanel, canDeleteCurrentCollection, collection, deleteCollection, router])
 
   const subtitle = useMemo(() => {
     // Received from someone else
@@ -434,20 +452,26 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                       <ContextualActionBar
                         selectedEntities={activeSelectionEntities}
                         onClearSelection={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
+                        menuItems={smartCollectionMenuItems}
                         inline
                       />
                     ) : (
                       <div className="hidden md:flex items-center gap-2 flex-shrink-0">
                         {showShareButton && (
-                          <Button
-                            variant="primary"
-                            compact
-                            icon={<ShareIcon />}
-                            onClick={() => setShareModalOpen(true)}
-                          >
+                          <Button variant="secondary" compact icon={<ShareIcon />} onClick={() => setShareModalOpen(true)}>
                             Share
                           </Button>
                         )}
+                        <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
+                          <div className="py-1">
+                            {smartCollectionMenuItems.slice(1).map((item, i) => (
+                              <div key={i}>
+                                <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} />
+                                {item.dividerAfter && <DropdownMenuDivider />}
+                              </div>
+                            ))}
+                          </div>
+                        </Dropdown>
                       </div>
                     )}
                   </div>
