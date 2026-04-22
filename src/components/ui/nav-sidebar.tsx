@@ -467,7 +467,8 @@ function SectionHeader({ title }: { title: string }) {
 function FolderNavTree({ nodes, basePath, sharedFolderIds, onAssetDropToFolder }: { nodes: WorkspaceFileNode[]; basePath: string; sharedFolderIds?: Set<string>; onAssetDropToFolder?: (folderId: string, folderName: string, assetIds: string[]) => void }) {
   const { canAccess } = useAccess()
   const { activePersona } = usePersona()
-  const folders = nodes.filter((n) => n.type === 'folder')
+  const { assetById } = useFileTree()
+  const folders = nodes.filter((n) => n.type === 'folder' && assetById.get(n.id)?.kind !== 'cut')
   if (folders.length === 0) return null
 
   return (

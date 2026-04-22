@@ -4,7 +4,8 @@ import { useState, useMemo, useCallback } from 'react'
 import { Film, PanelRight, Info, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
-import { PageHeader, EmptyState, ContextualActionBar, Button, MobileToolbar, CardGrid } from '@/components/ui'
+import { PageHeader, EmptyState, ContextualActionBar, InlineActionBar, Button, MobileToolbar, CardGrid, SortDropdown, AppearanceDropdown, HawkinsSearch } from '@/components/ui'
+import { SelectAllRow } from '@/components/ui/select-all-row'
 import { AssetCard } from '@/components/ui/asset-card'
 import { ReleaseModal } from '@/components/ui/release-modal'
 import { useCuts, usePersona, useAssetSelection, useSmartCollections, useViewPreferences, useMobilePanel, useAccess, type VisibleCutEntry, type MetadataFieldVisibility } from '@/hooks'
@@ -194,15 +195,16 @@ export function LibraryView() {
           <div className="flex-1 min-h-0 overflow-y-auto">
             <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
             <MobileToolbar title="Cuts" actions={
-              <Button
-                variant="icon"
-                size="icon"
-                onClick={togglePanel}
-                aria-label={panelOpen ? 'Close panel' : 'Open panel'}
-                
-              >
-                <Info className="w-4 h-4" />
-              </Button>
+              <>
+                <Button
+                  variant="icon"
+                  size="icon"
+                  onClick={togglePanel}
+                  aria-label={panelOpen ? 'Close panel' : 'Open panel'}
+                >
+                  <Info className="w-4 h-4" />
+                </Button>
+              </>
             } />
             <div className="hidden md:flex items-start justify-between gap-4">
               <PageHeader
@@ -213,21 +215,31 @@ export function LibraryView() {
                     : 'Cuts will appear here as they become available'
                 }
               />
-              {!panelOpen && (
-                <Button
-                  variant="icon"
-                  onClick={togglePanel}
-                  aria-label="Open panel"
-                >
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Button variant="icon" onClick={togglePanel} aria-label={panelOpen ? 'Close panel' : 'Open panel'}>
                   <PanelRight className="w-4 h-4" />
                 </Button>
-              )}
+              </div>
             </div>
 
-            <ContextualActionBar
-              selectedEntities={selectedEntities}
-              onClearSelection={clearSelection}
-            />
+            <div className="flex items-center justify-between min-h-8">
+              <SelectAllRow
+                selectedCount={selectedIds.size}
+                totalCount={allCutAssets.length}
+                onSelectAll={() => {
+                  for (const a of allCutAssets) handleSelectionClick(a, { shiftKey: false, metaKey: false, ctrlKey: false } as React.MouseEvent, allCutAssets)
+                }}
+                onClearSelection={clearSelection}
+                label={`${visibleCuts.length} cut${visibleCuts.length !== 1 ? 's' : ''}`}
+              />
+              {selectedIds.size > 0 && (
+                <ContextualActionBar
+                  selectedEntities={selectedEntities}
+                  onClearSelection={clearSelection}
+                  inline
+                />
+              )}
+            </div>
 
             {episodes.length > 0 ? (
               <div className="space-y-8">
@@ -266,9 +278,7 @@ export function LibraryView() {
               asset={primaryAsset}
               onClose={() => { clearSelection(); closePanel() }}
               contextGroups={contextGroups}
-              olderVersions={primaryOlderVersions}
               onContextAssetClick={handlePanelAssetSwitch}
-              onVersionSelect={handlePanelAssetSwitch}
             />
           ) : (
             <>

@@ -332,7 +332,10 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     }
     // Merge cut assets (not from file tree)
     const cutAssets = buildCuts().map(c => seedCutToAsset(c))
-    const all = [...assets, ...cutAssets]
+    // Build set of constituent file IDs — these are internal to cuts, not standalone assets
+    const constituentIds = new Set(cutAssets.flatMap(c => c.constituents ?? []))
+    const filteredAssets = assets.filter(a => !constituentIds.has(a.id))
+    const all = [...filteredAssets, ...cutAssets]
     const byId = new Map(all.map(a => [a.id, a]))
     return { assetById: byId, allAssets: all }
   }, [rawTree])

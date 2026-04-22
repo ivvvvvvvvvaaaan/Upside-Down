@@ -40,7 +40,8 @@ function loadStoredCollections(): UserCollection[] {
       localStorage.setItem(SEED_VERSION_KEY, String(SEED_VERSION))
     }
   } catch { /* fall through */ }
-  return buildSeedCollections()
+  const phaseMode = typeof window !== 'undefined' && localStorage.getItem('scenario-phase-mode') === 'true'
+  return buildSeedCollections(phaseMode ? { skipShared: true } : undefined)
 }
 
 function persistCollections(collections: UserCollection[]) {

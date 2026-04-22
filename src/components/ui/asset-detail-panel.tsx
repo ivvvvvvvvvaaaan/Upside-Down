@@ -1,8 +1,8 @@
 'use client'
 
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
-import { X, Plus, EyeOff } from 'lucide-react'
-import { formatDate } from '@/lib/utils'
+import { X, Plus, EyeOff, ChevronDown } from 'lucide-react'
+import { cn, formatDate } from '@/lib/utils'
 import { ActivityFeed } from './activity-feed'
 import type { ActivityEvent } from './activity-feed'
 import { Button } from './button'
@@ -31,6 +31,15 @@ import { Avatar } from './avatar'
 import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
 import { PrincipalAvatar } from './principal-avatar'
 import type { AssetTag } from '@/lib/data'
+
+function MetaRow({ label, value, capitalize }: { label: string; value: string; capitalize?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <span className="text-body-0-regular text-foreground-dim flex-shrink-0">{label}</span>
+      <span className={`text-body-0-regular text-foreground text-right truncate ${capitalize ? 'capitalize' : ''}`}>{value}</span>
+    </div>
+  )
+}
 
 function resolvePrincipalName(principal: Grant['principal']): string {
   if (principal.type === 'user') {
@@ -499,6 +508,7 @@ export function AssetDetailPanelContent({
   }, [])
 
   const [tagModalOpen, setTagModalOpen] = useState(false)
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false)
 
   const workspaceFolderInfo = useMemo(() => {
     if (!asset) return null
@@ -691,121 +701,73 @@ export function AssetDetailPanelContent({
         <div className="flex-1 overflow-y-auto">
           <TabsContent value="details" className="px-4 pb-4 space-y-4">
             {/* Metadata */}
-            <section className="space-y-2">
-              <div className="space-y-2">
-                <div>
-                  <p className="text-body-0-regular text-foreground-dim">File name</p>
-                  <p className="text-body-0-regular text-foreground">{asset.name}</p>
-                </div>
-                <div>
-                  <p className="text-body-0-regular text-foreground-dim">Type</p>
-                  <p className="text-body-0-regular text-foreground capitalize">{asset.type}</p>
-                </div>
-                {isSensitiveAsset(asset.id) && (
-                  <div className="flex items-center gap-1.5">
-                    <EyeOff className="w-3.5 h-3.5 text-foreground-dim" />
-                    <Tag size="compact" type="notice" variant="fill">Sensitive</Tag>
-                  </div>
-                )}
-                {asset.department && (
-                  <div>
-                    <p className="text-body-0-regular text-foreground-dim">Department</p>
-                    <p className="text-body-0-regular text-foreground">
-                      {DOMAIN_NAMES[asset.department]}
-                    </p>
-                  </div>
-                )}
-                {duration && (
-                  <div>
-                    <p className="text-body-0-regular text-foreground-dim">Duration</p>
-                    <p className="text-body-0-regular text-foreground">{duration}</p>
-                  </div>
-                )}
-                {asset.version != null && (
-                  <div>
-                    <p className="text-body-0-regular text-foreground-dim">Version</p>
-                    <p className="text-body-0-regular text-foreground">V{asset.version}</p>
-                  </div>
-                )}
-                {asset.extension && (
-                  <div>
-                    <p className="text-body-0-regular text-foreground-dim">Format</p>
-                    <p className="text-body-0-regular text-foreground">{asset.extension.toUpperCase()}</p>
-                  </div>
-                )}
-                {asset.type === 'shot' && asset.shotMeta && (
-                  <>
-                    {asset.shotMeta.scene && (
-                      <div>
-                        <p className="text-body-0-regular text-foreground-dim">Scene</p>
-                        <p className="text-body-0-regular text-foreground">{asset.shotMeta.scene}</p>
-                      </div>
-                    )}
-                    {asset.shotMeta.take && (
-                      <div>
-                        <p className="text-body-0-regular text-foreground-dim">Take</p>
-                        <p className="text-body-0-regular text-foreground">{asset.shotMeta.take}</p>
-                      </div>
-                    )}
-                    {asset.shotMeta.camera && (
-                      <div>
-                        <p className="text-body-0-regular text-foreground-dim">Camera</p>
-                        <p className="text-body-0-regular text-foreground">{asset.shotMeta.camera}</p>
-                      </div>
-                    )}
-                  </>
-                )}
-                {asset.workspacePath && (
-                <div>
-                  <p className="text-body-0-regular text-foreground-dim">Location</p>
-                  <p className="text-body-0-regular text-foreground">
-                    {asset.department ? `${DOMAIN_NAMES[asset.department]} / ` : ''}{asset.workspacePath}
-                  </p>
+            <section className="space-y-1.5">
+              <MetaRow label="File name" value={asset.name} />
+              <MetaRow label="Type" value={asset.type} capitalize />
+              {isSensitiveAsset(asset.id) && (
+                <div className="flex items-center gap-1.5 py-0.5">
+                  <EyeOff className="w-3.5 h-3.5 text-foreground-dim" />
+                  <Tag size="compact" type="notice" variant="fill">Sensitive</Tag>
                 </div>
               )}
-              {asset.created_at && (
-                  <div>
-                    <p className="text-body-0-regular text-foreground-dim">Created</p>
-                    <p className="text-body-0-regular text-foreground">
-                      {new Date(asset.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
-                {asset.modifiedBy && (
-                  <div>
-                    <p className="text-body-0-regular text-foreground-dim">Modified by</p>
-                    <p className="text-body-0-regular text-foreground">
-                      {PERSONAS.find(p => p.email === asset.modifiedBy)?.name ?? asset.modifiedBy}
-                    </p>
-                  </div>
-                )}
-              </div>
+              {asset.department && <MetaRow label="Department" value={DOMAIN_NAMES[asset.department]} />}
+              {duration && <MetaRow label="Duration" value={duration} />}
+              {asset.version != null && <MetaRow label="Version" value={`V${asset.version}`} />}
+              {asset.extension && <MetaRow label="Format" value={asset.extension.toUpperCase()} />}
+              {asset.type === 'shot' && asset.shotMeta && (
+                <>
+                  {asset.shotMeta.scene && <MetaRow label="Scene" value={asset.shotMeta.scene} />}
+                  {asset.shotMeta.take && <MetaRow label="Take" value={asset.shotMeta.take} />}
+                  {asset.shotMeta.camera && <MetaRow label="Camera" value={asset.shotMeta.camera} />}
+                </>
+              )}
+              {asset.workspacePath && (
+                <MetaRow label="Location" value={`${asset.department ? `${DOMAIN_NAMES[asset.department]} / ` : ''}${asset.workspacePath}`} />
+              )}
+              {asset.created_at && <MetaRow label="Created" value={new Date(asset.created_at).toLocaleDateString()} />}
+              {asset.modifiedBy && <MetaRow label="Modified by" value={PERSONAS.find(p => p.email === asset.modifiedBy)?.name ?? asset.modifiedBy} />}
             </section>
 
-            {/* Version History */}
-            {allVersions.length > 1 && (
-              <section className="space-y-2">
-                <h3 className="text-body-0-bold text-foreground-dim">Version History</h3>
-                <div className="space-y-1">
-                  {allVersions.map(v => {
-                    const isCurrent = v.id === asset.id
-                    return isCurrent ? (
-                      <div key={v.id} className="flex items-center justify-between py-1 text-body-0-regular">
-                        <span className="text-foreground">V{v.version} <span className="text-foreground-dim">(current)</span></span>
-                        {v.created_at && <span className="text-label-0-regular text-foreground-dim">{formatDate(v.created_at)}</span>}
-                      </div>
-                    ) : (
-                      <button
-                        key={v.id}
-                        onClick={() => onVersionSelect?.(v)}
-                        className="flex items-center justify-between py-1 text-body-0-regular text-foreground-dim hover:text-foreground-system-link transition-colors w-full text-left"
-                      >
-                        <span>V{v.version}</span>
-                        {v.created_at && <span className="text-label-0-regular">{formatDate(v.created_at)}</span>}
-                      </button>
-                    )
-                  })}
-                </div>
+            {/* Version History — only shown when version switching is available (full asset page) */}
+            {allVersions.length > 1 && onVersionSelect && (
+              <section>
+                <button
+                  onClick={() => setVersionHistoryOpen(prev => !prev)}
+                  className="flex items-center justify-between w-full py-1 text-left"
+                >
+                  <span className="text-body-0-bold text-foreground-dim">Version History</span>
+                  <span className="flex items-center gap-1">
+                    <span className="text-label-0-regular text-foreground-subtle">{allVersions.length}</span>
+                    <ChevronDown className={cn('w-3.5 h-3.5 text-foreground-dim transition-transform', !versionHistoryOpen && '-rotate-90')} />
+                  </span>
+                </button>
+                {versionHistoryOpen && (
+                  <div className="space-y-0.5 mt-1">
+                    {allVersions.map(v => {
+                      const isCurrent = v.id === asset.id
+                      const stageLabel = v.stage ? getCutStageLabel(v.stage) : null
+                      const versionLabel = stageLabel
+                        ? `${stageLabel} V${v.version}`
+                        : `V${v.version}`
+                      return (
+                        <button
+                          key={v.id}
+                          onClick={() => !isCurrent && onVersionSelect?.(v)}
+                          disabled={isCurrent}
+                          className={cn(
+                            'flex items-center justify-between w-full text-left rounded px-2 py-1.5 transition-colors',
+                            isCurrent
+                              ? 'bg-surface-selected text-foreground'
+                              : 'text-foreground-dim hover:text-foreground hover:bg-surface-2',
+                          )}
+                        >
+                          <span className="text-body-0-regular">{versionLabel}</span>
+                          {v.created_at && <span className="text-label-0-regular text-foreground-dim">{formatDate(v.created_at)}</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </section>
             )}
 

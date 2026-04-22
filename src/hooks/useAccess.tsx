@@ -9,6 +9,7 @@ import { getAssetIdVariants } from '@/lib/data'
 import type { DomainId, ProductionDomainId } from '@/components/department/types'
 import {
   DEFAULT_GRANTS,
+  PHASE_MODE_GRANTS,
   DEFAULT_ROLE_GROUPS,
   PROJECT_RESOURCE,
   getResourceGrants as getResourceGrantsFromList,
@@ -351,6 +352,15 @@ function buildSnapshotVersionNote(previousAssetIds?: string[], nextAssetIds?: st
 
 import { SEED_VERSION } from '@/lib/constants'
 
+function isPhaseMode(): boolean {
+  if (typeof window === 'undefined') return false
+  try { return localStorage.getItem('scenario-phase-mode') === 'true' } catch { return false }
+}
+
+function getBaseGrants(): Grant[] {
+  return isPhaseMode() ? PHASE_MODE_GRANTS : DEFAULT_GRANTS
+}
+
 function loadStoredGrants(): Grant[] {
   if (typeof window === 'undefined') return structuredClone(DEFAULT_GRANTS)
   try {
@@ -365,7 +375,7 @@ function loadStoredGrants(): Grant[] {
       localStorage.setItem('access-grants-version', String(SEED_VERSION))
     }
   } catch { /* fall through */ }
-  return structuredClone(DEFAULT_GRANTS)
+  return structuredClone(getBaseGrants())
 }
 
 function loadStoredRoleGroups(): RoleGroup[] {

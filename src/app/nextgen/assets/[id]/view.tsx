@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, PanelRight, Info, Play, Music, FileText, Share2, Download, Image as ImageIcon } from 'lucide-react'
+import { ArrowLeft, PanelRight, Info, Play, Music, FileText, Download, Image as ImageIcon, ChevronDown } from 'lucide-react'
+import { ShareIcon } from '@/components/ui/share-icon'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -14,7 +15,10 @@ import {
   AssetDetailPanel,
   MobileToolbar,
 } from '@/components/ui'
-import { useAccess, usePersona, useViewPreferences, useSmartCollections, useMobilePanel } from '@/hooks'
+import { useAccess, usePersona, useViewPreferences, useSmartCollections, useMobilePanel, useCuts } from '@/hooks'
+import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
+import { getCutStageLabel } from '@/lib/cuts'
+import { Dropdown, DropdownMenuItem } from '@/components/ui'
 import type { Asset, DomainId } from '@/lib/data'
 import { getReviewNoteSummary } from '@/lib/review-notes'
 import { getContextAssetGroups } from '@/lib/context-relationships'
@@ -158,6 +162,7 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
   const { sidePanelOpen, setSidePanelOpen } = useViewPreferences()
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
   const { scopedAssets, ensureAssetsLoaded } = useSmartCollections()
+  const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
 
   const [asset, setAsset] = useState<Asset | null>(null)
   const [loading, setLoading] = useState(true)
@@ -189,6 +194,28 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
 
     fetchAsset()
   }, [assetId, hydrated, filterByAccess])
+  const { getVersionsForGroup } = useCuts()
+
+  // Breadcrumb: show path to the asset
+  useEffect(() => {
+    if (!asset) return
+    const extras: { label: string; href?: string }[] = []
+    if (asset.kind === 'cut') {
+      extras.push({ label: 'Cuts', href: '/nextgen/library' })
+    } else if (asset.department) {
+      extras.push({ label: 'Workspace', href: '/nextgen/workspace' })
+      extras.push({ label: DOMAIN_NAMES[asset.department], href: `/nextgen/workspace/${asset.sourceFolderIds?.[0] ? asset.sourceFolderIds[0] : ''}` })
+      if (asset.workspacePath) {
+        const parts = asset.workspacePath.split(' / ')
+        for (const part of parts) {
+          extras.push({ label: part })
+        }
+      }
+    }
+    extras.push({ label: asset.name })
+    setBreadcrumbExtras(extras)
+    return () => clearBreadcrumbExtras()
+  }, [asset, setBreadcrumbExtras, clearBreadcrumbExtras])
   const typeTag = asset ? getTypeTag(asset) : ''
   const reviewNoteSummary = useMemo(() => {
     if (!asset) return null
@@ -198,6 +225,10 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
     if (!asset) return undefined
     return getContextAssetGroups(asset, scopedAssets)
   }, [asset, scopedAssets])
+  const allVersions = useMemo(() => {
+    if (!asset?.versionGroupId) return []
+    return getVersionsForGroup(asset.versionGroupId)
+  }, [asset, getVersionsForGroup])
   const handlePanelAssetSwitch = (nextAsset: Asset) => {
     router.push(`/nextgen/assets/${nextAsset.id}`)
   }
@@ -258,90 +289,84 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
         <div className="flex-1 min-h-0 overflow-auto">
           <div className="p-6">
             <Stack spacing="lg">
-              {/* Top bar: Back button + panel toggle */}
+              {/* Mobile toolbar */}
               <MobileToolbar title={asset.name} actions={
-                <Button
-                  variant="icon"
-                  size="icon"
-                  onClick={togglePanel}
-                  aria-label={panelOpen ? 'Close panel' : 'Open panel'}
-                  
-                >
-                  <Info className="w-4 h-4" />
-                </Button>
+                <>
+                  <Button variant="icon" onClick={() => console.log('Share asset:', asset.id)} aria-label="Share">
+                    <ShareIcon className="w-4 h-4" />
+                  </Button>
+                  <Button variant="icon" onClick={() => console.log('Download asset:', asset.id)} aria-label="Download">
+                    <Download className="w-4 h-4" />
+                  </Button>
+                  <Button variant="icon" onClick={togglePanel} aria-label={panelOpen ? 'Close panel' : 'Open panel'}>
+                    <Info className="w-4 h-4" />
+                  </Button>
+                </>
               } />
-              <div className="hidden md:flex items-center justify-between">
-                <Button
-                  variant="tertiary"
-                  icon={<ArrowLeft />}
-                  onClick={() => router.back()}
-                >
-                  Back
-                </Button>
-                {!panelOpen && (
+
+              {/* Desktop header: Back + Title + Version selector + Actions */}
+              <div className="hidden md:flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
                   <Button
                     variant="icon"
-                    onClick={togglePanel}
-                    aria-label="Open panel"
+                    onClick={() => router.back()}
+                    aria-label="Back"
                   >
+                    <ArrowLeft className="w-4 h-4" />
+                  </Button>
+                  <h1 className="text-heading-2 text-foreground truncate">{asset.name}</h1>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <Tag variant="glass">{typeTag}</Tag>
+                    {asset.department && <Tag variant="glass">{DOMAIN_NAMES[asset.department]}</Tag>}
+                    {asset.isKeyArt && <Tag type="announcement" variant="fill">Key Art</Tag>}
+                    {asset.isFinal && <Tag type="positive" variant="fill">Final</Tag>}
+                  </div>
+                  {allVersions.length > 1 && (
+                    <Dropdown
+                      label={asset.stage ? `${getCutStageLabel(asset.stage)} V${asset.version}` : `V${asset.version}`}
+                      size="compact"
+                      align="start"
+                      width="sm"
+                    >
+                      <div className="py-1">
+                        {allVersions.map(v => {
+                          const stageLabel = v.stage ? getCutStageLabel(v.stage) : null
+                          const label = stageLabel ? `${stageLabel} V${v.version}` : `V${v.version}`
+                          return (
+                            <DropdownMenuItem
+                              key={v.id}
+                              label={label}
+                              onClick={() => router.push(`/nextgen/assets/${v.id}`)}
+                            />
+                          )
+                        })}
+                      </div>
+                    </Dropdown>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {reviewNoteSummary && (
+                    <Button asChild variant="secondary" icon={<FileText />}>
+                      <a href={reviewNoteSummary.externalUrl} target="_blank" rel="noreferrer">
+                        <span className="hidden lg:inline">Creative Review</span>
+                      </a>
+                    </Button>
+                  )}
+                  <Button variant="secondary" icon={<ShareIcon />} onClick={() => console.log('Share asset:', asset.id)}>
+                    <span className="hidden lg:inline">Share</span>
+                  </Button>
+                  <Button variant="secondary" icon={<Download />} onClick={() => console.log('Download asset:', asset.id)}>
+                    <span className="hidden lg:inline">Download</span>
+                  </Button>
+                  <Button variant="icon" onClick={togglePanel} aria-label={panelOpen ? 'Close panel' : 'Open panel'}>
                     <PanelRight className="w-4 h-4" />
                   </Button>
-                )}
+                </div>
               </div>
 
               {/* Asset Preview */}
               <div className="bg-surface-flat rounded overflow-hidden aspect-video relative">
                 <AssetPreview asset={asset} />
-              </div>
-
-              {/* Action bar below preview */}
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <Text variant="headline-1" weight="bold" className="mb-1 truncate hidden md:block">
-                    {asset.name}
-                  </Text>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Tag>{typeTag}</Tag>
-                    {asset.isKeyArt && <Tag type="announcement">Key Art</Tag>}
-                    {asset.isFinal && <Tag type="positive">Final</Tag>}
-                    {asset.department && (
-                      <Tag type="neutral">
-                        {DOMAIN_NAMES[asset.department]}
-                      </Tag>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {reviewNoteSummary && (
-                    <Button
-                      asChild
-                      variant="secondary"
-                      icon={<FileText />}
-                    >
-                      <a
-                        href={reviewNoteSummary.externalUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <span className="hidden lg:inline">Creative Review</span>
-                      </a>
-                    </Button>
-                  )}
-                  <Button
-                    variant="secondary"
-                    icon={<Share2 />}
-                    onClick={() => console.log('Share asset:', asset.id)}
-                  >
-                    <span className="hidden lg:inline">Share</span>
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    icon={<Download />}
-                    onClick={() => console.log('Download asset:', asset.id)}
-                  >
-                    <span className="hidden lg:inline">Download</span>
-                  </Button>
-                </div>
               </div>
             </Stack>
           </div>

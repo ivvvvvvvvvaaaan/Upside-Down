@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { ChevronDown, ChevronUp, Check, Circle, ArrowRight } from 'lucide-react'
+import { usePathname } from 'next/navigation'
+import { ChevronDown, ChevronUp, Check, Circle, ArrowRight, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { useAccess, usePersona } from '@/hooks'
@@ -34,8 +35,26 @@ function useCompletedSteps() {
   }, [])
 
   const resetAll = useCallback(() => {
-    setCompletedSteps(new Set())
-    try { localStorage.removeItem(COMPLETED_STEPS_KEY) } catch {}
+    // Nuclear reset: enable phase mode, clear all app state, reload
+    try {
+      localStorage.setItem('scenario-phase-mode', 'true')
+      const keysToRemove = [
+        COMPLETED_STEPS_KEY,
+        GUIDE_STORAGE_KEY,
+        'access-grants',
+        'access-grants-version',
+        'access-role-groups',
+        'user-collections',
+        'user-collections-version',
+        'smart-collections',
+        'file-tree',
+        'file-tree-version',
+        'nav-expanded',
+        'nav-scroll-top',
+      ]
+      for (const key of keysToRemove) localStorage.removeItem(key)
+    } catch {}
+    window.location.reload()
   }, [])
 
   return { completedSteps, markCompleted, resetAll }
@@ -43,7 +62,7 @@ function useCompletedSteps() {
 
 function StepRow({ step, isCompleted, isActive }: { step: PhaseStep; isCompleted: boolean; isActive: boolean }) {
   return (
-    <div className={cn('flex gap-2 py-1.5', isActive && 'text-foreground', !isActive && !isCompleted && 'text-foreground-dim')}>
+    <div className="flex gap-2 py-1.5">
       <div className="flex-shrink-0 mt-0.5">
         {isCompleted ? (
           <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
@@ -52,10 +71,10 @@ function StepRow({ step, isCompleted, isActive }: { step: PhaseStep; isCompleted
         ) : isActive ? (
           <div className="w-4 h-4 rounded-full border-2 border-indigo-400" />
         ) : (
-          <Circle className="w-4 h-4 text-foreground-subtle" />
+          <Circle className="w-4 h-4 text-foreground" />
         )}
       </div>
-      <span className={cn('text-body-0-regular', isCompleted && 'line-through text-foreground-subtle')}>
+      <span className={cn('text-body-0-regular text-foreground', isCompleted && 'line-through')}>
         {step.instruction}
       </span>
     </div>
@@ -63,6 +82,7 @@ function StepRow({ step, isCompleted, isActive }: { step: PhaseStep; isCompleted
 }
 
 export function ScenarioGuide() {
+  const pathname = usePathname()
   const { activePersona } = usePersona()
   const { getResourceGrants } = useAccess()
   const { collections } = useUserCollections()
@@ -127,12 +147,12 @@ export function ScenarioGuide() {
         matched = collections.some(c => c.name.toLowerCase().includes(cp.nameContains.toLowerCase()))
       }
       if (cp.type === 'file-created') {
-        // Detect any file created today (modifiedAt matches today's date)
-        const today = new Date().toISOString().split('T')[0]
-        const hasRecentFile = (nodes: typeof fileTree): boolean => {
+        // Detect user-created files (IDs contain timestamps, not seed prefixes)
+        const isUserCreated = (id: string) => /^ws-\d{13}/.test(id)
+        const hasUserFile = (nodes: typeof fileTree): boolean => {
           for (const node of nodes) {
-            if (node.type === 'file' && node.modifiedAt === today) return true
-            if (node.children && hasRecentFile(node.children)) return true
+            if (node.type === 'file' && isUserCreated(node.id)) return true
+            if (node.children && hasUserFile(node.children)) return true
           }
           return false
         }
@@ -147,14 +167,19 @@ export function ScenarioGuide() {
           return null
         }
         const targetFolder = findFolder(fileTree, cp.parentFolderId)
-        if (targetFolder?.children && hasRecentFile(targetFolder.children)) {
+        if (targetFolder?.children && hasUserFile(targetFolder.children)) {
+          matched = true
+        }
+      }
+      if (cp.type === 'visit-page') {
+        if (pathname.startsWith(cp.pathPrefix)) {
           matched = true
         }
       }
       if (matched) markCompleted(step.id)
       break // only check the first incomplete step
     }
-  }, [displayPhase, activePersona, completedSteps, getResourceGrants, collections, fileTree, markCompleted])
+  }, [displayPhase, activePersona, completedSteps, getResourceGrants, collections, fileTree, pathname, markCompleted])
 
   if (!displayPhase && !allDone) return null
 
@@ -164,12 +189,24 @@ export function ScenarioGuide() {
         {/* Header — always visible */}
         <button
           onClick={toggleCollapsed}
-          className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-white/5 transition-colors"
+          className={cn(
+            'flex items-center text-left hover:bg-white/5 transition-colors',
+            collapsed ? 'p-2 gap-1.5 group hover:bg-indigo-500' : 'w-full justify-between gap-2 px-3 py-2',
+          )}
         >
-          <span className="text-body-0-bold text-foreground truncate">
-            {allDone ? 'All scenarios done' : displayPhase!.title}
-          </span>
-          {collapsed ? <ChevronDown className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" /> : <ChevronUp className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />}
+          {collapsed ? (
+            <>
+              <BookOpen className="w-4 h-4 text-foreground flex-shrink-0" />
+              <span className="text-label-0-bold text-foreground whitespace-nowrap hidden group-hover:inline">Guide</span>
+            </>
+          ) : (
+            <>
+              <span className="text-body-0-bold text-foreground truncate">
+                {allDone ? 'All scenarios done' : displayPhase!.title}
+              </span>
+              <ChevronUp className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
+            </>
+          )}
         </button>
 
         {/* Body — collapsible */}
