@@ -104,6 +104,7 @@ export function isGrantActive(grant: Grant): boolean {
 
 export const DEFAULT_ROLE_GROUPS: RoleGroup[] = buildRoleGroups()
 export const DEFAULT_GRANTS: Grant[] = buildGrants()
+export const PHASE_MODE_GRANTS: Grant[] = buildGrants({ skipShares: true })
 export const RELEASE_DOMAINS: ReleaseDomain[] = buildReleaseDomains()
 
 const SEED_LABELS = buildLabels()
