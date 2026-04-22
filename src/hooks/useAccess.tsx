@@ -775,6 +775,15 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       if (collectionRipple) layers.push(collectionRipple)
     }
 
+    // Project-level role as baseline — ensures project permissions (e.g. share) apply to all resources
+    if (resource.id !== PROJECT_RESOURCE.id) {
+      layers.push(
+        fromResolvedAccess(
+          resolveAccess(userId, PROJECT_RESOURCE.id, currentGrants, roleGroups),
+        ),
+      )
+    }
+
     return mergePermissionSets(...layers)
   }, [
     activePersona,

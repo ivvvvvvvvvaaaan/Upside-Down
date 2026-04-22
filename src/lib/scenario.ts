@@ -636,7 +636,7 @@ export function buildLabels(): Record<string, string> {
   return labels
 }
 
-export function buildGrants(): Grant[] {
+export function buildGrants(options?: { skipShares?: boolean }): Grant[] {
   let counter = 0
   function grantId(): string {
     return `grant-${++counter}`
@@ -649,7 +649,10 @@ export function buildGrants(): Grant[] {
 
   const grants: Grant[] = []
 
-  // Resource-level shares
+  // Resource-level shares (skipped in phase mode — users create these interactively)
+  if (options?.skipShares) {
+    // Jump directly to project-level grants
+  } else {
   const sharerGrantsSeen = new Set<string>()
   // Track grants by resource+principal key for version linking
   const grantsByResourcePrincipal = new Map<string, string>()
@@ -755,6 +758,7 @@ export function buildGrants(): Grant[] {
       grants.push(grant)
     }
   }
+  } // end skipShares else
 
   // Project-level grants — people
   const projectResource = { id: 'project', type: 'project' as const }
@@ -871,14 +875,21 @@ export function buildCuts(): SeedCut[] {
   return SCENARIO.cuts.map(c => ({ ...c }))
 }
 
-export function buildSeedCollections(): UserCollection[] {
-  return SCENARIO.collections.map((c) => ({
-    flavor: 'collection' as const,
-    id: c.id,
-    name: c.name,
-    assetIds: c.assetIds,
-    createdAt: new Date(c.createdAt),
-    createdBy: c.createdBy,
-    sourceSmartCollectionId: c.sourceSmartCollectionId,
-  }))
+export function buildSeedCollections(options?: { skipShared?: boolean }): UserCollection[] {
+  // In phase mode, only seed collections that aren't shared (no matching grants)
+  const sharedCollectionIds = options?.skipShared
+    ? new Set(SCENARIO.shares.filter(s => s.resource.type === 'collection').map(s => s.resource.id))
+    : new Set<string>()
+
+  return SCENARIO.collections
+    .filter(c => !sharedCollectionIds.has(c.id))
+    .map((c) => ({
+      flavor: 'collection' as const,
+      id: c.id,
+      name: c.name,
+      assetIds: c.assetIds,
+      createdAt: new Date(c.createdAt),
+      createdBy: c.createdBy,
+      sourceSmartCollectionId: c.sourceSmartCollectionId,
+    }))
 }

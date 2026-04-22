@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { NavSidebar, PrimaryNavRail, ResizeHandle, ProjectBreadcrumb, NewCollectionModal } from '@/components/ui'
+import { ScenarioGuide } from '@/components/ui/scenario-guide'
 import { useUserCollections, useSmartCollections } from '@/hooks'
 import type { AssetFilter } from '@/lib/data'
 
@@ -96,6 +97,8 @@ export function AppLayout({ children, hideNav = false }: AppLayoutProps) {
           </div>
         </div>
       </div>
+
+      <ScenarioGuide />
 
       <NewCollectionModal
         open={showNewCollectionModal}
