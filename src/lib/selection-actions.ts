@@ -38,6 +38,14 @@ export type SelectionActionEvaluation = {
   }
 }
 
+export function assetToResourceRef(asset: Asset): ResourceRef {
+  return {
+    id: asset.id,
+    type: asset.kind === 'cut' ? 'cut' : 'asset',
+    domainId: asset.department,
+  }
+}
+
 export function assetToSelectionEntity(asset: Asset, options?: {
   canAddToCollection?: boolean
   addToCollectionReason?: string
@@ -47,11 +55,9 @@ export function assetToSelectionEntity(asset: Asset, options?: {
     id: asset.id,
     kind: 'asset',
     label: asset.name,
-    resourceRef: {
-      id: options?.resourceId ?? asset.id,
-      type: asset.kind === 'cut' ? 'cut' : 'asset',
-      domainId: asset.department,
-    },
+    resourceRef: options?.resourceId
+      ? { ...assetToResourceRef(asset), id: options.resourceId }
+      : assetToResourceRef(asset),
     previewAsset: asset,
     canAddToCollection: options?.canAddToCollection,
     addToCollectionReason: options?.addToCollectionReason,

@@ -13,6 +13,7 @@ import {
   Tag,
   EmptyState,
   AssetDetailPanel,
+  InlineActionBar,
   MobileToolbar,
 } from '@/components/ui'
 import { useAccess, usePersona, useViewPreferences, useSmartCollections, useMobilePanel, useCuts } from '@/hooks'
@@ -20,7 +21,6 @@ import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import { getCutStageLabel } from '@/lib/cuts'
 import { Dropdown, DropdownMenuItem } from '@/components/ui'
 import type { Asset, DomainId } from '@/lib/data'
-import { getReviewNoteSummary } from '@/lib/review-notes'
 import { getContextAssetGroups } from '@/lib/context-relationships'
 
 const DOMAIN_NAMES: Record<DomainId, string> = {
@@ -217,10 +217,6 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
     return () => clearBreadcrumbExtras()
   }, [asset, setBreadcrumbExtras, clearBreadcrumbExtras])
   const typeTag = asset ? getTypeTag(asset) : ''
-  const reviewNoteSummary = useMemo(() => {
-    if (!asset) return null
-    return getReviewNoteSummary(asset.id)
-  }, [asset])
   const contextGroups = useMemo(() => {
     if (!asset) return undefined
     return getContextAssetGroups(asset, scopedAssets)
@@ -345,19 +341,10 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {reviewNoteSummary && (
-                    <Button asChild variant="secondary" icon={<FileText />}>
-                      <a href={reviewNoteSummary.externalUrl} target="_blank" rel="noreferrer">
-                        <span className="hidden lg:inline">Creative Review</span>
-                      </a>
-                    </Button>
-                  )}
-                  <Button variant="secondary" icon={<ShareIcon />} onClick={() => console.log('Share asset:', asset.id)}>
-                    <span className="hidden lg:inline">Share</span>
-                  </Button>
-                  <Button variant="secondary" icon={<Download />} onClick={() => console.log('Download asset:', asset.id)}>
-                    <span className="hidden lg:inline">Download</span>
-                  </Button>
+                  <InlineActionBar items={[
+                    { label: 'Share', icon: <ShareIcon />, onClick: () => console.log('Share asset:', asset.id) },
+                    { label: 'Download', icon: <Download />, onClick: () => console.log('Download asset:', asset.id) },
+                  ]} />
                   <Button variant="icon" onClick={togglePanel} aria-label={panelOpen ? 'Close panel' : 'Open panel'}>
                     <PanelRight className="w-4 h-4" />
                   </Button>

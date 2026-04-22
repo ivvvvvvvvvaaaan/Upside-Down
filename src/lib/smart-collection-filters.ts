@@ -63,6 +63,13 @@ export function matchesFilter(asset: Asset, filter: AssetFilter): boolean {
     }
   }
 
+  // Circle take: must match if specified
+  if (filter.isCircleTake !== undefined) {
+    if (Boolean(asset.isCircleTake) !== filter.isCircleTake) {
+      return false
+    }
+  }
+
   // AI confidence below threshold
   if (filter.aiConfidenceBelow != null) {
     if (!asset.aiMeta?.confidence || asset.aiMeta.confidence >= filter.aiConfidenceBelow) {

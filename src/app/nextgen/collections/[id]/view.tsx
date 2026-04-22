@@ -28,7 +28,7 @@ import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import { getGridColumns, useAccess, useAssetSelection, usePersona, useViewPreferences, useUserCollections, useSmartCollections, useMobilePanel, useFileTree } from '@/hooks'
 import type { Asset } from '@/lib/data'
 import { PERSONAS } from '@/lib/personas'
-import { assetToSelectionEntity } from '@/lib/selection-actions'
+import { assetToSelectionEntity, assetToResourceRef } from '@/lib/selection-actions'
 import { getContextAssetGroups } from '@/lib/context-relationships'
 import { AccessModal } from '@/components/ui/access-modal'
 import { ContextMenu } from '@/components/ui/context-menu'
@@ -161,11 +161,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
 
   const [assetShareTarget, setAssetShareTarget] = useState<{ ref: ResourceRef; title: string } | null>(null)
 
-  const toAssetResourceRef = useCallback((asset: Asset): ResourceRef => ({
-    id: asset.id,
-    type: asset.kind === 'cut' ? 'cut' : 'asset',
-    domainId: asset.department,
-  }), [])
+  const toAssetResourceRef = assetToResourceRef
   const handlePanelAssetSwitch = (nextAsset: Asset) => {
     if (assets.some((asset) => asset.id === nextAsset.id)) {
       selectOnly(nextAsset)
@@ -207,7 +203,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
       : `Removed ${selectedAssets.length} assets from ${collection.name}.`)
     clearSelection()
   }, [collection, selectedAssets, removeAssetFromCollection, showToast, clearSelection])
-  type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; destructive?: boolean; disabled?: boolean; dividerAfter?: boolean }
+  type MenuItem = import('@/components/ui/inline-action-bar').ActionMenuItem
 
   const collectionShareable = showShareButton
   const collectionMenuItems = useMemo((): MenuItem[] => {

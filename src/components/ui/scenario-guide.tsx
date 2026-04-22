@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
-import { ChevronDown, ChevronUp, Check, Circle, ArrowRight, BookOpen } from 'lucide-react'
+import { ChevronDown, ChevronRight, Check, Circle, ArrowRight, BookOpen, GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { useAccess, usePersona } from '@/hooks'
@@ -94,53 +94,15 @@ function StepRow({ step, isCompleted, isActive }: { step: PhaseStep; isCompleted
 export function ScenarioGuide() {
   const pathname = usePathname()
   const { activePersona } = usePersona()
-  const { getResourceGrants } = useAccess()
+  const { getResourceGrants, grants: allGrants } = useAccess()
   const { collections } = useUserCollections()
   const { tree: fileTree } = useFileTree()
   const { completedSteps, markCompleted, resetAll } = useCompletedSteps()
 
   const [collapsed, setCollapsed] = useState(false)
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
-  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
-
-  const handleDragStart = useCallback((e: React.MouseEvent) => {
-    // Only drag from the header area, not from buttons
-    if ((e.target as HTMLElement).closest('button')) return
-    const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect()
-    dragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      origX: rect.left,
-      origY: rect.top,
-    }
-    e.preventDefault()
-  }, [])
-
-  useEffect(() => {
-    if (!dragRef.current) return
-    const handleMove = (e: MouseEvent) => {
-      if (!dragRef.current) return
-      const dx = e.clientX - dragRef.current.startX
-      const dy = e.clientY - dragRef.current.startY
-      setPosition({
-        x: dragRef.current.origX + dx,
-        y: dragRef.current.origY + dy,
-      })
-    }
-    const handleUp = () => { dragRef.current = null }
-    window.addEventListener('mousemove', handleMove)
-    window.addEventListener('mouseup', handleUp)
-    return () => {
-      window.removeEventListener('mousemove', handleMove)
-      window.removeEventListener('mouseup', handleUp)
-    }
-  })
-
-  useEffect(() => {
-    try {
-      if (localStorage.getItem(GUIDE_STORAGE_KEY) === 'true') setCollapsed(true)
-    } catch {}
-  }, [])
+  const containerRef = useRef<HTMLDivElement>(null)
+  const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number; dragged: boolean } | null>(null)
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed(prev => {
@@ -148,6 +110,32 @@ export function ScenarioGuide() {
       try { localStorage.setItem(GUIDE_STORAGE_KEY, String(next)) } catch {}
       return next
     })
+  }, [])
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(GUIDE_STORAGE_KEY) === 'true') setCollapsed(true)
+    } catch {}
+  }, [])
+
+  // Drag behavior — listeners on window so drag works outside the card
+  useEffect(() => {
+    const handleMove = (e: MouseEvent) => {
+      if (!dragState.current) return
+      const dx = e.clientX - dragState.current.startX
+      const dy = e.clientY - dragState.current.startY
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragState.current.dragged = true
+      if (dragState.current.dragged) {
+        setPosition({ x: dragState.current.origX + dx, y: dragState.current.origY + dy })
+      }
+    }
+    const handleUp = () => { dragState.current = null }
+    window.addEventListener('mousemove', handleMove)
+    window.addEventListener('mouseup', handleUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMove)
+      window.removeEventListener('mouseup', handleUp)
+    }
   }, [])
 
   // Determine completed phases
@@ -164,21 +152,34 @@ export function ScenarioGuide() {
   const currentPhase = getCurrentPhase(completedPhaseIds)
   const personaPhase = activePersona ? getPhaseForPersona(activePersona.id, completedPhaseIds) : null
   const displayPhase = personaPhase ?? currentPhase
-  const isWrongPersona = displayPhase && activePersona && displayPhase.personaId !== activePersona.id
-  const expectedPersona = displayPhase ? PERSONAS.find(p => p.id === displayPhase.personaId) : null
   const phaseIndex = displayPhase ? PHASES.indexOf(displayPhase) : -1
   const allDone = !currentPhase
 
-  // Auto-detect checkpoints — only check the next incomplete step (sequential)
+  // Find the current active step (first incomplete)
+  const activeStep = displayPhase?.steps.find(s => !completedSteps.has(s.id))
+  // Which persona should be active for the current step?
+  const neededPersonaId = activeStep?.personaId ?? activeStep?.checkpoint.type === 'persona-switch'
+    ? (activeStep?.checkpoint as { personaId: string }).personaId
+    : displayPhase?.personaId
+  const isWrongPersona = !!neededPersonaId && !!activePersona && neededPersonaId !== activePersona.id
+  const expectedPersona = neededPersonaId ? PERSONAS.find(p => p.id === neededPersonaId) : null
+
+  // Auto-detect checkpoints — only check the next incomplete step
   useEffect(() => {
     if (!displayPhase || !activePersona) return
-    if (displayPhase.personaId !== activePersona.id) return
 
     for (const step of displayPhase.steps) {
       if (completedSteps.has(step.id)) continue
-      // Only check this step (the first incomplete one)
       const cp = step.checkpoint
       let matched = false
+
+      // Persona-switch: just check if the right persona is active
+      if (cp.type === 'persona-switch') {
+        matched = activePersona.id === cp.personaId
+      }
+      // For other checkpoints, only check if the right persona is active
+      if (cp.type !== 'persona-switch' && step.personaId && step.personaId !== activePersona.id) break
+
       if (cp.type === 'grant') {
         const grants = getResourceGrants(cp.resourceId)
         matched = grants.some(g => {
@@ -188,11 +189,18 @@ export function ScenarioGuide() {
           return false
         })
       }
+      if (cp.type === 'any-grant-to') {
+        matched = allGrants.some(g => {
+          if (g.grantedByUserId !== activePersona.id) return false
+          if (cp.principalType === 'user') return g.principal.type === 'user' && g.principal.userId === cp.principalId
+          if (cp.principalType === 'team') return g.principal.type === 'team' && g.principal.teamId === cp.principalId
+          return false
+        })
+      }
       if (cp.type === 'collection-created') {
         matched = collections.some(c => c.name.toLowerCase().includes(cp.nameContains.toLowerCase()))
       }
       if (cp.type === 'file-created') {
-        // Detect user-created files (IDs contain timestamps, not seed prefixes)
         const isUserCreated = (id: string) => /^ws-\d{13}/.test(id)
         const hasUserFile = (nodes: typeof fileTree): boolean => {
           for (const node of nodes) {
@@ -217,12 +225,10 @@ export function ScenarioGuide() {
         }
       }
       if (cp.type === 'visit-page') {
-        if (pathname.startsWith(cp.pathPrefix)) {
-          matched = true
-        }
+        matched = pathname.startsWith(cp.pathPrefix)
       }
       if (matched) markCompleted(step.id)
-      break // only check the first incomplete step
+      break
     }
   }, [displayPhase, activePersona, completedSteps, getResourceGrants, collections, fileTree, pathname, markCompleted])
 
@@ -230,36 +236,47 @@ export function ScenarioGuide() {
 
   return (
     <div
+      ref={containerRef}
       className={cn('fixed z-50', collapsed ? 'w-auto' : 'w-80')}
       style={position ? { left: position.x, top: position.y } : { top: 8, right: 16 }}
     >
       <div className="bg-black border border-border-dim rounded-lg shadow-lg overflow-hidden">
-        {/* Header — draggable + clickable */}
-        <div
-          onMouseDown={handleDragStart}
-          className={cn('cursor-grab active:cursor-grabbing', collapsed ? '' : 'select-none')}
-        >
-        <button
-          onClick={toggleCollapsed}
-          className={cn(
-            'flex items-center text-left hover:bg-white/5 transition-colors',
-            collapsed ? 'p-2 gap-1.5 group hover:bg-indigo-500' : 'w-full justify-between gap-2 px-3 py-2',
-          )}
-        >
-          {collapsed ? (
-            <>
-              <BookOpen className="w-4 h-4 text-foreground flex-shrink-0" />
-              <span className="text-label-0-bold text-foreground whitespace-nowrap hidden group-hover:inline">Guide</span>
-            </>
-          ) : (
-            <>
-              <span className="text-body-0-bold text-foreground truncate">
-                {allDone ? 'All scenarios done' : displayPhase!.title}
-              </span>
-              <ChevronUp className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
-            </>
-          )}
-        </button>
+        {/* Header */}
+        <div className="flex items-center">
+          {/* Drag handle */}
+          <div
+            onMouseDown={(e) => {
+              if (!containerRef.current) return
+              const rect = containerRef.current.getBoundingClientRect()
+              dragState.current = { startX: e.clientX, startY: e.clientY, origX: rect.left, origY: rect.top, dragged: false }
+              e.preventDefault()
+            }}
+            className="flex items-center justify-center px-1.5 py-2 cursor-grab active:cursor-grabbing text-foreground-dim hover:text-foreground transition-colors"
+          >
+            <GripVertical className="w-3.5 h-3.5" />
+          </div>
+          {/* Click to toggle */}
+          <button
+            onClick={toggleCollapsed}
+            className={cn(
+              'flex-1 flex items-center text-left hover:bg-white/5 transition-colors',
+              collapsed ? 'py-2 pr-2 gap-1 group' : 'justify-between gap-2 py-2 pr-3',
+            )}
+          >
+            {collapsed ? (
+              <>
+                <span className="text-body-0-bold text-foreground">Manual</span>
+                <ChevronRight className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
+              </>
+            ) : (
+              <>
+                <span className="text-body-0-bold text-foreground truncate">
+                  {allDone ? 'All scenarios done' : displayPhase!.title}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
+              </>
+            )}
+          </button>
         </div>
 
         {/* Body — collapsible */}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import { Film, PanelRight, Info, X } from 'lucide-react'
+import { PanelRight, Info, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { PageHeader, EmptyState, ContextualActionBar, InlineActionBar, Button, MobileToolbar, CardGrid, SortDropdown, AppearanceDropdown, HawkinsSearch } from '@/components/ui'
@@ -15,66 +15,15 @@ import { assetToSelectionEntity } from '@/lib/selection-actions'
 import { getContextAssetGroups } from '@/lib/context-relationships'
 import type { Asset } from '@/lib/data'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
+import { useToast } from '@/components/ui/toast'
 import { AssetDetailPanelContent } from '@/components/ui/asset-detail-panel'
 
-function EpisodeSection({ episode, cuts, selectedIds, primaryId, onAssetClick, onMenuClick, onRequestAccess, showTags, metadataFields, versionCounts, isSensitiveAsset }: {
-  episode: string
-  cuts: VisibleCutEntry[]
-  selectedIds: Set<string>
-  primaryId: string | null
-  onAssetClick: (asset: Asset, event: React.MouseEvent, allAssets: Asset[]) => void
-  onMenuClick?: (asset: Asset) => void
-  onRequestAccess: (asset: Asset) => void
-  showTags?: boolean
-  metadataFields?: MetadataFieldVisibility
-  versionCounts?: Map<string, number>
-  isSensitiveAsset: (id: string) => boolean
-}) {
-  const allAssets = cuts.map(c => c.asset)
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <Film className="w-4 h-4 text-foreground-dim" />
-        <h3 className="text-body-1-bold text-foreground">{episode}</h3>
-        <span className="text-body-0-regular text-foreground-dim">
-          {cuts.length} {cuts.length === 1 ? 'cut' : 'cuts'}
-        </span>
-      </div>
-      <CardGrid columns={4} gap="4">
-        {cuts.map((cut) => {
-          const count = versionCounts?.get(cut.asset.id) ?? 1
-          return (
-            <div key={cut.asset.id} className="space-y-1">
-              <AssetCard
-                asset={cut.asset}
-                selected={selectedIds.has(cut.asset.id)}
-                primary={primaryId === cut.asset.id}
-                onClick={(a, e) => onAssetClick(a, e, allAssets)}
-                onMenuClick={onMenuClick ? () => onMenuClick(cut.asset) : undefined}
-                restricted={cut.visibility === 'discoverable'}
-                onRequestAccess={onRequestAccess}
-                showTags={showTags}
-                metadataFields={metadataFields}
-                sensitive={isSensitiveAsset(cut.asset.id)}
-                allSelectedIds={selectedIds}
-              />
-              {count > 1 && (
-                <span className="text-label-0-regular text-foreground-subtle block">
-                  {count} versions
-                </span>
-              )}
-            </div>
-          )
-        })}
-      </CardGrid>
-    </div>
-  )
-}
 
 export function LibraryView() {
   const { hydrated, isAdmin, activePersona } = usePersona()
   const { visibleCuts, accessibleCuts } = useCuts()
   const { requestAccess, isSensitiveAsset } = useAccess()
+  const { showToast } = useToast()
   const { scopedAssets } = useSmartCollections()
   const { sidePanelOpen, setSidePanelOpen, showTags, metadataFields } = useViewPreferences()
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
@@ -83,6 +32,7 @@ export function LibraryView() {
     primaryId,
     handleSelectionClick,
     selectOnly,
+    selectAll,
     clearSelection,
   } = useAssetSelection()
   const [releaseTarget, setReleaseTarget] = useState<SeedCut | null>(null)
@@ -126,19 +76,8 @@ export function LibraryView() {
     return { latestCuts: latest, olderVersionsMap: older, versionCounts: counts }
   }, [visibleCuts])
 
-  // Group by episode, sort by stage + version (latest first)
-  const episodes = useMemo(() => {
-    const map = new Map<string, VisibleCutEntry[]>()
-    for (const cut of latestCuts) {
-      const ep = cut.asset.episode ?? 'Unknown'
-      const existing = map.get(ep) ?? []
-      existing.push(cut)
-      map.set(ep, existing)
-    }
-    for (const entry of Array.from(map)) {
-      entry[1].sort((a, b) => compareCutsByStageAndVersion(a.asset, b.asset))
-    }
-    return Array.from(map).sort((a, b) => a[0].localeCompare(b[0]))
+  const episodeCount = useMemo(() => {
+    return new Set(latestCuts.map(c => c.asset.episode ?? 'Unknown')).size
   }, [latestCuts])
 
   const allCutAssets = useMemo(() => latestCuts.map(c => c.asset), [latestCuts])
@@ -210,8 +149,8 @@ export function LibraryView() {
               <PageHeader
                 title="Cuts"
                 description={
-                  visibleCuts.length > 0
-                    ? `${visibleCuts.length} cuts across ${episodes.length} ${episodes.length === 1 ? 'episode' : 'episodes'}`
+                  allCutAssets.length > 0
+                    ? `${allCutAssets.length} cut${allCutAssets.length !== 1 ? 's' : ''} across ${episodeCount} ${episodeCount === 1 ? 'episode' : 'episodes'}`
                     : 'Cuts will appear here as they become available'
                 }
               />
@@ -226,40 +165,52 @@ export function LibraryView() {
               <SelectAllRow
                 selectedCount={selectedIds.size}
                 totalCount={allCutAssets.length}
-                onSelectAll={() => {
-                  for (const a of allCutAssets) handleSelectionClick(a, { shiftKey: false, metaKey: false, ctrlKey: false } as React.MouseEvent, allCutAssets)
-                }}
+                onSelectAll={() => selectAll(allCutAssets)}
                 onClearSelection={clearSelection}
-                label={`${visibleCuts.length} cut${visibleCuts.length !== 1 ? 's' : ''}`}
+                label={`${allCutAssets.length} cut${allCutAssets.length !== 1 ? 's' : ''}`}
               />
               {selectedIds.size > 0 && (
                 <ContextualActionBar
                   selectedEntities={selectedEntities}
                   onClearSelection={clearSelection}
+                  downloadAction={{
+                    enabled: true,
+                    onClick: () => showToast(`Downloading ${selectedIds.size} cut${selectedIds.size !== 1 ? 's' : ''}...`),
+                    label: `Download ${selectedIds.size} cut${selectedIds.size !== 1 ? 's' : ''}`,
+                  }}
                   inline
                 />
               )}
             </div>
 
-            {episodes.length > 0 ? (
-              <div className="space-y-8">
-                {episodes.map(([episode, cuts]) => (
-                  <EpisodeSection
-                    key={episode}
-                    episode={episode}
-                    cuts={cuts}
-                    selectedIds={selectedIds}
-                    primaryId={primaryId}
-                    onAssetClick={handleAssetClick}
-                    onMenuClick={canRelease ? handleMenuClick : undefined}
-                    onRequestAccess={handleRequestAccess}
-                    showTags={showTags}
-                    metadataFields={metadataFields}
-                    versionCounts={versionCounts}
-                    isSensitiveAsset={isSensitiveAsset}
-                  />
-                ))}
-              </div>
+            {allCutAssets.length > 0 ? (
+              <CardGrid columns={4} gap="4">
+                {allCutAssets.map((asset) => {
+                  const count = versionCounts?.get(asset.id) ?? 1
+                  return (
+                    <div key={asset.id} className="space-y-1">
+                      <AssetCard
+                        asset={asset}
+                        selected={selectedIds.has(asset.id)}
+                        primary={primaryId === asset.id}
+                        onClick={(a, e) => handleSelectionClick(a, e, allCutAssets)}
+                        onMenuClick={canRelease ? () => handleMenuClick(asset) : undefined}
+                        restricted={latestCuts.find(c => c.asset.id === asset.id)?.visibility === 'discoverable'}
+                        onRequestAccess={handleRequestAccess}
+                        showTags={showTags}
+                        metadataFields={metadataFields}
+                        sensitive={isSensitiveAsset(asset.id)}
+                        allSelectedIds={selectedIds}
+                      />
+                      {count > 1 && (
+                        <span className="text-label-0-regular text-foreground-subtle block">
+                          {count} versions
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </CardGrid>
             ) : (
               <EmptyState
                 title="No cuts yet"

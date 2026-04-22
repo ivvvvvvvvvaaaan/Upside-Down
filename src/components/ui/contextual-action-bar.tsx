@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { Tooltip } from './tooltip'
 import { Dropdown, DropdownMenuItem } from './dropdown'
-import { InlineActionBar } from './inline-action-bar'
+import { InlineActionBar, type ActionMenuItem } from './inline-action-bar'
 import { AccessModal } from './access-modal'
 import { CollectionMembershipModal } from './collection-membership-modal'
 import { FolderPickerModal } from './folder-picker-modal'
@@ -42,7 +42,7 @@ interface ContextualActionBarProps {
   /** Called when user places assets into a folder via the folder picker */
   onPlaceInFolder?: (folderId: string, folderName: string, assetIds: string[]) => void
   /** Full menu items -- first 3 shown inline as buttons, rest in overflow three-dot menu. When provided, replaces the default inline buttons. */
-  menuItems?: { label: string; icon?: React.ReactNode; onClick: () => void; destructive?: boolean; dividerAfter?: boolean }[]
+  menuItems?: ActionMenuItem[]
   /** Render inline (as row content) instead of floating bar */
   inline?: boolean
   className?: string

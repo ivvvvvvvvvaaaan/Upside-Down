@@ -432,7 +432,7 @@ export function AssetDetailPanelContent({
 }: AssetDetailPanelContentProps) {
   const { getInheritedGrants, getCollectionRippleGrants, visibleCollections, canEdit, canAccess, canShare, isSensitiveAsset } = useAccess()
   const { activePersona } = usePersona()
-  const { getDomainFiles, resolveCollectionAssetIds } = useFileTree()
+  const { getDomainFiles, resolveCollectionAssetIds, assetById } = useFileTree()
   const { getCollection, scopedAssets } = useSmartCollections()
   const { getCutsForAsset, getVersionsForGroup } = useCuts()
 
@@ -574,9 +574,9 @@ export function AssetDetailPanelContent({
   const constituentAssets = useMemo(() => {
     if (!asset || asset.kind !== 'cut' || !asset.constituents) return []
     return asset.constituents
-      .map(cid => scopedAssets.find(a => a.id === cid))
+      .map(cid => assetById.get(cid))
       .filter((a): a is Asset => !!a)
-  }, [asset, scopedAssets])
+  }, [asset, assetById])
 
   // Aggregate AI metadata from constituents (for cuts that don't have their own aiMeta)
   const aggregatedAiMeta = useMemo(() => {
@@ -598,9 +598,9 @@ export function AssetDetailPanelContent({
 
   const duration = getDuration(asset)
 
-  const assetCollections = visibleCollections.filter(c =>
+  const assetCollections = useMemo(() => visibleCollections.filter(c =>
     asset ? c.assetIds.includes(asset.id) : false
-  )
+  ), [visibleCollections, asset])
 
   const orderedCollectionItems = [...assetCollections]
     .map((collection, index) => ({ collection, index }))

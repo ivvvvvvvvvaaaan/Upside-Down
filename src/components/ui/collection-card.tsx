@@ -142,11 +142,7 @@ export function CollectionCard({
     return `${assetCount} ${itemLabel}`
   }
 
-  const sizeStyles = size === 'sm'
-    ? { thumbnail: 'aspect-video', emptyInset: 'inset-2' }
-    : size === 'lg'
-    ? { thumbnail: 'aspect-video', emptyInset: 'inset-4' }
-    : { thumbnail: 'aspect-video', emptyInset: 'inset-3' }
+  const emptyInset = size === 'sm' ? 'inset-2' : size === 'lg' ? 'inset-4' : 'inset-3'
   const avatarSizeClass = 'w-6 h-6'
   // Typography classes based on size
   const titleClass = size === 'sm'
@@ -177,7 +173,7 @@ export function CollectionCard({
     return (
       <div className={cn('flex flex-col gap-2 p-2 relative w-full animate-breathe', className)}>
         {/* Thumbnail skeleton */}
-        <div className={cn('w-full rounded bg-surface-3', sizeStyles.thumbnail)} />
+        <div className={cn('w-full rounded bg-surface-3', 'aspect-video')} />
         {/* Footer skeleton */}
         <div className="flex gap-4 items-center">
           {/* Avatar skeleton */}
@@ -209,7 +205,7 @@ export function CollectionCard({
           className={cn(
             'relative rounded shrink-0 w-full overflow-hidden transition-colors isolate flex items-center justify-center',
             !isSelected && 'bg-surface-2 group-hover:bg-surface-3',
-            sizeStyles.thumbnail
+            'aspect-video'
           )}
         >
           <FolderIcon className="w-10 h-10 text-white" />
@@ -229,11 +225,11 @@ export function CollectionCard({
           className={cn(
             'relative rounded shrink-0 w-full overflow-hidden transition-colors isolate',
             !isSelected && 'bg-surface-2 group-hover:bg-surface-3',
-            sizeStyles.thumbnail
+            'aspect-video'
           )}
         >
           {assetCount === 0 && (
-            <div className={cn('absolute', sizeStyles.emptyInset)}>
+            <div className={cn('absolute', emptyInset)}>
               <Image
                 src={EMPTY_COLLECTION_PLACEHOLDER}
                 alt={`${title} empty`}
@@ -249,7 +245,7 @@ export function CollectionCard({
 
     if (numberOfAssets === 'One') {
       return (
-        <div className={cn('relative rounded shrink-0 w-full', sizeStyles.thumbnail)}>
+        <div className={cn('relative rounded shrink-0 w-full', 'aspect-video')}>
           {mainImage ? (
             <Image
               src={mainImage}
@@ -267,7 +263,7 @@ export function CollectionCard({
 
     if (numberOfAssets === 'Two') {
       return (
-        <div className={cn('relative w-full overflow-hidden rounded', sizeStyles.thumbnail)}>
+        <div className={cn('relative w-full overflow-hidden rounded', 'aspect-video')}>
           <div className="absolute inset-0 flex gap-1">
             {/* Main image - takes 2/3 */}
             <div className="flex-[2] relative rounded overflow-hidden">
@@ -292,7 +288,7 @@ export function CollectionCard({
 
     // Many: 1 large + 2 small + "+X" overlay
     return (
-      <div className={cn('relative w-full overflow-hidden rounded', sizeStyles.thumbnail)}>
+      <div className={cn('relative w-full overflow-hidden rounded', 'aspect-video')}>
         <div className="absolute inset-0 flex gap-1">
           {/* Main large image - left half */}
           <div className="flex-1 relative rounded overflow-hidden">
