@@ -109,6 +109,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     if (sharedBy) return `Shared by ${sharedBy}`
     if (!isOwner || !collection) return undefined
     const grants = getResourceGrants(collectionId)
+      .filter(g => !(g.principal.type === 'user' && g.principal.userId === g.grantedByUserId))
     const directGrants = grants.filter(g => !g.reviewLinkId)
     const linkGrants = grants.filter(g => g.reviewLinkId)
     if (directGrants.length === 0 && linkGrants.length === 0) return 'Private'

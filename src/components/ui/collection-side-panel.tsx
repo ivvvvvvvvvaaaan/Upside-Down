@@ -209,27 +209,34 @@ export function CollectionSidePanel({
   const collectionActivity = useMemo((): ActivityEvent[] => {
     const events: ActivityEvent[] = []
     const collGrants = getResourceGrants(accessResourceId)
-    const seen = new Set<string>()
-    for (const grant of collGrants) {
-      // Skip self-shares (grantor is also the recipient)
-      if (grant.principal.type === 'user' && grant.principal.userId === grant.grantedByUserId) continue
+      .filter(g => !(g.principal.type === 'user' && g.principal.userId === g.grantedByUserId))
 
+    // Group grants by sharer+date to show "shared with N people"
+    const grouped = new Map<string, { sharer: string; date: string; count: number; note?: string }>()
+    for (const grant of collGrants) {
       const key = `${grant.grantedByUserId}:${grant.grantedAt}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      const sharer = PERSONAS.find(p => p.id === grant.grantedByUserId)
-      const p = grant.principal
-      const recipientName = p.type === 'user'
-        ? PERSONAS.find(persona => persona.id === p.userId)?.name ?? 'someone'
-        : p.type === 'team'
-        ? TEAMS.find(t => t.id === p.teamId)?.name ?? 'a team'
-        : 'a group'
+      const existing = grouped.get(key)
+      if (existing) {
+        existing.count++
+      } else {
+        const sharer = PERSONAS.find(p => p.id === grant.grantedByUserId)
+        grouped.set(key, {
+          sharer: sharer?.name ?? 'Someone',
+          date: grant.grantedAt,
+          count: 1,
+          note: grant.note ?? undefined,
+        })
+      }
+    }
+    for (const [key, { sharer, date, count, note }] of Array.from(grouped.entries())) {
       events.push({
-        id: `share-${grant.id}`,
+        id: `share-${key}`,
         icon: 'share',
-        text: `${sharer?.name ?? 'Someone'} shared with ${recipientName}`,
-        date: grant.grantedAt,
-        detail: grant.note ?? undefined,
+        text: count === 1
+          ? `${sharer} shared with 1 person`
+          : `${sharer} shared with ${count} people`,
+        date,
+        detail: note,
       })
     }
     if (curated && collection.createdAt) {

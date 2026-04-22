@@ -15,6 +15,7 @@ import type { ResourceRef } from '@/lib/grants'
 import { formatDate, formatFileSize } from '@/lib/utils'
 import { useAccess, useFileTree, usePersona } from '@/hooks'
 import { PERSONAS } from '@/lib/personas'
+import { TEAMS } from '@/lib/teams'
 import { DOMAIN_FOLDER_MAP, isReferenceFolder } from '@/lib/workspace-data'
 import { domainConfigs } from '@/lib/domain-configs'
 
@@ -117,20 +118,40 @@ export function WorkspaceSidePanel({
     if (!node || !isFolder) return []
     const events: ActivityEvent[] = []
 
-    // Share events (deduplicated by sharer+time)
-    const grants = getResourceGrants(node.id)
-    const seen = new Set<string>()
+    // Share events — skip structural team grants (team with rootFolderId) and self-shares
+    const grants = getResourceGrants(node.id).filter(g => {
+      if (g.principal.type === 'user' && g.principal.userId === g.grantedByUserId) return false
+      if (g.principal.type === 'team') {
+        const team = TEAMS.find(t => t.id === (g.principal as { teamId: string }).teamId)
+        if (team?.rootFolderId) return false
+      }
+      return true
+    })
+    const grouped = new Map<string, { sharer: string; date: string; count: number; note?: string }>()
     for (const grant of grants) {
       const key = `${grant.grantedByUserId}:${grant.grantedAt}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      const sharer = PERSONAS.find((p) => p.id === grant.grantedByUserId)
+      const existing = grouped.get(key)
+      if (existing) {
+        existing.count++
+      } else {
+        const sharer = PERSONAS.find((p) => p.id === grant.grantedByUserId)
+        grouped.set(key, {
+          sharer: sharer?.name ?? 'Someone',
+          date: grant.grantedAt,
+          count: 1,
+          note: grant.note ?? undefined,
+        })
+      }
+    }
+    for (const [key, { sharer, date, count, note }] of Array.from(grouped.entries())) {
       events.push({
-        id: `share-${grant.id}`,
+        id: `share-${key}`,
         icon: 'share',
-        text: `${sharer?.name ?? 'Someone'} shared this folder`,
-        date: grant.grantedAt,
-        detail: grant.note ?? undefined,
+        text: count === 1
+          ? `${sharer} shared this folder`
+          : `${sharer} shared with ${count} people`,
+        date,
+        detail: note,
       })
     }
 
