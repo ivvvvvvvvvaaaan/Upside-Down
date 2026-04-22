@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { ChevronDown, ChevronUp, Check, Circle, ArrowRight, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -41,16 +41,26 @@ function useCompletedSteps() {
       const keysToRemove = [
         COMPLETED_STEPS_KEY,
         GUIDE_STORAGE_KEY,
+        // Grants
         'access-grants',
         'access-grants-version',
         'access-role-groups',
+        // Collections
         'user-collections',
         'user-collections-version',
         'smart-collections',
-        'file-tree',
-        'file-tree-version',
+        'smart-collections-version',
+        // File tree
+        'unified-workspace-files',
+        'unified-workspace-files-version',
+        // Nav / UI
         'nav-expanded',
         'nav-scroll-top',
+        'sidebar-width',
+        // Guest links, blocks, etc.
+        'guest-links',
+        'user-blocks',
+        'read-share-ids',
       ]
       for (const key of keysToRemove) localStorage.removeItem(key)
     } catch {}
@@ -63,18 +73,18 @@ function useCompletedSteps() {
 function StepRow({ step, isCompleted, isActive }: { step: PhaseStep; isCompleted: boolean; isActive: boolean }) {
   return (
     <div className="flex gap-2 py-1.5">
-      <div className="flex-shrink-0 mt-0.5">
+      <div className="flex-shrink-0 mt-[5px]">
         {isCompleted ? (
-          <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
-            <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+          <div className="w-3 h-3 rounded-full bg-white flex items-center justify-center">
+            <Check className="w-2 h-2 text-black" strokeWidth={3} />
           </div>
         ) : isActive ? (
-          <div className="w-4 h-4 rounded-full border-2 border-indigo-400" />
+          <div className="w-3 h-3 rounded-full border-[1.5px] border-white" />
         ) : (
-          <Circle className="w-4 h-4 text-foreground" />
+          <Circle className="w-3 h-3 text-white/30" />
         )}
       </div>
-      <span className={cn('text-body-0-regular text-foreground', isCompleted && 'line-through')}>
+      <span className={cn('text-body-0-regular', isCompleted ? 'line-through text-foreground' : isActive ? 'text-foreground' : 'text-white/40')}>
         {step.instruction}
       </span>
     </div>
@@ -90,6 +100,41 @@ export function ScenarioGuide() {
   const { completedSteps, markCompleted, resetAll } = useCompletedSteps()
 
   const [collapsed, setCollapsed] = useState(false)
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
+
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    // Only drag from the header area, not from buttons
+    if ((e.target as HTMLElement).closest('button')) return
+    const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect()
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: rect.left,
+      origY: rect.top,
+    }
+    e.preventDefault()
+  }, [])
+
+  useEffect(() => {
+    if (!dragRef.current) return
+    const handleMove = (e: MouseEvent) => {
+      if (!dragRef.current) return
+      const dx = e.clientX - dragRef.current.startX
+      const dy = e.clientY - dragRef.current.startY
+      setPosition({
+        x: dragRef.current.origX + dx,
+        y: dragRef.current.origY + dy,
+      })
+    }
+    const handleUp = () => { dragRef.current = null }
+    window.addEventListener('mousemove', handleMove)
+    window.addEventListener('mouseup', handleUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMove)
+      window.removeEventListener('mouseup', handleUp)
+    }
+  })
 
   useEffect(() => {
     try {
@@ -184,9 +229,16 @@ export function ScenarioGuide() {
   if (!displayPhase && !allDone) return null
 
   return (
-    <div className={cn('fixed top-2 right-4 z-50', collapsed ? 'w-auto' : 'w-80')}>
+    <div
+      className={cn('fixed z-50', collapsed ? 'w-auto' : 'w-80')}
+      style={position ? { left: position.x, top: position.y } : { top: 8, right: 16 }}
+    >
       <div className="bg-black border border-border-dim rounded-lg shadow-lg overflow-hidden">
-        {/* Header — always visible */}
+        {/* Header — draggable + clickable */}
+        <div
+          onMouseDown={handleDragStart}
+          className={cn('cursor-grab active:cursor-grabbing', collapsed ? '' : 'select-none')}
+        >
         <button
           onClick={toggleCollapsed}
           className={cn(
@@ -208,17 +260,18 @@ export function ScenarioGuide() {
             </>
           )}
         </button>
+        </div>
 
         {/* Body — collapsible */}
         {!collapsed && (
-          <div className="px-4 pb-4 space-y-3">
+          <div className="px-3 pb-3 space-y-3">
             {allDone ? (
               <p className="text-body-0-regular text-foreground-dim">
                 You've completed all scenario phases. Reset to start over.
               </p>
             ) : (
               <>
-                <p className="text-body-0-regular text-foreground-dim">
+                <p className="text-body-0-regular text-foreground">
                   {displayPhase!.description}
                 </p>
 

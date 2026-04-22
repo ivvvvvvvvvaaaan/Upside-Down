@@ -222,8 +222,8 @@ const HawkinsSearch = forwardRef<HTMLInputElement, HawkinsSearchProps>(
           </Button>
         )}
 
-        {/* Filter chips - hidden when narrow */}
-        <div className="hidden lg:flex items-center gap-1 flex-shrink-0">
+        {/* Filter chips - hidden when narrow or when expandable and not expanded */}
+        <div className={cn('hidden lg:flex items-center gap-1 flex-shrink-0', expandable && !isExpanded && '!hidden')}>
           {filters.map((filter) => (
             <FilterChip
               key={filter.id}
@@ -240,7 +240,11 @@ const HawkinsSearch = forwardRef<HTMLInputElement, HawkinsSearchProps>(
         <Popover open={inputPopoverOpen} onOpenChange={setInputPopoverOpen}>
           <PopoverAnchor asChild>
             <input
-              ref={ref}
+              ref={(el) => {
+                inputRef.current = el
+                if (typeof ref === 'function') ref(el)
+                else if (ref) ref.current = el
+              }}
               type="text"
               value={value}
               onChange={handleChange}
