@@ -151,7 +151,8 @@ export function ScenarioGuide() {
 
   const currentPhase = getCurrentPhase(completedPhaseIds)
   const personaPhase = activePersona ? getPhaseForPersona(activePersona.id, completedPhaseIds) : null
-  const displayPhase = personaPhase ?? currentPhase
+  // Only show another persona's phase if no persona is selected (admin mode)
+  const displayPhase = activePersona ? personaPhase : currentPhase
   const phaseIndex = displayPhase ? PHASES.indexOf(displayPhase) : -1
   const allDone = !currentPhase
 
@@ -230,7 +231,7 @@ export function ScenarioGuide() {
       if (matched) markCompleted(step.id)
       break
     }
-  }, [displayPhase, activePersona, completedSteps, getResourceGrants, collections, fileTree, pathname, markCompleted])
+  }, [displayPhase, activePersona, completedSteps, getResourceGrants, allGrants, collections, fileTree, pathname, markCompleted])
 
   if (!displayPhase && !allDone) return null
 

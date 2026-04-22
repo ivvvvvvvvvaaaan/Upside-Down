@@ -493,14 +493,14 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                             return {
                               enabled: true,
                               onClick: () => showToast(`Downloading ${selectedAssets.length} asset${selectedAssets.length !== 1 ? 's' : ''}...`),
-                              label: `Download ${selectedAssets.length} asset${selectedAssets.length !== 1 ? 's' : ''}`,
+                              label: `Download ${selectedAssets.length} Asset${selectedAssets.length !== 1 ? 's' : ''}`,
                             }
                           }
                           if (isParentWithChildren && selectedCollectionIds.size > 0) {
                             return {
                               enabled: true,
                               onClick: () => showToast(`Downloading ${selectedCollectionIds.size} collection${selectedCollectionIds.size !== 1 ? 's' : ''}...`),
-                              label: `Download ${selectedCollectionIds.size} collection${selectedCollectionIds.size !== 1 ? 's' : ''}`,
+                              label: `Download ${selectedCollectionIds.size} Collection${selectedCollectionIds.size !== 1 ? 's' : ''}`,
                             }
                           }
                           return undefined
@@ -508,7 +508,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                         menuItems={(() => {
                           if (!isParentWithChildren && selectedAssets.length === 1) {
                             const items = buildAssetMenuItems(selectedAssets[0])
-                            const countLabels = new Map([['Share', 'Share 1 asset'], ['Download', 'Download 1 asset']])
+                            const countLabels = new Map([['Share', 'Share 1 Asset'], ['Download', 'Download 1 Asset']])
                             return items.map(item => countLabels.has(item.label) ? { ...item, label: countLabels.get(item.label)! } : item)
                           }
                           return undefined

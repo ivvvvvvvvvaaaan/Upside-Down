@@ -513,6 +513,7 @@ export const SCENARIO: Scenario = {
     { id: 'coll-smart-finals-shared',  name: 'Finals (shared)',                createdBy: 'schen@netflix.com',   createdAt: '2026-02-11', assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020'], sourceSmartCollectionId: 'smart-finals' },
     { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', createdAt: '2026-01-19', assetIds: ['cut-ep301-lc-1', 'cut-ep301-lc-2', 'cut-ep301-lc-3'] },
     // Camera collections
+    { id: 'ws-cam-coll-day15', name: 'Day 15 Selects', createdBy: 'tnakamura@netflix.com', createdAt: '2026-02-15', assetIds: [] },
     { id: 'ws-cam-coll-broll', name: 'B-Roll Highlights', createdBy: 'tnakamura@netflix.com', createdAt: '2026-02-10', assetIds: ['ws-cam-broll-town', 'ws-cam-broll-forest', 'ws-cam-aerial-dawn', 'ws-cam-aerial-quarry'] },
     // Audio collections
     { id: 'ws-audio-coll-for-editorial', name: 'Temp Sound Kit', createdBy: 'robi@netflix.com', createdAt: '2026-02-06', assetIds: ['ws-audio-sfx-1', 'ws-audio-sfx-2', 'ws-audio-music-1', 'ws-audio-music-2', 'ws-audio-sfx-ambience'] },
@@ -875,14 +876,9 @@ export function buildCuts(): SeedCut[] {
   return SCENARIO.cuts.map(c => ({ ...c }))
 }
 
-export function buildSeedCollections(options?: { skipShared?: boolean }): UserCollection[] {
-  // In phase mode, only seed collections that aren't shared (no matching grants)
-  const sharedCollectionIds = options?.skipShared
-    ? new Set(SCENARIO.shares.filter(s => s.resource.type === 'collection').map(s => s.resource.id))
-    : new Set<string>()
-
+export function buildSeedCollections(): UserCollection[] {
+  // Collections always exist — grants are what get skipped in phase mode
   return SCENARIO.collections
-    .filter(c => !sharedCollectionIds.has(c.id))
     .map((c) => ({
       flavor: 'collection' as const,
       id: c.id,

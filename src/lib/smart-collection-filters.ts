@@ -63,9 +63,10 @@ export function matchesFilter(asset: Asset, filter: AssetFilter): boolean {
     }
   }
 
-  // Circle take: must match if specified
+  // Circle take: check both the boolean flag AND user tags
   if (filter.isCircleTake !== undefined) {
-    if (Boolean(asset.isCircleTake) !== filter.isCircleTake) {
+    const hasCircleTag = asset.tags?.some(t => t.label.toLowerCase() === 'circle take') ?? false
+    if (!asset.isCircleTake && !hasCircleTag) {
       return false
     }
   }

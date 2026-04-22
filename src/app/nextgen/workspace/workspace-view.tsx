@@ -915,7 +915,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                       downloadAction={{
                         enabled: true,
                         onClick: () => showToast(`Downloading ${selectedIds.size} item${selectedIds.size !== 1 ? 's' : ''}...`),
-                        label: `Download ${selectedIds.size} item${selectedIds.size !== 1 ? 's' : ''}`,
+                        label: `Download ${selectedIds.size} Item${selectedIds.size !== 1 ? 's' : ''}`,
                       }}
                       onPlaceInFolder={(folderId, folderName, assetIds) => {
                         for (const assetId of assetIds) {
@@ -928,8 +928,8 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                         const selectedNode = findNodeById(currentGridItems, Array.from(selectedIds)[0])
                         if (!selectedNode) return undefined
                         const kind = selectedNode.type === 'folder' ? 'folder' : 'asset'
-                        const suffix = `1 ${kind}`
-                        const countLabels = new Map([['Share', `Share ${suffix}`], ['Download', `Download ${suffix}`], ['Copy link', `Copy link`]])
+                        const kindLabel = kind === 'folder' ? 'Folder' : 'Asset'
+                        const countLabels = new Map([['Share', `Share 1 ${kindLabel}`], ['Download', `Download 1 ${kindLabel}`], ['Copy link', `Copy link`]])
                         const items = selectedNode.type === 'folder'
                           ? buildFolderContextMenuItems(selectedNode)
                           : buildAssetMenuItems(selectedNode, assetBySourceFileId.get(selectedNode.id) ?? folderNodeToAsset(selectedNode, findDomainIdForNode(selectedNode, getFileTreeDomainFiles) ?? activePersona?.domainId))

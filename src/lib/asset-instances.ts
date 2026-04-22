@@ -114,7 +114,7 @@ export function generateAssetInstances(
           size: node.size,
           modifiedAt: node.modifiedAt,
           modifiedBy: node.modifiedBy,
-          aiTags: getAITagsForFile(node.id),
+          aiTags: getAITagsForFile(node.id, node.name),
           // Track the immediate containing folder so direct folder shares
           // can resolve workspace membership accurately.
           sourceFolderId: containingFolderId,

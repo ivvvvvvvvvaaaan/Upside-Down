@@ -1,17 +1,19 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import { PanelRight, Info, X } from 'lucide-react'
+import { PanelRight, Info, X, Download, Link2, FolderPlus, ArrowRight } from 'lucide-react'
+import { ShareIcon } from '@/components/ui/share-icon'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
-import { PageHeader, EmptyState, ContextualActionBar, InlineActionBar, Button, MobileToolbar, CardGrid, SortDropdown, AppearanceDropdown, HawkinsSearch } from '@/components/ui'
+import { PageHeader, EmptyState, ContextualActionBar, InlineActionBar, Button, MobileToolbar, CardGrid, Dropdown, DropdownMenuItem, DropdownMenuDivider } from '@/components/ui'
 import { SelectAllRow } from '@/components/ui/select-all-row'
 import { AssetCard } from '@/components/ui/asset-card'
-import { ReleaseModal } from '@/components/ui/release-modal'
+import { AccessModal } from '@/components/ui/access-modal'
+import { ContextMenu } from '@/components/ui/context-menu'
 import { useCuts, usePersona, useAssetSelection, useSmartCollections, useViewPreferences, useMobilePanel, useAccess, type VisibleCutEntry, type MetadataFieldVisibility } from '@/hooks'
-import type { SeedCut } from '@/lib/scenario'
 import { compareCutsByStageAndVersion } from '@/lib/cuts'
-import { assetToSelectionEntity } from '@/lib/selection-actions'
+import { assetToSelectionEntity, assetToResourceRef } from '@/lib/selection-actions'
+import type { ResourceRef } from '@/lib/grants'
 import { getContextAssetGroups } from '@/lib/context-relationships'
 import type { Asset } from '@/lib/data'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
@@ -22,7 +24,7 @@ import { AssetDetailPanelContent } from '@/components/ui/asset-detail-panel'
 export function LibraryView() {
   const { hydrated, isAdmin, activePersona } = usePersona()
   const { visibleCuts, accessibleCuts } = useCuts()
-  const { requestAccess, isSensitiveAsset } = useAccess()
+  const { isSensitiveAsset, canShare: canShareResource, createGuestLink } = useAccess()
   const { showToast } = useToast()
   const { scopedAssets } = useSmartCollections()
   const { sidePanelOpen, setSidePanelOpen, showTags, metadataFields } = useViewPreferences()
@@ -35,17 +37,14 @@ export function LibraryView() {
     selectAll,
     clearSelection,
   } = useAssetSelection()
-  const [releaseTarget, setReleaseTarget] = useState<SeedCut | null>(null)
+  const [shareTarget, setShareTarget] = useState<{ ref: ResourceRef; title: string } | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; asset: Asset } | null>(null)
   const router = useRouter()
 
   const isEditorialMember = activePersona?.domainId === 'editorial'
 
-  const canRelease = useMemo(() => {
-    return isEditorialMember || isAdmin
-  }, [isEditorialMember, isAdmin])
-
   // Deduplicate: keep only the latest version per episode+stage, track older versions
-  const { latestCuts, olderVersionsMap, versionCounts } = useMemo(() => {
+  const { latestCuts, olderVersionsMap } = useMemo(() => {
     // Group by versionGroupId (episode+stage)
     const groups = new Map<string, VisibleCutEntry[]>()
     for (const cut of visibleCuts) {
@@ -66,14 +65,7 @@ export function LibraryView() {
       }
     }
 
-    // Version counts: total versions per latest cut id
-    const counts = new Map<string, number>()
-    for (const [, entries] of Array.from(groups)) {
-      // entries is already sorted above; entries[0] is the latest
-      counts.set(entries[0].asset.id, entries.length)
-    }
-
-    return { latestCuts: latest, olderVersionsMap: older, versionCounts: counts }
+    return { latestCuts: latest, olderVersionsMap: older }
   }, [visibleCuts])
 
   const episodeCount = useMemo(() => {
@@ -103,18 +95,25 @@ export function LibraryView() {
       .map(a => assetToSelectionEntity(a))
   }, [allCutAssets, selectedIds])
 
-  const handleRequestAccess = useCallback((asset: Asset) => {
-    requestAccess(asset.id, { id: asset.id, type: 'cut', domainId: 'editorial' })
-  }, [requestAccess])
-
   const handleAssetClick = (asset: Asset, event: React.MouseEvent, allAssets: Asset[]) => {
     handleSelectionClick(asset, event, allAssets)
   }
 
-  const handleMenuClick = (asset: Asset) => {
-    const seed = accessibleCuts.find(c => c.asset.id === asset.id)?.seed
-    if (seed && canRelease) setReleaseTarget(seed)
-  }
+  const buildCutMenuItems = useCallback((asset: Asset): import('@/components/ui/inline-action-bar').ActionMenuItem[] => {
+    const ref = assetToResourceRef(asset)
+    const shareable = canShareResource(ref)
+    return [
+      { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setShareTarget({ ref, title: asset.name }), disabled: !shareable },
+      { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, disabled: !shareable, onClick: () => {
+        const link = createGuestLink(ref, { allowDownload: false, passcode: false, expiresInDays: 7, label: asset.name })
+        if (!link) return
+        navigator.clipboard.writeText(`${window.location.origin}/nextgen/share/${link.id}`)
+        showToast('Link copied', 'success', { label: 'Share settings', onClick: () => setShareTarget({ ref, title: asset.name }) })
+      } },
+      { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: () => showToast(`Downloading "${asset.name}"...`) },
+      { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { selectOnly(asset); setSidePanelOpen(true) } },
+    ]
+  }, [canShareResource, createGuestLink, showToast, selectOnly, setSidePanelOpen])
   const handlePanelAssetSwitch = (nextAsset: Asset) => {
     if (allCutAssets.some((asset) => asset.id === nextAsset.id)) {
       selectOnly(nextAsset)
@@ -176,7 +175,7 @@ export function LibraryView() {
                   downloadAction={{
                     enabled: true,
                     onClick: () => showToast(`Downloading ${selectedIds.size} cut${selectedIds.size !== 1 ? 's' : ''}...`),
-                    label: `Download ${selectedIds.size} cut${selectedIds.size !== 1 ? 's' : ''}`,
+                    label: `Download ${selectedIds.size} Cut${selectedIds.size !== 1 ? 's' : ''}`,
                   }}
                   inline
                 />
@@ -184,32 +183,44 @@ export function LibraryView() {
             </div>
 
             {allCutAssets.length > 0 ? (
-              <CardGrid columns={4} gap="4">
-                {allCutAssets.map((asset) => {
-                  const count = versionCounts?.get(asset.id) ?? 1
-                  return (
-                    <div key={asset.id} className="space-y-1">
+              <CardGrid
+                columns={4}
+                gap="4"
+                onContextMenu={(e) => {
+                  const card = (e.target as HTMLElement).closest('[data-asset-id]')
+                  if (!card) return
+                  const assetId = card.getAttribute('data-asset-id')
+                  const asset = assetId ? allCutAssets.find(a => a.id === assetId) : null
+                  if (asset) {
+                    e.preventDefault()
+                    setContextMenu({ x: e.clientX, y: e.clientY, asset })
+                  }
+                }}
+              >
+                {allCutAssets.map((asset) => (
+                    <div key={asset.id} data-asset-id={asset.id}>
                       <AssetCard
                         asset={asset}
                         selected={selectedIds.has(asset.id)}
                         primary={primaryId === asset.id}
                         onClick={(a, e) => handleSelectionClick(a, e, allCutAssets)}
-                        onMenuClick={canRelease ? () => handleMenuClick(asset) : undefined}
-                        restricted={latestCuts.find(c => c.asset.id === asset.id)?.visibility === 'discoverable'}
-                        onRequestAccess={handleRequestAccess}
+                        menuContent={
+                          <div className="py-1">
+                            {buildCutMenuItems(asset).map((item, i) => (
+                              <div key={i}>
+                                <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} disabled={item.disabled} />
+                                {item.dividerAfter && <DropdownMenuDivider />}
+                              </div>
+                            ))}
+                          </div>
+                        }
                         showTags={showTags}
                         metadataFields={metadataFields}
                         sensitive={isSensitiveAsset(asset.id)}
                         allSelectedIds={selectedIds}
                       />
-                      {count > 1 && (
-                        <span className="text-label-0-regular text-foreground-subtle block">
-                          {count} versions
-                        </span>
-                      )}
                     </div>
-                  )
-                })}
+                ))}
               </CardGrid>
             ) : (
               <EmptyState
@@ -251,11 +262,23 @@ export function LibraryView() {
         </ResponsivePanel>
       </div>
 
-      <ReleaseModal
-        open={!!releaseTarget}
-        onClose={() => setReleaseTarget(null)}
-        cut={releaseTarget}
-      />
+      {shareTarget && (
+        <AccessModal
+          open
+          onClose={() => setShareTarget(null)}
+          resourceId={shareTarget.ref.id}
+          resourceRef={shareTarget.ref}
+          title={shareTarget.title}
+        />
+      )}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={buildCutMenuItems(contextMenu.asset)}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </>
   )
 }
