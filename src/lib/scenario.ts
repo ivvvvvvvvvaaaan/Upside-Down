@@ -511,7 +511,7 @@ export const SCENARIO: Scenario = {
     // Shared collections (referenced by grants)
     { id: 'ws-vfx-coll-for-editorial', name: 'EP301 VFX Pulls - Edit Review',  createdBy: 'schen@netflix.com',   createdAt: '2026-01-27', assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-020-010'] },
     { id: 'coll-smart-finals-shared',  name: 'Finals (shared)',                createdBy: 'schen@netflix.com',   createdAt: '2026-02-11', assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020'], sourceSmartCollectionId: 'smart-finals' },
-    { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', createdAt: '2026-01-19', assetIds: ['ws-edit-cut-1', 'ws-edit-cut-2', 'ws-edit-cut-3'] },
+    { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', createdAt: '2026-01-19', assetIds: ['cut-ep301-lc-1', 'cut-ep301-lc-2', 'cut-ep301-lc-3'] },
     // Camera collections
     { id: 'ws-cam-coll-broll', name: 'B-Roll Highlights', createdBy: 'tnakamura@netflix.com', createdAt: '2026-02-10', assetIds: ['ws-cam-broll-town', 'ws-cam-broll-forest', 'ws-cam-aerial-dawn', 'ws-cam-aerial-quarry'] },
     // Audio collections
@@ -524,33 +524,33 @@ export const SCENARIO: Scenario = {
     { id: 'coll-cam-dailies',      name: 'Dailies (concept reference)', createdBy: 'tnakamura@netflix.com', createdAt: '2026-02-09', assetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'] },
   ],
 
-  sensitiveAssetIds: ['ws-edit-cut-1', 'ws-edit-cut-2'],
+  sensitiveAssetIds: ['cut-ep301-lc-1', 'cut-ep301-lc-2'],
 
   cuts: [
     // EP301 — full progression: Locked Cut 1-3 → Final Cut → EMF
     { id: 'cut-ep301-lc-1', name: 'EP301 Locked Cut 1', episode: 'EP301', stage: 'locked-cut', version: 1, assetVersion: '1.0',
-      constituents: ['ws-edit-cut-1', 'ws-audio-sfx-1', 'ws-audio-sfx-2', 'ws-audio-music-1', 'ws-audio-music-theme'],
+      constituents: ['ws-edit-cut-1', 'ws-edit-lc1-video', 'ws-edit-lc1-audio-stereo', 'ws-edit-lc1-edl'],
       createdBy: 'msantos@netflix.com', date: '2026-02-08', duration: '51:20',
       note: 'Initial picture lock; temp sound/music, no VFX' },
     { id: 'cut-ep301-lc-2', name: 'EP301 Locked Cut 2', episode: 'EP301', stage: 'locked-cut', version: 2, assetVersion: '2.0',
-      constituents: ['ws-edit-cut-1', 'ws-edit-exp-1', 'ws-audio-sfx-1', 'ws-audio-sfx-2', 'ws-audio-music-1', 'ws-audio-music-2'],
+      constituents: ['ws-edit-lc2-video', 'ws-edit-lc2-audio-stereo', 'ws-edit-lc2-audio-51', 'ws-edit-lc2-edl'],
       createdBy: 'msantos@netflix.com', date: '2026-02-13', duration: '50:18',
       note: 'Updated picture per David\'s pacing notes; added score cues for race sequences' },
     { id: 'cut-ep301-lc-3', name: 'EP301 Locked Cut 3', episode: 'EP301', stage: 'locked-cut', version: 3, assetVersion: '3.6',
-      constituents: ['ws-edit-cut-1', 'ws-edit-exp-1', 'ws-audio-mix-1', 'ws-audio-sfx-1', 'ws-audio-sfx-2', 'ws-audio-music-1', 'ws-audio-music-2'],
+      constituents: ['ws-edit-lc3-video', 'ws-edit-lc3-audio-stereo', 'ws-edit-lc3-audio-51', 'ws-edit-lc3-cc', 'ws-edit-lc3-edl'],
       createdBy: 'msantos@netflix.com', date: '2026-02-18', duration: '50:05',
       note: 'Updated picture & subtitles; temp sound/music/ADR/VFX' },
     { id: 'cut-ep301-fc', name: 'EP301 Final Cut', episode: 'EP301', stage: 'final-cut', version: 1, assetVersion: '5.0',
-      constituents: ['ws-edit-cut-1', 'ws-edit-exp-final', 'ws-audio-mix-1', 'ws-audio-mix-2'],
+      constituents: ['ws-edit-fc-video', 'ws-edit-fc-audio-stereo', 'ws-edit-fc-audio-51', 'ws-edit-fc-audio-me', 'ws-edit-fc-textless', 'ws-edit-fc-edl'],
       createdBy: 'lkim@netflix.com', date: '2026-02-28', duration: '49:48',
       note: 'Final picture and sound; all VFX final; approved for delivery' },
     { id: 'cut-ep301-emf', name: 'EP301 EMF', episode: 'EP301', stage: 'emf', version: 1, assetVersion: '5.0',
-      constituents: ['ws-edit-exp-final', 'ws-edit-exp-textless', 'ws-audio-mix-1', 'ws-audio-mix-2'],
+      constituents: ['ws-edit-emf-video', 'ws-edit-emf-audio-stereo', 'ws-edit-emf-audio-51', 'ws-edit-emf-audio-atmos', 'ws-edit-emf-audio-me', 'ws-edit-emf-textless', 'ws-edit-emf-cc', 'ws-edit-emf-qc'],
       createdBy: 'lkim@netflix.com', date: '2026-03-05', duration: '49:48',
       note: 'Delivery master; includes textless elements for localization' },
     // EP302 — early stage
     { id: 'cut-ep302-lc-1', name: 'EP302 Locked Cut 1', episode: 'EP302', stage: 'locked-cut', version: 1, assetVersion: '1.0',
-      constituents: ['ws-edit-cut-rough2', 'ws-audio-sfx-ambience'],
+      constituents: ['ws-edit-cut-rough2', 'ws-edit-ep302-lc1-video', 'ws-edit-ep302-lc1-audio', 'ws-edit-ep302-lc1-edl'],
       createdBy: 'msantos@netflix.com', date: '2026-02-20', duration: '57:30',
       note: 'Initial lock; temp sound only, no VFX' },
   ],
@@ -636,7 +636,7 @@ export function buildLabels(): Record<string, string> {
   return labels
 }
 
-export function buildGrants(): Grant[] {
+export function buildGrants(options?: { skipShares?: boolean }): Grant[] {
   let counter = 0
   function grantId(): string {
     return `grant-${++counter}`
@@ -649,7 +649,10 @@ export function buildGrants(): Grant[] {
 
   const grants: Grant[] = []
 
-  // Resource-level shares
+  // Resource-level shares (skipped in phase mode — users create these interactively)
+  if (options?.skipShares) {
+    // Jump directly to project-level grants
+  } else {
   const sharerGrantsSeen = new Set<string>()
   // Track grants by resource+principal key for version linking
   const grantsByResourcePrincipal = new Map<string, string>()
@@ -755,6 +758,7 @@ export function buildGrants(): Grant[] {
       grants.push(grant)
     }
   }
+  } // end skipShares else
 
   // Project-level grants — people
   const projectResource = { id: 'project', type: 'project' as const }
@@ -871,14 +875,21 @@ export function buildCuts(): SeedCut[] {
   return SCENARIO.cuts.map(c => ({ ...c }))
 }
 
-export function buildSeedCollections(): UserCollection[] {
-  return SCENARIO.collections.map((c) => ({
-    flavor: 'collection' as const,
-    id: c.id,
-    name: c.name,
-    assetIds: c.assetIds,
-    createdAt: new Date(c.createdAt),
-    createdBy: c.createdBy,
-    sourceSmartCollectionId: c.sourceSmartCollectionId,
-  }))
+export function buildSeedCollections(options?: { skipShared?: boolean }): UserCollection[] {
+  // In phase mode, only seed collections that aren't shared (no matching grants)
+  const sharedCollectionIds = options?.skipShared
+    ? new Set(SCENARIO.shares.filter(s => s.resource.type === 'collection').map(s => s.resource.id))
+    : new Set<string>()
+
+  return SCENARIO.collections
+    .filter(c => !sharedCollectionIds.has(c.id))
+    .map((c) => ({
+      flavor: 'collection' as const,
+      id: c.id,
+      name: c.name,
+      assetIds: c.assetIds,
+      createdAt: new Date(c.createdAt),
+      createdBy: c.createdBy,
+      sourceSmartCollectionId: c.sourceSmartCollectionId,
+    }))
 }

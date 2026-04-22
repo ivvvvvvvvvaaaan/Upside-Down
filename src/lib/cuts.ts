@@ -60,6 +60,7 @@ export function seedCutToAsset(cut: SeedCut, releaseInfo?: ReleaseTagInfo): Asse
     versionGroupId: cut.cutGroupId ?? `cut:${cut.episode}`,
     episode: cut.episode,
     constituents: cut.constituents,
+    sourceFolderIds: [cut.id],
     thumbnail: pickForDomain('editorial', cut.id)[0],
     tags: [
       { label: typeTag, source: 'system' },

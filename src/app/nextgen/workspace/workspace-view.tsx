@@ -244,6 +244,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     getMoveImpact,
     confirmMove,
     createFileReference,
+    assetById,
   } = useFileTree()
   const { showToast } = useToast()
 
@@ -983,6 +984,37 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                       <CardGrid gap="4" columns={getGridColumns(cardSize)}>
                         {currentGridItems.map((node) => {
                           if (node.type === 'folder') {
+                            // Cut folders render as asset cards (single playable entity)
+                            const cutAsset = assetById.get(node.id)
+                            if (cutAsset?.kind === 'cut') {
+                              return (
+                                <AssetCard
+                                  key={node.id}
+                                  asset={cutAsset}
+                                  selected={selectedIds.has(node.id)}
+                                  primary={primaryId === node.id}
+                                  showTags={showTags}
+                                  metadataFields={metadataFields}
+                                  onClick={(_, e) => {
+                                    const selectionEntry = selectionEntryById.get(node.id)
+                                    if (selectionEntry) {
+                                      handleSelectionClick(selectionEntry.entity, e, currentGridSelectionEntities)
+                                    }
+                                  }}
+                                  menuContent={
+                                    <div className="py-1">
+                                      {buildAssetMenuItems(node, cutAsset).map((item, i) => (
+                                        <div key={i}>
+                                          <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} />
+                                          {item.dividerAfter && <DropdownMenuDivider />}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  }
+                                  allSelectedIds={selectedIds}
+                                />
+                              )
+                            }
                             const fileCount = countAccessibleFiles(node.children ?? [], canAccess)
                             const isSharedFolder = sharedFolderIds.has(node.id)
                             const isRefFolder = isReferenceFolder(node)

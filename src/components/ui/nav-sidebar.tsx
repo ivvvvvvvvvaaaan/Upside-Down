@@ -288,7 +288,7 @@ function TreeNavLink({
     </>
   )
 
-  const resolvedIcon = (effectiveExpanded && iconExpanded) ? iconExpanded : icon
+  const resolvedIcon = ((effectiveExpanded || isActive || isChildActive) && iconExpanded) ? iconExpanded : icon
 
   const chevronIcon = effectiveExpanded
     ? <ChevronDown className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
