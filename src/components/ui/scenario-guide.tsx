@@ -15,13 +15,14 @@ const GUIDE_STORAGE_KEY = 'scenario-guide-collapsed'
 const COMPLETED_STEPS_KEY = 'scenario-completed-steps'
 
 function useCompletedSteps() {
-  const [completedSteps, setCompletedSteps] = useState<Set<string>>(() => {
-    if (typeof window === 'undefined') return new Set()
+  const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
     try {
       const stored = localStorage.getItem(COMPLETED_STEPS_KEY)
-      return stored ? new Set(JSON.parse(stored)) : new Set()
-    } catch { return new Set() }
-  })
+      if (stored) setCompletedSteps(new Set(JSON.parse(stored)))
+    } catch {}
+  }, [])
 
   const markCompleted = useCallback((stepId: string) => {
     setCompletedSteps(prev => {
@@ -68,10 +69,13 @@ export function ScenarioGuide() {
   const { tree: fileTree } = useFileTree()
   const { completedSteps, markCompleted, resetAll } = useCompletedSteps()
 
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window === 'undefined') return false
-    try { return localStorage.getItem(GUIDE_STORAGE_KEY) === 'true' } catch { return false }
-  })
+  const [collapsed, setCollapsed] = useState(false)
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(GUIDE_STORAGE_KEY) === 'true') setCollapsed(true)
+    } catch {}
+  }, [])
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed(prev => {
@@ -100,52 +104,72 @@ export function ScenarioGuide() {
   const phaseIndex = displayPhase ? PHASES.indexOf(displayPhase) : -1
   const allDone = !currentPhase
 
-  // Auto-detect checkpoints
+  // Auto-detect checkpoints — only check the next incomplete step (sequential)
   useEffect(() => {
     if (!displayPhase || !activePersona) return
+    if (displayPhase.personaId !== activePersona.id) return
+
     for (const step of displayPhase.steps) {
       if (completedSteps.has(step.id)) continue
+      // Only check this step (the first incomplete one)
       const cp = step.checkpoint
+      let matched = false
       if (cp.type === 'grant') {
         const grants = getResourceGrants(cp.resourceId)
-        const match = grants.some(g => {
+        matched = grants.some(g => {
           if (cp.principalType === 'user') return g.principal.type === 'user' && g.principal.userId === cp.principalId
           if (cp.principalType === 'team') return g.principal.type === 'team' && g.principal.teamId === cp.principalId
           if (cp.principalType === 'domain') return g.principal.type === 'domain' && g.principal.domainId === cp.principalId
           return false
         })
-        if (match) markCompleted(step.id)
       }
       if (cp.type === 'collection-created') {
-        const match = collections.some(c => c.name.toLowerCase().includes(cp.nameContains.toLowerCase()))
-        if (match) markCompleted(step.id)
+        matched = collections.some(c => c.name.toLowerCase().includes(cp.nameContains.toLowerCase()))
       }
       if (cp.type === 'file-created') {
-        // Check if a file was added to the target folder (by counting files with recent dates)
-        // This is a rough heuristic — in production you'd track the mutation directly
+        // Detect any file created today (modifiedAt matches today's date)
+        const today = new Date().toISOString().split('T')[0]
+        const hasRecentFile = (nodes: typeof fileTree): boolean => {
+          for (const node of nodes) {
+            if (node.type === 'file' && node.modifiedAt === today) return true
+            if (node.children && hasRecentFile(node.children)) return true
+          }
+          return false
+        }
+        const findFolder = (nodes: typeof fileTree, id: string): typeof fileTree[0] | null => {
+          for (const node of nodes) {
+            if (node.id === id) return node
+            if (node.children) {
+              const found = findFolder(node.children, id)
+              if (found) return found
+            }
+          }
+          return null
+        }
+        const targetFolder = findFolder(fileTree, cp.parentFolderId)
+        if (targetFolder?.children && hasRecentFile(targetFolder.children)) {
+          matched = true
+        }
       }
+      if (matched) markCompleted(step.id)
+      break // only check the first incomplete step
     }
-  }, [displayPhase, activePersona, completedSteps, getResourceGrants, collections, markCompleted])
+  }, [displayPhase, activePersona, completedSteps, getResourceGrants, collections, fileTree, markCompleted])
 
   if (!displayPhase && !allDone) return null
 
   return (
-    <div className="fixed top-16 right-4 z-50 w-80">
-      <div className="bg-surface-high border border-border-dim rounded-lg shadow-lg overflow-hidden">
+    <div className={cn('fixed top-2 right-4 z-50', collapsed ? 'w-auto' : 'w-80')}>
+      <div className="bg-black border border-border-dim rounded-lg shadow-lg overflow-hidden">
         {/* Header — always visible */}
         <button
           onClick={toggleCollapsed}
-          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-surface-2 transition-colors"
+          className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-white/5 transition-colors"
         >
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-label-0-bold text-indigo-400">
-              {allDone ? 'Complete' : `Phase ${phaseIndex + 1}/${PHASES.length}`}
-            </span>
-            <span className="text-body-0-bold text-foreground truncate">
-              {allDone ? 'All scenarios done' : displayPhase!.title}
-            </span>
-          </div>
-          {collapsed ? <ChevronDown className="w-4 h-4 text-foreground-dim flex-shrink-0" /> : <ChevronUp className="w-4 h-4 text-foreground-dim flex-shrink-0" />}
+          <span className="text-body-0-bold text-foreground truncate">
+            {allDone ? 'All scenarios done' : displayPhase!.title}
+          </span>
+          {collapsed ? <ChevronDown className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" /> : <ChevronUp className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />}
         </button>
 
         {/* Body — collapsible */}
@@ -162,9 +186,9 @@ export function ScenarioGuide() {
                 </p>
 
                 {isWrongPersona && expectedPersona && (
-                  <div className="bg-indigo-500/10 rounded px-3 py-2 flex items-center gap-2">
-                    <ArrowRight className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
-                    <span className="text-body-0-regular text-indigo-400">
+                  <div className="bg-white/5 rounded px-3 py-2 flex items-center gap-2">
+                    <ArrowRight className="w-3.5 h-3.5 text-foreground flex-shrink-0" />
+                    <span className="text-body-0-regular text-foreground">
                       Switch to {expectedPersona.name} to continue
                     </span>
                   </div>

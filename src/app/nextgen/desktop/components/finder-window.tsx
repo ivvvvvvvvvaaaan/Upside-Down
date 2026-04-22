@@ -1120,7 +1120,33 @@ export function FinderWindow({
                         label="New File"
                         disabled={selectedSidebar !== 'workspace'}
                         onClick={() => {
-                          const names = ['SEQ010_SH040_comp_v1.exr', 'hero_closeup_final.dpx', 'ambience_pit_lane.wav', 'grade_pass_02.mov', 'concept_sketch_v3.psd', 'lens_calibration_data.csv']
+                          // Context-aware file names based on domain
+                          const itemId = contextMenu.item.id?.toLowerCase() ?? ''
+                          const itemName = contextMenu.item.name?.toLowerCase() ?? ''
+                          const isCamera = itemId.includes('cam') || itemName.includes('camera') || itemName.includes('dailies') || itemName.includes('2026')
+                          const isVfx = itemId.includes('vfx') || itemName.includes('vfx') || itemName.includes('shots') || itemName.includes('comp')
+                          const isAudio = itemId.includes('audio') || itemName.includes('audio') || itemName.includes('sound')
+                          const isEditorial = itemId.includes('edit') || itemName.includes('editorial') || itemName.includes('timeline')
+
+                          let names: string[]
+                          if (isCamera) {
+                            // ARRI ALEXA 35 dailies — realistic OCF naming
+                            const clip = String(Math.floor(Math.random() * 20) + 1).padStart(3, '0')
+                            const hour = String(Math.floor(Math.random() * 12) + 7).padStart(2, '0')
+                            const min = String(Math.floor(Math.random() * 60)).padStart(2, '0')
+                            names = [
+                              `A_0003C${clip}_260215_${hour}${min}15_a12R1.mxf`,
+                              `B_0002C${clip}_260215_${hour}${min}42_a15K2.mxf`,
+                            ]
+                          } else if (isVfx) {
+                            names = ['SEQ010_SH040_comp_v1.exr', 'SEQ020_SH015_comp_v2.exr', 'ENV_circuit_matte_v3.exr', 'FX_rain_sim_v2.exr']
+                          } else if (isAudio) {
+                            names = ['S12T03.wav', 'S15T01.wav', 'ambience_pit_lane_v2.wav', 'SFX_engine_rev_03.wav']
+                          } else if (isEditorial) {
+                            names = ['EP301_timeline_v2.prproj', 'EP301_assembly_v1.mov', 'EP302_rough_v1.mov']
+                          } else {
+                            names = ['concept_circuit_v4.psd', 'storyboard_chase_p3.pdf', 'reference_monaco_001.jpg', 'texture_tarmac_4k.exr']
+                          }
                           contextCreateFile(contextMenu.item.id, names[Math.floor(Math.random() * names.length)])
                         }}
                       />

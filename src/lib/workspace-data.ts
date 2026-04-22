@@ -321,9 +321,9 @@ const cameraFiles: WorkspaceFileNode[] = [
         type: 'folder',
         modifiedAt: '2026-02-14',
         children: [
-          { id: 'ws-cam-daily-1', name: 'A001_C001_0214_001.mov', type: 'file', extension: 'mov', size: 2147483648, modifiedAt: '2026-02-14' },
-          { id: 'ws-cam-daily-2', name: 'A001_C002_0214_001.mov', type: 'file', extension: 'mov', size: 1879048192, modifiedAt: '2026-02-14' },
-          { id: 'ws-cam-daily-3', name: 'A001_C003_0214_001.mov', type: 'file', extension: 'mov', size: 2415919104, modifiedAt: '2026-02-14' },
+          { id: 'ws-cam-daily-1', name: 'A_0002C001_260214_091530_a12R1.mxf', type: 'file', extension: 'mxf', size: 2147483648, modifiedAt: '2026-02-14' },
+          { id: 'ws-cam-daily-2', name: 'A_0002C002_260214_093245_a12R1.mxf', type: 'file', extension: 'mxf', size: 1879048192, modifiedAt: '2026-02-14' },
+          { id: 'ws-cam-daily-3', name: 'B_0001C001_260214_091600_a15K2.mxf', type: 'file', extension: 'mxf', size: 2415919104, modifiedAt: '2026-02-14' },
         ],
       },
       {
@@ -332,8 +332,8 @@ const cameraFiles: WorkspaceFileNode[] = [
         type: 'folder',
         modifiedAt: '2026-02-13',
         children: [
-          { id: 'ws-cam-daily-4', name: 'A001_C001_0213_001.mov', type: 'file', extension: 'mov', size: 1610612736, modifiedAt: '2026-02-13' },
-          { id: 'ws-cam-daily-5', name: 'A001_C002_0213_001.mov', type: 'file', extension: 'mov', size: 2013265920, modifiedAt: '2026-02-13' },
+          { id: 'ws-cam-daily-4', name: 'A_0001C001_260213_083012_a12R1.mxf', type: 'file', extension: 'mxf', size: 1610612736, modifiedAt: '2026-02-13' },
+          { id: 'ws-cam-daily-5', name: 'A_0001C002_260213_090145_a12R1.mxf', type: 'file', extension: 'mxf', size: 2013265920, modifiedAt: '2026-02-13' },
         ],
       },
       {
@@ -342,9 +342,9 @@ const cameraFiles: WorkspaceFileNode[] = [
         type: 'folder',
         modifiedAt: '2026-02-12',
         children: [
-          { id: 'ws-cam-scene12-take3', name: 'ep01_scene12_take3.mov', type: 'file', extension: 'mov', size: 2147483648, modifiedAt: '2026-02-12' },
-          { id: 'ws-cam-scene08-take1', name: 'ep01_scene08_take1.mov', type: 'file', extension: 'mov', size: 1879048192, modifiedAt: '2026-02-12' },
-          { id: 'ws-cam-scene15-take1', name: 'ep01_scene15_take1.mov', type: 'file', extension: 'mov', size: 2415919104, modifiedAt: '2026-02-12' },
+          { id: 'ws-cam-scene12-take3', name: 'EP301_SC012_T03_A.mov', type: 'file', extension: 'mov', size: 2147483648, modifiedAt: '2026-02-12' },
+          { id: 'ws-cam-scene08-take1', name: 'EP301_SC008_T01_A.mov', type: 'file', extension: 'mov', size: 1879048192, modifiedAt: '2026-02-12' },
+          { id: 'ws-cam-scene15-take1', name: 'EP301_SC015_T01_A.mov', type: 'file', extension: 'mov', size: 2415919104, modifiedAt: '2026-02-12' },
           { id: 'ws-cam-broll-town', name: 'circuit_paddock_broll.mov', type: 'file', extension: 'mov', size: 943718400, modifiedAt: '2026-02-11' },
           { id: 'ws-cam-broll-forest', name: 'forest_atmosphere_broll.mov', type: 'file', extension: 'mov', size: 838860800, modifiedAt: '2026-02-11' },
           { id: 'ws-cam-aerial-dawn', name: 'circuit_aerial_dawn.mov', type: 'file', extension: 'mov', size: 1073741824, modifiedAt: '2026-02-10' },
@@ -423,17 +423,72 @@ const editorialFiles: WorkspaceFileNode[] = [
     id: 'ws-edit-cuts',
     name: 'Cuts',
     type: 'folder',
-    modifiedAt: '2026-02-14',
+    modifiedAt: '2026-03-05',
     zone: 'managed',
     children: [
-      { id: 'ws-edit-cut-1', name: 'EP301_timeline_v4.prproj', type: 'file', extension: 'prproj', size: 52428800, modifiedAt: '2026-02-14', modifiedBy: 'msantos@netflix.com' },
-      { id: 'ws-edit-cut-2', name: 'EP301_timeline_v2.prproj', type: 'file', extension: 'prproj', size: 41943040, modifiedAt: '2026-02-12', modifiedBy: 'msantos@netflix.com' },
-      { id: 'ws-edit-cut-3', name: 'EP302_timeline_v1.prproj', type: 'file', extension: 'prproj', size: 36700160, modifiedAt: '2026-02-10', modifiedBy: 'lkim@netflix.com' },
-      { id: 'ws-edit-cut-locked', name: 'EP107_timeline_locked.mov', type: 'file', extension: 'mov', size: 8589934592, modifiedAt: '2026-02-09', modifiedBy: 'msantos@netflix.com' },
-      { id: 'ws-edit-cut-rough1', name: 'EP101_timeline_v3.mov', type: 'file', extension: 'mov', size: 6442450944, modifiedAt: '2026-02-08', modifiedBy: 'msantos@netflix.com' },
-      { id: 'ws-edit-cut-rough2', name: 'EP102_timeline_v1.mov', type: 'file', extension: 'mov', size: 7516192768, modifiedAt: '2026-02-07' },
-      { id: 'ws-edit-cut-assembly', name: 'EP101_timeline_v1.mov', type: 'file', extension: 'mov', size: 9663676416, modifiedAt: '2026-02-06' },
-      { id: 'ws-edit-cut-fine', name: 'EP101_timeline_v2_fine.mov', type: 'file', extension: 'mov', size: 7516192768, modifiedAt: '2026-02-05' },
+      // EP301 — full progression: Locked Cut 1-3 → Final Cut → EMF
+      {
+        id: 'cut-ep301-lc-1', name: 'EP301_LC1', type: 'folder', modifiedAt: '2026-02-08', modifiedBy: 'msantos@netflix.com',
+        children: [
+          { id: 'ws-edit-cut-1', name: 'EP301_timeline_v4.prproj', type: 'file', extension: 'prproj', size: 52428800, modifiedAt: '2026-02-08', modifiedBy: 'msantos@netflix.com' },
+          { id: 'ws-edit-lc1-video', name: 'EP301_LC1_VideoMaster.mxf', type: 'file', extension: 'mxf', size: 8589934592, modifiedAt: '2026-02-08' },
+          { id: 'ws-edit-lc1-audio-stereo', name: 'EP301_LC1_AudioStereo.wav', type: 'file', extension: 'wav', size: 104857600, modifiedAt: '2026-02-08' },
+          { id: 'ws-edit-lc1-edl', name: 'EP301_LC1.edl', type: 'file', extension: 'edl', size: 32768, modifiedAt: '2026-02-08' },
+        ],
+      },
+      {
+        id: 'cut-ep301-lc-2', name: 'EP301_LC2', type: 'folder', modifiedAt: '2026-02-13', modifiedBy: 'msantos@netflix.com',
+        children: [
+          { id: 'ws-edit-lc2-video', name: 'EP301_LC2_VideoMaster.mxf', type: 'file', extension: 'mxf', size: 8589934592, modifiedAt: '2026-02-13' },
+          { id: 'ws-edit-lc2-audio-stereo', name: 'EP301_LC2_AudioStereo.wav', type: 'file', extension: 'wav', size: 104857600, modifiedAt: '2026-02-13' },
+          { id: 'ws-edit-lc2-audio-51', name: 'EP301_LC2_Audio51.wav', type: 'file', extension: 'wav', size: 157286400, modifiedAt: '2026-02-13' },
+          { id: 'ws-edit-lc2-edl', name: 'EP301_LC2.edl', type: 'file', extension: 'edl', size: 32768, modifiedAt: '2026-02-13' },
+        ],
+      },
+      {
+        id: 'cut-ep301-lc-3', name: 'EP301_LC3', type: 'folder', modifiedAt: '2026-02-18', modifiedBy: 'msantos@netflix.com',
+        children: [
+          { id: 'ws-edit-lc3-video', name: 'EP301_LC3_VideoMaster.mxf', type: 'file', extension: 'mxf', size: 8589934592, modifiedAt: '2026-02-18' },
+          { id: 'ws-edit-lc3-audio-stereo', name: 'EP301_LC3_AudioStereo.wav', type: 'file', extension: 'wav', size: 104857600, modifiedAt: '2026-02-18' },
+          { id: 'ws-edit-lc3-audio-51', name: 'EP301_LC3_Audio51.wav', type: 'file', extension: 'wav', size: 157286400, modifiedAt: '2026-02-18' },
+          { id: 'ws-edit-lc3-cc', name: 'EP301_LC3_CC_en.ttml', type: 'file', extension: 'ttml', size: 16384, modifiedAt: '2026-02-18' },
+          { id: 'ws-edit-lc3-edl', name: 'EP301_LC3.edl', type: 'file', extension: 'edl', size: 32768, modifiedAt: '2026-02-18' },
+        ],
+      },
+      {
+        id: 'cut-ep301-fc', name: 'EP301_FC', type: 'folder', modifiedAt: '2026-02-28', modifiedBy: 'lkim@netflix.com',
+        children: [
+          { id: 'ws-edit-fc-video', name: 'EP301_FC_VideoMaster.mxf', type: 'file', extension: 'mxf', size: 10737418240, modifiedAt: '2026-02-28' },
+          { id: 'ws-edit-fc-audio-stereo', name: 'EP301_FC_AudioStereo.wav', type: 'file', extension: 'wav', size: 104857600, modifiedAt: '2026-02-28' },
+          { id: 'ws-edit-fc-audio-51', name: 'EP301_FC_Audio51.wav', type: 'file', extension: 'wav', size: 157286400, modifiedAt: '2026-02-28' },
+          { id: 'ws-edit-fc-audio-me', name: 'EP301_FC_AudioME.wav', type: 'file', extension: 'wav', size: 157286400, modifiedAt: '2026-02-28' },
+          { id: 'ws-edit-fc-textless', name: 'EP301_FC_Textless.mxf', type: 'file', extension: 'mxf', size: 10737418240, modifiedAt: '2026-02-28' },
+          { id: 'ws-edit-fc-edl', name: 'EP301_FC.edl', type: 'file', extension: 'edl', size: 32768, modifiedAt: '2026-02-28' },
+        ],
+      },
+      {
+        id: 'cut-ep301-emf', name: 'EP301_EMF', type: 'folder', modifiedAt: '2026-03-05', modifiedBy: 'lkim@netflix.com',
+        children: [
+          { id: 'ws-edit-emf-video', name: 'EP301_EMF_VideoMaster.mxf', type: 'file', extension: 'mxf', size: 10737418240, modifiedAt: '2026-03-05' },
+          { id: 'ws-edit-emf-audio-stereo', name: 'EP301_EMF_AudioStereo.wav', type: 'file', extension: 'wav', size: 104857600, modifiedAt: '2026-03-05' },
+          { id: 'ws-edit-emf-audio-51', name: 'EP301_EMF_Audio51.wav', type: 'file', extension: 'wav', size: 157286400, modifiedAt: '2026-03-05' },
+          { id: 'ws-edit-emf-audio-atmos', name: 'EP301_EMF_AudioAtmos.wav', type: 'file', extension: 'wav', size: 262144000, modifiedAt: '2026-03-05' },
+          { id: 'ws-edit-emf-audio-me', name: 'EP301_EMF_AudioME.wav', type: 'file', extension: 'wav', size: 157286400, modifiedAt: '2026-03-05' },
+          { id: 'ws-edit-emf-textless', name: 'EP301_EMF_Textless.mxf', type: 'file', extension: 'mxf', size: 10737418240, modifiedAt: '2026-03-05' },
+          { id: 'ws-edit-emf-cc', name: 'EP301_EMF_CC_en.ttml', type: 'file', extension: 'ttml', size: 16384, modifiedAt: '2026-03-05' },
+          { id: 'ws-edit-emf-qc', name: 'EP301_EMF_QC.pdf', type: 'file', extension: 'pdf', size: 1048576, modifiedAt: '2026-03-05' },
+        ],
+      },
+      // EP302 — early stage
+      {
+        id: 'cut-ep302-lc-1', name: 'EP302_LC1', type: 'folder', modifiedAt: '2026-02-20', modifiedBy: 'msantos@netflix.com',
+        children: [
+          { id: 'ws-edit-cut-rough2', name: 'EP302_timeline_v1.prproj', type: 'file', extension: 'prproj', size: 36700160, modifiedAt: '2026-02-20' },
+          { id: 'ws-edit-ep302-lc1-video', name: 'EP302_LC1_VideoMaster.mxf', type: 'file', extension: 'mxf', size: 9663676416, modifiedAt: '2026-02-20' },
+          { id: 'ws-edit-ep302-lc1-audio', name: 'EP302_LC1_AudioStereo.wav', type: 'file', extension: 'wav', size: 104857600, modifiedAt: '2026-02-20' },
+          { id: 'ws-edit-ep302-lc1-edl', name: 'EP302_LC1.edl', type: 'file', extension: 'edl', size: 32768, modifiedAt: '2026-02-20' },
+        ],
+      },
     ],
   },
   {
