@@ -61,6 +61,7 @@ export type AssetFilter = {
   typeTags?: string[]
   isKeyArt?: boolean
   isFinal?: boolean
+  isCircleTake?: boolean
   aiConfidenceBelow?: number
   aiCharacters?: string[]
   aiLocation?: string
@@ -134,6 +135,7 @@ export type Asset = {
   department?: DomainId
   isKeyArt?: boolean
   isFinal?: boolean
+  isCircleTake?: boolean
   isAutoPromoted?: boolean
   aiMeta?: AIMeta
   workspacePath?: string

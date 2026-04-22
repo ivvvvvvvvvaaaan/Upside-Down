@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Stack, CardGrid, AssetCard, EmptyState, MobileToolbar, PageHeader, Tag, HawkinsSearch, SortDropdown, AppearanceDropdown } from '@/components/ui'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import { ContextualActionBar } from '@/components/ui/contextual-action-bar'
+import { useToast } from '@/components/ui/toast'
 import { getGridColumns, useAssetSelection, useViewPreferences, useAccess, useFileTree } from '@/hooks'
 import { assetToSelectionEntity } from '@/lib/selection-actions'
 import { getAssetsByIds } from '@/lib/data'
@@ -18,6 +19,7 @@ interface SharedFolderViewProps {
 
 export function SharedFolderView({ folderId }: SharedFolderViewProps) {
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
+  const { showToast } = useToast()
   const { cardSize, setCardSize, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const { getResourceGrants, canAccess } = useAccess()
   const { tree } = useFileTree()
@@ -176,6 +178,11 @@ export function SharedFolderView({ folderId }: SharedFolderViewProps) {
               <ContextualActionBar
                 selectedEntities={selectedEntities}
                 onClearSelection={clearSelection}
+                downloadAction={selectedIds.size > 0 ? {
+                  enabled: true,
+                  onClick: () => showToast(`Downloading ${selectedIds.size} asset${selectedIds.size !== 1 ? 's' : ''}...`),
+                  label: `Download ${selectedIds.size} asset${selectedIds.size !== 1 ? 's' : ''}`,
+                } : undefined}
               />
 
               {assets.length > 0 ? (

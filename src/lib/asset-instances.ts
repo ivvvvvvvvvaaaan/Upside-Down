@@ -176,6 +176,15 @@ const FINAL_ASSET_IDS = new Set([
   'ws-vfx-010-020',  // SEQ010 SH020 comp — signed off after third pass
 ])
 
+// Circle takes — director/DP picks marked by the DIT on set
+const CIRCLE_TAKE_IDS = new Set([
+  'ws-cam-sel-1',       // Scene12_TakeB — director circled
+  'ws-cam-sel-2',       // Scene15_TakeD — DP pick
+  'ws-cam-sel-billy',   // ferreira_closeup — director circled
+  'ws-cam-sel-eleven',  // vitale_victory_lap — DP pick
+  'ws-cam-sel-portal',  // pit_lane_lights_out — director circled
+])
+
 /** Extensions for project/source files that should not get image previews (show icon instead) */
 const NO_PREVIEW_EXTENSIONS = new Set(['nk', 'mb', 'hip', 'prproj'])
 
@@ -215,6 +224,7 @@ export function promotedInstanceToAsset(instance: AssetInstance): Asset {
     sourceFolderIds: instance.sourceFolderId ? [instance.sourceFolderId] : undefined,
     thumbnail: getThumbnail(instance),
     isFinal: FINAL_ASSET_IDS.has(instance.id),
+    isCircleTake: CIRCLE_TAKE_IDS.has(instance.id),
     version,
     versionGroupId: groupKey ? `${instance.department ?? 'unknown'}:${groupKey}` : undefined,
   }
@@ -258,6 +268,7 @@ export function promotedInstanceToAsset(instance: AssetInstance): Asset {
   if (typeTag) tags.push({ label: toTitleCase(typeTag), source: 'system' })
   if (base.isKeyArt) tags.push({ label: 'Key Art', source: 'system' })
   if (base.isFinal) tags.push({ label: 'Final', source: 'system' })
+  if (base.isCircleTake) tags.push({ label: 'Circle Take', source: 'system' })
   if (instance.aiTags?.keywords) {
     for (const k of instance.aiTags.keywords) {
       tags.push({ label: toTitleCase(k), source: 'ai' })

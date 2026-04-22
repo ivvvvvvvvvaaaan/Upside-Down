@@ -1,24 +1,22 @@
 /**
  * Scenario Phases
  *
- * Defines the guided walkthrough phases. Each phase has:
- * - A persona who performs the actions
- * - Steps with instructions and checkpoint conditions
- * - Context copy explaining WHY this action matters
- *
- * Checkpoints are detected by matching mutations in the data:
- * grants created, collections created, files added.
+ * Each phase is self-contained with no cross-phase dependencies.
+ * Multi-persona phases include a persona switch as a step.
  */
 
 export interface PhaseStep {
   id: string
   instruction: string
-  /** How to detect this step is done */
+  /** Which persona should perform this step (used for auto-detection gating) */
+  personaId?: string
   checkpoint:
     | { type: 'grant'; resourceId: string; principalType: 'user' | 'team' | 'domain'; principalId: string }
+    | { type: 'any-grant-to'; principalType: 'user' | 'team'; principalId: string }
     | { type: 'collection-created'; nameContains: string }
     | { type: 'file-created'; parentFolderId: string }
     | { type: 'visit-page'; pathPrefix: string }
+    | { type: 'persona-switch'; personaId: string }
     | { type: 'manual' }
 }
 
@@ -26,136 +24,142 @@ export interface Phase {
   id: string
   title: string
   description: string
+  /** The persona who starts this phase */
   personaId: string
   steps: PhaseStep[]
-  /** Which persona to switch to after this phase */
-  nextPersonaId?: string
 }
 
 export const PHASES: Phase[] = [
   {
     id: 'phase-1',
     title: 'New dailies land',
-    description: 'Tom just finished ingesting today\'s camera media. He needs to get the selects to editorial and the director.',
+    description: 'Tom finished ingesting today\'s camera media. He reviews director picks, curates the best takes into a collection, and shares them with the director.',
     personaId: 'camera-dit',
     steps: [
       {
         id: 'p1-create-file',
-        instruction: 'Add a new camera file to Dailies (right-click in the desktop view)',
+        instruction: 'Add new camera footage to Camera / Dailies (right-click in the desktop view)',
+        personaId: 'camera-dit',
         checkpoint: { type: 'file-created', parentFolderId: 'ws-cam-dailies' },
       },
       {
         id: 'p1-check-smart',
-        instruction: 'Open smart collections and confirm the file appeared automatically',
-        checkpoint: { type: 'visit-page', pathPrefix: '/nextgen/collections/smart-' },
+        instruction: 'Open "Circle Takes" to review director picks',
+        personaId: 'camera-dit',
+        checkpoint: { type: 'visit-page', pathPrefix: '/nextgen/collections/smart-circle-takes' },
       },
       {
-        id: 'p1-share-selects',
-        instruction: 'Share the Selects folder with David Park and the Editorial team',
-        checkpoint: { type: 'grant', resourceId: 'ws-cam-selects', principalType: 'user', principalId: 'creative-david' },
+        id: 'p1-create-collection',
+        instruction: 'Create a collection called "Day 15 Selects" and add your top picks',
+        personaId: 'camera-dit',
+        checkpoint: { type: 'collection-created', nameContains: 'Selects' },
+      },
+      {
+        id: 'p1-share-collection',
+        instruction: 'Share the collection with David Park',
+        personaId: 'camera-dit',
+        checkpoint: { type: 'any-grant-to', principalType: 'user', principalId: 'creative-david' },
       },
     ],
-    nextPersonaId: 'vfx-coordinator',
   },
   {
     id: 'phase-2',
-    title: 'VFX handoff to editorial',
-    description: 'Sarah has approved comps ready for the EP301 edit. She packages them into a collection for Lisa and Maria.',
+    title: 'VFX to editorial',
+    description: 'Sarah packages approved VFX comps for editorial. Lisa receives them and shares her review cuts back.',
     personaId: 'vfx-coordinator',
     steps: [
       {
         id: 'p2-create-collection',
-        instruction: 'Create a collection called "EP301 VFX Pulls" with VFX comp assets',
+        instruction: 'As Sarah, create a collection called "EP301 VFX Pulls" with VFX comp assets',
+        personaId: 'vfx-coordinator',
         checkpoint: { type: 'collection-created', nameContains: 'VFX Pulls' },
       },
       {
         id: 'p2-share-collection',
         instruction: 'Share it with Lisa Kim and Maria Santos',
+        personaId: 'vfx-coordinator',
         checkpoint: { type: 'grant', resourceId: 'ws-vfx-coll-for-editorial', principalType: 'user', principalId: 'editorial-coordinator' },
       },
-    ],
-    nextPersonaId: 'editorial-coordinator',
-  },
-  {
-    id: 'phase-3',
-    title: 'Editorial sends review cuts',
-    description: 'Lisa received the VFX comps. Now she shares her latest cuts with the review group.',
-    personaId: 'editorial-coordinator',
-    steps: [
       {
-        id: 'p3-check-inbox',
+        id: 'p2-switch-lisa',
+        instruction: 'Switch to Lisa Kim',
+        checkpoint: { type: 'persona-switch', personaId: 'editorial-coordinator' },
+      },
+      {
+        id: 'p2-check-inbox',
         instruction: 'Check your Inbox for Sarah\'s VFX Pulls collection',
+        personaId: 'editorial-coordinator',
         checkpoint: { type: 'visit-page', pathPrefix: '/nextgen/inbox' },
       },
       {
-        id: 'p3-share-dailies',
+        id: 'p2-share-dailies',
         instruction: 'Share "Dailies Review Cuts" with Maria Santos, David Park, and Mike Torres',
+        personaId: 'editorial-coordinator',
         checkpoint: { type: 'grant', resourceId: 'ws-edit-coll-dailies', principalType: 'user', principalId: 'editorial-artist' },
       },
     ],
-    nextPersonaId: 'vfx-coordinator',
   },
   {
-    id: 'phase-4',
-    title: 'Vendor gets delivery folder',
-    description: 'Framestore needs a workspace to deliver final VFX comps. Sarah gives their team access.',
+    id: 'phase-3',
+    title: 'Vendor exchange',
+    description: 'Sarah sets up a delivery folder for Framestore. James uploads finished comps and shares them back with notes.',
     personaId: 'vfx-coordinator',
     steps: [
       {
-        id: 'p4-share-vendor',
-        instruction: 'Share the Framestore folder (under Vendor Deliveries) with the Framestore team',
+        id: 'p3-share-vendor',
+        instruction: 'As Sarah, share the Framestore folder (under Vendor Deliveries) with the Framestore team',
+        personaId: 'vfx-coordinator',
         checkpoint: { type: 'grant', resourceId: 'ws-vfx-vendor-framestore', principalType: 'team', principalId: 'framestore-io' },
       },
-    ],
-    nextPersonaId: 'vendor-framestore',
-  },
-  {
-    id: 'phase-5',
-    title: 'Vendor delivers comps',
-    description: 'James at Framestore uploads finished VFX comps and shares them back to Sarah with delivery notes.',
-    personaId: 'vendor-framestore',
-    steps: [
       {
-        id: 'p5-vendor-upload',
+        id: 'p3-switch-james',
+        instruction: 'Switch to James Liu (Framestore)',
+        checkpoint: { type: 'persona-switch', personaId: 'vendor-framestore' },
+      },
+      {
+        id: 'p3-vendor-upload',
         instruction: 'Add a new comp file to the Framestore delivery folder',
+        personaId: 'vendor-framestore',
         checkpoint: { type: 'file-created', parentFolderId: 'ws-vfx-vendor-framestore' },
       },
       {
-        id: 'p5-vendor-share-back',
-        instruction: 'Share the Framestore folder back to Sarah Chen with a delivery note',
+        id: 'p3-vendor-share-back',
+        instruction: 'Share the Framestore folder back to Sarah with a delivery note',
+        personaId: 'vendor-framestore',
         checkpoint: { type: 'grant', resourceId: 'ws-vfx-vendor-framestore', principalType: 'user', principalId: 'vfx-coordinator' },
       },
     ],
-    nextPersonaId: 'camera-dit',
   },
   {
-    id: 'phase-6',
-    title: 'Camera shares reference footage',
+    id: 'phase-4',
+    title: 'Camera shares reference',
     description: 'Art needs B-roll and dailies for concept work. Tom sends them a curated set.',
     personaId: 'camera-dit',
     steps: [
       {
-        id: 'p6-share-broll',
+        id: 'p4-share-broll',
         instruction: 'Share "B-Roll Highlights" with art and editorial',
+        personaId: 'camera-dit',
         checkpoint: { type: 'grant', resourceId: 'ws-cam-coll-broll', principalType: 'user', principalId: 'art-designer' },
       },
       {
-        id: 'p6-share-dailies-snapshot',
+        id: 'p4-share-dailies-snapshot',
         instruction: 'Share a dailies snapshot with Priya Sharma for concept reference',
+        personaId: 'camera-dit',
         checkpoint: { type: 'grant', resourceId: 'coll-cam-dailies', principalType: 'user', principalId: 'art-designer' },
       },
     ],
-    nextPersonaId: 'editorial-coordinator',
   },
   {
-    id: 'phase-7',
-    title: 'Cut released to stakeholders',
+    id: 'phase-5',
+    title: 'Cut released',
     description: 'The locked cut is ready for broader review. Lisa releases it to studio departments.',
     personaId: 'editorial-coordinator',
     steps: [
       {
-        id: 'p7-release-cut',
+        id: 'p5-release-cut',
         instruction: 'Release Locked Cut 3 to Studio VFX, Studio Creative, and Studio Post',
+        personaId: 'editorial-coordinator',
         checkpoint: { type: 'grant', resourceId: 'cut-ep301-lc-3', principalType: 'domain', principalId: 'studio-vfx' },
       },
     ],
@@ -163,12 +167,12 @@ export const PHASES: Phase[] = [
 ]
 
 export function getPhaseForPersona(personaId: string, completedPhaseIds: Set<string>): Phase | null {
-  // Only show a phase if all previous phases are done
   for (const phase of PHASES) {
     if (completedPhaseIds.has(phase.id)) continue
-    // This is the first incomplete phase — only return it if it matches the persona
     if (phase.personaId === personaId) return phase
-    return null // earlier phase for a different persona isn't done yet
+    // Also match phases where the current step needs this persona
+    const nextStep = phase.steps.find(s => !completedPhaseIds.has(s.id))
+    if (nextStep?.personaId === personaId) return phase
   }
   return null
 }

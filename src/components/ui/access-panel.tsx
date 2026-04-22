@@ -973,7 +973,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
   const userEntriesSection = userEntries.length > 0 && (
     <div className="space-y-0">
-      <div className="space-y-0">
         {userEntries.map((entry) => (
           <GrantRow
             key={entry.key}
@@ -993,7 +992,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
             versionLabel={buildVersionLabel(entry.grant)}
           />
         ))}
-      </div>
     </div>
   )
 

@@ -31,7 +31,7 @@ import { useIsMobile } from '@/hooks/useMediaQuery'
 import { matchesFilter } from '@/hooks/useSmartCollections'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import type { Asset, AssetFilter } from '@/lib/data'
-import { assetToSelectionEntity, collectionToSelectionEntity } from '@/lib/selection-actions'
+import { assetToSelectionEntity, assetToResourceRef, collectionToSelectionEntity } from '@/lib/selection-actions'
 import { getContextAssetGroups } from '@/lib/context-relationships'
 import { useAccess } from '@/hooks'
 import { AccessModal } from '@/components/ui/access-modal'
@@ -108,7 +108,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const canManageCurrentCollection = Boolean(collection && (isOwner || isAdmin || canEditAcl(collectionResourceRef)))
   const canDeleteCurrentCollection = Boolean(collection && (isOwner || isAdmin))
 
-  type MenuItem = { label: string; icon?: React.ReactNode; onClick: () => void; destructive?: boolean; disabled?: boolean; dividerAfter?: boolean }
+  type MenuItem = import('@/components/ui/inline-action-bar').ActionMenuItem
 
   const smartCollectionMenuItems = useMemo((): MenuItem[] => {
     const items: MenuItem[] = []
@@ -235,11 +235,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
 
   const [assetShareTarget, setAssetShareTarget] = useState<{ ref: ResourceRef; title: string } | null>(null)
 
-  const toAssetResourceRef = useCallback((asset: Asset): ResourceRef => ({
-    id: asset.id,
-    type: asset.kind === 'cut' ? 'cut' : 'asset',
-    domainId: asset.department,
-  }), [])
+  const toAssetResourceRef = assetToResourceRef
 
   const buildAssetMenuItems = useCallback((asset: Asset): MenuItem[] => {
     const ref = toAssetResourceRef(asset)
@@ -492,17 +488,30 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                       <ContextualActionBar
                         selectedEntities={activeSelectionEntities}
                         onClearSelection={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
+                        downloadAction={(() => {
+                          if (!isParentWithChildren && selectedAssets.length > 0) {
+                            return {
+                              enabled: true,
+                              onClick: () => showToast(`Downloading ${selectedAssets.length} asset${selectedAssets.length !== 1 ? 's' : ''}...`),
+                              label: `Download ${selectedAssets.length} asset${selectedAssets.length !== 1 ? 's' : ''}`,
+                            }
+                          }
+                          if (isParentWithChildren && selectedCollectionIds.size > 0) {
+                            return {
+                              enabled: true,
+                              onClick: () => showToast(`Downloading ${selectedCollectionIds.size} collection${selectedCollectionIds.size !== 1 ? 's' : ''}...`),
+                              label: `Download ${selectedCollectionIds.size} collection${selectedCollectionIds.size !== 1 ? 's' : ''}`,
+                            }
+                          }
+                          return undefined
+                        })()}
                         menuItems={(() => {
                           if (!isParentWithChildren && selectedAssets.length === 1) {
                             const items = buildAssetMenuItems(selectedAssets[0])
                             const countLabels = new Map([['Share', 'Share 1 asset'], ['Download', 'Download 1 asset']])
                             return items.map(item => countLabels.has(item.label) ? { ...item, label: countLabels.get(item.label)! } : item)
                           }
-                          if (isParentWithChildren && selectedCollectionIds.size === 1) {
-                            const countLabels = new Map([['Share', 'Share 1 collection'], ['Download', 'Download 1 collection']])
-                            return smartCollectionMenuItems.map(item => countLabels.has(item.label) ? { ...item, label: countLabels.get(item.label)! } : item)
-                          }
-                          return smartCollectionMenuItems
+                          return undefined
                         })()}
                         inline
                       />

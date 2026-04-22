@@ -31,26 +31,6 @@ const SYSTEM_DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [
     createdAt: new Date('2026-01-15'),
     groupBy: 'locations',
   },
-  {
-    flavor: 'smart',
-    id: 'smart-take',
-    name: 'Take',
-    icon: 'shot',
-    filter: { types: ['video', 'shot'], typeTags: ['Camera Select', 'Steadicam', 'B-Roll'] },
-    visibleToAll: true,
-    createdAt: new Date('2026-01-15'),
-    groupBy: 'takes',
-  },
-  {
-    flavor: 'smart',
-    id: 'smart-camera',
-    name: 'Camera',
-    icon: 'shot',
-    filter: { types: ['video', 'shot'], department: 'camera' },
-    visibleToAll: true,
-    createdAt: new Date('2026-01-15'),
-    groupBy: 'cameras',
-  },
 ]
 
 const SEED_USER_SMART_COLLECTIONS: SmartCollection[] = [
@@ -80,6 +60,15 @@ const SEED_USER_SMART_COLLECTIONS: SmartCollection[] = [
     filter: { aiConfidenceBelow: 0.7 },
     createdBy: 'mtorres@netflix.com',
     createdAt: new Date('2026-02-10'),
+  },
+  {
+    flavor: 'smart',
+    id: 'smart-circle-takes',
+    name: 'Circle Takes',
+    icon: 'shot',
+    filter: { types: ['video'], department: 'camera', isCircleTake: true },
+    createdBy: 'tnakamura@netflix.com',
+    createdAt: new Date('2026-01-20'),
   },
 ]
 
