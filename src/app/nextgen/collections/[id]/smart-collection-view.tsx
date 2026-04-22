@@ -448,6 +448,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                         value={searchQuery}
                         onValueChange={setSearchQuery}
                         filters={filterOptions}
+                        expandable
                       />
                       <SortDropdown
                         fields={sortFields}

@@ -869,6 +869,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                       value={searchQuery}
                       onValueChange={setSearchQuery}
                       filters={filterOptions}
+                      expandable
                     />
                     <SortDropdown
                       fields={sortFields}

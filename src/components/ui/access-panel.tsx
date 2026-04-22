@@ -457,6 +457,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const [showDropdown, setShowDropdown] = useState(false)
   type PendingGrant = { id: string; principal: PrincipalRef; name: string; kind: 'user' | 'team' | 'domain'; role: AccessProfileId; shareMode: ShareMode; expires: boolean; expiresInDays: number; note: string }
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
+  const [shareNote, setShareNote] = useState('')
   const [showReleaseWarning, setShowReleaseWarning] = useState(false)
   const [flaggedReleaseRecipients, setFlaggedReleaseRecipients] = useState<{ name: string; reason: string }[]>([])
   const handleConfirmPendingRef = useRef(() => {})
@@ -678,12 +679,13 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           expiresInDays: pending.expires ? pending.expiresInDays : undefined,
           shareMode: isCollection ? pending.shareMode : undefined,
           snapshotAssetIds,
-          note: pending.note || undefined,
+          note: shareNote || undefined,
         })
       }
     }
     const names = pendingGrants.map(p => p.name)
     setPendingGrants([])
+    setShareNote('')
     onPendingChange?.(false, { confirm: () => {}, cancel: () => {} })
     if (names.length === 1) {
       showToast(`Shared with ${names[0]}`)
@@ -1121,12 +1123,13 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     )
   })
 
-  const pendingPeopleSection = pendingGrants.filter(p => p.kind !== 'domain').length > 0 && (
-    <div className="space-y-2">
+  const pendingPeople = pendingGrants.filter(p => p.kind !== 'domain')
+  const pendingPeopleSection = pendingPeople.length > 0 && (
+    <div className="space-y-3">
       <h3 className="text-body-0-bold text-foreground-dim">Adding</h3>
-      {pendingGrants.filter(p => p.kind !== 'domain').map(pending => (
-        <div key={pending.id} className="rounded-lg bg-surface-mid p-3 space-y-2">
-          <div className="flex items-center justify-between gap-2">
+      <div className="rounded-lg bg-surface-mid p-3 space-y-1">
+        {pendingPeople.map(pending => (
+          <div key={pending.id} className="flex items-center justify-between gap-2 py-1">
             <div className="flex items-center gap-2 min-w-0">
               {pending.kind === 'user' ? (
                 <Avatar name={pending.name} size="sm" />
@@ -1161,35 +1164,15 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               </Button>
             </div>
           </div>
-          <input
-            type="text"
-            value={pending.note}
-            onChange={(e) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, note: e.target.value } : p))}
-            placeholder="Add a note (optional)"
-            className="w-full px-3 py-1.5 bg-surface-low border border-border-dim rounded text-body-0-regular text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-subtle transition-colors"
-          />
-          {isCollectionResource && resourceRef && (() => {
-            const ceiling = getCollectionShareCeiling(resourceRef.id, pending.role)
-            if (ceiling.total === 0 || ceiling.capped === 0) return null
-            const roleName = roleGroups.find(r => r.id === pending.role)?.name?.replace('Can ', '') ?? pending.role
-            return (
-              <p className="text-label-0-regular text-foreground-subtle px-1">
-                {ceiling.atLevel} of {ceiling.total} assets at {roleName}. {ceiling.capped} limited to lower access.{' '}
-                <button
-                  className="text-foreground-dim hover:text-foreground underline transition-colors"
-                  onClick={() => {
-                    for (const assetId of ceiling.cappedAssetIds) {
-                      requestAccess(assetId, { id: assetId, type: 'asset' })
-                    }
-                  }}
-                >
-                  Request higher access
-                </button>
-              </p>
-            )
-          })()}
-        </div>
-      ))}
+        ))}
+      </div>
+      <textarea
+        value={shareNote}
+        onChange={(e) => setShareNote(e.target.value)}
+        placeholder="Add a note (optional)"
+        rows={2}
+        className="w-full px-3 py-2 bg-surface-low border border-border-dim rounded text-body-0-regular text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-subtle transition-colors resize-none"
+      />
     </div>
   )
 

@@ -143,6 +143,7 @@ export function SharedFolderView({ folderId }: SharedFolderViewProps) {
                   <HawkinsSearch
                     value={searchQuery}
                     onValueChange={setSearchQuery}
+                    expandable
                   />
                   <SortDropdown
                     fields={sortFields}

@@ -390,6 +390,7 @@ export function CollectionBrowserView({
                     value={searchQuery}
                     onValueChange={setSearchQuery}
                     filters={filterOptions}
+                    expandable
                   />
                   <SortDropdown
                     fields={sortFields}
