@@ -516,9 +516,9 @@ export function CollectionCard({
       {/* Thumbnail grid */}
       <div className="relative shrink-0 w-full z-10">
         {isFolder && (
-          <div className={cn('w-[30%] h-1.5 rounded-t transition-colors', isSelected ? 'bg-white/10' : 'bg-surface-3 group-hover:bg-surface-4')} />
+          <div className={cn('w-[40%] h-1.5 rounded-t transition-colors', isSelected ? 'bg-white/10' : 'bg-surface-3 group-hover:bg-surface-4')} />
         )}
-        <div className={cn(isFolder && cn('rounded rounded-tl-none p-1 transition-colors', isSelected ? 'bg-white/10' : 'bg-surface-3 group-hover:bg-surface-4'))}>
+        <div className={cn(isFolder && cn('rounded-md rounded-tl-none p-1 transition-colors', isSelected ? 'bg-white/10' : 'bg-surface-3 group-hover:bg-surface-4'))}>
           {renderThumbnails()}
         </div>
       </div>

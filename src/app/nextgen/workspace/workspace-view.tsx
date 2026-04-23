@@ -54,6 +54,7 @@ import { materializeReferenceFolders } from '@/lib/reference-folder-utils'
 import { collectAccessibleWorkspaceRoots, collectSharedFolderIds } from '@/lib/workspace-roots'
 import { useToast } from '@/components/ui/toast'
 import { SelectAllRow } from '@/components/ui/select-all-row'
+import { FolderPickerModal } from '@/components/ui/folder-picker-modal'
 
 interface WorkspaceSelectionEntry {
   id: string
@@ -252,6 +253,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: WorkspaceFileNode } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [newFolderModalOpen, setNewFolderModalOpen] = useState(false)
+  const [folderPickerTarget, setFolderPickerTarget] = useState<{ nodeId: string; name: string; mode: 'copy' | 'move' } | null>(null)
   const [newFolderParentPath, setNewFolderParentPath] = useState<string[]>([])
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const [uploadTargetFolderId, setUploadTargetFolderId] = useState<string | null>(null)
@@ -722,10 +724,10 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     if (!isRefFolder && canEdit) {
       items.push(
         { label: 'Rename', icon: <Pencil className="w-4 h-4" />, onClick: () => fileTreeRenameNode(node.id, prompt('New name', node.name) ?? node.name) },
-        { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => showToast('Copy to not implemented yet') },
-        { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => showToast('Move not implemented yet') },
+        { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => setFolderPickerTarget({ nodeId: node.id, name: node.name, mode: 'copy' }) },
+        { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => setFolderPickerTarget({ nodeId: node.id, name: node.name, mode: 'move' }) },
         { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(node.id); if (entry) { selectOnly(entry.entity) } setShowPanel(true) }, dividerAfter: true },
-        { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => fileTreeDeleteNode(node.id), destructive: true },
+        { label: 'Delete folder', icon: <Trash2 className="w-4 h-4" />, onClick: () => fileTreeDeleteNode(node.id), destructive: true },
       )
     } else {
       items.push(
@@ -752,10 +754,10 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     ]
     if (canEdit) {
       items.push(
-        { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => showToast('Copy to not implemented yet') },
-        { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => showToast('Move not implemented yet') },
+        { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => setFolderPickerTarget({ nodeId: node.id, name: node.name, mode: 'copy' }) },
+        { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => setFolderPickerTarget({ nodeId: node.id, name: node.name, mode: 'move' }) },
         { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(asset.id); if (entry) { selectOnly(entry.entity); setShowPanel(true) } }, dividerAfter: true },
-        { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => fileTreeDeleteNode(node.id), destructive: true },
+        { label: 'Delete asset', icon: <Trash2 className="w-4 h-4" />, onClick: () => fileTreeDeleteNode(node.id), destructive: true },
       )
     } else {
       items.push(
@@ -1172,6 +1174,23 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
             handleUploadFiles(e.target.files, uploadTargetFolderId)
           }
           e.target.value = ''
+        }}
+      />
+      <FolderPickerModal
+        open={!!folderPickerTarget}
+        onClose={() => setFolderPickerTarget(null)}
+        title={folderPickerTarget?.mode === 'move' ? `Move "${folderPickerTarget.name}"` : `Copy "${folderPickerTarget?.name}"`}
+        confirmLabel={folderPickerTarget?.mode === 'move' ? 'Move here' : 'Copy here'}
+        onSelect={(folderId, folderName) => {
+          if (!folderPickerTarget) return
+          if (folderPickerTarget.mode === 'copy') {
+            createFileReference(folderPickerTarget.nodeId, folderId)
+            showToast(`Copied to ${folderName}`)
+          } else {
+            confirmMove(folderPickerTarget.nodeId, folderId)
+            showToast(`Moved to ${folderName}`)
+          }
+          setFolderPickerTarget(null)
         }}
       />
       <NewFolderModal

@@ -221,7 +221,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     ]
     if (isOwner) {
       items.push(
-        { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: handleDeleteCollection, destructive: true },
+        { label: 'Delete collection', icon: <Trash2 className="w-4 h-4" />, onClick: handleDeleteCollection, destructive: true },
       )
     }
     return items

@@ -154,7 +154,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     }
     if (canDeleteCurrentCollection) {
       if (items.length > 0) items[items.length - 1].dividerAfter = true
-      items.push({ label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => { if (collection) { deleteCollection(collection.id); router.push('/nextgen') } }, destructive: true })
+      items.push({ label: 'Delete collection', icon: <Trash2 className="w-4 h-4" />, onClick: () => { if (collection) { deleteCollection(collection.id); router.push('/nextgen') } }, destructive: true })
     }
     return items
   }, [showShareButton, canEditCurrentCollection, canDeleteCurrentCollection, openEditCollectionModal, collection, deleteCollection, router])
