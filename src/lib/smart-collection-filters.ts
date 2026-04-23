@@ -1,4 +1,5 @@
 import type { Asset, AssetFilter, SmartCollection } from '@/lib/data'
+import { getUserTagsForAsset } from '@/lib/user-tags'
 
 /**
  * Check if an asset matches the given filter rules
@@ -63,10 +64,11 @@ export function matchesFilter(asset: Asset, filter: AssetFilter): boolean {
     }
   }
 
-  // Circle take: check both the boolean flag AND user tags
+  // Circle take: check boolean flag, asset tags, AND user-applied tags from localStorage
   if (filter.isCircleTake !== undefined) {
     const hasCircleTag = asset.tags?.some(t => t.label.toLowerCase() === 'circle take') ?? false
-    if (!asset.isCircleTake && !hasCircleTag) {
+    const hasUserCircleTag = getUserTagsForAsset(asset.id).some(t => t.toLowerCase() === 'circle take')
+    if (!asset.isCircleTake && !hasCircleTag && !hasUserCircleTag) {
       return false
     }
   }

@@ -139,6 +139,10 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
               <ContextualActionBar
                 selectedEntities={selectedEntities}
                 onClearSelection={clearSelection}
+                downloadAction={{
+                  enabled: true,
+                  onClick: () => {},
+                }}
               />
 
               {/* Results */}

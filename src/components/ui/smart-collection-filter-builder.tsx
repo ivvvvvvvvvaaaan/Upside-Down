@@ -1,52 +1,20 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Input } from './input'
-import { FormSelect } from './form-select'
 import { Button } from './button'
-import { Toggle } from './switch'
 import { Popover, PopoverContent, PopoverTrigger } from './popover'
+import { Chip } from './chip'
 import { cn } from '@/lib/utils'
 import type { AssetFilter, AssetType, DomainId } from '@/lib/data'
 
 /**
  * Smart Collection Filter Builder
  *
- * Unified filter builder for all smart collections.
- * Any filter (AI tags, asset type, domain, etc.) can be added or removed.
- * All rules combined with AND logic.
+ * Unified filter builder for smart collections. Filters are represented as
+ * removable chips so editing collection rules mirrors editing asset tags.
  */
-
-type FilterType =
-  | 'query' | 'types' | 'department' | 'typeTags'
-  | 'isKeyArt' | 'isFinal'
-  | 'aiHasCharacters' | 'aiHasScene' | 'aiHasLocation'
-  | 'aiCharacters' | 'aiScene' | 'aiLocation'
-  | 'aiConfidenceBelow'
-
-const FILTER_LABELS: Record<FilterType, string> = {
-  query: 'Name contains',
-  types: 'Asset type',
-  department: 'Department',
-  typeTags: 'Type tag',
-  isKeyArt: 'Key art only',
-  isFinal: 'Finals only',
-  aiHasCharacters: 'Has character tags',
-  aiHasScene: 'Has scene tags',
-  aiHasLocation: 'Has location tags',
-  aiCharacters: 'Character is',
-  aiScene: 'Scene is',
-  aiLocation: 'Location is',
-  aiConfidenceBelow: 'AI confidence below',
-}
-
-const ALL_FILTER_TYPES: FilterType[] = [
-  'aiHasCharacters', 'aiHasScene', 'aiHasLocation',
-  'aiCharacters', 'aiScene', 'aiLocation',
-  'types', 'department', 'typeTags', 'query',
-  'isKeyArt', 'isFinal', 'aiConfidenceBelow',
-]
 
 const ASSET_TYPE_OPTIONS = [
   { value: 'image', label: 'Image' },
@@ -54,7 +22,7 @@ const ASSET_TYPE_OPTIONS = [
   { value: 'shot', label: 'Shot' },
   { value: 'text', label: 'Text' },
   { value: 'audio', label: 'Audio' },
-]
+] satisfies { value: AssetType; label: string }[]
 
 const DEPARTMENT_OPTIONS = [
   { value: 'art-design', label: 'Art & Design' },
@@ -62,13 +30,25 @@ const DEPARTMENT_OPTIONS = [
   { value: 'camera', label: 'Camera' },
   { value: 'editorial', label: 'Editorial' },
   { value: 'audio-sound', label: 'Audio & Sound' },
-]
+] satisfies { value: DomainId; label: string }[]
 
 const TYPE_TAG_PRESETS = [
   'Concept Art', 'Storyboards', 'Character', 'Location', 'Environment',
   'Scene', 'Color Palette', 'Blueprint', 'Reference', 'Costume Design',
   'Prop Design', 'Final', 'VFX Preview', 'Dailies', 'Rough Cut',
 ]
+
+type FilterChip = {
+  id: string
+  label: string
+  onRemove: () => void
+}
+
+type AddFilterOption = {
+  id: string
+  label: string
+  onSelect: () => void
+}
 
 interface SmartCollectionFilterBuilderProps {
   name: string
@@ -91,60 +71,152 @@ export function SmartCollectionFilterBuilder({
     onFilterChange({ ...filter, ...updates })
   }
 
-  const removeFilter = (type: FilterType) => {
+  const removeFilter = (type: keyof AssetFilter) => {
     const newFilter = { ...filter }
-    switch (type) {
-      case 'query': delete newFilter.query; break
-      case 'types': delete newFilter.types; break
-      case 'department': delete newFilter.department; break
-      case 'typeTags': delete newFilter.typeTags; break
-      case 'isKeyArt': delete newFilter.isKeyArt; break
-      case 'isFinal': delete newFilter.isFinal; break
-      case 'aiHasCharacters': delete newFilter.aiHasCharacters; break
-      case 'aiHasScene': delete newFilter.aiHasScene; break
-      case 'aiHasLocation': delete newFilter.aiHasLocation; break
-      case 'aiCharacters': delete newFilter.aiCharacters; break
-      case 'aiScene': delete newFilter.aiScene; break
-      case 'aiLocation': delete newFilter.aiLocation; break
-      case 'aiConfidenceBelow': delete newFilter.aiConfidenceBelow; break
-    }
+    delete newFilter[type]
     onFilterChange(newFilter)
   }
 
-  // Detect active filters
-  const activeFilters: FilterType[] = []
-  if (filter.query) activeFilters.push('query')
-  if (filter.types && filter.types.length > 0) activeFilters.push('types')
-  if (filter.department) activeFilters.push('department')
-  if (filter.typeTags && filter.typeTags.length > 0) activeFilters.push('typeTags')
-  if (filter.isKeyArt !== undefined) activeFilters.push('isKeyArt')
-  if (filter.isFinal !== undefined) activeFilters.push('isFinal')
-  if (filter.aiHasCharacters) activeFilters.push('aiHasCharacters')
-  if (filter.aiHasScene) activeFilters.push('aiHasScene')
-  if (filter.aiHasLocation) activeFilters.push('aiHasLocation')
-  if (filter.aiCharacters && filter.aiCharacters.length > 0) activeFilters.push('aiCharacters')
-  if (filter.aiScene) activeFilters.push('aiScene')
-  if (filter.aiLocation) activeFilters.push('aiLocation')
-  if (filter.aiConfidenceBelow != null) activeFilters.push('aiConfidenceBelow')
+  const removeArrayValue = <T extends string>(key: 'types' | 'typeTags' | 'aiCharacters', value: T) => {
+    const current = (filter[key] ?? []) as T[]
+    const next = current.filter(item => item !== value)
+    updateFilter({ [key]: next.length > 0 ? next : undefined } as Partial<AssetFilter>)
+  }
 
-  const availableFilters = ALL_FILTER_TYPES.filter(f => !activeFilters.includes(f))
+  const chips: FilterChip[] = [
+    ...(filter.types ?? []).map((type) => ({
+      id: `type-${type}`,
+      label: `Type: ${ASSET_TYPE_OPTIONS.find(option => option.value === type)?.label ?? type}`,
+      onRemove: () => removeArrayValue('types', type),
+    })),
+    ...(filter.department ? [{
+      id: 'department',
+      label: `Department: ${DEPARTMENT_OPTIONS.find(option => option.value === filter.department)?.label ?? filter.department}`,
+      onRemove: () => removeFilter('department'),
+    }] : []),
+    ...(filter.typeTags ?? []).map((tag) => ({
+      id: `type-tag-${tag}`,
+      label: `Type tag: ${tag}`,
+      onRemove: () => removeArrayValue('typeTags', tag),
+    })),
+    ...(filter.isCircleTake ? [{
+      id: 'is-circle-take',
+      label: 'Tag: Circle Take',
+      onRemove: () => removeFilter('isCircleTake'),
+    }] : []),
+    ...(filter.isFinal ? [{
+      id: 'is-final',
+      label: 'Tag: Final',
+      onRemove: () => removeFilter('isFinal'),
+    }] : []),
+    ...(filter.isKeyArt ? [{
+      id: 'is-key-art',
+      label: 'Tag: Key Art',
+      onRemove: () => removeFilter('isKeyArt'),
+    }] : []),
+    ...(filter.aiHasCharacters ? [{
+      id: 'ai-has-characters',
+      label: 'Has character tags',
+      onRemove: () => removeFilter('aiHasCharacters'),
+    }] : []),
+    ...(filter.aiHasScene ? [{
+      id: 'ai-has-scene',
+      label: 'Has scene tags',
+      onRemove: () => removeFilter('aiHasScene'),
+    }] : []),
+    ...(filter.aiHasLocation ? [{
+      id: 'ai-has-location',
+      label: 'Has location tags',
+      onRemove: () => removeFilter('aiHasLocation'),
+    }] : []),
+    ...(filter.aiCharacters ?? []).map((character) => ({
+      id: `ai-character-${character}`,
+      label: `Character: ${character}`,
+      onRemove: () => removeArrayValue('aiCharacters', character),
+    })),
+    ...(filter.aiScene ? [{
+      id: 'ai-scene',
+      label: `Scene: ${filter.aiScene}`,
+      onRemove: () => removeFilter('aiScene'),
+    }] : []),
+    ...(filter.aiLocation ? [{
+      id: 'ai-location',
+      label: `Location: ${filter.aiLocation}`,
+      onRemove: () => removeFilter('aiLocation'),
+    }] : []),
+    ...(filter.aiConfidenceBelow != null ? [{
+      id: 'ai-confidence-below',
+      label: `AI confidence below ${Math.round(filter.aiConfidenceBelow * 100)}%`,
+      onRemove: () => removeFilter('aiConfidenceBelow'),
+    }] : []),
+    ...(filter.query ? [{
+      id: 'query',
+      label: `Name: ${filter.query}`,
+      onRemove: () => removeFilter('query'),
+    }] : []),
+  ]
 
-  const addFilter = (type: FilterType) => {
-    switch (type) {
-      case 'query': updateFilter({ query: '' }); break
-      case 'types': updateFilter({ types: [] }); break
-      case 'department': updateFilter({ department: 'art-design' }); break
-      case 'typeTags': updateFilter({ typeTags: [] }); break
-      case 'isKeyArt': updateFilter({ isKeyArt: true }); break
-      case 'isFinal': updateFilter({ isFinal: true }); break
-      case 'aiHasCharacters': updateFilter({ aiHasCharacters: true }); break
-      case 'aiHasScene': updateFilter({ aiHasScene: true }); break
-      case 'aiHasLocation': updateFilter({ aiHasLocation: true }); break
-      case 'aiCharacters': updateFilter({ aiCharacters: [] }); break
-      case 'aiScene': updateFilter({ aiScene: '' }); break
-      case 'aiLocation': updateFilter({ aiLocation: '' }); break
-      case 'aiConfidenceBelow': updateFilter({ aiConfidenceBelow: 0.7 }); break
-    }
+  const addOptions: AddFilterOption[] = [
+    ...ASSET_TYPE_OPTIONS
+      .filter(option => !(filter.types ?? []).includes(option.value))
+      .map(option => ({
+        id: `type-${option.value}`,
+        label: `Type: ${option.label}`,
+        onSelect: () => updateFilter({ types: [...(filter.types ?? []), option.value] }),
+      })),
+    ...DEPARTMENT_OPTIONS
+      .filter(option => option.value !== filter.department)
+      .map(option => ({
+        id: `department-${option.value}`,
+        label: `Department: ${option.label}`,
+        onSelect: () => updateFilter({ department: option.value }),
+      })),
+    ...TYPE_TAG_PRESETS
+      .filter(tag => !(filter.typeTags ?? []).includes(tag))
+      .map(tag => ({
+        id: `type-tag-${tag}`,
+        label: `Type tag: ${tag}`,
+        onSelect: () => updateFilter({ typeTags: [...(filter.typeTags ?? []), tag] }),
+      })),
+    ...(!filter.isCircleTake ? [{
+      id: 'tag-circle-take',
+      label: 'Tag: Circle Take',
+      onSelect: () => updateFilter({ isCircleTake: true }),
+    }] : []),
+    ...(!filter.isFinal ? [{
+      id: 'tag-final',
+      label: 'Tag: Final',
+      onSelect: () => updateFilter({ isFinal: true }),
+    }] : []),
+    ...(!filter.isKeyArt ? [{
+      id: 'tag-key-art',
+      label: 'Tag: Key Art',
+      onSelect: () => updateFilter({ isKeyArt: true }),
+    }] : []),
+    ...(!filter.aiHasCharacters ? [{
+      id: 'has-character-tags',
+      label: 'Has character tags',
+      onSelect: () => updateFilter({ aiHasCharacters: true }),
+    }] : []),
+    ...(!filter.aiHasScene ? [{
+      id: 'has-scene-tags',
+      label: 'Has scene tags',
+      onSelect: () => updateFilter({ aiHasScene: true }),
+    }] : []),
+    ...(!filter.aiHasLocation ? [{
+      id: 'has-location-tags',
+      label: 'Has location tags',
+      onSelect: () => updateFilter({ aiHasLocation: true }),
+    }] : []),
+    ...(filter.aiConfidenceBelow == null ? [{
+      id: 'ai-confidence-below',
+      label: 'AI confidence below 70%',
+      onSelect: () => updateFilter({ aiConfidenceBelow: 0.7 }),
+    }] : []),
+  ]
+
+  const handleAddOption = (option: AddFilterOption) => {
+    option.onSelect()
     setAddFilterOpen(false)
   }
 
@@ -159,30 +231,24 @@ export function SmartCollectionFilterBuilder({
         data-1p-ignore
       />
 
-      <section>
-        <h3 className="text-label-0-bold uppercase text-foreground-dim mb-3">
+      <section className="space-y-3">
+        <h3 className="text-label-1-bold text-foreground">
           Includes assets matching
         </h3>
 
-        {activeFilters.length === 0 ? (
+        {chips.length === 0 ? (
           <p className="text-label-1-regular text-foreground-dim mb-3">
             No filters yet. Add a filter to define which assets appear in this collection.
           </p>
         ) : (
-          <div className="space-y-2 mb-3">
-            {activeFilters.map((filterType) => (
-              <FilterRow
-                key={filterType}
-                type={filterType}
-                filter={filter}
-                onUpdate={updateFilter}
-                onRemove={() => removeFilter(filterType)}
-              />
+          <div className="flex flex-wrap gap-2">
+            {chips.map((chip) => (
+              <FilterChipButton key={chip.id} chip={chip} />
             ))}
           </div>
         )}
 
-        {availableFilters.length > 0 && (
+        {addOptions.length > 0 && (
           <Popover open={addFilterOpen} onOpenChange={setAddFilterOpen}>
             <PopoverTrigger asChild>
               <Button variant="tertiary" compact icon={<Plus className="w-3 h-3" />}>
@@ -191,14 +257,14 @@ export function SmartCollectionFilterBuilder({
             </PopoverTrigger>
             <PopoverContent align="start" className="p-1 w-52 max-h-64 overflow-y-auto">
               <div className="flex flex-col">
-                {availableFilters.map((type) => (
+                {addOptions.map((option) => (
                   <button
-                    key={type}
+                    key={option.id}
                     type="button"
-                    onClick={() => addFilter(type)}
-                    className="px-3 py-2 text-left text-body-0-regular text-foreground hover:bg-surface-highlight rounded transition-colors"
+                    onClick={() => handleAddOption(option)}
+                    className="px-3 py-2 text-left text-label-1-regular text-foreground hover:bg-surface-highlight rounded transition-colors"
                   >
-                    {FILTER_LABELS[type]}
+                    {option.label}
                   </button>
                 ))}
               </div>
@@ -210,259 +276,13 @@ export function SmartCollectionFilterBuilder({
   )
 }
 
-
-interface FilterRowProps {
-  type: FilterType
-  filter: AssetFilter
-  onUpdate: (updates: Partial<AssetFilter>) => void
-  onRemove: () => void
-}
-
-function FilterRow({ type, filter, onUpdate, onRemove }: FilterRowProps) {
+function FilterChipButton({ chip }: { chip: FilterChip }) {
   return (
-    <div className="flex items-start gap-2 p-2 rounded bg-surface-2 group">
-      <div className="flex-1 min-w-0">
-        <span className="text-label-0-regular text-foreground-dim block mb-1">
-          {FILTER_LABELS[type]}
-        </span>
-        <FilterEditor type={type} filter={filter} onUpdate={onUpdate} />
-      </div>
-      <button
-        type="button"
-        onClick={onRemove}
-        className="p-1 text-foreground-dim hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-        aria-label="Remove filter"
-      >
-        <X className="w-3 h-3" />
-      </button>
-    </div>
-  )
-}
-
-
-interface FilterEditorProps {
-  type: FilterType
-  filter: AssetFilter
-  onUpdate: (updates: Partial<AssetFilter>) => void
-}
-
-function FilterEditor({ type, filter, onUpdate }: FilterEditorProps) {
-  switch (type) {
-    case 'query':
-      return (
-        <Input
-          type="text"
-          value={filter.query || ''}
-          onChange={(e) => onUpdate({ query: e.target.value || undefined })}
-          placeholder="Search text..."
-          autoComplete="off"
-        />
-      )
-
-    case 'types':
-      return (
-        <div className="flex flex-wrap gap-1">
-          {ASSET_TYPE_OPTIONS.map((option) => {
-            const isSelected = filter.types?.includes(option.value as AssetType)
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  const currentTypes = filter.types || []
-                  const newTypes = isSelected
-                    ? currentTypes.filter(t => t !== option.value)
-                    : [...currentTypes, option.value as AssetType]
-                  onUpdate({ types: newTypes.length > 0 ? newTypes : undefined })
-                }}
-                className={cn(
-                  'px-2 py-0.5 rounded text-label-0-regular transition-colors',
-                  isSelected
-                    ? 'bg-indigo-500/20 text-foreground'
-                    : 'bg-surface-flat text-foreground-subtle hover:bg-surface-highlight'
-                )}
-              >
-                {option.label}
-              </button>
-            )
-          })}
-        </div>
-      )
-
-    case 'department':
-      return (
-        <FormSelect
-          options={DEPARTMENT_OPTIONS}
-          value={filter.department || ''}
-          onChange={(value) => onUpdate({ department: value as DomainId })}
-          size="compact"
-        />
-      )
-
-    case 'typeTags':
-      return (
-        <TypeTagsEditor
-          tags={filter.typeTags || []}
-          onChange={(tags) => onUpdate({ typeTags: tags.length > 0 ? tags : undefined })}
-        />
-      )
-
-    case 'isKeyArt':
-    case 'isFinal': {
-      const value = type === 'isKeyArt' ? filter.isKeyArt : filter.isFinal
-      return (
-        <Toggle
-          checked={!!value}
-          onChange={(v) => onUpdate({ [type]: v })}
-        />
-      )
-    }
-
-    // AI boolean flags — just confirm they're active
-    case 'aiHasCharacters':
-    case 'aiHasScene':
-    case 'aiHasLocation':
-      return (
-        <Toggle
-          checked={!!filter[type]}
-          onChange={(v) => onUpdate({ [type]: v || undefined })}
-        />
-      )
-
-    // AI specific value filters
-    case 'aiCharacters':
-      return (
-        <TypeTagsEditor
-          tags={filter.aiCharacters || []}
-          onChange={(tags) => onUpdate({ aiCharacters: tags.length > 0 ? tags : undefined })}
-          placeholder="Add character..."
-        />
-      )
-
-    case 'aiScene':
-      return (
-        <Input
-          type="text"
-          value={filter.aiScene || ''}
-          onChange={(e) => onUpdate({ aiScene: e.target.value || undefined })}
-          placeholder="Scene name..."
-          autoComplete="off"
-        />
-      )
-
-    case 'aiLocation':
-      return (
-        <Input
-          type="text"
-          value={filter.aiLocation || ''}
-          onChange={(e) => onUpdate({ aiLocation: e.target.value || undefined })}
-          placeholder="Location name..."
-          autoComplete="off"
-        />
-      )
-
-    case 'aiConfidenceBelow':
-      return (
-        <Input
-          type="number"
-          min={0}
-          max={1}
-          step={0.1}
-          value={filter.aiConfidenceBelow ?? 0.7}
-          onChange={(e) => onUpdate({ aiConfidenceBelow: parseFloat(e.target.value) || undefined })}
-          className="w-24"
-        />
-      )
-
-    default:
-      return null
-  }
-}
-
-
-interface TypeTagsEditorProps {
-  tags: string[]
-  onChange: (tags: string[]) => void
-  placeholder?: string
-}
-
-function TypeTagsEditor({ tags, onChange, placeholder }: TypeTagsEditorProps) {
-  const [open, setOpen] = useState(false)
-  const [customInput, setCustomInput] = useState('')
-  const availableTags = TYPE_TAG_PRESETS.filter(t => !tags.includes(t))
-  const hasPresets = !placeholder // Only show presets for type tags, not character names
-
-  const addTag = (tag: string) => {
-    if (tag.trim() && !tags.includes(tag.trim())) {
-      onChange([...tags, tag.trim()])
-    }
-    setCustomInput('')
-    setOpen(false)
-  }
-
-  const removeTag = (tag: string) => {
-    onChange(tags.filter(t => t !== tag))
-  }
-
-  return (
-    <div className="flex flex-wrap gap-1">
-      {tags.map((tag) => (
-        <span
-          key={tag}
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-500/20 text-label-0-regular text-foreground"
-        >
-          {tag}
-          <button
-            type="button"
-            onClick={() => removeTag(tag)}
-            className="hover:text-foreground-dim"
-          >
-            <X className="w-2.5 h-2.5" />
-          </button>
-        </span>
-      ))}
-      {hasPresets ? (
-        availableTags.length > 0 && (
-          <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-flat text-label-0-regular text-foreground-subtle hover:bg-surface-highlight transition-colors"
-              >
-                <Plus className="w-2.5 h-2.5" />
-                Add
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="p-1 w-48 max-h-48 overflow-y-auto">
-              <div className="flex flex-col">
-                {availableTags.map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => addTag(tag)}
-                    className="px-3 py-1.5 text-left text-body-0-regular text-foreground hover:bg-surface-highlight rounded transition-colors"
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-        )
-      ) : (
-        <input
-          type="text"
-          value={customInput}
-          onChange={(e) => setCustomInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') { e.preventDefault(); addTag(customInput) }
-          }}
-          placeholder={placeholder}
-          className="flex-1 min-w-[100px] h-7 px-2 rounded text-label-0-regular bg-transparent text-foreground placeholder:text-foreground-dim focus:outline-none"
-          autoComplete="off"
-          data-1p-ignore
-        />
-      )}
-    </div>
+    <Chip
+      onDismiss={chip.onRemove}
+      dismissLabel={`Remove ${chip.label}`}
+    >
+      {chip.label}
+    </Chip>
   )
 }

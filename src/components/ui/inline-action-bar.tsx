@@ -31,7 +31,7 @@ export function InlineActionBar({ items, maxInline = 3, className }: InlineActio
     <div className={className ?? 'flex items-center gap-2 flex-shrink-0'}>
       {inlineItems.map((item, i) => (
         <Button key={i} variant="secondary" compact icon={item.icon} onClick={item.onClick} disabled={item.disabled}>
-          <span className="hidden lg:inline">{item.label}</span>
+          <span className="hidden md:inline">{item.label}</span>
         </Button>
       ))}
       {overflowItems.length > 0 && (

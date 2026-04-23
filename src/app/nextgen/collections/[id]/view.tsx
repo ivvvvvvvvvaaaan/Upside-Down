@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Download, PanelRight, Info, Trash2, Link2, FolderPlus, ArrowRight } from 'lucide-react'
+import { Download, PanelRight, Info, Plus, Trash2, Link2, FolderPlus, ArrowRight } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
 import { SelectAllRow } from '@/components/ui/select-all-row'
 import { useRouter } from 'next/navigation'
@@ -31,6 +31,7 @@ import { PERSONAS } from '@/lib/personas'
 import { assetToSelectionEntity, assetToResourceRef } from '@/lib/selection-actions'
 import { getContextAssetGroups } from '@/lib/context-relationships'
 import { AccessModal } from '@/components/ui/access-modal'
+import { CollectionMembershipModal } from '@/components/ui/collection-membership-modal'
 import { ContextMenu } from '@/components/ui/context-menu'
 import type { ContextMenuItem } from '@/components/ui/context-menu'
 import type { ResourceRef } from '@/lib/grants'
@@ -70,13 +71,14 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; asset: Asset } | null>(null)
+  const [showAddToCollectionModal, setShowAddToCollectionModal] = useState(false)
 
   const rawCollection = getCollection(collectionId)
   const collection = getVisibleCollection(collectionId)
   const isOwner = hydrated && (isAdmin || (!!rawCollection && rawCollection.createdBy === activePersona?.email))
   const hasCollectionAccess = hydrated && !!collection
   const [shareModalOpen, setShareModalOpen] = useState(false)
-  const collectionResourceRef: ResourceRef = { id: collectionId, type: 'collection' }
+  const collectionResourceRef: ResourceRef = useMemo(() => ({ id: collectionId, type: 'collection' }), [collectionId])
   const showShareButton = hasCollectionAccess && canShare(collectionResourceRef)
   const canDownloadCollection = hasCollectionAccess && canDownload(collectionResourceRef)
 
@@ -128,12 +130,12 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     return () => clearBreadcrumbExtras()
   }, [displayName, setBreadcrumbExtras, clearBreadcrumbExtras])
 
-  const handleDeleteCollection = () => {
+  const handleDeleteCollection = useCallback(() => {
     if (collection && isOwner) {
       deleteCollection(collection.id)
       router.push('/nextgen')
     }
-  }
+  }, [collection, isOwner, deleteCollection, router])
 
   // Resolve assets from the unified tree-derived index
   useEffect(() => {
@@ -223,7 +225,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
       )
     }
     return items
-  }, [isOwner, collectionShareable, collectionResourceRef, createGuestLink, showToast, handleDownloadCollection, handleDeleteCollection])
+  }, [isOwner, collectionShareable, collectionResourceRef, createGuestLink, showToast, handleDownloadCollection, handleDeleteCollection, collection?.name, collectionId])
 
   const buildAssetMenuItems = useCallback((asset: Asset): MenuItem[] => {
     const ref = toAssetResourceRef(asset)
@@ -237,8 +239,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
         showToast('Link copied', 'success', { label: 'Share settings', onClick: () => setAssetShareTarget({ ref, title: asset.name }) })
       } },
       { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: () => showToast(`Downloading "${asset.name}"...`), dividerAfter: true },
-      { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => showToast('Copy to not implemented yet') },
-      { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => showToast('Move not implemented yet') },
+      { label: 'Add to Collection', icon: <Plus className="w-4 h-4" />, onClick: () => { selectOnly(asset); setShowAddToCollectionModal(true) } },
       { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { selectOnly(asset); setSidePanelOpen(true) } },
     ]
     if (isOwner && collection) {
@@ -525,6 +526,12 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
           title={assetShareTarget.title}
         />
       )}
+      <CollectionMembershipModal
+        open={showAddToCollectionModal}
+        onClose={() => setShowAddToCollectionModal(false)}
+        selectedAssets={selectedAssets}
+        onComplete={clearSelection}
+      />
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}

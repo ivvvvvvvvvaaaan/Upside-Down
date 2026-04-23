@@ -10,6 +10,8 @@ import { Dropdown, DropdownMenuItem } from './dropdown'
 import { ResponsivePanel } from './responsive-panel'
 import { AccessModal } from './access-modal'
 import { Tag } from './tag'
+import { Chip } from './chip'
+import { Tooltip } from './tooltip'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import type { Asset, DomainId } from '@/lib/data'
 import type { ResourceRef, Grant, RoleGroup, PrincipalRef } from '@/lib/grants'
@@ -31,6 +33,40 @@ import { Avatar } from './avatar'
 import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
 import { PrincipalAvatar } from './principal-avatar'
 import type { AssetTag } from '@/lib/data'
+import {
+  normalizeUserTagLabel,
+  normalizeUserTagKey,
+  readUserTagsMap,
+  writeUserTagsMap,
+} from '@/lib/user-tags'
+
+const HIDDEN_ASSET_TAGS_STORAGE_KEY = 'asset-hidden-tags'
+
+type HiddenAssetTagsMap = Record<string, string[]>
+
+function readHiddenAssetTagsMap(): HiddenAssetTagsMap {
+  if (typeof window === 'undefined') return {}
+  try {
+    const stored = localStorage.getItem(HIDDEN_ASSET_TAGS_STORAGE_KEY)
+    return stored ? JSON.parse(stored) as HiddenAssetTagsMap : {}
+  } catch {
+    return {}
+  }
+}
+
+function writeHiddenAssetTagsMap(hiddenTags: HiddenAssetTagsMap) {
+  localStorage.setItem(HIDDEN_ASSET_TAGS_STORAGE_KEY, JSON.stringify(hiddenTags))
+}
+
+function uniqueTagsByLabel(tags: AssetTag[]): AssetTag[] {
+  const seen = new Set<string>()
+  return tags.filter((tag) => {
+    const key = normalizeUserTagKey(tag.label)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
 
 function MetaRow({ label, value, capitalize }: { label: string; value: string; capitalize?: boolean }) {
   return (
@@ -281,15 +317,15 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
 function TagManagerModal({
   open,
   onClose,
-  tags,
-  userTags,
+  readonlyTags,
+  editableTags,
   onAddTag,
   onRemoveTag,
 }: {
   open: boolean
   onClose: () => void
-  tags: AssetTag[]
-  userTags: string[]
+  readonlyTags: AssetTag[]
+  editableTags: AssetTag[]
   onAddTag: (label: string) => void
   onRemoveTag: (label: string) => void
 }) {
@@ -299,55 +335,41 @@ function TagManagerModal({
     if (open) setTimeout(() => inputRef.current?.focus(), 100)
   }, [open])
 
-  const systemTags = tags.filter(t => t.source === 'system')
-  const aiTags = tags.filter(t => t.source === 'ai')
-
   return (
     <Modal open={open} onOpenChange={(v) => !v && onClose()} size="xs">
       <div className="p-4 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-body-1-bold text-foreground">Manage Tags</h2>
+          <h2 className="text-body-1-bold text-foreground">Edit Tags</h2>
           <Button variant="icon" compact onClick={onClose}>
             <X className="w-4 h-4" />
           </Button>
         </div>
 
-        {systemTags.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-body-0-regular text-foreground-dim">System</p>
-            <div className="flex flex-wrap gap-1.5">
-              {systemTags.map(t => (
-                <Tag key={t.label} size="compact" type={t.label === 'Key Art' ? 'announcement' : t.label === 'Final' ? 'positive' : 'neutral'} variant="border">
-                  {t.label}
-                </Tag>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {aiTags.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-body-0-regular text-foreground-dim">AI</p>
-            <div className="flex flex-wrap gap-1.5">
-              {aiTags.map(t => (
-                <Tag key={t.label} size="compact" type="neutral" variant="border">{t.label}</Tag>
-              ))}
-            </div>
-          </div>
-        )}
-
         <div className="space-y-1.5">
-          <p className="text-body-0-regular text-foreground-dim">Custom</p>
+          <p className="text-body-0-regular text-foreground-dim">Tags</p>
           <div className="flex flex-wrap gap-1.5">
-            {userTags.map(label => (
-              <span key={label} className="inline-flex items-center gap-1 px-1 rounded border border-border-dim text-body-0-bold text-foreground">
-                {label}
-                <button onClick={() => onRemoveTag(label)} className="hover:text-foreground-system-error transition-colors">
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
+            {readonlyTags.map(t => (
+              <Tooltip
+                key={t.label}
+                label="Read-only"
+                description="This tag is assigned from project metadata and cannot be edited here."
+              >
+                <Chip size="compact">{t.label}</Chip>
+              </Tooltip>
             ))}
-            {userTags.length === 0 && <span className="text-body-0-regular text-foreground-dim">None yet</span>}
+            {editableTags.map(tag => (
+              <Chip
+                key={tag.label}
+                size="compact"
+                onDismiss={() => onRemoveTag(tag.label)}
+                dismissLabel={`Remove ${tag.label}`}
+              >
+                {tag.label}
+              </Chip>
+            ))}
+            {readonlyTags.length === 0 && editableTags.length === 0 && (
+              <span className="text-body-0-regular text-foreground-dim">None yet</span>
+            )}
           </div>
         </div>
 
@@ -477,23 +499,27 @@ export function AssetDetailPanelContent({
 
   // User tags from localStorage
   const [userTagsMap, setUserTagsMap] = useState<Record<string, string[]>>({})
+  const [hiddenTagsMap, setHiddenTagsMap] = useState<HiddenAssetTagsMap>({})
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('user-tags')
-      setUserTagsMap(stored ? JSON.parse(stored) : {})
+      setUserTagsMap(readUserTagsMap())
+      setHiddenTagsMap(readHiddenAssetTagsMap())
     } catch {
       setUserTagsMap({})
+      setHiddenTagsMap({})
     }
   }, [])
 
   const addUserTag = useCallback((assetId: string, rawLabel: string) => {
-    const label = rawLabel.replace(/\b\w/g, c => c.toUpperCase())
+    const label = normalizeUserTagLabel(rawLabel)
     setUserTagsMap(prev => {
       const existing = prev[assetId] ?? []
       if (existing.includes(label)) return prev
       const next = { ...prev, [assetId]: [...existing, label] }
-      try { localStorage.setItem('user-tags', JSON.stringify(next)) } catch { /* ignore */ }
+      try {
+        writeUserTagsMap(next)
+      } catch { /* ignore */ }
       return next
     })
   }, [])
@@ -502,7 +528,22 @@ export function AssetDetailPanelContent({
     setUserTagsMap(prev => {
       const existing = prev[assetId] ?? []
       const next = { ...prev, [assetId]: existing.filter(t => t !== label) }
-      try { localStorage.setItem('user-tags', JSON.stringify(next)) } catch { /* ignore */ }
+      try {
+        writeUserTagsMap(next)
+      } catch { /* ignore */ }
+      return next
+    })
+  }, [])
+
+  const hideAssetTag = useCallback((assetId: string, label: string) => {
+    const normalizedLabel = normalizeUserTagLabel(label)
+    setHiddenTagsMap(prev => {
+      const existing = prev[assetId] ?? []
+      if (existing.some(candidate => normalizeUserTagKey(candidate) === normalizeUserTagKey(normalizedLabel))) return prev
+      const next = { ...prev, [assetId]: [...existing, normalizedLabel] }
+      try {
+        writeHiddenAssetTagsMap(next)
+      } catch { /* ignore */ }
       return next
     })
   }, [])
@@ -773,8 +814,10 @@ export function AssetDetailPanelContent({
 
             {/* Tags */}
             {(() => {
-              const assetTags = asset.tags ?? []
-              const userTags = (userTagsMap[asset.id] ?? []).map(label => ({ label, source: 'user' as const }))
+              const hiddenTagKeys = new Set((hiddenTagsMap[asset.id] ?? []).map(normalizeUserTagKey))
+              const assetTags = (asset.tags ?? []).filter(tag => !hiddenTagKeys.has(normalizeUserTagKey(tag.label)))
+              const userTagLabels = userTagsMap[asset.id] ?? []
+              const userTags = userTagLabels.map(label => ({ label, source: 'user' as const }))
               const allTags = [...assetTags, ...userTags]
               // Get the typeTag (first system tag that isn't a status) to filter duplicate keywords
               const typeTagLabel = assetTags.find(t => t.source === 'system' && t.label !== 'Key Art' && t.label !== 'Final')?.label?.toLowerCase()
@@ -789,19 +832,31 @@ export function AssetDetailPanelContent({
                 seen.add(t.label)
                 return true
               })
+              const readonlyTags = assetTags.filter(tag => tag.source === 'system')
+              const editableTags = uniqueTagsByLabel([
+                ...assetTags.filter(tag => tag.source === 'ai'),
+                ...assetTags.filter(tag => tag.source === 'user'),
+                ...userTags,
+              ])
+              const removeEditableTag = (label: string) => {
+                const isStoredUserTag = userTagLabels.some(candidate => normalizeUserTagKey(candidate) === normalizeUserTagKey(label))
+                if (isStoredUserTag) {
+                  removeUserTag(asset.id, label)
+                } else {
+                  hideAssetTag(asset.id, label)
+                }
+              }
               return (
                 <section className="space-y-2">
                   <h3 className="text-body-0-bold text-foreground-dim">Tags</h3>
                   <div className="flex flex-wrap gap-1.5">
                     {displayTags.map(tag => (
-                      <Tag
+                      <Chip
                         key={tag.label}
                         size="compact"
-                        type={tag.label === 'Key Art' ? 'announcement' : tag.label === 'Final' ? 'positive' : 'neutral'}
-                        variant="border"
                       >
                         {tag.label}
-                      </Tag>
+                      </Chip>
                     ))}
                     {canEdit(asset.id) && (
                       <>
@@ -815,10 +870,10 @@ export function AssetDetailPanelContent({
                         <TagManagerModal
                           open={tagModalOpen}
                           onClose={() => setTagModalOpen(false)}
-                          tags={asset.tags ?? []}
-                          userTags={userTagsMap[asset.id] ?? []}
+                          readonlyTags={readonlyTags}
+                          editableTags={editableTags}
                           onAddTag={(label) => addUserTag(asset.id, label)}
-                          onRemoveTag={(label) => removeUserTag(asset.id, label)}
+                          onRemoveTag={removeEditableTag}
                         />
                       </>
                     )}

@@ -7,6 +7,7 @@ import { matchesFilter, slugify, generateChildCollections } from '@/lib/smart-co
 import { useAccessCascades } from './useAccessCascades'
 import { useAccess } from './useAccess'
 import { usePersona } from './usePersona'
+import { useFileTree } from './useFileTree'
 import {
   getSmartCollectionsStorageKey,
   loadStoredSmartCollections,
@@ -43,14 +44,22 @@ interface SmartCollectionsContextValue {
 
 const SmartCollectionsContext = createContext<SmartCollectionsContextValue | null>(null)
 
+function mergeSmartCollectionAssets(apiAssets: Asset[], liveAssets: Asset[]): Asset[] {
+  const byId = new Map<string, Asset>()
+  for (const asset of mergePrototypeAssets(apiAssets)) byId.set(asset.id, asset)
+  for (const asset of liveAssets) byId.set(asset.id, asset)
+  return Array.from(byId.values())
+}
+
 export function SmartCollectionsProvider({ children }: { children: ReactNode }) {
   const [collections, setCollectionsState] = useState<SmartCollection[]>(loadStoredSmartCollections)
-  const [allAssets, setAllAssets] = useState<Asset[]>([])
+  const [apiAssets, setApiAssets] = useState<Asset[]>([])
   const [assetLoadState, setAssetLoadState] = useState<'idle' | 'loading' | 'loaded'>('idle')
   const assetLoadPromiseRef = useRef<Promise<void> | null>(null)
   const { filterByAccess } = useAccessCascades()
   const { canEditAcl } = useAccess()
   const { activePersona } = usePersona()
+  const { allAssets: liveAssets } = useFileTree()
   const personaEmail = activePersona?.email
 
   useEffect(() => {
@@ -62,6 +71,7 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
     window.addEventListener('storage', handleStorage)
     return () => window.removeEventListener('storage', handleStorage)
   }, [])
+
 
   const setCollections = useCallback((
     action: SmartCollection[] | ((prev: SmartCollection[]) => SmartCollection[]),
@@ -84,6 +94,10 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
     )
   }, [collections, activePersona, personaEmail])
 
+  const allAssets = useMemo(() => {
+    return mergeSmartCollectionAssets(apiAssets, liveAssets)
+  }, [apiAssets, liveAssets])
+
   // Scoped assets: filtered by folder access when a persona is active
   const scopedAssets = useMemo(() => {
     return filterByAccess(allAssets)
@@ -98,10 +112,10 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
       try {
         const response = await fetch('/api/assets')
         const apiAssets: Asset[] = response.ok ? await response.json() : []
-        setAllAssets(mergePrototypeAssets(apiAssets))
+        setApiAssets(apiAssets)
       } catch (error) {
         console.error('Failed to fetch assets for smart collections:', error)
-        setAllAssets([])
+        setApiAssets([])
       } finally {
         setAssetLoadState('loaded')
         assetLoadPromiseRef.current = null

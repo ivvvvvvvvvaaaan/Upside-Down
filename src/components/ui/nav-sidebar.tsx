@@ -504,7 +504,7 @@ function FolderNavTree({ nodes, basePath, sharedFolderIds, onAssetDropToFolder }
           )
         }
         return (
-          <TreeNavLink key={folder.id} href={href} label={folder.name} icon={folderIcon} onAssetDrop={folderDrop} />
+          <TreeNavLink key={folder.id} href={href} label={folder.name} icon={folderIcon} iconExpanded={folderOpenIcon} onAssetDrop={folderDrop} />
         )
       })}
     </>
@@ -551,29 +551,6 @@ function WorkspaceRootNavItem({ root }: { root: WorkspaceFileNode }) {
   const folderOpenIcon = <FolderOpen className="w-4 h-4 flex-shrink-0" />
 
   if (hasFolders) {
-    const activePath: WorkspaceFileNode[] = []
-    let level = files
-    while (level.length > 0) {
-      const match = level.find((n) => n.type === 'folder' && pathname.startsWith(`${href}/${activePath.map((p) => p.id).concat(n.id).join('/')}`))
-      if (!match) break
-      activePath.push(match)
-      level = match.children?.filter((n) => n.type === 'folder') as WorkspaceFileNode[] ?? []
-    }
-
-    const previewFolderIcon = <Folder className="w-4 h-4 flex-shrink-0" />
-    let preview: React.ReactNode = undefined
-    for (let i = activePath.length - 1; i >= 0; i--) {
-      const folder = activePath[i]
-      const folderHref = `${href}/${activePath.slice(0, i + 1).map((p) => p.id).join('/')}`
-      preview = preview ? (
-        <TreeNavLink key={folder.id} href={folderHref} label={folder.name} icon={previewFolderIcon} indent={i === 0} defaultExpanded>
-          {preview}
-        </TreeNavLink>
-      ) : (
-        <TreeNavLink key={folder.id} href={folderHref} label={folder.name} icon={previewFolderIcon} indent={i === 0} />
-      )
-    }
-
     return (
       <TreeNavLink
         href={href}
@@ -581,8 +558,6 @@ function WorkspaceRootNavItem({ root }: { root: WorkspaceFileNode }) {
         icon={folderIcon}
         iconExpanded={folderOpenIcon}
         defaultExpanded={false}
-        autoExpandOnActiveChild={false}
-        collapsedPreview={preview}
       >
         <FolderNavTree nodes={files} basePath={href} sharedFolderIds={sharedFolderIds} onAssetDropToFolder={handleFolderDrop} />
       </TreeNavLink>

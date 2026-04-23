@@ -95,6 +95,8 @@ export interface CollectionCardProps extends React.HTMLAttributes<HTMLDivElement
   autoIngest?: boolean
   /** Whether the card is selected */
   isSelected?: boolean
+  /** Primary selection — the anchor card from initial click (gets border ring) */
+  primary?: boolean
   /** Double-click handler (e.g. navigate) */
   onDoubleClick?: () => void
   /** Three-dots menu click handler (folders) */
@@ -118,6 +120,7 @@ export function CollectionCard({
   accessIcon,
   autoIngest,
   isSelected: isSelectedProp,
+  primary = false,
   onDoubleClick,
   onMenuClick,
   menuContent,
@@ -201,21 +204,7 @@ export function CollectionCard({
   const renderThumbnails = () => {
     if (type === 'folder' && !mainImage) {
       return (
-        <div
-          className={cn(
-            'relative rounded shrink-0 w-full overflow-hidden transition-colors isolate flex items-center justify-center',
-            !isSelected && 'bg-surface-2 group-hover:bg-surface-3',
-            'aspect-video'
-          )}
-        >
-          <FolderIcon className="w-10 h-10 text-white" />
-          {autoIngest && (
-            <div className="absolute top-1.5 right-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400">
-              <Zap className="w-3 h-3" />
-              <span className="text-label-0-bold">Auto</span>
-            </div>
-          )}
-        </div>
+        <div className="relative shrink-0 w-full aspect-video" />
       )
     }
 
@@ -497,9 +486,10 @@ export function CollectionCard({
       className={cn(
         'group flex flex-col gap-2 p-2 relative w-full rounded',
         'border border-border-elevation',
+        isSelected && primary && 'ring-2 ring-border-selected',
         'items-start',
         isSelected
-          ? 'ring-2 ring-border-selected'
+          ? ''
           : cn('bg-surface-2', isHovered && 'bg-surface-3', 'hover:bg-surface-3'),
         'transition-colors',
         onClick && 'cursor-pointer',
@@ -513,23 +503,28 @@ export function CollectionCard({
       {isSelected && (
         <>
           <div
-            className="absolute inset-0 pointer-events-none rounded z-0 group-hover:opacity-0 transition-opacity"
+            className="absolute inset-0 pointer-events-none rounded z-0"
             style={{ background: 'linear-gradient(to bottom right, rgb(var(--surface-selected)), rgb(var(--surface-selected-hover)))' }}
           />
           <div
             className="absolute inset-0 pointer-events-none rounded z-0 opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{ background: 'linear-gradient(to bottom right, rgb(var(--surface-selected-hover)), rgb(var(--surface-selected)))' }}
+            style={{ background: 'rgb(var(--surface-selected-hover) / 0.3)' }}
           />
         </>
       )}
       
       {/* Thumbnail grid */}
-      <div className="flex gap-1 items-center relative shrink-0 w-full z-10">
-        {renderThumbnails()}
+      <div className="relative shrink-0 w-full z-10">
+        {isFolder && (
+          <div className={cn('w-[30%] h-1.5 rounded-t transition-colors', isSelected ? 'bg-white/10' : 'bg-surface-3 group-hover:bg-surface-4')} />
+        )}
+        <div className={cn(isFolder && cn('rounded rounded-tl-none p-1 transition-colors', isSelected ? 'bg-white/10' : 'bg-surface-3 group-hover:bg-surface-4'))}>
+          {renderThumbnails()}
+        </div>
       </div>
       
       {/* Footer with avatar/icon and metadata */}
-      <div className={cn('relative z-10 w-full', type === 'folder' && 'px-2 pb-1')}>
+      <div className={cn('relative z-10 w-full', type === 'folder' && 'pb-1')}>
         {renderFooter()}
       </div>
     </div>
