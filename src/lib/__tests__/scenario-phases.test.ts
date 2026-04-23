@@ -13,23 +13,24 @@ describe('scenario phases', () => {
   })
 
   it('selects persona phases from the next incomplete step, not phase ids', () => {
-    const completedPhaseIds = new Set(['phase-2'])
-    const completedStepIds = new Set(['p2-find-collection', 'p2-share-collection'])
+    const completedPhaseIds = new Set(['phase-1', 'phase-2'])
+    const completedStepIds = new Set(['p2-check-inbox', 'p2-share-dailies'])
 
-    expect(getPhaseForPersona('editorial-coordinator', completedPhaseIds, completedStepIds)?.phase.id).toBe('phase-2b')
+    // Lisa's phase-2 is done, she should get phase-3 (release)
+    expect(getPhaseForPersona('editorial-coordinator', completedPhaseIds, completedStepIds)?.phase.id).toBe('phase-3')
   })
 
   it('requires exact resources for multi-recipient sharing checkpoints', () => {
-    const phase2Share = PHASES
-      .find((phase) => phase.id === 'phase-2')
-      ?.steps.find((step) => step.id === 'p2-share-collection')
+    const phase1Share = PHASES
+      .find((phase) => phase.id === 'phase-1')
+      ?.steps.find((step) => step.id === 'p1-share-collection')
       ?.checkpoint
 
-    expect(phase2Share).toMatchObject({
+    expect(phase1Share).toMatchObject({
       type: 'grant-set',
       resourceId: 'ws-vfx-coll-for-editorial',
     })
-    expect(phase2Share?.type === 'grant-set' ? phase2Share.principals : []).toEqual([
+    expect(phase1Share?.type === 'grant-set' ? phase1Share.principals : []).toEqual([
       { principalType: 'user', principalId: 'editorial-coordinator' },
       { principalType: 'user', principalId: 'editorial-artist' },
     ])

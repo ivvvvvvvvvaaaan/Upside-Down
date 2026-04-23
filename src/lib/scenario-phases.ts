@@ -46,68 +46,19 @@ export interface Phase {
 export const PHASES: Phase[] = [
   {
     id: 'phase-1',
-    title: 'Tom: Ingest & share selects',
-    description: 'You are Tom Nakamura, Camera DIT. You just finished ingesting today\'s footage. Verify the files, mark circle takes, curate selects, and share with the director.',
-    personaId: 'camera-dit',
-    nextPersonaId: 'creative-david',
-    steps: [
-      {
-        id: 'p1-create-file',
-        instruction: 'Add new camera footage to Camera / Dailies (right-click in the desktop view)',
-        personaId: 'camera-dit',
-        checkpoint: { type: 'file-created', parentFolderId: 'ws-cam-dailies' },
-      },
-      {
-        id: 'p1-verify-sync',
-        instruction: 'Open Camera / Dailies to verify the file synced and has AI tags',
-        personaId: 'camera-dit',
-        checkpoint: { type: 'visit-resource', basePath: '/nextgen/workspace', resourceId: 'ws-cam-dailies' },
-      },
-      {
-        id: 'p1-circle-take',
-        instruction: 'Add the "Circle Take" tag to mark it as a director pick',
-        personaId: 'camera-dit',
-        checkpoint: { type: 'asset-tagged', tag: 'Circle Take', parentFolderId: 'ws-cam-dailies', requireUserCreated: true },
-      },
-      {
-        id: 'p1-check-smart',
-        instruction: 'Open "Circle Takes" smart collection to see all picks',
-        personaId: 'camera-dit',
-        checkpoint: { type: 'visit-resource', basePath: '/nextgen/collections', resourceId: 'smart-circle-takes' },
-      },
-      {
-        id: 'p1-add-to-collection',
-        instruction: 'Select the takes and add them to "Day 15 Selects"',
-        personaId: 'camera-dit',
-        checkpoint: { type: 'collection-contains', collectionId: 'ws-cam-coll-day15', minAssets: 1, tag: 'Circle Take' },
-      },
-      {
-        id: 'p1-share-collection',
-        instruction: 'Share "Day 15 Selects" with David Park (Director)',
-        personaId: 'camera-dit',
-        checkpoint: {
-          type: 'grant-set',
-          resourceId: 'ws-cam-coll-day15',
-          principals: [{ principalType: 'user', principalId: 'creative-david' }],
-        },
-      },
-    ],
-  },
-  {
-    id: 'phase-2',
     title: 'Sarah: Share comps & set up vendor',
-    description: 'You are Sarah Chen, VFX Coordinator. Share approved comps with editorial, then set up the Framestore delivery folder for vendor uploads.',
+    description: 'As the VFX Coordinator, share approved comps with editorial and set up the Framestore delivery folder for vendor uploads.',
     personaId: 'vfx-coordinator',
     nextPersonaId: 'editorial-coordinator',
     steps: [
       {
-        id: 'p2-find-collection',
+        id: 'p1-find-collection',
         instruction: 'Find the "EP301 VFX Pulls" collection',
         personaId: 'vfx-coordinator',
         checkpoint: { type: 'visit-resource', basePath: '/nextgen/collections', resourceId: 'ws-vfx-coll-for-editorial' },
       },
       {
-        id: 'p2-share-collection',
+        id: 'p1-share-collection',
         instruction: 'Share it with Lisa Kim (Editorial Coordinator) and Maria Santos (Editor)',
         personaId: 'vfx-coordinator',
         checkpoint: {
@@ -120,7 +71,7 @@ export const PHASES: Phase[] = [
         },
       },
       {
-        id: 'p2-share-vendor',
+        id: 'p1-share-vendor',
         instruction: 'Share the Framestore folder (under Vendor Deliveries) with the Framestore team',
         personaId: 'vfx-coordinator',
         checkpoint: {
@@ -132,21 +83,21 @@ export const PHASES: Phase[] = [
     ],
   },
   {
-    id: 'phase-2b',
+    id: 'phase-2',
     title: 'Lisa: Review & share cuts',
-    description: 'You are Lisa Kim, Editorial Coordinator. Sarah shared VFX comps with you. Check your inbox, then share your review cuts with the team.',
+    description: 'As the Editorial Coordinator, Sarah shared VFX comps with you. Check your inbox, then share your review cuts with the team.',
     personaId: 'editorial-coordinator',
-    requiresPhase: 'phase-2',
+    requiresPhase: 'phase-1',
     waitingMessage: 'Waiting for Sarah Chen (VFX Coordinator) to share VFX Pulls with you. Switch to Sarah to complete that step first.',
     steps: [
       {
-        id: 'p2b-check-inbox',
+        id: 'p2-check-inbox',
         instruction: 'Check your Inbox for Sarah\'s VFX Pulls collection',
         personaId: 'editorial-coordinator',
         checkpoint: { type: 'inbox-resource', resourceId: 'ws-vfx-coll-for-editorial', grantedByUserId: 'vfx-coordinator' },
       },
       {
-        id: 'p2b-share-dailies',
+        id: 'p2-share-dailies',
         instruction: 'Share "Dailies Review Cuts" with Maria Santos, David Park, and Mike Torres',
         personaId: 'editorial-coordinator',
         checkpoint: {
@@ -162,42 +113,13 @@ export const PHASES: Phase[] = [
     ],
   },
   {
-    id: 'phase-4',
-    title: 'Sarah: Share reference with art',
-    description: 'You are Sarah Chen, VFX Coordinator. Priya Sharma (Art Designer) needs B-roll and dailies for concept work. Send her a curated set from Camera.',
-    personaId: 'vfx-coordinator',
-    nextPersonaId: 'art-artist',
-    steps: [
-      {
-        id: 'p4-share-broll',
-        instruction: 'Share "B-Roll Highlights" with Priya Sharma (Art Designer)',
-        personaId: 'vfx-coordinator',
-        checkpoint: {
-          type: 'grant-set',
-          resourceId: 'ws-cam-coll-broll',
-          principals: [{ principalType: 'user', principalId: 'art-artist' }],
-        },
-      },
-      {
-        id: 'p4-share-dailies-snapshot',
-        instruction: 'Share "Dailies (concept reference)" with Priya Sharma',
-        personaId: 'vfx-coordinator',
-        checkpoint: {
-          type: 'grant-set',
-          resourceId: 'coll-cam-dailies',
-          principals: [{ principalType: 'user', principalId: 'art-artist' }],
-        },
-      },
-    ],
-  },
-  {
-    id: 'phase-5',
+    id: 'phase-3',
     title: 'Lisa: Release locked cut',
-    description: 'You are Lisa Kim, Editorial Coordinator. The locked cut is ready for broader review. Release it to studio departments.',
+    description: 'As the Editorial Coordinator, the locked cut is ready for broader review. Release it to studio departments.',
     personaId: 'editorial-coordinator',
     steps: [
       {
-        id: 'p5-release-cut',
+        id: 'p3-release-cut',
         instruction: 'Open Cuts, select a locked cut, and release it to Studio VFX, Studio Creative, and Studio Post',
         personaId: 'editorial-coordinator',
         checkpoint: {
@@ -217,23 +139,23 @@ export const PHASES: Phase[] = [
 
   {
     id: 'phase-david',
-    title: 'David: Review selects',
-    description: 'You are David Park, Director. Tom (Camera DIT) shared his camera selects with you. Review the picks.',
+    title: 'David: Review cuts',
+    description: 'As the Director, Lisa (Editorial Coordinator) shared dailies review cuts with you. Review the cuts and check your shares.',
     personaId: 'creative-david',
-    requiresPhase: 'phase-1',
-    waitingMessage: 'Waiting for Tom Nakamura (Camera DIT) to share selects with you. Switch to Tom to complete that step first.',
+    requiresPhase: 'phase-2',
+    waitingMessage: 'Waiting for Lisa Kim (Editorial Coordinator) to share review cuts with you. Switch to Lisa to complete that step first.',
     steps: [
       {
         id: 'pd-check-inbox',
-        instruction: 'Check your Inbox for Tom\'s "Day 15 Selects"',
+        instruction: 'Check your Inbox for Lisa\'s "Dailies Review Cuts"',
         personaId: 'creative-david',
-        checkpoint: { type: 'inbox-resource', resourceId: 'ws-cam-coll-day15', grantedByUserId: 'camera-dit' },
+        checkpoint: { type: 'inbox-resource', resourceId: 'ws-edit-coll-dailies', grantedByUserId: 'editorial-coordinator' },
       },
       {
         id: 'pd-open-collection',
-        instruction: 'Open the collection and review the selects',
+        instruction: 'Open the collection and review the cuts',
         personaId: 'creative-david',
-        checkpoint: { type: 'visit-resource', basePath: '/nextgen/collections', resourceId: 'ws-cam-coll-day15' },
+        checkpoint: { type: 'visit-resource', basePath: '/nextgen/collections', resourceId: 'ws-edit-coll-dailies' },
       },
       {
         id: 'pd-check-shares',
@@ -246,9 +168,9 @@ export const PHASES: Phase[] = [
   {
     id: 'phase-maria',
     title: 'Maria: Review cuts',
-    description: 'You are Maria Santos, Editor. Lisa (Editorial Coordinator) shared dailies review cuts with you. Open and browse them.',
+    description: 'As the Editor, Lisa (Editorial Coordinator) shared dailies review cuts with you. Open and browse them.',
     personaId: 'editorial-artist',
-    requiresPhase: 'phase-2b',
+    requiresPhase: 'phase-2',
     waitingMessage: 'Waiting for Lisa Kim (Editorial Coordinator) to share review cuts with you. Switch to Lisa to complete that step first.',
     steps: [
       {
@@ -268,7 +190,7 @@ export const PHASES: Phase[] = [
   {
     id: 'phase-mike',
     title: 'Mike: Share VFX shots',
-    description: 'You are Mike Torres, VFX Supervisor. David needs to review VFX shots. Give him access to the Shots folder.',
+    description: 'As the VFX Supervisor, David needs to review VFX shots. Give him access to the Shots folder.',
     personaId: 'vfx-supervisor',
     nextPersonaId: 'creative-david',
     steps: [
@@ -291,33 +213,11 @@ export const PHASES: Phase[] = [
     ],
   },
   {
-    id: 'phase-priya',
-    title: 'Priya: Review reference',
-    description: 'You are Priya Sharma, Art Designer. Sarah (VFX Coordinator) shared B-roll and dailies with you for concept reference. Check your inbox and browse the footage.',
-    personaId: 'art-artist',
-    requiresPhase: 'phase-4',
-    waitingMessage: 'Waiting for Sarah Chen (VFX Coordinator) to share reference footage with you. Switch to Sarah to complete that step first.',
-    steps: [
-      {
-        id: 'pp-check-inbox',
-        instruction: 'Check your Inbox for Sarah\'s shared reference footage',
-        personaId: 'art-artist',
-        checkpoint: { type: 'inbox-resource', resourceId: 'ws-cam-coll-broll', grantedByUserId: 'vfx-coordinator' },
-      },
-      {
-        id: 'pp-open-broll',
-        instruction: 'Open "B-Roll Highlights" and browse the footage',
-        personaId: 'art-artist',
-        checkpoint: { type: 'visit-resource', basePath: '/nextgen/collections', resourceId: 'ws-cam-coll-broll' },
-      },
-    ],
-  },
-  {
     id: 'phase-james',
     title: 'James: Deliver comps',
-    description: 'You are James Liu, Lead Compositor at Framestore. Sarah (VFX Coordinator) shared a delivery folder with your team. Browse it, upload finished comps, and notify Sarah.',
+    description: 'As Lead Compositor at Framestore, Sarah (VFX Coordinator) shared a delivery folder with your team. Browse it, upload finished comps, and notify Sarah.',
     personaId: 'vendor-framestore',
-    requiresPhase: 'phase-2',
+    requiresPhase: 'phase-1',
     waitingMessage: 'Waiting for Sarah Chen (VFX Coordinator) to set up your delivery folder. Switch to Sarah to complete that step first.',
     steps: [
       {
@@ -346,34 +246,6 @@ export const PHASES: Phase[] = [
           type: 'grant-set',
           resourceId: 'ws-vfx-vendor-framestore',
           principals: [{ principalType: 'user', principalId: 'vfx-coordinator' }],
-        },
-      },
-    ],
-  },
-  {
-    id: 'phase-rachel',
-    title: 'Rachel: Share temp sound',
-    description: 'You are Rachel Obi, Sound Supervisor. Package a temp sound kit for the editorial team to use in their rough cut.',
-    personaId: 'audio-supervisor',
-    nextPersonaId: 'editorial-coordinator',
-    steps: [
-      {
-        id: 'pr-open-collection',
-        instruction: 'Open the "Temp Sound Kit" collection',
-        personaId: 'audio-supervisor',
-        checkpoint: { type: 'visit-resource', basePath: '/nextgen/collections', resourceId: 'ws-audio-coll-for-editorial' },
-      },
-      {
-        id: 'pr-share-sound',
-        instruction: 'Share it with Lisa Kim (Editorial Coordinator) and Maria Santos (Editor)',
-        personaId: 'audio-supervisor',
-        checkpoint: {
-          type: 'grant-set',
-          resourceId: 'ws-audio-coll-for-editorial',
-          principals: [
-            { principalType: 'user', principalId: 'editorial-coordinator' },
-            { principalType: 'user', principalId: 'editorial-artist' },
-          ],
         },
       },
     ],
