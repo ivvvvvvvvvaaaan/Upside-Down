@@ -285,24 +285,26 @@ const vfxFiles: WorkspaceFileNode[] = [
     ],
   },
   {
-    id: 'ws-vfx-vendor-drops',
-    name: 'Vendor Deliveries',
+    id: 'ws-vfx-to-editorial',
+    name: 'VFX to Editorial',
+    type: 'folder',
+    modifiedAt: '2026-02-14',
+    children: [
+      { id: 'ws-vfx-to-edit-1', name: 'SEQ010_SH010_comp_v12_approved.exr', type: 'file', extension: 'exr', size: 157286400, modifiedAt: '2026-02-14', modifiedBy: 'mtorres@netflix.com' },
+      { id: 'ws-vfx-to-edit-2', name: 'SEQ010_SH020_comp_v08_approved.exr', type: 'file', extension: 'exr', size: 134217728, modifiedAt: '2026-02-13', modifiedBy: 'mtorres@netflix.com' },
+    ],
+  },
+  {
+    id: 'ws-vfx-to-framestore',
+    name: 'VFX to Framestore',
     type: 'folder',
     modifiedAt: '2026-02-13',
     children: [
-      {
-        id: 'ws-vfx-vendor-framestore',
-        name: 'Framestore',
-        type: 'folder',
-        modifiedAt: '2026-02-13',
-        children: [
-          { id: 'ws-vfx-fs-brief', name: 'Framestore_Brief_EP301.pdf', type: 'file', extension: 'pdf', size: 4194304, modifiedAt: '2026-01-15' },
-          { id: 'ws-vfx-fs-del-1', name: 'SEQ010_SH010_comp_v14_FS.exr', type: 'file', extension: 'exr', size: 167772160, modifiedAt: '2026-02-13' },
-          { id: 'ws-vfx-fs-del-2', name: 'SEQ010_SH020_comp_v10_FS.exr', type: 'file', extension: 'exr', size: 146800640, modifiedAt: '2026-02-12' },
-          { id: 'ws-vfx-fs-del-3', name: 'SEQ020_SH010_comp_v05_FS.exr', type: 'file', extension: 'exr', size: 157286400, modifiedAt: '2026-02-11' },
-          { id: 'ws-vfx-fs-notes', name: 'delivery_notes_20260213.pdf', type: 'file', extension: 'pdf', size: 2097152, modifiedAt: '2026-02-13' },
-        ],
-      },
+      { id: 'ws-vfx-fs-brief', name: 'Framestore_Brief_EP301.pdf', type: 'file', extension: 'pdf', size: 4194304, modifiedAt: '2026-01-15' },
+      { id: 'ws-vfx-fs-del-1', name: 'SEQ010_SH010_comp_v14_FS.exr', type: 'file', extension: 'exr', size: 167772160, modifiedAt: '2026-02-13' },
+      { id: 'ws-vfx-fs-del-2', name: 'SEQ010_SH020_comp_v10_FS.exr', type: 'file', extension: 'exr', size: 146800640, modifiedAt: '2026-02-12' },
+      { id: 'ws-vfx-fs-del-3', name: 'SEQ020_SH010_comp_v05_FS.exr', type: 'file', extension: 'exr', size: 157286400, modifiedAt: '2026-02-11' },
+      { id: 'ws-vfx-fs-notes', name: 'delivery_notes_20260213.pdf', type: 'file', extension: 'pdf', size: 2097152, modifiedAt: '2026-02-13' },
     ],
   },
 ]
@@ -516,6 +518,13 @@ const editorialFiles: WorkspaceFileNode[] = [
       { id: 'ws-edit-vfx-1', name: 'EP301_VFX_Pulls_v2.xlsx', type: 'file', extension: 'xlsx', size: 1048576, modifiedAt: '2026-02-12' },
       { id: 'ws-edit-vfx-2', name: 'SEQ010_SH020_plate.mov', type: 'file', extension: 'mov', size: 2147483648, modifiedAt: '2026-02-11' },
     ],
+  },
+  {
+    id: 'ws-edit-to-vfx',
+    name: 'Editorial to VFX',
+    type: 'folder',
+    modifiedAt: '2026-02-18',
+    children: [],
   },
   {
     id: 'ws-edit-scripts',

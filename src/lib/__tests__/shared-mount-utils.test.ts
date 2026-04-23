@@ -27,7 +27,7 @@ describe('shared mount utils', () => {
         name: 'Framestore',
         type: 'folder',
         reference: {
-          resourceId: 'ws-vfx-vendor-framestore',
+          resourceId: 'ws-vfx-to-framestore',
           resourceType: 'folder',
         },
         children: [],
@@ -51,7 +51,7 @@ describe('shared mount utils', () => {
         type: 'folder',
         mountedByUserId: 'schen',
         reference: {
-          resourceId: 'ws-vfx-vendor-framestore',
+          resourceId: 'ws-vfx-to-framestore',
           resourceType: 'folder',
         },
         children: [],
@@ -62,7 +62,7 @@ describe('shared mount utils', () => {
         type: 'folder',
         mountedByUserId: 'vendor-framestore',
         reference: {
-          resourceId: 'ws-vfx-vendor-framestore',
+          resourceId: 'ws-vfx-to-framestore',
           resourceType: 'folder',
         },
         children: [],
@@ -84,7 +84,7 @@ describe('shared mount utils', () => {
         type: 'folder',
         mountedByUserId: 'vendor-framestore',
         reference: {
-          resourceId: 'ws-vfx-vendor-framestore',
+          resourceId: 'ws-vfx-to-framestore',
           resourceType: 'folder',
         },
         children: [],

@@ -31,7 +31,7 @@ describe('getSharePreviewImages', () => {
 
   it('builds previews for direct folder shares from their folder contents', () => {
     const entry = buildSharesReceivedByMe('vendor-framestore', DEFAULT_GRANTS)
-      .find((share) => share.resourceId === 'ws-vfx-vendor-framestore')
+      .find((share) => share.resourceId === 'ws-vfx-to-framestore')
 
     expect(entry).toBeDefined()
 

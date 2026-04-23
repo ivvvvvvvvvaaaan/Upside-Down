@@ -269,7 +269,7 @@ export const SCENARIO: Scenario = {
       ],
     },
     {
-      resource: { id: 'ws-vfx-vendor-framestore', type: 'folder', domain: 'vfx' },
+      resource: { id: 'ws-vfx-to-framestore', type: 'folder', domain: 'vfx' },
       label: 'Framestore',
       by: 'vfx-coordinator',
       date: '2026-01-15',

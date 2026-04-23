@@ -25,13 +25,13 @@ describe('reference folder utils', () => {
       name: 'Vendor Drop',
       type: 'folder',
       reference: {
-        resourceId: 'ws-vfx-vendor-framestore',
+        resourceId: 'ws-vfx-to-framestore',
         resourceType: 'folder',
       },
     }
 
     const children = resolveReferenceChildren(node, {
-      getFolderChildren: (resourceId) => resourceId === 'ws-vfx-vendor-framestore'
+      getFolderChildren: (resourceId) => resourceId === 'ws-vfx-to-framestore'
         ? [{
             id: 'ws-vfx-010-010',
             name: 'seq010_sh010_comp_v8.exr',
@@ -61,7 +61,7 @@ describe('reference folder utils', () => {
             name: 'Vendor Drop',
             type: 'folder',
             reference: {
-              resourceId: 'ws-vfx-vendor-framestore',
+              resourceId: 'ws-vfx-to-framestore',
               resourceType: 'folder',
             },
           },
@@ -70,7 +70,7 @@ describe('reference folder utils', () => {
     ]
 
     const materialized = materializeReferenceFolders(nodes, {
-      getFolderChildren: (resourceId) => resourceId === 'ws-vfx-vendor-framestore'
+      getFolderChildren: (resourceId) => resourceId === 'ws-vfx-to-framestore'
         ? [{
             id: 'ws-vfx-010-010',
             name: 'seq010_sh010_comp_v8.exr',

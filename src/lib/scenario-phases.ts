@@ -46,24 +46,18 @@ export interface Phase {
 export const PHASES: Phase[] = [
   {
     id: 'phase-1',
-    title: 'Sarah: Share comps & set up vendor',
-    description: 'As the VFX Coordinator, share approved comps with editorial and set up the Framestore delivery folder for vendor uploads.',
+    title: 'Sarah: Set up sharing channels',
+    description: 'Set up directional sharing folders so VFX shots flow to editorial and vendor deliveries have a clear home.',
     personaId: 'vfx-coordinator',
-    nextPersonaId: 'editorial-coordinator',
+    nextPersonaId: 'vendor-framestore',
     steps: [
       {
-        id: 'p1-find-collection',
-        instruction: 'Find the "EP301 VFX Pulls" collection',
-        personaId: 'vfx-coordinator',
-        checkpoint: { type: 'visit-resource', basePath: '/nextgen/collections', resourceId: 'ws-vfx-coll-for-editorial' },
-      },
-      {
-        id: 'p1-share-collection',
-        instruction: 'Share it with Lisa Kim (Editorial Coordinator) and Maria Santos (Editor)',
+        id: 'p1-share-to-editorial',
+        instruction: 'Share the "VFX to Editorial" folder with Lisa Kim (Editorial Coordinator) and Maria Santos (Editor)',
         personaId: 'vfx-coordinator',
         checkpoint: {
           type: 'grant-set',
-          resourceId: 'ws-vfx-coll-for-editorial',
+          resourceId: 'ws-vfx-to-editorial',
           principals: [
             { principalType: 'user', principalId: 'editorial-coordinator' },
             { principalType: 'user', principalId: 'editorial-artist' },
@@ -71,12 +65,12 @@ export const PHASES: Phase[] = [
         },
       },
       {
-        id: 'p1-share-vendor',
-        instruction: 'Share the Framestore folder (under Vendor Deliveries) with the Framestore team',
+        id: 'p1-share-to-framestore',
+        instruction: 'Share the "VFX to Framestore" folder with the Framestore team',
         personaId: 'vfx-coordinator',
         checkpoint: {
           type: 'grant-set',
-          resourceId: 'ws-vfx-vendor-framestore',
+          resourceId: 'ws-vfx-to-framestore',
           principals: [{ principalType: 'team', principalId: 'framestore-io' }],
         },
       },
@@ -84,21 +78,79 @@ export const PHASES: Phase[] = [
   },
   {
     id: 'phase-2',
-    title: 'Lisa: Review & share cuts',
-    description: 'As the Editorial Coordinator, Sarah shared VFX comps with you. Check your inbox, then share your review cuts with the team.',
-    personaId: 'editorial-coordinator',
+    title: 'James: Deliver comps',
+    description: 'Sarah (VFX Coordinator) shared a delivery folder with your team. Browse it, upload your finished comps, and share back with Sarah.',
+    personaId: 'vendor-framestore',
     requiresPhase: 'phase-1',
-    waitingMessage: 'Waiting for Sarah Chen (VFX Coordinator) to share VFX Pulls with you. Switch to Sarah to complete that step first.',
+    waitingMessage: 'Waiting for Sarah Chen (VFX Coordinator) to set up your delivery folder. Switch to Sarah to complete that step first.',
+    nextPersonaId: 'vfx-supervisor',
     steps: [
       {
         id: 'p2-check-inbox',
-        instruction: 'Check your Inbox for Sarah\'s VFX Pulls collection',
-        personaId: 'editorial-coordinator',
-        checkpoint: { type: 'inbox-resource', resourceId: 'ws-vfx-coll-for-editorial', grantedByUserId: 'vfx-coordinator' },
+        instruction: 'Check your Inbox for Sarah\'s shared delivery folder',
+        personaId: 'vendor-framestore',
+        checkpoint: { type: 'inbox-resource', resourceId: 'ws-vfx-to-framestore', grantedByUserId: 'vfx-coordinator' },
       },
       {
-        id: 'p2-share-dailies',
-        instruction: 'Share "Dailies Review Cuts" with Maria Santos, David Park, and Mike Torres',
+        id: 'p2-browse-folder',
+        instruction: 'Open the "VFX to Framestore" folder and browse existing deliverables',
+        personaId: 'vendor-framestore',
+        checkpoint: { type: 'visit-resource', basePath: '/nextgen/workspace', resourceId: 'ws-vfx-to-framestore' },
+      },
+      {
+        id: 'p2-upload',
+        instruction: 'Add a new comp file to the delivery folder',
+        personaId: 'vendor-framestore',
+        checkpoint: { type: 'file-created', parentFolderId: 'ws-vfx-to-framestore' },
+      },
+      {
+        id: 'p2-share-back',
+        instruction: 'Share the folder back to Sarah Chen (VFX Coordinator) with a delivery note',
+        personaId: 'vendor-framestore',
+        checkpoint: {
+          type: 'grant-set',
+          resourceId: 'ws-vfx-to-framestore',
+          principals: [{ principalType: 'user', principalId: 'vfx-coordinator' }],
+        },
+      },
+    ],
+  },
+  {
+    id: 'phase-3',
+    title: 'Mike: Approve shots for editorial',
+    description: 'Vendor comps have arrived. Review them and add approved shots to the "VFX to Editorial" folder so the editorial team can pick them up.',
+    personaId: 'vfx-supervisor',
+    nextPersonaId: 'editorial-coordinator',
+    steps: [
+      {
+        id: 'p3-browse-vendor',
+        instruction: 'Open the "VFX to Framestore" folder and review the vendor deliveries',
+        personaId: 'vfx-supervisor',
+        checkpoint: { type: 'visit-resource', basePath: '/nextgen/workspace', resourceId: 'ws-vfx-to-framestore' },
+      },
+      {
+        id: 'p3-add-to-editorial',
+        instruction: 'Copy an approved shot into the "VFX to Editorial" folder',
+        personaId: 'vfx-supervisor',
+        checkpoint: { type: 'file-created', parentFolderId: 'ws-vfx-to-editorial' },
+      },
+    ],
+  },
+  {
+    id: 'phase-4',
+    title: 'Lisa: Review VFX shots & share cuts',
+    description: 'New VFX shots are in the "VFX to Editorial" folder. Review them, then share your dailies review cuts with the team.',
+    personaId: 'editorial-coordinator',
+    steps: [
+      {
+        id: 'p4-check-vfx-folder',
+        instruction: 'Open the "VFX to Editorial" shared folder and review the new shots',
+        personaId: 'editorial-coordinator',
+        checkpoint: { type: 'visit-resource', basePath: '/nextgen/workspace', resourceId: 'ws-vfx-to-editorial' },
+      },
+      {
+        id: 'p4-share-dailies',
+        instruction: 'Share "Dailies Review Cuts" with Maria Santos (Editor), David Park (Director), and Mike Torres (VFX Supervisor)',
         personaId: 'editorial-coordinator',
         checkpoint: {
           type: 'grant-set',
@@ -113,13 +165,13 @@ export const PHASES: Phase[] = [
     ],
   },
   {
-    id: 'phase-3',
+    id: 'phase-5',
     title: 'Lisa: Release locked cut',
-    description: 'As the Editorial Coordinator, the locked cut is ready for broader review. Release it to studio departments.',
+    description: 'The locked cut is ready for broader review. Release it to studio departments.',
     personaId: 'editorial-coordinator',
     steps: [
       {
-        id: 'p3-release-cut',
+        id: 'p5-release-cut',
         instruction: 'Open Cuts, select a locked cut, and release it to Studio VFX, Studio Creative, and Studio Post',
         personaId: 'editorial-coordinator',
         checkpoint: {
@@ -140,9 +192,9 @@ export const PHASES: Phase[] = [
   {
     id: 'phase-david',
     title: 'David: Review cuts',
-    description: 'As the Director, Lisa (Editorial Coordinator) shared dailies review cuts with you. Review the cuts and check your shares.',
+    description: 'Lisa (Editorial Coordinator) shared dailies review cuts with you. Check your inbox and review them.',
     personaId: 'creative-david',
-    requiresPhase: 'phase-2',
+    requiresPhase: 'phase-4',
     waitingMessage: 'Waiting for Lisa Kim (Editorial Coordinator) to share review cuts with you. Switch to Lisa to complete that step first.',
     steps: [
       {
@@ -168,9 +220,9 @@ export const PHASES: Phase[] = [
   {
     id: 'phase-maria',
     title: 'Maria: Review cuts',
-    description: 'As the Editor, Lisa (Editorial Coordinator) shared dailies review cuts with you. Open and browse them.',
+    description: 'Lisa (Editorial Coordinator) shared dailies review cuts with you. Check your inbox and browse them.',
     personaId: 'editorial-artist',
-    requiresPhase: 'phase-2',
+    requiresPhase: 'phase-4',
     waitingMessage: 'Waiting for Lisa Kim (Editorial Coordinator) to share review cuts with you. Switch to Lisa to complete that step first.',
     steps: [
       {
@@ -184,69 +236,6 @@ export const PHASES: Phase[] = [
         instruction: 'Open "Dailies Review Cuts" and browse the assets',
         personaId: 'editorial-artist',
         checkpoint: { type: 'visit-resource', basePath: '/nextgen/collections', resourceId: 'ws-edit-coll-dailies' },
-      },
-    ],
-  },
-  {
-    id: 'phase-mike',
-    title: 'Mike: Share VFX shots',
-    description: 'As the VFX Supervisor, David needs to review VFX shots. Give him access to the Shots folder.',
-    personaId: 'vfx-supervisor',
-    nextPersonaId: 'creative-david',
-    steps: [
-      {
-        id: 'pmk-browse-workspace',
-        instruction: 'Browse the VFX workspace and open the Shots folder',
-        personaId: 'vfx-supervisor',
-        checkpoint: { type: 'visit-resource', basePath: '/nextgen/workspace', resourceId: 'ws-vfx-shots' },
-      },
-      {
-        id: 'pmk-share-shots',
-        instruction: 'Share the Shots folder with David Park (Director)',
-        personaId: 'vfx-supervisor',
-        checkpoint: {
-          type: 'grant-set',
-          resourceId: 'ws-vfx-shots',
-          principals: [{ principalType: 'user', principalId: 'creative-david' }],
-        },
-      },
-    ],
-  },
-  {
-    id: 'phase-james',
-    title: 'James: Deliver comps',
-    description: 'As Lead Compositor at Framestore, Sarah (VFX Coordinator) shared a delivery folder with your team. Browse it, upload finished comps, and notify Sarah.',
-    personaId: 'vendor-framestore',
-    requiresPhase: 'phase-1',
-    waitingMessage: 'Waiting for Sarah Chen (VFX Coordinator) to set up your delivery folder. Switch to Sarah to complete that step first.',
-    steps: [
-      {
-        id: 'pj-check-inbox',
-        instruction: 'Check your Inbox for Sarah\'s shared delivery folder',
-        personaId: 'vendor-framestore',
-        checkpoint: { type: 'inbox-resource', resourceId: 'ws-vfx-vendor-framestore', grantedByUserId: 'vfx-coordinator' },
-      },
-      {
-        id: 'pj-browse-folder',
-        instruction: 'Open the Framestore folder and browse existing deliverables',
-        personaId: 'vendor-framestore',
-        checkpoint: { type: 'visit-resource', basePath: '/nextgen/workspace', resourceId: 'ws-vfx-vendor-framestore' },
-      },
-      {
-        id: 'pj-upload',
-        instruction: 'Add a new comp file to the Framestore delivery folder',
-        personaId: 'vendor-framestore',
-        checkpoint: { type: 'file-created', parentFolderId: 'ws-vfx-vendor-framestore' },
-      },
-      {
-        id: 'pj-share-back',
-        instruction: 'Share the folder back to Sarah Chen (VFX Coordinator) with a delivery note',
-        personaId: 'vendor-framestore',
-        checkpoint: {
-          type: 'grant-set',
-          resourceId: 'ws-vfx-vendor-framestore',
-          principals: [{ principalType: 'user', principalId: 'vfx-coordinator' }],
-        },
       },
     ],
   },
