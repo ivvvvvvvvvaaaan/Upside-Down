@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ArrowRight, Download, FolderInput, Plus, Trash2, X } from 'lucide-react'
+import { Download, FolderInput, Plus, Trash2, X } from 'lucide-react'
 import { ShareIcon } from './share-icon'
 import { cn } from '@/lib/utils'
 import { Button } from './button'

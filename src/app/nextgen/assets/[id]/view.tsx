@@ -1,14 +1,12 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, PanelRight, Info, Play, Music, FileText, Download, Image as ImageIcon, ChevronDown } from 'lucide-react'
+import { ArrowLeft, PanelRight, Info, Play, Music, FileText, Download, Image as ImageIcon } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
-import { cn } from '@/lib/utils'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import {
   Stack,
-  Text,
   Button,
   Tag,
   EmptyState,

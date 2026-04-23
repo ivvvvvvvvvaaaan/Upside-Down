@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
-import { ChevronDown, ChevronRight, Check, Circle, ArrowRight, BookOpen, GripVertical } from 'lucide-react'
+import { ChevronDown, ChevronRight, Check, Circle, ArrowRight, GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { useAccess, usePersona } from '@/hooks'
@@ -255,7 +255,9 @@ export function ScenarioGuide() {
   }, [completedSteps])
 
   const currentPhase = getCurrentPhase(completedPhaseIds)
-  const personaPhase = activePersona ? getPhaseForPersona(activePersona.id, completedPhaseIds, completedSteps) : null
+  const personaResult = activePersona ? getPhaseForPersona(activePersona.id, completedPhaseIds, completedSteps) : null
+  const personaPhase = personaResult?.phase ?? null
+  const isLocked = personaResult?.locked ?? false
   const handoffPhase = useMemo(() => {
     if (!activePersona) return null
     return PHASES.find((phase) => {
@@ -264,9 +266,7 @@ export function ScenarioGuide() {
       return getPhaseForPersona(phase.nextPersonaId, completedPhaseIds, completedSteps) !== null
     }) ?? null
   }, [activePersona, completedPhaseIds, completedSteps])
-  // Only show another persona's phase if no persona is selected (admin mode)
   const displayPhase = activePersona ? handoffPhase ?? personaPhase : currentPhase
-  const phaseIndex = displayPhase ? PHASES.indexOf(displayPhase) : -1
   const allDone = !currentPhase
   const userTags = userTagsState
 
@@ -412,6 +412,10 @@ export function ScenarioGuide() {
             ) : !displayPhase ? (
               <p className="text-body-0-regular text-foreground">
                 No tasks for this user. Switch to another persona or reset.
+              </p>
+            ) : isLocked && displayPhase.waitingMessage ? (
+              <p className="text-body-0-regular text-foreground">
+                {displayPhase.waitingMessage}
               </p>
             ) : (
               <>

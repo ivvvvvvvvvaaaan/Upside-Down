@@ -6,7 +6,6 @@ import { cn, formatDate } from '@/lib/utils'
 import { ActivityFeed } from './activity-feed'
 import type { ActivityEvent } from './activity-feed'
 import { Button } from './button'
-import { Dropdown, DropdownMenuItem } from './dropdown'
 import { ResponsivePanel } from './responsive-panel'
 import { AccessModal } from './access-modal'
 import { Tag } from './tag'
@@ -14,7 +13,7 @@ import { Chip } from './chip'
 import { Tooltip } from './tooltip'
 import { Tabs, TabsList, Tab, TabsContent } from './tabs'
 import type { Asset, DomainId } from '@/lib/data'
-import type { ResourceRef, Grant, RoleGroup, PrincipalRef } from '@/lib/grants'
+import type { ResourceRef, Grant, RoleGroup } from '@/lib/grants'
 import { isGrantActive, RELEASE_DOMAINS } from '@/lib/grants'
 import { GrantBadge } from './grant-badge'
 import { useAccess, useFileTree, usePersona, useSmartCollections, useCuts } from '@/hooks'
@@ -29,8 +28,6 @@ import type { ContainerItem } from './ontology-section'
 import type { RelatedAssetGroup } from '@/lib/context-relationships'
 
 import { Modal } from './modal'
-import { Avatar } from './avatar'
-import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
 import { PrincipalAvatar } from './principal-avatar'
 import type { AssetTag } from '@/lib/data'
 import {
@@ -104,9 +101,9 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
   resourceName?: string
   currentCollectionId?: string
 }) {
-  const { getResourceGrants, roleGroups, canShare, revokeGrant, getResourceGuestLinks, revokeGuestLink } = useAccess()
+  const { getResourceGrants, roleGroups, revokeGrant, getResourceGuestLinks, revokeGuestLink } = useAccess()
   const { collections, getCollection, removeAssetFromCollection } = useUserCollections()
-  const { activePersona, isAdmin } = usePersona()
+  const { activePersona } = usePersona()
   const { resolveCollectionAssetIds } = useFileTree()
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -151,7 +148,6 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
   }, [collections, assetId, getResourceGrants, resolveCollectionAssetIds])
 
   const hasAnything = domainEntries.length > 0 || folderShareEntries.length > 0 || directGrants.length > 0 || sharedCollections.length > 0
-  const canManageAccess = isAdmin || (resourceRef ? canShare(resourceRef) : false)
 
   return (
     <section className="space-y-3">
@@ -424,8 +420,6 @@ interface AssetDetailPanelProps {
   onContextAssetClick?: (asset: Asset) => void
   /** Cuts this asset appears in */
   cuts?: Asset[]
-  /** Older versions of this asset (for version history display) */
-  olderVersions?: Asset[]
   /** Callback when user switches to an older version */
   onVersionSelect?: (asset: Asset) => void
 }
@@ -449,13 +443,12 @@ export function AssetDetailPanelContent({
   contextGroups,
   onContextAssetClick,
   cuts,
-  olderVersions,
   onVersionSelect,
 }: AssetDetailPanelContentProps) {
-  const { getInheritedGrants, getCollectionRippleGrants, visibleCollections, canEdit, canAccess, canShare, isSensitiveAsset } = useAccess()
+  const { getInheritedGrants, visibleCollections, canEdit, canShare, isSensitiveAsset } = useAccess()
   const { activePersona } = usePersona()
-  const { getDomainFiles, resolveCollectionAssetIds, assetById } = useFileTree()
-  const { getCollection, scopedAssets } = useSmartCollections()
+  const { getDomainFiles, assetById } = useFileTree()
+  const { getCollection } = useSmartCollections()
   const { getCutsForAsset, getVersionsForGroup } = useCuts()
 
   // For cuts: all versions in this group for the version switcher
@@ -489,13 +482,6 @@ export function AssetDetailPanelContent({
     if (!asset) return []
     return getInheritedGrants(asset.id)
   }, [asset, getInheritedGrants])
-
-  // Combined for the Manage Access modal (needs full picture)
-  const allInheritedGrants = useMemo(() => {
-    if (!asset) return []
-    const collectionGrants = getCollectionRippleGrants(asset.id)
-    return [...folderInheritedGrants, ...collectionGrants]
-  }, [asset, folderInheritedGrants, getCollectionRippleGrants])
 
   // User tags from localStorage
   const [userTagsMap, setUserTagsMap] = useState<Record<string, string[]>>({})

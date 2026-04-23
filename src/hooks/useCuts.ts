@@ -49,15 +49,10 @@ export function useCuts() {
     })
   }, [allSeedCuts, grants, isAdmin, isEditorialMember, getVisibilityState])
 
-  // Group-level access: if you have access to ANY version in a group, you have access to ALL
   const accessibleCuts = useMemo((): AccessibleCutEntry[] => {
-    const directlyAccessible = new Set(
-      visibleCuts.filter(e => e.visibility === 'accessible').map(e => e.asset.versionGroupId ?? e.asset.id)
-    )
-    return visibleCuts.filter((entry): entry is AccessibleCutEntry & { visibility: 'accessible' } => {
-      const groupId = entry.asset.versionGroupId ?? entry.asset.id
-      return directlyAccessible.has(groupId)
-    })
+    return visibleCuts.filter((entry): entry is AccessibleCutEntry & { visibility: 'accessible' } => (
+      entry.visibility === 'accessible'
+    ))
   }, [visibleCuts])
 
   const allCutAssets = useMemo(() => visibleCuts.map((entry) => entry.asset), [visibleCuts])
@@ -97,23 +92,11 @@ export function useCuts() {
     return seed?.constituents ?? []
   }, [allSeedCuts])
 
-  /** Asset IDs that are constituents of accessible cuts — for cascade access */
-  const constituentAccessIds = useMemo(() => {
-    const ids = new Set<string>()
-    for (const entry of accessibleCuts) {
-      for (const cid of entry.seed.constituents) {
-        ids.add(cid)
-      }
-    }
-    return ids
-  }, [accessibleCuts])
-
   return {
     allCutAssets,
     visibleCuts,
     accessibleCuts,
     accessibleCutAssets,
-    constituentAccessIds,
     getCutsForAsset,
     getConstituentsForCut,
     getVersionsForGroup,

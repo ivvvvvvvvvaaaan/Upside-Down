@@ -3,9 +3,8 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronRight, Map } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from './button'
 import { UserJourneyModal } from './user-journey-modal'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 

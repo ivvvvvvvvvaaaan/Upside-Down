@@ -19,14 +19,10 @@ import {
   NewFolderModal,
   AccessModal,
   MobileToolbar,
-  Dropdown,
   DropdownMenuItem,
   DropdownMenuDivider,
-  MoveWarningModal,
-  Tag,
 } from '@/components/ui'
 import type { ResourceRef } from '@/lib/grants'
-import { profileLabel } from '@/lib/grants'
 import { TEAMS, isUserWorkspaceOwner, getDomainOwnerTeam } from '@/lib/teams'
 import { PERSONAS } from '@/lib/personas'
 import { ShareIcon } from '@/components/ui/share-icon'
@@ -46,7 +42,7 @@ import { WorkspaceSidePanel } from '@/components/department/WorkspaceSidePanel'
 import { AssetDetailPanel } from '@/components/ui/asset-detail-panel'
 import { getContextAssetGroups } from '@/lib/context-relationships'
 import { useIsMobile } from '@/hooks/useMediaQuery'
-import { List, Columns, LayoutGrid, PanelRight, Info, Lock, Users, FolderPlus, FolderSymlink, Share2, RefreshCw, Trash2, FilePlus, Upload, FolderInput, HardDriveDownload, Download, Check, Minus, MoreVertical, Link2, Pencil, ArrowRight } from 'lucide-react'
+import { List, Columns, LayoutGrid, PanelRight, Info, Lock, Users, FolderPlus, FolderSymlink, Trash2, Upload, HardDriveDownload, Download, Link2, Pencil, ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { assetToSelectionEntity, folderToSelectionEntity } from '@/lib/selection-actions'
 import type { SelectionEntity } from '@/lib/selection-actions'
@@ -139,21 +135,6 @@ function applyManagedZoneState(
   })
 }
 
-function collectManagedFolderIds(nodes: WorkspaceFileNode[]): Set<string> {
-  const managedIds = new Set<string>()
-
-  const walk = (folders: WorkspaceFileNode[]) => {
-    for (const folder of folders) {
-      if (folder.type !== 'folder') continue
-      if (folder.managedZone) managedIds.add(folder.id)
-      if (folder.children) walk(folder.children)
-    }
-  }
-
-  walk(nodes)
-  return managedIds
-}
-
 function findDomainIdForNode(
   node: WorkspaceFileNode,
   getDomainFiles: (id: DomainId) => WorkspaceFileNode[],
@@ -231,10 +212,9 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     selectAll,
     clearSelection,
   } = useResourceSelection<{ id: string }>()
-  const { setBreadcrumbExtras, clearBreadcrumbExtras, setBreadcrumbActions, clearBreadcrumbActions } = useBreadcrumbExtras()
+  const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
 
   const {
-    toggleManagedZone,
     createFolder: fileTreeCreateFolder,
     createFile: fileTreeCreateFile,
     createReferenceFolder: fileTreeCreateReferenceFolder,
@@ -242,7 +222,6 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     renameNode: fileTreeRenameNode,
     tree: fileTree,
     getDomainFiles: getFileTreeDomainFiles,
-    getMoveImpact,
     confirmMove,
     createFileReference,
     assetById,
@@ -258,13 +237,6 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const [uploadTargetFolderId, setUploadTargetFolderId] = useState<string | null>(null)
   const [landingDrillPath, setLandingDrillPath] = useState<WorkspaceFileNode[]>([])
-  const [moveWarningState, setMoveWarningState] = useState<{
-    open: boolean
-    nodeId: string
-    fileName: string
-    targetParentId: string
-    impactedFolders: { id: string; name: string; grantCount: number }[]
-  } | null>(null)
   const resolveReferenceNodes = useCallback((nodes: WorkspaceFileNode[]) => {
     return materializeReferenceFolders(nodes, {
       getFolderChildren: (resourceId) => {
@@ -285,10 +257,6 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
   const workspaceRootNodes = useMemo(() => {
     return collectAccessibleWorkspaceRoots(managedWorkspaceTree, canAccess)
   }, [managedWorkspaceTree, canAccess])
-  const managedFolderIds = useMemo(
-    () => collectManagedFolderIds(managedWorkspaceTree),
-    [managedWorkspaceTree],
-  )
   const sharedFolderIds = useMemo(
     () => collectSharedFolderIds(managedWorkspaceTree, getResourceGrants),
     [managedWorkspaceTree, getResourceGrants],
@@ -539,53 +507,6 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     router.push(`/nextgen/assets/${nextAsset.id}`)
   }, [selectionEntryById, selectOnly, setShowPanel, router])
 
-  const handleMoveFile = useCallback((node: WorkspaceFileNode) => {
-    const fallbackRootFolders = fileTree.filter(
-      (candidate): candidate is WorkspaceFileNode => candidate.type === 'folder' && candidate.id !== SHARED_MOUNT_FOLDER_ID,
-    )
-    const targetParentId = currentWorkspaceFolder?.id
-      ?? workspaceRootNodes[0]?.id
-      ?? fallbackRootFolders[0]?.id
-
-    if (!targetParentId) return
-
-    const sharedFoldersForImpact: { id: string; name: string }[] = []
-    const collectSharedFolders = (nodes: WorkspaceFileNode[]) => {
-      for (const candidate of nodes) {
-        if (candidate.type !== 'folder') continue
-        if (getResourceGrants(candidate.id).length > 0) {
-          sharedFoldersForImpact.push({ id: candidate.id, name: candidate.name })
-        }
-        if (candidate.children) collectSharedFolders(candidate.children as WorkspaceFileNode[])
-      }
-    }
-    collectSharedFolders(managedWorkspaceTree)
-
-    const getGrantCount = (folderId: string) => getResourceGrants(folderId).length
-
-    const impact = getMoveImpact(node.id, sharedFoldersForImpact, getGrantCount)
-
-    if (impact.impactedFolders.length > 0) {
-      setMoveWarningState({
-        open: true,
-        nodeId: node.id,
-        fileName: node.name,
-        targetParentId,
-        impactedFolders: impact.impactedFolders,
-      })
-    } else {
-      // No impact, move directly
-      confirmMove(node.id, targetParentId)
-    }
-  }, [fileTree, currentWorkspaceFolder, workspaceRootNodes, managedWorkspaceTree, getResourceGrants, getMoveImpact, confirmMove])
-
-  const handleConfirmMove = useCallback(() => {
-    if (moveWarningState) {
-      confirmMove(moveWarningState.nodeId, moveWarningState.targetParentId)
-      setMoveWarningState(null)
-    }
-  }, [moveWarningState, confirmMove])
-
   const workspaceRootMissing = Boolean(landingFolderId && !requestedWorkspaceRoot)
   const requestedWorkspaceAccessible = requestedWorkspaceRoot
     ? canAccess(getAclResourceId(requestedWorkspaceRoot))
@@ -618,23 +539,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
       : undefined
   }, [effectiveNode, getFileTreeDomainFiles])
   const pageTitle = currentLocationNode?.name ?? 'Workspace'
-
-  const [pageAccessModalOpen, setPageAccessModalOpen] = useState(false)
-
-  const pageAccessResourceRef: ResourceRef | undefined = currentLocationNode ? {
-    id: getAclResourceId(currentLocationNode),
-    type: 'folder',
-    domainId: effectiveNodeDomainId,
-  } : undefined
-
-  const canShareCurrentFolder = pageAccessResourceRef ? canShareResource(pageAccessResourceRef) : false
   const canEditCurrentFolder = currentLocationNode ? canEditResource(getAclResourceId(currentLocationNode)) : true
-  const canMountCurrentFolder = Boolean(
-    currentLocationNode
-    && currentLocationNode.type === 'folder'
-    && currentLocationNode.id !== SHARED_MOUNT_FOLDER_ID
-    && !isReferenceFolder(currentLocationNode),
-  )
 
   const isCurrentFolderOwner = useMemo(() => {
     if (!currentLocationNode || !activePersona) return true
@@ -771,9 +676,18 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     if (!canEditCurrentFolder) return []
     return [
       { label: 'New Folder', icon: <FolderPlus className="w-4 h-4" />, onClick: () => { setNewFolderParentPath(urlPath); setNewFolderModalOpen(true) } },
-      { label: 'Upload', icon: <Upload className="w-4 h-4" />, onClick: () => uploadInputRef.current?.click() },
+      {
+        label: 'Upload',
+        icon: <Upload className="w-4 h-4" />,
+        onClick: () => {
+          const targetFolderId = currentWorkspaceFolder?.id ?? activeWorkspaceRoot?.id ?? null
+          if (!targetFolderId) return
+          setUploadTargetFolderId(targetFolderId)
+          uploadInputRef.current?.click()
+        },
+      },
     ]
-  }, [canEditCurrentFolder, urlPath])
+  }, [canEditCurrentFolder, urlPath, currentWorkspaceFolder, activeWorkspaceRoot])
 
   const isGridView = viewMode === 'grid'
   const explorerViewMode = (isGridView ? 'list' : viewMode) as FileViewMode
@@ -1198,15 +1112,6 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
         onOpenChange={setNewFolderModalOpen}
         onCreate={handleCreateFolder}
       />
-      {moveWarningState && (
-        <MoveWarningModal
-          open={moveWarningState.open}
-          onClose={() => setMoveWarningState(null)}
-          onConfirm={handleConfirmMove}
-          fileName={moveWarningState.fileName}
-          impactedFolders={moveWarningState.impactedFolders}
-        />
-      )}
       {accessModalNode && (() => {
         const nodeId = getAclResourceId(accessModalNode)
         const rawRef: ResourceRef = {
@@ -1228,19 +1133,6 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
           />
         )
       })()}
-      {pageAccessModalOpen && currentLocationNode && pageAccessResourceRef && (
-        <AccessModal
-          open
-          onClose={() => setPageAccessModalOpen(false)}
-          resourceId={pageAccessResourceRef.id}
-          resourceRef={pageAccessResourceRef}
-          inheritedGrants={getInheritedGrants(getAclResourceId(currentLocationNode)).map(({ grant, fromResourceName }) => ({
-            grant,
-            fromResourceName,
-          }))}
-          title={currentLocationNode.name}
-        />
-      )}
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}

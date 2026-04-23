@@ -1,26 +1,20 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { X, Layers, MapPin, Film, Zap, Folder, Users } from 'lucide-react'
 import { ActivityFeed } from './activity-feed'
 import type { ActivityEvent } from './activity-feed'
 import { Button } from './button'
 import { Avatar } from './avatar'
-import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
-import { PrincipalAvatar } from './principal-avatar'
-import { GrantBadge } from './grant-badge'
 import { ResponsivePanel } from './responsive-panel'
-import { AccessModal } from './access-modal'
 import { OntologySection } from './ontology-section'
 import { Chip } from './chip'
 import type { Collection } from '@/lib/collection-types'
 import { isSmart, isCollection, getCollectionCapabilities } from '@/lib/collection-types'
-import type { ResourceRef, Grant } from '@/lib/grants'
 import type { AssetFilter, SmartCollectionGroupBy } from '@/lib/data'
 import type { RelatedCollections } from '@/hooks/useSmartCollections'
 import { useAccess, useFileTree, usePersona, useUserCollections } from '@/hooks'
 import { PERSONAS } from '@/lib/personas'
-import { TEAMS, isUserInTeam } from '@/lib/teams'
 import { getOntologyMeta } from '@/lib/ontology-meta'
 import type { OntologyMeta } from '@/lib/ontology-meta'
 
@@ -36,12 +30,6 @@ function PanelHeaderIcon({ icon, name, isEntity, avatarSrc }: { icon: string; na
   if (icon === 'character' && isEntity) return <Avatar name={name} src={avatarSrc} size="lg" />
   const Icon = icon === 'character' ? Users : (PANEL_ICONS[icon] ?? Layers)
   return <Icon className="w-8 h-8 text-foreground flex-shrink-0" />
-}
-
-function resolvePrincipalName(principal: Grant['principal']): string {
-  if (principal.type === 'user') return PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
-  if (principal.type === 'team') return TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
-  return principal.domainId
 }
 
 function MetaField({ label, value }: { label: string; value: string }) {
@@ -161,16 +149,14 @@ export function CollectionSidePanel({
   const ontologyMeta = smart ? getOntologyMeta(collection.name, smart.icon) : null
 
   const { collections: userCollections } = useUserCollections()
-  const { sharesReceivedByMe, allProjectShares, getResourceGrants, getResourceGuestLinks, roleGroups, canShare } = useAccess()
+  const { sharesReceivedByMe, allProjectShares, getResourceGrants } = useAccess()
   const { resolveCollectionAssetIds } = useFileTree()
-  const { isAdmin, activePersona } = usePersona()
+  const { isAdmin } = usePersona()
 
   const resolvedAssetIds = useMemo(() => (
     curated ? resolveCollectionAssetIds(curated) : []
   ), [curated, resolveCollectionAssetIds])
   const assetCount = matchingCount ?? resolvedAssetIds.length
-  const assetIds = resolvedAssetIds
-  const [accessModalOpen, setAccessModalOpen] = useState(false)
 
   const linkedSnapshotCollections = useMemo(() => {
     if (!smart) return []
@@ -179,13 +165,9 @@ export function CollectionSidePanel({
       .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
   }, [smart, userCollections])
 
-  const accessCollection = smart && linkedSnapshotCollections.length === 1
-    ? linkedSnapshotCollections[0]
-    : curated
-  const accessResourceRef: ResourceRef = accessCollection
-    ? { id: accessCollection.id, type: 'collection' }
-    : { id: collection.id, type: smart ? 'smart-collection' : 'collection' }
-  const accessResourceId = accessCollection?.id ?? collection.id
+  const accessResourceId = smart && linkedSnapshotCollections.length === 1
+    ? linkedSnapshotCollections[0].id
+    : collection.id
 
   const shares = isAdmin ? allProjectShares : sharesReceivedByMe
   const share = linkedSnapshotCollections.length <= 1
@@ -239,24 +221,6 @@ export function CollectionSidePanel({
     }
     return events.sort((a, b) => b.date.localeCompare(a.date))
   }, [accessResourceId, getResourceGrants, collection.createdAt, createdByName, curated])
-
-  const grants = useMemo(() => {
-    if (!smart || linkedSnapshotCollections.length <= 1) {
-      return getResourceGrants(accessResourceId)
-    }
-    return linkedSnapshotCollections.flatMap((snapshotCollection) => getResourceGrants(snapshotCollection.id))
-  }, [smart, linkedSnapshotCollections, getResourceGrants, accessResourceId])
-
-  const guestLinks = useMemo(() => {
-    if (!smart || linkedSnapshotCollections.length <= 1) {
-      return getResourceGuestLinks(accessResourceId)
-    }
-    return linkedSnapshotCollections.flatMap((snapshotCollection) => getResourceGuestLinks(snapshotCollection.id))
-  }, [smart, linkedSnapshotCollections, getResourceGuestLinks, accessResourceId])
-
-  const canManageAccess = linkedSnapshotCollections.length > 1
-    ? false
-    : (isAdmin || canShare(accessResourceRef))
 
   const connectionsCount = relationships
     ? relationships.characters.length + relationships.scenes.length + relationships.locations.length
@@ -338,15 +302,6 @@ export function CollectionSidePanel({
 
         <ActivityFeed events={collectionActivity} />
       </div>
-
-      <AccessModal
-        open={accessModalOpen}
-        onClose={() => setAccessModalOpen(false)}
-        resourceId={accessResourceId}
-        resourceRef={accessResourceRef}
-        title={accessCollection?.name ?? collection.name}
-      />
-
     </ResponsivePanel>
   )
 }

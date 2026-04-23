@@ -16,7 +16,7 @@ describe('scenario phases', () => {
     const completedPhaseIds = new Set(['phase-2'])
     const completedStepIds = new Set(['p2-find-collection', 'p2-share-collection'])
 
-    expect(getPhaseForPersona('editorial-coordinator', completedPhaseIds, completedStepIds)?.id).toBe('phase-2b')
+    expect(getPhaseForPersona('editorial-coordinator', completedPhaseIds, completedStepIds)?.phase.id).toBe('phase-2b')
   })
 
   it('requires exact resources for multi-recipient sharing checkpoints', () => {

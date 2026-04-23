@@ -384,7 +384,7 @@ export function CollectionBrowserView({
 
               {/* Row 1: Title + Search + Sort + Appearance */}
               <div className="flex flex-wrap items-center justify-between gap-4">
-                <PageHeader title={title} hideTitleOnMobile />
+                <PageHeader title={title} description={description} hideTitleOnMobile />
                 <div className="hidden md:flex items-center gap-2 flex-shrink-0">
                   <HawkinsSearch
                     value={searchQuery}

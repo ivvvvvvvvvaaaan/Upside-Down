@@ -1,24 +1,19 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { X, Users, Search, Info, Link2, AlertTriangle, Globe, ShieldOff } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { X, Search, Info, Link2, AlertTriangle, ShieldOff } from 'lucide-react'
 import { Tooltip } from './tooltip'
 import { Input } from './input'
-import { Select } from './select'
 import { Button } from './button'
 import { RoleSelect } from './role-select'
 import { MenuSelect } from './menu-select'
 import { Avatar } from './avatar'
 import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
-import { PrincipalAvatar } from './principal-avatar'
 import { Toggle } from './switch'
 import { GrantBadge } from './grant-badge'
 import { Modal } from './modal'
-import { Tabs, TabsList, Tab, TabsContent } from './tabs'
-import { Checkbox } from './checkbox'
+import { Tabs, TabsList, Tab } from './tabs'
 import { Card } from './card'
-import { domainConfigs } from '@/lib/domain-configs'
 import { useAccess, useFileTree, usePersona } from '@/hooks'
 import type { Block, Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
 import { useToast } from './toast'
@@ -54,7 +49,6 @@ interface AccessPanelProps {
   /** Batch mode: share to multiple resources at once */
   batchResourceRefs?: ResourceRef[]
   readOnly?: boolean
-  emptyLabel?: string
   inheritedGrants?: { grant: Grant; fromResourceName: string }[]
   /** Called when dirty state changes — lets parent render Save/Cancel */
   onDirtyChange?: (dirty: boolean, handlers: { save: () => void; cancel: () => void }) => void
@@ -79,7 +73,7 @@ function roleLabelForResource(roleGroups: RoleGroup[], profileId: AccessProfileI
 }
 
 
-function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onRemove, onBlock, onUpdateProfile, onUpdateShareMode, onReshareSnapshot, onSetMemberOverride, name, subtitle, roleLabel, members, domainId, versionLabel }: {
+function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onRemove, onBlock, onUpdateProfile, onUpdateShareMode, onReshareSnapshot, onSetMemberOverride, name, subtitle, members, domainId, versionLabel }: {
   grant: Grant
   readOnly: boolean
   roleGroups: RoleGroup[]
@@ -93,7 +87,6 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
   onSetMemberOverride?: (memberUserId: string, profileId: AccessProfileId, existingGrantId?: string) => void
   name: string
   subtitle?: string
-  roleLabel: string
   members?: AccessDisplayEntry['members']
   domainId?: DomainId
   versionLabel?: string
@@ -168,6 +161,11 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
           {canEdit && onRemove && (
             <Button variant="secondary" compact onClick={() => onRemove(grant.id)}>
               Remove
+            </Button>
+          )}
+          {canEdit && onBlock && (
+            <Button variant="secondary-destructive" compact onClick={() => onBlock(grant.id)}>
+              Block
             </Button>
           )}
         </div>
@@ -415,7 +413,7 @@ function GuestLinksSection({
   return null
 }
 
-export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOnly = false, emptyLabel = 'Not shared', inheritedGrants, onDirtyChange, onPendingChange }: AccessPanelProps) {
+export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOnly = false, inheritedGrants, onDirtyChange, onPendingChange }: AccessPanelProps) {
   const isBatch = Boolean(batchResourceRefs && batchResourceRefs.length > 1)
   const {
     getResourceGrants,
@@ -435,12 +433,9 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     revokeGuestLink,
     restoreResourceGrants,
     restoreResourceGuestLinks,
-    getCollectionShareCeiling,
-    requestAccess,
     getRemainingAccessPaths,
     blockUser,
     unblockUser,
-    isBlocked,
     getBlocksForResource,
   } = useAccess()
   const { resolveCollectionAssetIds } = useFileTree()
@@ -503,10 +498,10 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   }
 
   // Role + share mode + expiration
-  const [addAsRole, setAddAsRole] = useState<AccessProfileId>('viewer')
-  const [shareMode, setShareMode] = useState<ShareMode>('snapshot')
-  const [expires, setExpires] = useState(false)
-  const [expiresInDays, setExpiresInDays] = useState(7)
+  const addAsRole: AccessProfileId = 'viewer'
+  const shareMode: ShareMode = 'snapshot'
+  const expires = false
+  const expiresInDays = 7
   const { getCollection, collections, createCollection } = useUserCollections()
   const { getCollection: getSmartCollection, filterAssets, scopedAssets } = useSmartCollections()
   const isCollectionResource = resourceRef?.type === 'collection'
@@ -585,12 +580,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         .filter((grant): grant is Grant & { principal: { type: 'team'; teamId: string } } => grant.principal.type === 'team')
         .map((grant) => grant.principal.teamId),
     )
-    const existingDomainIds = new Set(
-      grants
-        .filter((grant): grant is Grant & { principal: { type: 'domain'; domainId: string } } => grant.principal.type === 'domain')
-        .map((grant) => grant.principal.domainId),
-    )
-
     // Domains are shown in a separate checklist, not in search results
     return buildShareSearchResults({
       query,
@@ -614,8 +603,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     if (pendingGrants.some(p => p.id === key)) return
 
     // Smart defaults based on recipient type
-    let defaultRole = addAsRole
-    let defaultShareMode = shareMode
+    let defaultRole: AccessProfileId = addAsRole
+    let defaultShareMode: ShareMode = shareMode
 
     if (kind === 'domain') {
       defaultRole = 'viewer'
@@ -922,7 +911,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const showTabs = resourceRef?.type === 'asset' || resourceRef?.type === 'cut'
   const peopleCount = userEntries.length + teamEntries.length
   const domainCount = domainEntries.length
-  const pendingDomainCount = pendingGrants.filter(p => p.kind === 'domain').length
   const pendingPeopleCount = pendingGrants.filter(p => p.kind !== 'domain').length
 
   /* ---- Shared sub-sections ---- */
@@ -981,7 +969,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
             roleGroups={roleGroups}
             name={entry.name}
             subtitle={entry.subtitle}
-            roleLabel={entry.roleLabel}
             members={entry.members}
             domainId={entry.domainId}
             onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
@@ -1040,7 +1027,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           onToggleExpanded={() => toggleGroupExpanded(entry.grant.id)}
           name={entry.name}
           subtitle={entry.subtitle}
-          roleLabel={entry.roleLabel}
           members={entry.members}
           domainId={entry.domainId}
           onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
@@ -1068,7 +1054,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
             onToggleExpanded={() => toggleGroupExpanded(entry.grant.id)}
             name={entryWithOverrides.name}
             subtitle={entryWithOverrides.subtitle}
-            roleLabel={entryWithOverrides.roleLabel}
             members={entryWithOverrides.members}
             domainId={entryWithOverrides.domainId}
             onRemove={!readOnly && canManageAllGrants ? handleRevokeGrant : undefined}
@@ -1108,7 +1093,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                 readOnly={!canRevoke}
                 roleGroups={roleGroups}
                 name={name}
-                roleLabel={profileLabel(grant.templateId, roleGroups)}
                 domainId={domId}
                 onRemove={canRevoke ? (id) => { markDirty(); revokeGrant(id) } : undefined}
                 onUpdateProfile={canRevoke ? (id, pid) => { markDirty(); updateGrantProfile(id, pid) } : undefined}

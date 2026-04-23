@@ -8,7 +8,6 @@ import {
   findNodeInTree,
   DOMAIN_FOLDER_MAP,
   type ReferenceFolderSource,
-  type FileReference,
   type UnifiedFileNode,
   type WorkspaceFileNode,
 } from '@/lib/workspace-data'

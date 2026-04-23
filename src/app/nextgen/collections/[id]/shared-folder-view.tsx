@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Stack, CardGrid, AssetCard, EmptyState, MobileToolbar, PageHeader, Tag, HawkinsSearch, SortDropdown, AppearanceDropdown } from '@/components/ui'
+import { Stack, CardGrid, AssetCard, EmptyState, MobileToolbar, PageHeader, HawkinsSearch, SortDropdown, AppearanceDropdown } from '@/components/ui'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import { ContextualActionBar } from '@/components/ui/contextual-action-bar'
 import { useToast } from '@/components/ui/toast'

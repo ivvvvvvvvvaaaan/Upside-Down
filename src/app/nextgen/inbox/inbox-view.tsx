@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Folder, Layers, FileText, Film } from 'lucide-react'
-import { PageHeader, EmptyState, ToggleButtonGroup, Card, Button, MobileToolbar } from '@/components/ui'
+import { PageHeader, EmptyState, ToggleButtonGroup, MobileToolbar } from '@/components/ui'
 import { SharedDetailContent } from '@/components/ui/shared-side-panel'
 import { useAccess, usePersona } from '@/hooks'
 import { useIsMobile } from '@/hooks/useMediaQuery'
@@ -16,7 +16,7 @@ import { cn, formatDate } from '@/lib/utils'
 
 export function InboxView() {
   const { sharesReceivedByMe, readShareIds, markShareRead } = useAccess()
-  const { hydrated, activePersona } = usePersona()
+  const { hydrated } = usePersona()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [filter, setFilter] = useState<'unread' | 'all'>('unread')
 

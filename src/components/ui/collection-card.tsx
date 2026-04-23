@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import { Avatar } from './avatar'
 import { Button } from './button'
 import { Dropdown } from './dropdown'
-import { Folder, FolderSymlink, FolderLock, MoreVertical, Zap } from 'lucide-react'
+import { MoreVertical } from 'lucide-react'
 import Image from 'next/image'
 
 const EMPTY_COLLECTION_PLACEHOLDER = '/assets/clapper-img.png'
@@ -196,10 +196,6 @@ export function CollectionCard({
     : numberOfAssets === 'Two'
     ? Math.max(0, assetCount - 2)
     : 0
-
-  const FolderIcon = type === 'folder' && accessIcon
-    ? (className?.includes('cursor-not-allowed') ? FolderLock : FolderSymlink)
-    : Folder
 
   const renderThumbnails = () => {
     if (type === 'folder' && !mainImage) {

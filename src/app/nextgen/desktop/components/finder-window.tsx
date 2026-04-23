@@ -5,7 +5,7 @@ import { DesktopWindow } from './desktop-window'
 import { cn, formatDate, formatFileSize } from '@/lib/utils'
 import type { WindowState, SyncStatus } from '../view'
 import type { UnifiedFileNode } from '@/lib/workspace-data'
-import { DOMAIN_FOLDER_MAP, SHARED_MOUNT_FOLDER_ID, isReferenceFolder } from '@/lib/workspace-data'
+import { SHARED_MOUNT_FOLDER_ID, isReferenceFolder } from '@/lib/workspace-data'
 import { collectAccessibleWorkspaceRoots } from '@/lib/workspace-roots'
 import { FolderSymlink } from 'lucide-react'
 import { useAccess, useFileTree, usePersona } from '@/hooks'
@@ -56,10 +56,6 @@ const sidebarItems: SidebarItem[] = [
 
 // Use UnifiedFileNode as the file node type throughout Finder
 type FileNode = UnifiedFileNode
-
-const DOMAIN_ROOT_IDS = new Set(
-  Object.values(DOMAIN_FOLDER_MAP).map((domainFolder) => domainFolder.id),
-)
 
 // LocalStorage key for expanded folders (workspace files now live in useFileTree)
 const EXPANDED_FOLDERS_STORAGE_KEY = 'desktop-expanded-folders'
@@ -331,15 +327,6 @@ function FolderIndicators({
     <div className={cn('flex items-center gap-1', className)}>
       {getSyncIcon()}
     </div>
-  )
-}
-
-function EjectIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-      <path d="M8 3 3.5 9h9L8 3Z" />
-      <path d="M3.5 11h9v1.5h-9V11Z" />
-    </svg>
   )
 }
 

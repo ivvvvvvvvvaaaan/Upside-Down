@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, Shield, Map, Monitor } from 'lucide-react'
+import { ChevronDown, Shield, Monitor } from 'lucide-react'
 import Link from 'next/link'
 import { UserJourneyModal } from './user-journey-modal'
 import { usePersona } from '@/hooks'

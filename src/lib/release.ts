@@ -6,11 +6,8 @@
  * Globalization, etc.). Each domain maps to teams/people who receive
  * grants.
  *
- * Release domains are NOT the same as access groups:
- * - Release domains = system config, per-project, per-asset-type
- * - Access groups = named teams used for recurring manual sharing
- * - A domain REFERENCES teams that get grants, but the domain itself
- *   is the configuration layer above the grant
+ * Release domains are first-class grant principals. The domain owns the
+ * release history; the access engine resolves its configured audience.
  */
 
 import type { Grant } from '@/lib/grants'
@@ -21,13 +18,13 @@ import type { ReleaseDomain } from '@/lib/scenario'
 const DOMAINS = buildReleaseDomains()
 
 /** Release domains applicable to a specific asset type (e.g. 'cut') */
-function getReleasDomainsForType(assetType: string): ReleaseDomain[] {
+function getReleaseDomainsForType(assetType: string): ReleaseDomain[] {
   return DOMAINS.filter(d => d.assetTypes.includes(assetType))
 }
 
 /** Grouped by tier for UI rendering */
 export function getReleaseDomainsByGroup(assetType?: string): { group: string; domains: ReleaseDomain[] }[] {
-  const filtered = assetType ? getReleasDomainsForType(assetType) : DOMAINS
+  const filtered = assetType ? getReleaseDomainsForType(assetType) : DOMAINS
   const groups = new Map<string, ReleaseDomain[]>()
   for (const d of filtered) {
     const existing = groups.get(d.group) ?? []
@@ -41,34 +38,24 @@ export function getReleaseDomainsByGroup(assetType?: string): { group: string; d
 }
 
 /**
- * Derive which release domains have been released to, based on active grants.
- * A domain is "released" if ALL of its grantee teams have active grants on the resource.
- * Domains with no grantees are considered released if there's any grant with a matching
- * domain note/tag (for prototype, we skip these — they're wide/other domains without
- * prototype personas).
+ * Derive which release domains have been released to, based on active domain grants.
  */
 export function deriveReleasedDomains(
   resourceId: string,
   grants: Grant[],
 ): ReleaseDomain[] {
-  const activeGrants = grants.filter(
-    g => g.resource.id === resourceId && isGrantActive(g) && g.principal.type === 'team',
-  )
-  const grantedTeamIds = new Set(
-    activeGrants
-      .filter(g => g.principal.type === 'team')
-      .map(g => (g.principal as { type: 'team'; teamId: string }).teamId),
+  const grantedDomainIds = new Set(
+    grants
+      .filter(g => g.resource.id === resourceId && isGrantActive(g) && g.principal.type === 'domain')
+      .map(g => (g.principal as { type: 'domain'; domainId: string }).domainId),
   )
 
-  return DOMAINS.filter(domain => {
-    if (domain.granteeTeamIds.length === 0) return false
-    return domain.granteeTeamIds.every(tid => grantedTeamIds.has(tid))
-  })
+  return DOMAINS.filter(domain => grantedDomainIds.has(domain.id))
 }
 
 /** Count of domains that have configured grantees (releasable) */
 function getReleasableDomainCount(): number {
-  return DOMAINS.filter(d => d.granteeTeamIds.length > 0).length
+  return DOMAINS.filter(d => d.granteeTeamIds.length > 0 || (d.granteeUserIds?.length ?? 0) > 0).length
 }
 
 /** Get release summary for display as tags on asset cards */

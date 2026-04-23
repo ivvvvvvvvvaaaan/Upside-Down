@@ -512,7 +512,6 @@ function FolderNavTree({ nodes, basePath, sharedFolderIds, onAssetDropToFolder }
 }
 
 function WorkspaceRootNavItem({ root }: { root: WorkspaceFileNode }) {
-  const pathname = usePathname()
   const { confirmMove, createFileReference } = useFileTree()
   const { getResourceGrants } = useAccess()
   const { showToast } = useToast()

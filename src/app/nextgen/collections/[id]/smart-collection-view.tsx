@@ -1,11 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { PanelRight, Info, Link2, Download, Plus, Trash2, FolderPlus, ArrowRight, Pencil } from 'lucide-react'
+import { PanelRight, Info, Link2, Download, Plus, Trash2, Pencil } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
 import { PERSONAS } from '@/lib/personas'
 import { SelectAllRow } from '@/components/ui/select-all-row'
-import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import {
   Stack,
@@ -42,7 +41,7 @@ import { CollectionMembershipModal } from '@/components/ui/collection-membership
 import { ContextMenu } from '@/components/ui/context-menu'
 import type { ResourceRef } from '@/lib/grants'
 import { useToast } from '@/components/ui/toast'
-import { Dropdown, DropdownMenuItem, DropdownMenuDivider } from '@/components/ui'
+import { DropdownMenuItem, DropdownMenuDivider } from '@/components/ui'
 import { getCollectionCapabilities } from '@/lib/collection-types'
 
 interface SmartCollectionDetailViewProps {

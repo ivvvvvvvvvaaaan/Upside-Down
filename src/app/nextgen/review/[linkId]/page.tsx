@@ -4,6 +4,7 @@ import { useAccess, usePersona } from '@/hooks'
 import { EmptyState } from '@/components/ui'
 import { AppLayout } from '@/components/layouts'
 import { PERSONAS } from '@/lib/personas'
+import { RELEASE_DOMAINS } from '@/lib/grants'
 
 interface Props {
   params: { linkId: string }
@@ -42,13 +43,32 @@ export default function ReviewPage({ params }: Props) {
     )
   }
 
-  // Verify the current persona is the grant recipient
-  const isRecipient = activePersona && (
-    (grant.principal.type === 'user' && grant.principal.userId === activePersona.id) ||
-    (grant.principal.type === 'team' && activePersona.teamIds?.some(t => t === (grant.principal as { type: 'team'; teamId: string }).teamId))
-  )
+  if (!activePersona) {
+    return (
+      <AppLayout>
+        <div className="flex-1 flex items-center justify-center">
+          <EmptyState
+            title="Choose a profile"
+            message="Review links require a matching recipient."
+          />
+        </div>
+      </AppLayout>
+    )
+  }
 
-  if (!isRecipient && activePersona) {
+  // Verify the current persona is the grant recipient
+  const principal = grant.principal
+  const isRecipient =
+    (principal.type === 'user' && principal.userId === activePersona.id) ||
+    (principal.type === 'team' && activePersona.teamIds.includes(principal.teamId)) ||
+    (principal.type === 'domain' && (() => {
+      const domain = RELEASE_DOMAINS.find(d => d.id === principal.domainId)
+      if (!domain) return false
+      if (domain.granteeUserIds?.includes(activePersona.id)) return true
+      return domain.granteeTeamIds.some(teamId => activePersona.teamIds.includes(teamId))
+    })())
+
+  if (!isRecipient) {
     return (
       <AppLayout>
         <div className="flex-1 flex items-center justify-center">

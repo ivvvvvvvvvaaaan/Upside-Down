@@ -1,8 +1,8 @@
 import type { DomainId } from '@/components/department/types'
 import { PERSONAS } from '@/lib/personas'
+import type { Team } from '@/lib/teams'
 import { isUserInTeam, getTeamById } from '@/lib/teams'
-import { DOMAIN_FOLDER_MAP, getFinderWorkspaceTree } from '@/lib/workspace-data'
-import type { UnifiedFileNode } from '@/lib/workspace-data'
+import { DOMAIN_FOLDER_MAP } from '@/lib/workspace-data'
 import {
   buildGrants,
   buildLabels,
@@ -116,36 +116,9 @@ export const TEMPLATE_RANK: Record<AccessProfileId, number> = {
   'link-viewer': 1,
 }
 
-const ALL_PERMISSIONS: Permission[] = [
-  'open',
-  'download',
-  'write',
-  'delete',
-  'comment',
-  'share',
-  'edit-acl',
-  'upload',
-]
-
 const POLICY_RESOURCE_IDS = new Set(
   Object.values(DOMAIN_FOLDER_MAP).map((folder) => folder.id),
 )
-
-function buildParentLookup(nodes: UnifiedFileNode[], parentId?: string): Map<string, string> {
-  const lookup = new Map<string, string>()
-
-  const walk = (children: UnifiedFileNode[], currentParentId?: string) => {
-    for (const node of children) {
-      if (currentParentId) lookup.set(node.id, currentParentId)
-      if (node.children) walk(node.children, node.id)
-    }
-  }
-
-  walk(nodes, parentId)
-  return lookup
-}
-
-const WORKSPACE_PARENT_BY_ID = buildParentLookup(getFinderWorkspaceTree())
 
 export function getRoleGroup(roleGroups: RoleGroup[], templateId?: AccessProfileId | null): RoleGroup | undefined {
   if (!templateId) return undefined
@@ -166,21 +139,6 @@ export function roleGroupOptions(roleGroups: RoleGroup[]) {
     .map((rg) => ({ value: rg.id, label: rg.name }))
 }
 
-export function roleGroupHasPermission(
-  roleGroups: RoleGroup[],
-  templateId: AccessProfileId,
-  perm: Permission,
-): boolean {
-  return getPermissionsForProfile(templateId, roleGroups).includes(perm)
-}
-
-export function profileCanEdit(
-  templateId?: AccessProfileId | null,
-  roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
-): boolean {
-  return getPermissionsForProfile(templateId, roleGroups).includes('write')
-}
-
 export function profileLabel(
   templateId?: AccessProfileId | null,
   roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
@@ -190,13 +148,20 @@ export function profileLabel(
   return group?.name ?? templateId
 }
 
-function getGrantPermissions(
-  grant: Pick<Grant, 'permissions' | 'templateId'>,
+export function getGrantPermissions(
+  grant: Pick<Grant, 'permissions' | 'templateId' | 'allowDownload' | 'allowComment'>,
   roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
 ): Permission[] {
-  if (grant.permissions.length > 0) return [...grant.permissions]
-  if (grant.templateId) return getPermissionsForProfile(grant.templateId, roleGroups)
-  return [...grant.permissions]
+  const base = grant.permissions.length > 0
+    ? grant.permissions
+    : grant.templateId
+      ? getPermissionsForProfile(grant.templateId, roleGroups)
+      : grant.permissions
+
+  const permissions = [...base]
+  if (grant.allowDownload && !permissions.includes('download')) permissions.push('download')
+  if (grant.allowComment && !permissions.includes('comment')) permissions.push('comment')
+  return permissions
 }
 
 export function canAssignProfile(
@@ -210,16 +175,6 @@ export function canAssignProfile(
   return targetPermissions.every((permission) => granterPermissions.includes(permission))
 }
 
-function uniquePermissions(permissions: Permission[]): Permission[] {
-  return Array.from(new Set(permissions))
-}
-
-function mergeGrantPermissions(grants: Grant[], roleGroups: RoleGroup[]): Permission[] {
-  return uniquePermissions(
-    grants.flatMap((grant) => getGrantPermissions(grant, roleGroups)),
-  )
-}
-
 export function mostPermissiveProfile(
   a: AccessProfileId | null,
   b: AccessProfileId | null | undefined,
@@ -229,14 +184,6 @@ export function mostPermissiveProfile(
   return TEMPLATE_RANK[a] >= TEMPLATE_RANK[b] ? a : b
 }
 
-function bestTemplateId(grants: Grant[]): AccessProfileId | null {
-  let best: AccessProfileId | null = null
-  for (const grant of grants) {
-    best = mostPermissiveProfile(best, grant.templateId)
-  }
-  return best
-}
-
 function isUserInReleaseDomain(userId: string, domainId: string): boolean {
   const domain = RELEASE_DOMAINS.find(d => d.id === domainId)
   if (!domain) return false
@@ -244,65 +191,32 @@ function isUserInReleaseDomain(userId: string, domainId: string): boolean {
   return domain.granteeTeamIds.some(teamId => isUserInTeam(userId, teamId))
 }
 
-function resolveMatchingGrants(
-  grants: Grant[],
+export type PrincipalMatchKind = 'direct' | 'team' | 'release'
+
+export function matchPrincipalToUser(
+  principal: PrincipalRef,
   userId: string,
-  resourceId: string,
-): { direct: Grant[]; team: Grant[] } {
-  const activeGrants = grants.filter(
-    (grant) => grant.resource.id === resourceId && isGrantActive(grant),
-  )
-
-  return {
-    direct: activeGrants.filter(
-      (grant) => grant.principal.type === 'user' && grant.principal.userId === userId,
-    ),
-    team: activeGrants.filter(
-      (grant) =>
-        (grant.principal.type === 'team' && isUserInTeam(userId, grant.principal.teamId)) ||
-        (grant.principal.type === 'domain' && isUserInReleaseDomain(userId, grant.principal.domainId)),
-    ),
+  teams: Team[] = [],
+  releaseDomains: ReleaseDomain[] = RELEASE_DOMAINS,
+): PrincipalMatchKind | null {
+  if (principal.type === 'user') {
+    return principal.userId === userId ? 'direct' : null
   }
-}
 
-function buildResolvedAccess(
-  direct: Grant[],
-  team: Grant[],
-  roleGroups: RoleGroup[],
-  source: 'direct' | 'team' | 'project-direct' | 'project-team',
-): ResolvedAccess | null {
-  const matching = [...direct, ...team]
-  if (matching.length === 0) return null
+  const resolveTeam = (teamId: string) => teams.find((team) => team.id === teamId) ?? getTeamById(teamId)
 
-  const permissions = mergeGrantPermissions(matching, roleGroups)
-  if (permissions.length === 0) return null
-
-  const effectiveProfile = bestTemplateId(matching)
-
-  return {
-    hasAccess: permissions.includes('open'),
-    effectiveProfile,
-    canEdit: permissions.includes('write'),
-    permissions,
-    source: direct.length > 0 ? (source === 'team' ? 'direct' : 'project-direct') : source,
+  if (principal.type === 'team') {
+    const team = resolveTeam(principal.teamId)
+    return team?.memberUserIds.includes(userId) ? 'team' : null
   }
-}
 
-function resolveDirectUserOverride(
-  userId: string,
-  resourceId: string,
-  grants: Grant[],
-  roleGroups: RoleGroup[],
-): ResolvedAccess | null {
-  const directUserGrants = grants.filter(
-    (grant) =>
-      grant.resource.id === resourceId &&
-      isGrantActive(grant) &&
-      grant.principal.type === 'user' &&
-      grant.principal.userId === userId,
-  )
+  const releaseDomain = releaseDomains.find((domain) => domain.id === principal.domainId)
+  if (!releaseDomain) return null
+  if (releaseDomain.granteeUserIds?.includes(userId)) return 'release'
 
-  return buildResolvedAccess(directUserGrants, [], roleGroups, 'direct')
+  return releaseDomain.granteeTeamIds.some((teamId) => resolveTeam(teamId)?.memberUserIds.includes(userId))
+    ? 'release'
+    : null
 }
 
 export function getResourceLabel(resourceId: string): string {
@@ -311,141 +225,6 @@ export function getResourceLabel(resourceId: string): string {
 
 function isPolicyResource(resource: Pick<ResourceRef, 'id' | 'type'>): boolean {
   return resource.type === 'project' || POLICY_RESOURCE_IDS.has(resource.id)
-}
-
-export type ResolvedAccess = {
-  hasAccess: boolean
-  effectiveProfile: AccessProfileId | null
-  canEdit: boolean
-  permissions: Permission[]
-  source: 'direct' | 'team' | 'project-direct' | 'project-team' | 'admin' | null
-}
-
-const NO_ACCESS: ResolvedAccess = {
-  hasAccess: false,
-  effectiveProfile: null,
-  canEdit: false,
-  permissions: [],
-  source: null,
-}
-
-export function resolveAccess(
-  userId: string,
-  resourceId: string,
-  grants: Grant[],
-  roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
-  resourceDomainId?: DomainId,
-  blocks?: Block[],
-): ResolvedAccess {
-  // Blocks take absolute priority — check before anything else
-  if (blocks && blocks.some(b => b.userId === userId && b.resourceId === resourceId)) {
-    return NO_ACCESS
-  }
-
-  const user = PERSONAS.find((persona) => persona.id === userId)
-  if (!user) return NO_ACCESS
-
-  if (user.isAdmin) {
-    return {
-      hasAccess: true,
-      effectiveProfile: 'manager',
-      canEdit: true,
-      permissions: [...ALL_PERMISSIONS],
-      source: 'admin',
-    }
-  }
-
-  if (resourceId === PROJECT_RESOURCE.id) {
-    const projectMatches = resolveMatchingGrants(grants, userId, PROJECT_RESOURCE.id)
-    return buildResolvedAccess(projectMatches.direct, projectMatches.team, roleGroups, 'project-team') ?? NO_ACCESS
-  }
-
-  const resourceMatches = resolveMatchingGrants(grants, userId, resourceId)
-  return buildResolvedAccess(resourceMatches.direct, resourceMatches.team, roleGroups, 'team') ?? NO_ACCESS
-}
-
-function resolveAccessForResource(
-  userId: string,
-  resource: ResourceRef,
-  grants: Grant[],
-  roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
-): ResolvedAccess {
-  const directAccess = resolveAccess(userId, resource.id, grants, roleGroups, resource.domainId)
-  if (directAccess.source === 'admin' || resource.type === 'project') return directAccess
-
-  const directUserOverride = resolveDirectUserOverride(userId, resource.id, grants, roleGroups)
-  if (directUserOverride) return directUserOverride
-
-  let inheritedProfile = directAccess.effectiveProfile
-  const inheritedPermissions = [...directAccess.permissions]
-  let inheritedSource: ResolvedAccess['source'] = directAccess.source
-  let parentId = WORKSPACE_PARENT_BY_ID.get(resource.id)
-
-  while (parentId) {
-    const parentUserOverride = resolveDirectUserOverride(userId, parentId, grants, roleGroups)
-    if (parentUserOverride) {
-      inheritedProfile = mostPermissiveProfile(inheritedProfile, parentUserOverride.effectiveProfile)
-      inheritedPermissions.push(...parentUserOverride.permissions)
-      inheritedSource ??= parentUserOverride.source
-      break
-    }
-
-    const parentAccess = resolveAccess(userId, parentId, grants, roleGroups, resource.domainId)
-    inheritedProfile = mostPermissiveProfile(inheritedProfile, parentAccess.effectiveProfile)
-    inheritedPermissions.push(...parentAccess.permissions)
-    inheritedSource ??= parentAccess.source
-    parentId = WORKSPACE_PARENT_BY_ID.get(parentId)
-  }
-
-  const permissions = uniquePermissions(inheritedPermissions)
-  if (permissions.length === 0) return NO_ACCESS
-
-  return {
-    hasAccess: permissions.includes('open'),
-    effectiveProfile: inheritedProfile,
-    canEdit: permissions.includes('write'),
-    permissions,
-    source: inheritedSource,
-  }
-}
-
-function userHasPermissionOnResource(
-  userId: string,
-  resource: ResourceRef,
-  grants: Grant[],
-  permission: Permission,
-  roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
-): boolean {
-  return resolveAccessForResource(userId, resource, grants, roleGroups).permissions.includes(permission)
-}
-
-export function canCreateGrantForResource(
-  userId: string,
-  resource: ResourceRef,
-  grants: Grant[],
-  roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
-): boolean {
-  const permissions = resolveAccessForResource(userId, resource, grants, roleGroups).permissions
-  return permissions.includes('share') || permissions.includes('edit-acl')
-}
-
-export function canEditAclForResource(
-  userId: string,
-  resource: ResourceRef,
-  grants: Grant[],
-  roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
-): boolean {
-  return userHasPermissionOnResource(userId, resource, grants, 'edit-acl', roleGroups)
-}
-
-export function userHasAccess(
-  userId: string,
-  resourceId: string,
-  grants: Grant[],
-  resourceDomainId?: DomainId,
-  roleGroups: RoleGroup[] = DEFAULT_ROLE_GROUPS,
-): boolean {
-  return resolveAccess(userId, resourceId, grants, roleGroups, resourceDomainId).hasAccess
 }
 
 export type GrantView = {
@@ -504,9 +283,10 @@ function getGrantsByGrantor(userId: string, grants: Grant[]): Grant[] {
 
 function getGrantsForUser(userId: string, grants: Grant[]): Grant[] {
   return grants.filter((grant) => {
-    if (grant.revokedAt) return false
+    if (!isGrantActive(grant)) return false
     if (grant.principal.type === 'user' && grant.principal.userId === userId) return true
     if (grant.principal.type === 'team' && isUserInTeam(userId, grant.principal.teamId)) return true
+    if (grant.principal.type === 'domain' && isUserInReleaseDomain(userId, grant.principal.domainId)) return true
     return false
   })
 }

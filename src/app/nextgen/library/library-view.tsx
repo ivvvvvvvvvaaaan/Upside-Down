@@ -1,16 +1,15 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import { PanelRight, Info, X, Download, Link2, FolderPlus, ArrowRight } from 'lucide-react'
+import { PanelRight, Info, X, Download, Link2 } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
-import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
-import { PageHeader, EmptyState, ContextualActionBar, InlineActionBar, Button, MobileToolbar, CardGrid, Dropdown, DropdownMenuItem, DropdownMenuDivider } from '@/components/ui'
+import { PageHeader, EmptyState, ContextualActionBar, Button, MobileToolbar, CardGrid, DropdownMenuItem, DropdownMenuDivider } from '@/components/ui'
 import { SelectAllRow } from '@/components/ui/select-all-row'
 import { AssetCard } from '@/components/ui/asset-card'
 import { AccessModal } from '@/components/ui/access-modal'
 import { ContextMenu } from '@/components/ui/context-menu'
-import { useCuts, usePersona, useAssetSelection, useSmartCollections, useViewPreferences, useMobilePanel, useAccess, type VisibleCutEntry, type MetadataFieldVisibility } from '@/hooks'
+import { useCuts, usePersona, useAssetSelection, useSmartCollections, useViewPreferences, useMobilePanel, useAccess, type VisibleCutEntry } from '@/hooks'
 import { compareCutsByStageAndVersion } from '@/lib/cuts'
 import { assetToSelectionEntity, assetToResourceRef } from '@/lib/selection-actions'
 import type { ResourceRef } from '@/lib/grants'
@@ -22,8 +21,8 @@ import { AssetDetailPanelContent } from '@/components/ui/asset-detail-panel'
 
 
 export function LibraryView() {
-  const { hydrated, isAdmin, activePersona } = usePersona()
-  const { visibleCuts, accessibleCuts } = useCuts()
+  const { hydrated, activePersona } = usePersona()
+  const { visibleCuts } = useCuts()
   const { isSensitiveAsset, canShare: canShareResource, createGuestLink } = useAccess()
   const { showToast } = useToast()
   const { scopedAssets } = useSmartCollections()
@@ -44,7 +43,7 @@ export function LibraryView() {
   const isEditorialMember = activePersona?.domainId === 'editorial'
 
   // Deduplicate: keep only the latest version per episode+stage, track older versions
-  const { latestCuts, olderVersionsMap } = useMemo(() => {
+  const { latestCuts } = useMemo(() => {
     // Group by versionGroupId (episode+stage)
     const groups = new Map<string, VisibleCutEntry[]>()
     for (const cut of visibleCuts) {
@@ -65,7 +64,7 @@ export function LibraryView() {
       }
     }
 
-    return { latestCuts: latest, olderVersionsMap: older }
+    return { latestCuts: latest }
   }, [visibleCuts])
 
   const episodeCount = useMemo(() => {
@@ -84,20 +83,11 @@ export function LibraryView() {
     return getContextAssetGroups(primaryAsset, scopedAssets)
   }, [primaryAsset, scopedAssets])
 
-  const primaryOlderVersions = useMemo(() => {
-    if (!primaryAsset) return undefined
-    return olderVersionsMap.get(primaryAsset.id)
-  }, [primaryAsset, olderVersionsMap])
-
   const selectedEntities = useMemo(() => {
     return allCutAssets
       .filter(a => selectedIds.has(a.id))
       .map(a => assetToSelectionEntity(a))
   }, [allCutAssets, selectedIds])
-
-  const handleAssetClick = (asset: Asset, event: React.MouseEvent, allAssets: Asset[]) => {
-    handleSelectionClick(asset, event, allAssets)
-  }
 
   const buildCutMenuItems = useCallback((asset: Asset): import('@/components/ui/inline-action-bar').ActionMenuItem[] => {
     const ref = assetToResourceRef(asset)

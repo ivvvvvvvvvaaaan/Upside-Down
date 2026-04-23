@@ -13,7 +13,7 @@ import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import type { DomainId } from '@/components/department/types'
 import type { ResourceRef } from '@/lib/grants'
 import { formatDate, formatFileSize } from '@/lib/utils'
-import { useAccess, useFileTree, usePersona } from '@/hooks'
+import { useAccess, useFileTree } from '@/hooks'
 import { PERSONAS } from '@/lib/personas'
 import { TEAMS } from '@/lib/teams'
 import { DOMAIN_FOLDER_MAP, isReferenceFolder } from '@/lib/workspace-data'
@@ -65,7 +65,6 @@ export function WorkspaceSidePanel({
   onClose,
   domainId,
   folderVariant,
-  onDelete,
   onRename,
 }: WorkspaceSidePanelProps) {
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -77,8 +76,7 @@ export function WorkspaceSidePanel({
     : folderVariant === 'restricted' ? FolderLock
     : Folder
   const fileCount = isFolder && node ? countChildFiles(node) : 0
-  const { getInheritedGrants, getResourceGrants, canShare } = useAccess()
-  const { isAdmin } = usePersona()
+  const { getInheritedGrants, getResourceGrants } = useAccess()
   const { tree: fileTree } = useFileTree()
   const nodePath = useMemo(() => {
     return node ? findNodePath(fileTree as WorkspaceFileNode[], node.id) : null

@@ -37,6 +37,8 @@ export interface Phase {
   steps: PhaseStep[]
   /** This phase only unlocks after another phase is completed */
   requiresPhase?: string
+  /** Message shown when the phase is locked (prerequisite not done) */
+  waitingMessage?: string
   /** Suggest switching to this persona after completing this phase */
   nextPersonaId?: string
 }
@@ -44,7 +46,7 @@ export interface Phase {
 export const PHASES: Phase[] = [
   {
     id: 'phase-1',
-    title: 'New dailies land',
+    title: 'Tom: Ingest & share selects',
     description: 'You are Tom Nakamura, Camera DIT. You just finished ingesting today\'s footage. Verify the files, mark circle takes, curate selects, and share with the director.',
     personaId: 'camera-dit',
     nextPersonaId: 'creative-david',
@@ -93,7 +95,7 @@ export const PHASES: Phase[] = [
   },
   {
     id: 'phase-2',
-    title: 'VFX packages comps',
+    title: 'Sarah: Share VFX comps',
     description: 'You are Sarah Chen, VFX Coordinator. The latest comps are approved. Package them into a collection and send to editorial for their cut.',
     personaId: 'vfx-coordinator',
     nextPersonaId: 'editorial-coordinator',
@@ -121,10 +123,11 @@ export const PHASES: Phase[] = [
   },
   {
     id: 'phase-2b',
-    title: 'Editorial receives and shares',
+    title: 'Lisa: Review & share cuts',
     description: 'You are Lisa Kim, Editorial Coordinator. Sarah shared VFX comps with you. Check your inbox, then share your review cuts with the team.',
     personaId: 'editorial-coordinator',
     requiresPhase: 'phase-2',
+    waitingMessage: 'Waiting for Sarah Chen (VFX Coordinator) to share VFX Pulls with you. Switch to Sarah to complete that step first.',
     steps: [
       {
         id: 'p2b-check-inbox',
@@ -150,7 +153,7 @@ export const PHASES: Phase[] = [
   },
   {
     id: 'phase-3',
-    title: 'Vendor setup',
+    title: 'Sarah: Set up vendor folder',
     description: 'You are Sarah Chen, VFX Coordinator. Framestore needs a place to upload their comps. Give their team access to the delivery folder.',
     personaId: 'vfx-coordinator',
     nextPersonaId: 'vendor-framestore',
@@ -169,7 +172,7 @@ export const PHASES: Phase[] = [
   },
   {
     id: 'phase-4',
-    title: 'Camera shares reference',
+    title: 'Tom: Share reference footage',
     description: 'You are Tom Nakamura, Camera DIT. Priya Sharma (Art Designer) needs B-roll and dailies for concept work. Send her a curated set.',
     personaId: 'camera-dit',
     nextPersonaId: 'art-artist',
@@ -198,7 +201,7 @@ export const PHASES: Phase[] = [
   },
   {
     id: 'phase-5',
-    title: 'Cut released',
+    title: 'Lisa: Release locked cut',
     description: 'You are Lisa Kim, Editorial Coordinator. The locked cut is ready for broader review. Release it to studio departments.',
     personaId: 'editorial-coordinator',
     steps: [
@@ -223,10 +226,11 @@ export const PHASES: Phase[] = [
 
   {
     id: 'phase-david',
-    title: 'Director reviews selects',
+    title: 'David: Review selects',
     description: 'You are David Park, Director. Tom (Camera DIT) shared his camera selects with you. Review the picks.',
     personaId: 'creative-david',
     requiresPhase: 'phase-1',
+    waitingMessage: 'Waiting for Tom Nakamura (Camera DIT) to share selects with you. Switch to Tom to complete that step first.',
     steps: [
       {
         id: 'pd-check-inbox',
@@ -250,10 +254,11 @@ export const PHASES: Phase[] = [
   },
   {
     id: 'phase-maria',
-    title: 'Editor receives cuts',
+    title: 'Maria: Review cuts',
     description: 'You are Maria Santos, Editor. Lisa (Editorial Coordinator) shared dailies review cuts with you. Open and browse them.',
     personaId: 'editorial-artist',
     requiresPhase: 'phase-2b',
+    waitingMessage: 'Waiting for Lisa Kim (Editorial Coordinator) to share review cuts with you. Switch to Lisa to complete that step first.',
     steps: [
       {
         id: 'pm-check-inbox',
@@ -271,7 +276,7 @@ export const PHASES: Phase[] = [
   },
   {
     id: 'phase-mike',
-    title: 'VFX supervisor shares shots',
+    title: 'Mike: Share VFX shots',
     description: 'You are Mike Torres, VFX Supervisor. David needs to review VFX shots. Give him access to the Shots folder.',
     personaId: 'vfx-supervisor',
     nextPersonaId: 'creative-david',
@@ -296,10 +301,11 @@ export const PHASES: Phase[] = [
   },
   {
     id: 'phase-priya',
-    title: 'Art reviews reference',
+    title: 'Priya: Review reference',
     description: 'You are Priya Sharma, Art Designer. Tom (Camera DIT) shared B-roll and dailies with you for concept reference.',
     personaId: 'art-artist',
     requiresPhase: 'phase-4',
+    waitingMessage: 'Waiting for Tom Nakamura (Camera DIT) to share reference footage with you. Switch to Tom to complete that step first.',
     steps: [
       {
         id: 'pp-check-inbox',
@@ -317,10 +323,11 @@ export const PHASES: Phase[] = [
   },
   {
     id: 'phase-james',
-    title: 'Vendor delivers comps',
+    title: 'James: Deliver comps',
     description: 'You are James Liu, Lead Compositor at Framestore. Sarah (VFX Coordinator) shared a delivery folder with your team. Browse it, upload finished comps, and notify Sarah.',
     personaId: 'vendor-framestore',
     requiresPhase: 'phase-3',
+    waitingMessage: 'Waiting for Sarah Chen (VFX Coordinator) to set up your delivery folder. Switch to Sarah to complete that step first.',
     steps: [
       {
         id: 'pj-check-inbox',
@@ -354,7 +361,7 @@ export const PHASES: Phase[] = [
   },
   {
     id: 'phase-rachel',
-    title: 'Audio shares temp sound',
+    title: 'Rachel: Share temp sound',
     description: 'You are Rachel Obi, Sound Supervisor. Package a temp sound kit for the editorial team to use in their rough cut.',
     personaId: 'audio-supervisor',
     nextPersonaId: 'editorial-coordinator',
@@ -388,12 +395,19 @@ export function getStepPersonaId(phase: Phase, step: PhaseStep | undefined): str
   return step.personaId ?? phase.personaId
 }
 
-export function getPhaseForPersona(personaId: string, completedPhaseIds: Set<string>, completedStepIds: Set<string>): Phase | null {
+export function getPhaseForPersona(personaId: string, completedPhaseIds: Set<string>, completedStepIds: Set<string>): { phase: Phase; locked: boolean } | null {
+  // First try unlocked phases
   for (const phase of PHASES) {
     if (completedPhaseIds.has(phase.id)) continue
     if (phase.requiresPhase && !completedPhaseIds.has(phase.requiresPhase)) continue
     const nextStep = phase.steps.find(step => !completedStepIds.has(step.id))
-    if (getStepPersonaId(phase, nextStep) === personaId) return phase
+    if (getStepPersonaId(phase, nextStep) === personaId) return { phase, locked: false }
+  }
+  // Then try locked phases (show waiting message)
+  for (const phase of PHASES) {
+    if (completedPhaseIds.has(phase.id)) continue
+    if (!phase.requiresPhase || completedPhaseIds.has(phase.requiresPhase)) continue
+    if (phase.personaId === personaId) return { phase, locked: true }
   }
   return null
 }

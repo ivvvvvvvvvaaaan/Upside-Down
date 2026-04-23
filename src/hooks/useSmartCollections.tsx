@@ -4,7 +4,6 @@ import { createContext, useContext, useState, useCallback, useMemo, useRef, useE
 import type { SmartCollection, SmartCollectionGroupBy, AssetFilter, Asset, SmartCollectionIcon } from '@/lib/data'
 import { mergePrototypeAssets } from '@/lib/prototype-assets'
 import { matchesFilter, slugify, generateChildCollections } from '@/lib/smart-collection-filters'
-import { useAccessCascades } from './useAccessCascades'
 import { useAccess } from './useAccess'
 import { usePersona } from './usePersona'
 import { useFileTree } from './useFileTree'
@@ -56,8 +55,7 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
   const [apiAssets, setApiAssets] = useState<Asset[]>([])
   const [assetLoadState, setAssetLoadState] = useState<'idle' | 'loading' | 'loaded'>('idle')
   const assetLoadPromiseRef = useRef<Promise<void> | null>(null)
-  const { filterByAccess } = useAccessCascades()
-  const { canEditAcl } = useAccess()
+  const { filterByAccess, canEditAcl } = useAccess()
   const { activePersona } = usePersona()
   const { allAssets: liveAssets } = useFileTree()
   const personaEmail = activePersona?.email

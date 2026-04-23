@@ -21,6 +21,8 @@ export function ReleaseModal({ open, onClose, cut }: ReleaseModalProps) {
   // Domains applicable to cuts, grouped by tier
   const domainGroups = useMemo(() => getReleaseDomainsByGroup('cut'), [])
   const allDomains = useMemo(() => domainGroups.flatMap(g => g.domains), [domainGroups])
+  const hasConfiguredRecipients = (domain: (typeof allDomains)[number]) =>
+    domain.granteeTeamIds.length > 0 || (domain.granteeUserIds?.length ?? 0) > 0
 
   const currentlyReleased = useMemo(() => {
     if (!cut) return new Set<string>()
@@ -51,25 +53,21 @@ export function ReleaseModal({ open, onClose, cut }: ReleaseModalProps) {
     if (!cut) return
     const resource = { id: cut.id, type: 'cut' as const, domainId: 'editorial' as const }
 
-    // For each newly selected domain, create grants for its grantee teams
+    // For each newly selected domain, create one release-domain grant.
     for (const domain of allDomains) {
       if (selected.has(domain.id) && !currentlyReleased.has(domain.id)) {
-        for (const teamId of domain.granteeTeamIds) {
-          createGrant(resource, { type: 'team', teamId }, domain.defaultProfile)
-        }
+        createGrant(resource, { type: 'domain', domainId: domain.id }, domain.defaultProfile)
       }
     }
 
-    // For each deselected domain, revoke grants for its grantee teams
+    // For each deselected domain, revoke its release-domain grant.
     const cutGrants = getResourceGrants(cut.id)
     for (const domain of allDomains) {
       if (!selected.has(domain.id) && currentlyReleased.has(domain.id)) {
-        for (const teamId of domain.granteeTeamIds) {
-          const grant = cutGrants.find(
-            g => g.principal.type === 'team' && g.principal.teamId === teamId,
-          )
-          if (grant) revokeGrant(grant.id)
-        }
+        const grant = cutGrants.find(
+          g => g.principal.type === 'domain' && g.principal.domainId === domain.id,
+        )
+        if (grant) revokeGrant(grant.id)
       }
     }
 
@@ -94,7 +92,7 @@ export function ReleaseModal({ open, onClose, cut }: ReleaseModalProps) {
               {domains.map(domain => {
                 const isSelected = selected.has(domain.id)
                 const wasReleased = currentlyReleased.has(domain.id)
-                const hasGrantees = domain.granteeTeamIds.length > 0
+                const hasGrantees = hasConfiguredRecipients(domain)
                 const isConfirmingRevoke = revokeConfirm === domain.id
 
                 if (wasReleased) {
@@ -168,7 +166,10 @@ export function ReleaseModal({ open, onClose, cut }: ReleaseModalProps) {
 
         <div className="flex items-center justify-between px-6 py-4 border-t border-border-dim">
           <span className="text-label-0-regular text-foreground-dim">
-            {Array.from(selected).filter(id => allDomains.find(d => d.id === id)?.granteeTeamIds.length).length} of {allDomains.filter(d => d.granteeTeamIds.length > 0).length} domains
+            {Array.from(selected).filter(id => {
+              const domain = allDomains.find(d => d.id === id)
+              return domain ? hasConfiguredRecipients(domain) : false
+            }).length} of {allDomains.filter(hasConfiguredRecipients).length} domains
           </span>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={onClose}>Cancel</Button>

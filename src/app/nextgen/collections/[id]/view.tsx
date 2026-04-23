@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Download, PanelRight, Info, Plus, Trash2, Link2, FolderPlus, ArrowRight } from 'lucide-react'
+import { Download, PanelRight, Info, Plus, Trash2, Link2 } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
 import { SelectAllRow } from '@/components/ui/select-all-row'
 import { useRouter } from 'next/navigation'
@@ -15,7 +15,6 @@ import {
   CollectionSidePanel,
   AssetDetailPanel,
   MobileToolbar,
-  Dropdown,
   DropdownMenuItem,
   DropdownMenuDivider,
   InlineActionBar,
@@ -33,7 +32,6 @@ import { getContextAssetGroups } from '@/lib/context-relationships'
 import { AccessModal } from '@/components/ui/access-modal'
 import { CollectionMembershipModal } from '@/components/ui/collection-membership-modal'
 import { ContextMenu } from '@/components/ui/context-menu'
-import type { ContextMenuItem } from '@/components/ui/context-menu'
 import type { ResourceRef } from '@/lib/grants'
 import { useToast } from '@/components/ui/toast'
 
@@ -80,7 +78,6 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const collectionResourceRef: ResourceRef = useMemo(() => ({ id: collectionId, type: 'collection' }), [collectionId])
   const showShareButton = hasCollectionAccess && canShare(collectionResourceRef)
-  const canDownloadCollection = hasCollectionAccess && canDownload(collectionResourceRef)
 
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -149,11 +146,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     setLoading(true)
     try {
       const resolved = resolveCollectionAssets(collection)
-      // Collection grant is the access path — assets inside are accessible.
-      // Pass asset IDs as additionalIds so filterByAccess allows them through
-      // while still applying sensitive media filtering.
-      const collectionAssetIds = new Set(resolved.map(a => a.id))
-      setAssets(filterByAccess(resolved, collectionAssetIds))
+      setAssets(filterByAccess(resolved))
     } catch (error) {
       console.error('Failed to resolve collection assets:', error)
       setAssets([])
