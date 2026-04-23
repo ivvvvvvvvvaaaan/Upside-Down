@@ -70,7 +70,7 @@ function CardFooter({
   return (
     <div
       className={cn(
-        'px-6 py-4',
+        'px-6 py-4 flex-shrink-0',
         'flex justify-end gap-2',
         'bg-surface-highlight rounded-b',
         className

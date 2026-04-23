@@ -233,11 +233,46 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
         )
       })}
 
-      {/* Direct grants on this asset */}
-      {directGrants.length > 0 && (
+      {/* Released to domains */}
+      {directGrants.filter(g => g.principal.type === 'domain').length > 0 && (
+        <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
+          <span className="text-body-0-regular text-foreground-dim">Released</span>
+          {directGrants.filter(g => g.principal.type === 'domain').map(grant => {
+            const name = resolvePrincipalName(grant.principal)
+            const grantSharedBy = PERSONAS.find(p => p.id === grant.grantedByUserId)?.name
+            return (
+              <div key={grant.id} className="space-y-0.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <PrincipalAvatar principal={grant.principal} />
+                    <span className="text-body-0-regular text-foreground truncate">{name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <CapabilityLabels grant={grant} roleGroups={roleGroups} />
+                  <button
+                    onClick={() => revokeGrant(grant.id)}
+                    className="text-body-0-regular text-foreground-system-error hover:opacity-80 transition-colors"
+                  >
+                    Revoke
+                  </button>
+                </div>
+              </div>
+              {grantSharedBy && (
+                <span className="text-label-0-regular text-foreground-subtle pl-8">
+                  by {grantSharedBy}{grant.grantedAt ? ` on ${grant.grantedAt}` : ''}
+                </span>
+              )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Shared directly with people/teams */}
+      {directGrants.filter(g => g.principal.type !== 'domain').length > 0 && (
         <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
           <span className="text-body-0-regular text-foreground-dim">Shared directly</span>
-          {directGrants.map(grant => {
+          {directGrants.filter(g => g.principal.type !== 'domain').map(grant => {
             const name = resolvePrincipalName(grant.principal)
             const grantSharedBy = PERSONAS.find(p => p.id === grant.grantedByUserId)?.name
             return (

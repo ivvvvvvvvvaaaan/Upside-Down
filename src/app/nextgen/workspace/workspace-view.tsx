@@ -427,6 +427,18 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
       }
     }
 
+    // Cut/sequence folders are composite assets, not folders
+    const cutAsset = assetById.get(node.id)
+    if (cutAsset?.kind === 'cut') {
+      return {
+        id: node.id,
+        entity: assetToSelectionEntity(cutAsset, { resourceId: node.id }),
+        node,
+        domainId: nodeDomainId,
+        asset: cutAsset,
+      }
+    }
+
     return {
       id: node.id,
       entity: folderToSelectionEntity({
@@ -438,7 +450,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
       node,
       domainId: nodeDomainId,
     }
-  }, [getFileTreeDomainFiles, activePersona, assetBySourceFileId, getAclResourceId])
+  }, [getFileTreeDomainFiles, activePersona, assetBySourceFileId, assetById, getAclResourceId])
 
   const topLevelSelectionEntries = useMemo(
     () => currentGridItems.map(buildSelectionEntry),
@@ -843,12 +855,13 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                         if (selectedIds.size !== 1) return undefined
                         const selectedNode = findNodeById(currentGridItems, Array.from(selectedIds)[0])
                         if (!selectedNode) return undefined
-                        const kind = selectedNode.type === 'folder' ? 'folder' : 'asset'
+                        const isCutFolder = selectedNode.type === 'folder' && assetById.get(selectedNode.id)?.kind === 'cut'
+                        const kind = selectedNode.type === 'folder' && !isCutFolder ? 'folder' : 'asset'
                         const kindLabel = kind === 'folder' ? 'Folder' : 'Asset'
                         const countLabels = new Map([['Share', `Share 1 ${kindLabel}`], ['Download', `Download 1 ${kindLabel}`], ['Copy link', `Copy link`]])
-                        const items = selectedNode.type === 'folder'
+                        const items = selectedNode.type === 'folder' && !isCutFolder
                           ? buildFolderContextMenuItems(selectedNode)
-                          : buildAssetMenuItems(selectedNode, assetBySourceFileId.get(selectedNode.id) ?? folderNodeToAsset(selectedNode, findDomainIdForNode(selectedNode, getFileTreeDomainFiles) ?? activePersona?.domainId))
+                          : buildAssetMenuItems(selectedNode, isCutFolder ? assetById.get(selectedNode.id)! : (assetBySourceFileId.get(selectedNode.id) ?? folderNodeToAsset(selectedNode, findDomainIdForNode(selectedNode, getFileTreeDomainFiles) ?? activePersona?.domainId)))
                         return items.map(item => countLabels.has(item.label)
                           ? { ...item, label: countLabels.get(item.label)! }
                           : item
@@ -1139,9 +1152,9 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
           y={contextMenu.y}
           items={contextMenu.node.id === '__background__'
             ? backgroundContextMenuItems
-            : contextMenu.node.type === 'folder'
+            : contextMenu.node.type === 'folder' && !assetById.get(contextMenu.node.id)?.kind
               ? buildFolderContextMenuItems(contextMenu.node)
-              : buildAssetMenuItems(contextMenu.node, assetBySourceFileId.get(contextMenu.node.id) ?? folderNodeToAsset(contextMenu.node, findDomainIdForNode(contextMenu.node, getFileTreeDomainFiles) ?? activePersona?.domainId))}
+              : buildAssetMenuItems(contextMenu.node, assetById.get(contextMenu.node.id) ?? assetBySourceFileId.get(contextMenu.node.id) ?? folderNodeToAsset(contextMenu.node, findDomainIdForNode(contextMenu.node, getFileTreeDomainFiles) ?? activePersona?.domainId))}
           onClose={() => setContextMenu(null)}
         />
       )}

@@ -95,8 +95,8 @@ export const PHASES: Phase[] = [
   },
   {
     id: 'phase-2',
-    title: 'Sarah: Share VFX comps',
-    description: 'You are Sarah Chen, VFX Coordinator. The latest comps are approved. Package them into a collection and send to editorial for their cut.',
+    title: 'Sarah: Share comps & set up vendor',
+    description: 'You are Sarah Chen, VFX Coordinator. Share approved comps with editorial, then set up the Framestore delivery folder for vendor uploads.',
     personaId: 'vfx-coordinator',
     nextPersonaId: 'editorial-coordinator',
     steps: [
@@ -117,6 +117,16 @@ export const PHASES: Phase[] = [
             { principalType: 'user', principalId: 'editorial-coordinator' },
             { principalType: 'user', principalId: 'editorial-artist' },
           ],
+        },
+      },
+      {
+        id: 'p2-share-vendor',
+        instruction: 'Share the Framestore folder (under Vendor Deliveries) with the Framestore team',
+        personaId: 'vfx-coordinator',
+        checkpoint: {
+          type: 'grant-set',
+          resourceId: 'ws-vfx-vendor-framestore',
+          principals: [{ principalType: 'team', principalId: 'framestore-io' }],
         },
       },
     ],
@@ -152,35 +162,16 @@ export const PHASES: Phase[] = [
     ],
   },
   {
-    id: 'phase-3',
-    title: 'Sarah: Set up vendor folder',
-    description: 'You are Sarah Chen, VFX Coordinator. Framestore needs a place to upload their comps. Give their team access to the delivery folder.',
-    personaId: 'vfx-coordinator',
-    nextPersonaId: 'vendor-framestore',
-    steps: [
-      {
-        id: 'p3-share-vendor',
-        instruction: 'Share the Framestore folder (under Vendor Deliveries) with the Framestore team',
-        personaId: 'vfx-coordinator',
-        checkpoint: {
-          type: 'grant-set',
-          resourceId: 'ws-vfx-vendor-framestore',
-          principals: [{ principalType: 'team', principalId: 'framestore-io' }],
-        },
-      },
-    ],
-  },
-  {
     id: 'phase-4',
-    title: 'Tom: Share reference footage',
-    description: 'You are Tom Nakamura, Camera DIT. Priya Sharma (Art Designer) needs B-roll and dailies for concept work. Send her a curated set.',
-    personaId: 'camera-dit',
+    title: 'Sarah: Share reference with art',
+    description: 'You are Sarah Chen, VFX Coordinator. Priya Sharma (Art Designer) needs B-roll and dailies for concept work. Send her a curated set from Camera.',
+    personaId: 'vfx-coordinator',
     nextPersonaId: 'art-artist',
     steps: [
       {
         id: 'p4-share-broll',
         instruction: 'Share "B-Roll Highlights" with Priya Sharma (Art Designer)',
-        personaId: 'camera-dit',
+        personaId: 'vfx-coordinator',
         checkpoint: {
           type: 'grant-set',
           resourceId: 'ws-cam-coll-broll',
@@ -189,8 +180,8 @@ export const PHASES: Phase[] = [
       },
       {
         id: 'p4-share-dailies-snapshot',
-        instruction: 'Share "Dailies (concept reference)" with Priya for concept reference',
-        personaId: 'camera-dit',
+        instruction: 'Share "Dailies (concept reference)" with Priya Sharma',
+        personaId: 'vfx-coordinator',
         checkpoint: {
           type: 'grant-set',
           resourceId: 'coll-cam-dailies',
@@ -302,16 +293,16 @@ export const PHASES: Phase[] = [
   {
     id: 'phase-priya',
     title: 'Priya: Review reference',
-    description: 'You are Priya Sharma, Art Designer. Tom (Camera DIT) shared B-roll and dailies with you for concept reference.',
+    description: 'You are Priya Sharma, Art Designer. Sarah (VFX Coordinator) shared B-roll and dailies with you for concept reference. Check your inbox and browse the footage.',
     personaId: 'art-artist',
     requiresPhase: 'phase-4',
-    waitingMessage: 'Waiting for Tom Nakamura (Camera DIT) to share reference footage with you. Switch to Tom to complete that step first.',
+    waitingMessage: 'Waiting for Sarah Chen (VFX Coordinator) to share reference footage with you. Switch to Sarah to complete that step first.',
     steps: [
       {
         id: 'pp-check-inbox',
-        instruction: 'Check your Inbox for Tom\'s shared reference footage',
+        instruction: 'Check your Inbox for Sarah\'s shared reference footage',
         personaId: 'art-artist',
-        checkpoint: { type: 'inbox-resource', resourceId: 'ws-cam-coll-broll', grantedByUserId: 'camera-dit' },
+        checkpoint: { type: 'inbox-resource', resourceId: 'ws-cam-coll-broll', grantedByUserId: 'vfx-coordinator' },
       },
       {
         id: 'pp-open-broll',
@@ -326,7 +317,7 @@ export const PHASES: Phase[] = [
     title: 'James: Deliver comps',
     description: 'You are James Liu, Lead Compositor at Framestore. Sarah (VFX Coordinator) shared a delivery folder with your team. Browse it, upload finished comps, and notify Sarah.',
     personaId: 'vendor-framestore',
-    requiresPhase: 'phase-3',
+    requiresPhase: 'phase-2',
     waitingMessage: 'Waiting for Sarah Chen (VFX Coordinator) to set up your delivery folder. Switch to Sarah to complete that step first.',
     steps: [
       {

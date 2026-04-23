@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { X, Search, Info, Link2, AlertTriangle, ShieldOff } from 'lucide-react'
+import { X, Search, Info, Link2, ShieldOff } from 'lucide-react'
 import { Tooltip } from './tooltip'
 import { Input } from './input'
 import { Button } from './button'
@@ -699,7 +699,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               const t = TEAMS.find(t2 => t2.id === tid)
               return sum + (t?.memberUserIds?.length ?? 0)
             }, 0) + (domain.granteeUserIds?.length ?? 0)
-            flagged.push({ name: pending.name, reason: `Release to ${domain.group} — visible to ~${memberCount} people` })
+            flagged.push({ name: pending.name, reason: `~${memberCount} people` })
           }
         }
       }
@@ -1286,12 +1286,14 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       )}
 
       {showTabs && canSeeFullAccessList && (
-        <Tabs defaultValue="people" value={shareTab} onValueChange={(v) => setShareTab(v as 'people' | 'release')}>
-          <TabsList>
-            <Tab value="people">People {peopleCount > 0 && <span className="text-foreground-subtle ml-2">{peopleCount}</span>}</Tab>
-            <Tab value="release">Release {domainCount > 0 && <span className="text-foreground-subtle ml-2">{domainCount}</span>}</Tab>
-          </TabsList>
-        </Tabs>
+        <div className="sticky -top-6 z-10 bg-surface-low -mx-6 -mt-4 px-6 pt-2 pb-2">
+          <Tabs defaultValue="people" value={shareTab} onValueChange={(v) => setShareTab(v as 'people' | 'release')}>
+            <TabsList>
+              <Tab value="people">People {peopleCount > 0 && <span className="text-foreground-subtle ml-2">{peopleCount}</span>}</Tab>
+              <Tab value="release">Release {domainCount > 0 && <span className="text-foreground-subtle ml-2">{domainCount}</span>}</Tab>
+            </TabsList>
+          </Tabs>
+        </div>
       )}
 
       {/* People content — always rendered, hidden when release tab is active */}
@@ -1349,18 +1351,17 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
       {/* Release warning (modal — outside tabs) */}
       <Modal open={showReleaseWarning} onOpenChange={setShowReleaseWarning} size="sm">
-        <Modal.Header title="Share to a release audience" />
+        <Modal.Header title="Confirm release" />
         <Modal.Body>
           <div className="space-y-3">
             <p className="text-body-0-regular text-foreground-dim">
-              {flaggedReleaseRecipients.length === 1 ? 'This release audience is' : 'These release audiences are'} broader than a normal workspace share:
+              You are releasing to {flaggedReleaseRecipients.length === 1 ? 'this audience' : 'these audiences'}:
             </p>
             <div className="space-y-2">
               {flaggedReleaseRecipients.map(({ name, reason }) => (
                 <div key={name} className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-yellow-500 flex-shrink-0" />
                   <span className="text-body-0-regular text-foreground">{name}</span>
-                  <span className="text-body-0-regular text-foreground-dim">— {reason}</span>
+                  <span className="text-body-0-regular text-foreground-dim"> — {reason}</span>
                 </div>
               ))}
             </div>
@@ -1368,7 +1369,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         </Modal.Body>
         <Card.Footer>
           <Button variant="secondary" onClick={() => setShowReleaseWarning(false)}>Cancel</Button>
-          <Button variant="primary" onClick={() => { setShowReleaseWarning(false); commitPendingGrants() }}>Share anyway</Button>
+          <Button variant="primary" onClick={() => { setShowReleaseWarning(false); commitPendingGrants() }}>Confirm</Button>
         </Card.Footer>
       </Modal>
 
