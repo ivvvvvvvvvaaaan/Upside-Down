@@ -1,4 +1,5 @@
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
+import { isCutFolder } from '@/lib/workspace-data'
 
 export function collectAccessibleWorkspaceRoots(
   nodes: WorkspaceFileNode[],
@@ -9,6 +10,8 @@ export function collectAccessibleWorkspaceRoots(
   const walk = (folders: WorkspaceFileNode[], ancestorAccessible: boolean) => {
     for (const node of folders) {
       if (node.type !== 'folder') continue
+      // Cut folders are composite assets, not workspace folders
+      if (isCutFolder(node)) continue
 
       const accessible = canAccess(node.id)
       if (accessible) {

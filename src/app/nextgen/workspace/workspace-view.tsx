@@ -197,6 +197,12 @@ interface WorkspaceViewProps {
 
 export function WorkspaceView({ folderPath: urlPath, landingFolderId }: WorkspaceViewProps) {
   const router = useRouter()
+
+  // Cut folders are composite assets — redirect to library
+  if (landingFolderId?.startsWith('cut-')) {
+    router.replace('/nextgen/library')
+    return null
+  }
   const { canAccess, canShare: canShareResource, canEdit: canEditResource, getInheritedGrants, getResourceGrants, isSensitiveAsset, createGuestLink } = useAccess()
   const { activePersona } = usePersona()
   const { scopedAssets, ensureAssetsLoaded } = useCollections()
