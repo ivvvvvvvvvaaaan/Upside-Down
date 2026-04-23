@@ -548,7 +548,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                           }
                           return undefined
                         })()}
-                        inline
                       />
                     ) : (
                       <InlineActionBar items={smartCollectionMenuItems} maxInline={showShareButton ? 1 : 0} />

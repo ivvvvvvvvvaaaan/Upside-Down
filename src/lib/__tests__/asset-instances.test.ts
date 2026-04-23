@@ -244,10 +244,10 @@ describe('promotedInstanceToAsset', () => {
     expect(asset.textMeta).toEqual({ typeTag: 'Script' })
   })
 
-  it('falls back to category as typeTag when aiTags has no typeTag', () => {
+  it('does not use folder category as typeTag fallback', () => {
     const instance: AssetInstance = { ...base, type: 'image', aiTags: undefined }
     const asset = promotedInstanceToAsset(instance)
-    expect(asset.imageMeta).toEqual({ typeTag: 'Concepts' })
+    expect(asset.imageMeta).toBeUndefined()
   })
 
   it('populates aiMeta from aiTags via toAIMeta', () => {

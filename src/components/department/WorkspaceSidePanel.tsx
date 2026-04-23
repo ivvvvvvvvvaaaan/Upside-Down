@@ -16,7 +16,7 @@ import { formatDate, formatFileSize } from '@/lib/utils'
 import { useAccess, useFileTree } from '@/hooks'
 import { PERSONAS } from '@/lib/personas'
 import { TEAMS } from '@/lib/teams'
-import { DOMAIN_FOLDER_MAP, isReferenceFolder } from '@/lib/workspace-data'
+import { DOMAIN_FOLDER_MAP, isReferenceFolder, isCutFolder } from '@/lib/workspace-data'
 import { domainConfigs } from '@/lib/domain-configs'
 
 interface WorkspaceSidePanelProps {
@@ -95,7 +95,7 @@ export function WorkspaceSidePanel({
 
   const resourceRef: ResourceRef | undefined = node ? {
     id: node.id,
-    type: node.type === 'folder' ? 'folder' : 'asset',
+    type: isCutFolder(node) ? 'cut' : node.type === 'folder' ? 'folder' : 'asset',
     domainId: resolvedDomainId,
   } : undefined
 

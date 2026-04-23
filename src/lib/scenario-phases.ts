@@ -66,7 +66,7 @@ export const PHASES: Phase[] = [
       },
       {
         id: 'p1-share-to-framestore',
-        instruction: 'Share the "VFX to Framestore" folder with the Framestore team',
+        instruction: 'Share the "Framestore <> VFX" folder with the Framestore team',
         personaId: 'vfx-coordinator',
         checkpoint: {
           type: 'grant-set',
@@ -93,7 +93,7 @@ export const PHASES: Phase[] = [
       },
       {
         id: 'p2-browse-folder',
-        instruction: 'Open the "VFX to Framestore" folder and browse existing deliverables',
+        instruction: 'Open the "Framestore <> VFX" folder and browse existing deliverables',
         personaId: 'vendor-framestore',
         checkpoint: { type: 'visit-resource', basePath: '/nextgen/workspace', resourceId: 'ws-vfx-to-framestore' },
       },
@@ -124,7 +124,7 @@ export const PHASES: Phase[] = [
     steps: [
       {
         id: 'p3-browse-vendor',
-        instruction: 'Open the "VFX to Framestore" folder and review the vendor deliveries',
+        instruction: 'Open the "Framestore <> VFX" folder and review the vendor deliveries',
         personaId: 'vfx-supervisor',
         checkpoint: { type: 'visit-resource', basePath: '/nextgen/workspace', resourceId: 'ws-vfx-to-framestore' },
       },

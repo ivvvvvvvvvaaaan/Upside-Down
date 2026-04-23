@@ -50,6 +50,11 @@ export function isReferenceFolder(
   return !!node && node.type === 'folder' && !!node.reference
 }
 
+/** Cut folders are composite assets (folder of constituent files) identified by the `cut-` ID prefix. */
+export function isCutFolder(node: Pick<UnifiedFileNode, 'id' | 'type'> | null | undefined): boolean {
+  return !!node && node.type === 'folder' && node.id.startsWith('cut-')
+}
+
 // Art Department workspace files
 const artDepartmentFiles: WorkspaceFileNode[] = [
   // Loose files at top level — messy WIP workspace
@@ -296,7 +301,7 @@ const vfxFiles: WorkspaceFileNode[] = [
   },
   {
     id: 'ws-vfx-to-framestore',
-    name: 'VFX to Framestore',
+    name: 'Framestore <> VFX',
     type: 'folder',
     modifiedAt: '2026-02-13',
     children: [

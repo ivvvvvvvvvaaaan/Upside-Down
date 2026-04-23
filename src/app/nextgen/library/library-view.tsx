@@ -167,7 +167,6 @@ export function LibraryView() {
                     onClick: () => showToast(`Downloading ${selectedIds.size} cut${selectedIds.size !== 1 ? 's' : ''}...`),
                     label: `Download ${selectedIds.size} Cut${selectedIds.size !== 1 ? 's' : ''}`,
                   }}
-                  inline
                 />
               )}
             </div>

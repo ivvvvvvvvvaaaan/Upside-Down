@@ -410,7 +410,6 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                         }
                         return collectionMenuItems
                       })()}
-                      inline
                     />
                   ) : (
                     <InlineActionBar items={collectionMenuItems} />

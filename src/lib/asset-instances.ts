@@ -201,7 +201,7 @@ function getThumbnail(instance: AssetInstance): string | undefined {
 /** Convert an AssetInstance to an Asset with full metadata (AI tags, typeTag, workspacePath).
  *  Single conversion function — same asset data everywhere. */
 export function promotedInstanceToAsset(instance: AssetInstance): Asset {
-  const typeTag = instance.aiTags?.typeTag ?? instance.category
+  const typeTag = instance.aiTags?.typeTag
   const isSequence = typeTag ? SEQUENCE_TYPE_TAGS.has(typeTag) : false
   const version = parseVersion(instance.sourceFileName)
   const groupKey = versionGroupKey(instance.sourceFileName)

@@ -13,6 +13,8 @@ export function getSharedResourceHref(resource: SharedResourceRef): string | und
   if (resource.resourceType === 'collection') return `/nextgen/collections/${resource.resourceId}`
   if (resource.resourceType === 'smart-collection') return `/nextgen/collections/${resource.resourceId}`
   if (resource.resourceType === 'folder') {
+    // Cut folders are composite assets — route to library, not workspace
+    if (resource.resourceId.startsWith('cut-')) return `/nextgen/library`
     return `/nextgen/workspace/${resource.resourceId}`
   }
 

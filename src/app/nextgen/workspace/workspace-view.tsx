@@ -867,7 +867,6 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                           : item
                         )
                       })()}
-                      inline
                     />
                   ) : landingFolderId && currentLocationNode ? (
                     <InlineActionBar items={buildFolderContextMenuItems(currentLocationNode)} />

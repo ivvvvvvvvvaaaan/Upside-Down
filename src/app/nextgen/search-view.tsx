@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Search } from 'lucide-react'
 import { AssetCard, CardGrid, Stack, ContextualActionBar, Text, MobileToolbar } from '@/components/ui'
+import { SelectAllRow } from '@/components/ui/select-all-row'
 import { getGridColumns, matchesFilter, useAccess, useAssetSelection, useSmartCollections, useViewPreferences } from '@/hooks'
 import type { Asset } from '@/lib/data'
 import { assetToSelectionEntity } from '@/lib/selection-actions'
@@ -19,7 +20,7 @@ interface MediaLibrarySearchViewProps {
  */
 export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewProps) {
   const [searchQuery, setSearchQuery] = useState('')
-  const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
+  const { selectedIds, primaryId, handleAssetClick, selectAll, clearSelection } = useAssetSelection()
   const { cardSize } = useViewPreferences()
   const { filterByAccess, getVisibilityState, requestAccess, isSensitiveAsset } = useAccess()
   const { allAssets, assetsLoaded, assetsLoading, ensureAssetsLoaded } = useSmartCollections()
@@ -131,19 +132,28 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                 </div>
               </div>
 
-              <span className="text-body-0-regular text-foreground-subtle min-h-5">
-                {isSearchActive && searchResults
-                  ? `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`
-                  : accessibleRecentAssets.length > 0 ? 'Recent' : '\u00A0'}
-              </span>
-              <ContextualActionBar
-                selectedEntities={selectedEntities}
-                onClearSelection={clearSelection}
-                downloadAction={{
-                  enabled: true,
-                  onClick: () => {},
-                }}
-              />
+              <div className="flex items-center justify-between min-h-8">
+                <SelectAllRow
+                  selectedCount={selectedIds.size}
+                  totalCount={displayAssets.length}
+                  onSelectAll={() => selectAll(displayAssets)}
+                  onClearSelection={clearSelection}
+                  label={isSearchActive && searchResults
+                    ? `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`
+                    : accessibleRecentAssets.length > 0 ? 'Recent' : ''}
+                />
+                {selectedIds.size > 0 && (
+                  <ContextualActionBar
+                    selectedEntities={selectedEntities}
+                    onClearSelection={clearSelection}
+                    downloadAction={{
+                      enabled: true,
+                      onClick: () => {},
+                      label: `Download ${selectedIds.size} Asset${selectedIds.size !== 1 ? 's' : ''}`,
+                    }}
+                  />
+                )}
+              </div>
 
               {/* Results */}
               {isSearchActive ? (

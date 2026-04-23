@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Download, FolderInput, Plus, Trash2, X } from 'lucide-react'
+import { Download, FolderInput, Plus, Trash2 } from 'lucide-react'
 import { ShareIcon } from './share-icon'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
@@ -13,7 +13,7 @@ import { FolderPickerModal } from './folder-picker-modal'
 import { useAccess } from '@/hooks'
 import type { SelectionEntity } from '@/lib/selection-actions'
 import type { ResourceRef } from '@/lib/grants'
-import { evaluateSelectionActions, getSelectionCountLabel } from '@/lib/selection-actions'
+import { evaluateSelectionActions } from '@/lib/selection-actions'
 
 function DisabledTooltip({ reason, children }: { reason?: string; children: React.ReactNode }) {
   if (!reason) return <>{children}</>
@@ -42,8 +42,6 @@ interface ContextualActionBarProps {
   onPlaceInFolder?: (folderId: string, folderName: string, assetIds: string[]) => void
   /** Full menu items -- first 3 shown inline as buttons, rest in overflow three-dot menu. When provided, replaces the default inline buttons. */
   menuItems?: ActionMenuItem[]
-  /** Render inline (as row content) instead of floating bar */
-  inline?: boolean
   className?: string
 }
 
@@ -54,7 +52,6 @@ export function ContextualActionBar({
   removeAction,
   onPlaceInFolder,
   menuItems,
-  inline = false,
   className,
 }: ContextualActionBarProps) {
   const { canShare, getGrantableProfiles, getInheritedGrants } = useAccess()
@@ -71,8 +68,6 @@ export function ContextualActionBar({
     canShareResource: canShare,
     getGrantableProfiles,
   }), [selectedEntities, canShare, getGrantableProfiles])
-
-  const selectionLabel = getSelectionCountLabel(selectedEntities)
 
   const shareInheritedGrants = useMemo(() => {
     if (!shareTarget || batchResourceRefs.length > 1) return undefined
@@ -108,28 +103,8 @@ export function ContextualActionBar({
   return (
     <>
       {hasSelection && (
-        <div className={inline
-          ? cn('flex items-center gap-2', className)
-          : 'fixed bottom-6 left-1/2 -translate-x-1/2 z-50'
-        }>
-          <div className={inline
-            ? 'flex items-center gap-2'
-            : 'flex items-center gap-2 pl-4 pr-2 py-2 rounded-lg bg-surface-high border border-border-dim shadow-lg'
-          }>
-            {!inline && (
-              <>
-                <span className="text-body-0-bold text-foreground whitespace-nowrap">{selectionLabel}</span>
-                <Button
-                  variant="icon"
-                  compact
-                  onClick={onClearSelection}
-                  aria-label="Clear selection"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-                <div className="w-px h-5 bg-border-dim mx-1" />
-              </>
-            )}
+        <div className={cn('flex items-center gap-2', className)}>
+          <div className="flex items-center gap-2">
 
             {menuItems ? (
               <InlineActionBar items={menuItems} />
