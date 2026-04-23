@@ -393,77 +393,6 @@ export const SCENARIO: Scenario = {
         { toTeam: 'vfx-core', as: 'viewer' },
       ],
     },
-    // (Stale cut shares removed — VFX timing now via cut-ep301-lc-1 share)
-    // --- Camera department shares ---
-    // Camera DIT shares selected takes with editorial + director
-    {
-      resource: { id: 'ws-cam-selects', type: 'folder', domain: 'camera' },
-      label: 'Camera Selects',
-      by: 'camera-dit',
-      date: '2026-02-05',
-      note: 'Daily selects from set. New takes land here as we shoot.',
-      context: 'Tom shares the Camera Selects folder directly with editorial, plus David and Alex for review. New selects appear automatically as he adds them.',
-      grants: [
-        { toTeam: 'editorial', as: 'viewer' },
-        { to: 'creative-david', as: 'viewer' },
-        { to: 'studio-alex', as: 'viewer' },
-      ],
-    },
-    // Camera DIT shares lens distortion data with VFX for comp accuracy
-    {
-      resource: { id: 'ws-cam-lensmaps', type: 'folder', domain: 'camera' },
-      label: 'Lens Data',
-      by: 'camera-dit',
-      date: '2026-01-25',
-      note: 'Lens distortion maps and test charts for comp accuracy. Updated as we change glass.',
-      context: 'Tom shares the Lens Data folder directly with VFX. Mike and Sarah need new lens maps and charts to show up automatically as camera publishes them.',
-      grants: [
-        { to: 'vfx-supervisor', as: 'viewer' },
-        { to: 'vfx-coordinator', as: 'viewer' },
-      ],
-    },
-    // Camera DIT shares curated B-roll highlights with art + editorial
-    {
-      resource: { id: 'ws-cam-coll-broll', type: 'collection', domain: 'camera' },
-      label: 'B-Roll Highlights',
-      by: 'camera-dit',
-      date: '2026-02-11',
-      context: 'Tom curates the best B-roll from location shoots — aerial circuits, paddock atmosphere, and forest drone footage. Priya uses these as reference for environment concepts, and Maria pulls them for montage sequences.',
-      grants: [
-        { to: 'art-artist', as: 'viewer' },
-        { to: 'editorial-artist', as: 'viewer' },
-      ],
-    },
-    // --- Audio department shares ---
-    // Audio supervisor packages temp sound for editorial
-    {
-      resource: { id: 'ws-audio-coll-for-editorial', type: 'collection', domain: 'audio-sound' },
-      label: 'Temp Sound Kit',
-      by: 'audio-supervisor',
-      date: '2026-02-07',
-      context: 'Rachel packages engine sounds, pit lane ambience, and score cues so Maria can lay a temp mix under the Director Cut. Cutting in silence makes it impossible to evaluate pacing — the temp mix helps David and Alex feel the energy of the race sequences.',
-      grants: [
-        { to: 'editorial-coordinator', as: 'viewer' },
-        { to: 'editorial-artist', as: 'viewer' },
-      ],
-    },
-    // (Audio handoff now via cut-ep301-lc-3 share above)
-    // --- Expiring grants ---
-    // Temporary cross-department access: art gets camera dailies for 2 weeks of concept work
-    {
-      resource: { id: 'coll-cam-dailies', type: 'collection', domain: 'camera' },
-      label: 'Dailies (concept reference)',
-      by: 'camera-dit',
-      date: '2026-02-10',
-      expiresAt: '2026-02-24',
-      shareMode: 'snapshot',
-      snapshotAssetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'],
-      context: 'Tom gives Priya a two-week snapshot of raw dailies for concept painting reference. Snapshot mode — Priya sees exactly these 5 takes, not future dailies. Time-boxed because ungraded footage shouldn\'t circulate long-term.',
-      grants: [
-        { to: 'art-artist', as: 'viewer' },
-      ],
-    },
-
     // --- Unified Collection Model scenarios ---
 
 
@@ -512,17 +441,10 @@ export const SCENARIO: Scenario = {
     { id: 'ws-vfx-coll-for-editorial', name: 'EP301 VFX Pulls - Edit Review',  createdBy: 'schen@netflix.com',   createdAt: '2026-01-27', assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-020-010'] },
     { id: 'coll-smart-finals-shared',  name: 'Finals (shared)',                createdBy: 'schen@netflix.com',   createdAt: '2026-02-11', assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020'], sourceSmartCollectionId: 'smart-finals' },
     { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', createdAt: '2026-01-19', assetIds: ['cut-ep301-lc-1', 'cut-ep301-lc-2', 'cut-ep301-lc-3'] },
-    // Camera collections
-    { id: 'ws-cam-coll-day15', name: 'Day 15 Selects', createdBy: 'tnakamura@netflix.com', createdAt: '2026-02-15', assetIds: [] },
-    { id: 'ws-cam-coll-broll', name: 'B-Roll Highlights', createdBy: 'tnakamura@netflix.com', createdAt: '2026-02-10', assetIds: ['ws-cam-broll-town', 'ws-cam-broll-forest', 'ws-cam-aerial-dawn', 'ws-cam-aerial-quarry'] },
-    // Audio collections
-    { id: 'ws-audio-coll-for-editorial', name: 'Temp Sound Kit', createdBy: 'robi@netflix.com', createdAt: '2026-02-06', assetIds: ['ws-audio-sfx-1', 'ws-audio-sfx-2', 'ws-audio-music-1', 'ws-audio-music-2', 'ws-audio-sfx-ambience'] },
     // Everyday organising collections
     { id: 'coll-creature-designs',  name: 'Car Designs', createdBy: 'psharma@netflix.com', createdAt: '2026-01-14', assetIds: ['ws-art-concept-demogorgon', 'ws-art-concept-creature', 'ws-art-char-eleven'] },
     { id: 'coll-key-locations',     name: 'Key Circuits',    createdBy: 'psharma@netflix.com', createdAt: '2026-01-14', assetIds: ['ws-art-concept-ud-env', 'ws-art-concept-lab', 'ws-art-env-byers', 'ws-art-env-starcourt'] },
     { id: 'coll-hero-shots',        name: 'Hero Shots',       createdBy: 'schen@netflix.com',   createdAt: '2026-01-20', assetIds: ['ws-vfx-010-010', 'ws-vfx-020-010', 'ws-vfx-comp-eleven'] },
-    // Curated collections (snapshot shares — discrete handoffs)
-    { id: 'coll-cam-dailies',      name: 'Dailies (concept reference)', createdBy: 'tnakamura@netflix.com', createdAt: '2026-02-09', assetIds: ['ws-cam-daily-1', 'ws-cam-daily-2', 'ws-cam-daily-3', 'ws-cam-daily-4', 'ws-cam-daily-5'] },
   ],
 
   sensitiveAssetIds: ['cut-ep301-lc-1', 'cut-ep301-lc-2'],

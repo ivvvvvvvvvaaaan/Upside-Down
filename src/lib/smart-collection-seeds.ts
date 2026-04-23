@@ -61,15 +61,6 @@ const SEED_USER_SMART_COLLECTIONS: SmartCollection[] = [
     createdBy: 'mtorres@netflix.com',
     createdAt: new Date('2026-02-10'),
   },
-  {
-    flavor: 'smart',
-    id: 'smart-circle-takes',
-    name: 'Circle Takes',
-    icon: 'shot',
-    filter: { types: ['video'], department: 'camera', isCircleTake: true },
-    createdBy: 'tnakamura@netflix.com',
-    createdAt: new Date('2026-01-20'),
-  },
 ]
 
 export const DEFAULT_SMART_COLLECTIONS: SmartCollection[] = [

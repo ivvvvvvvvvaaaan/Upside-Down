@@ -301,7 +301,7 @@ const vfxFiles: WorkspaceFileNode[] = [
   },
   {
     id: 'ws-vfx-to-framestore',
-    name: 'Framestore <> VFX',
+    name: 'Framestore Deliveries',
     type: 'folder',
     modifiedAt: '2026-02-13',
     children: [
@@ -620,12 +620,10 @@ const audioFiles: WorkspaceFileNode[] = [
   },
 ]
 
-const domainFileMap: Record<ProductionDomainId, WorkspaceFileNode[]> = {
+const domainFileMap: Partial<Record<ProductionDomainId, WorkspaceFileNode[]>> = {
   'art-design': artDepartmentFiles,
   'vfx': vfxFiles,
-  'camera': cameraFiles,
   'editorial': editorialFiles,
-  'audio-sound': audioFiles,
 }
 
 export function getDomainWorkspaceFiles(domainId: DomainId): WorkspaceFileNode[] {
@@ -646,12 +644,10 @@ export function findNodeInTree<T extends UnifiedFileNode>(nodes: T[], id: string
 }
 
 /** Map domain IDs to the wrapper folder IDs used in the Finder tree */
-export const DOMAIN_FOLDER_MAP: Record<ProductionDomainId, { id: string; name: string }> = {
+export const DOMAIN_FOLDER_MAP: Partial<Record<ProductionDomainId, { id: string; name: string }>> = {
   'art-design': { id: 'ws-art', name: 'Art & Design' },
   'vfx': { id: 'ws-vfx', name: 'VFX' },
-  'camera': { id: 'ws-camera', name: 'Camera' },
   'editorial': { id: 'ws-editorial', name: 'Editorial' },
-  'audio-sound': { id: 'ws-audio', name: 'Audio & Sound' },
 }
 
 /**
@@ -662,16 +658,18 @@ export const DOMAIN_FOLDER_MAP: Record<ProductionDomainId, { id: string; name: s
 export const SHARED_MOUNT_FOLDER_ID = 'ws-shared-mounts'
 
 export function getFinderWorkspaceTree(): UnifiedFileNode[] {
-  const domainFolders: UnifiedFileNode[] = (Object.keys(domainFileMap) as ProductionDomainId[]).map((domainId) => {
-    const meta = DOMAIN_FOLDER_MAP[domainId]
-    return {
-      id: meta.id,
-      name: meta.name,
-      type: 'folder' as const,
-      modifiedAt: '2026-02-14',
-      children: domainFileMap[domainId] as UnifiedFileNode[],
-    }
-  })
+  const domainFolders: UnifiedFileNode[] = (Object.keys(domainFileMap) as ProductionDomainId[])
+    .filter((domainId) => DOMAIN_FOLDER_MAP[domainId] && domainFileMap[domainId])
+    .map((domainId) => {
+      const meta = DOMAIN_FOLDER_MAP[domainId]!
+      return {
+        id: meta.id,
+        name: meta.name,
+        type: 'folder' as const,
+        modifiedAt: '2026-02-14',
+        children: domainFileMap[domainId] as UnifiedFileNode[],
+      }
+    })
 
   // "Shared" folder — mount point for workspace folders added into the local drive view.
   const sharedFolder: UnifiedFileNode = {

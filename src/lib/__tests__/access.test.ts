@@ -16,7 +16,6 @@ describe('grant share views', () => {
     const received = buildSharesReceivedByMe('editorial-coordinator', DEFAULT_GRANTS)
     const resourceIds = received.map((view) => view.resourceId)
 
-    expect(resourceIds).toContain('ws-cam-selects')
     expect(resourceIds).toContain('ws-vfx-coll-for-editorial')
     expect(resourceIds).not.toContain('ws-editorial')
   })

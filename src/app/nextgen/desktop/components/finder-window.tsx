@@ -61,7 +61,7 @@ type FileNode = UnifiedFileNode
 const EXPANDED_FOLDERS_STORAGE_KEY = 'desktop-expanded-folders'
 
 // Default expanded folders
-const DEFAULT_EXPANDED_FOLDERS = ['1', '2', '3', 'ws-art', 'ws-vfx', 'ws-camera', 'ws-editorial', 'ws-audio']
+const DEFAULT_EXPANDED_FOLDERS = ['1', '2', '3', 'ws-art', 'ws-vfx', 'ws-editorial']
 
 // Mock file tree data representing local file system (non-workspace OS files)
 const mockFiles: FileNode[] = [
