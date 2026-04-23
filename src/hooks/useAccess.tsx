@@ -352,9 +352,15 @@ function buildSnapshotVersionNote(previousAssetIds?: string[], nextAssetIds?: st
 
 import { SEED_VERSION } from '@/lib/constants'
 
+const ACCESS_GRANTS_MODE_KEY = 'access-grants-mode'
+
 function isPhaseMode(): boolean {
   if (typeof window === 'undefined') return false
   try { return localStorage.getItem('scenario-phase-mode') === 'true' } catch { return false }
+}
+
+function getGrantStorageMode(): 'default' | 'phase' {
+  return isPhaseMode() ? 'phase' : 'default'
 }
 
 function getBaseGrants(): Grant[] {
@@ -363,9 +369,12 @@ function getBaseGrants(): Grant[] {
 
 function loadStoredGrants(): Grant[] {
   if (typeof window === 'undefined') return structuredClone(DEFAULT_GRANTS)
+  const currentMode = getGrantStorageMode()
   try {
     const storedVersion = localStorage.getItem('access-grants-version')
-    if (storedVersion === String(SEED_VERSION)) {
+    const storedMode = localStorage.getItem(ACCESS_GRANTS_MODE_KEY)
+    const modeMatches = storedMode === currentMode || (!storedMode && currentMode === 'default')
+    if (storedVersion === String(SEED_VERSION) && modeMatches) {
       const stored = localStorage.getItem('access-grants')
       if (stored) return JSON.parse(stored) as Grant[]
     } else {
@@ -373,6 +382,7 @@ function loadStoredGrants(): Grant[] {
       localStorage.removeItem('access-role-groups')
       localStorage.removeItem('access-groups')
       localStorage.setItem('access-grants-version', String(SEED_VERSION))
+      localStorage.setItem(ACCESS_GRANTS_MODE_KEY, currentMode)
     }
   } catch { /* fall through */ }
   return structuredClone(getBaseGrants())
@@ -396,18 +406,19 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     resolveCollectionAssets: resolveCollectionAssetsLive,
     getFileNodesForFolder,
   } = useFileTree()
-  const [grants, setGrantsState] = useState<Grant[]>(() => structuredClone(DEFAULT_GRANTS))
+  const [grants, setGrantsState] = useState<Grant[]>(loadStoredGrants)
   const setGrants: typeof setGrantsState = useCallback((action) => {
     setGrantsState((prev) => {
       const next = typeof action === 'function' ? action(prev) : action
       try {
         localStorage.setItem('access-grants', JSON.stringify(next))
         localStorage.setItem('access-grants-version', String(SEED_VERSION))
+        localStorage.setItem(ACCESS_GRANTS_MODE_KEY, getGrantStorageMode())
       } catch { /* ignore */ }
       return next
     })
   }, [])
-  const [roleGroups, setRoleGroupsState] = useState<RoleGroup[]>(() => structuredClone(DEFAULT_ROLE_GROUPS))
+  const [roleGroups, setRoleGroupsState] = useState<RoleGroup[]>(loadStoredRoleGroups)
   const setRoleGroups: typeof setRoleGroupsState = useCallback((action) => {
     setRoleGroupsState((prev) => {
       const next = typeof action === 'function' ? action(prev) : action

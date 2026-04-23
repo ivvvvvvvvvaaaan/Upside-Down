@@ -8,9 +8,14 @@ import { Button } from './button'
 import { useAccess, usePersona } from '@/hooks'
 import { useUserCollections } from '@/hooks/useUserCollections'
 import { useFileTree } from '@/hooks'
-import { PHASES, getCurrentPhase, getPhaseForPersona } from '@/lib/scenario-phases'
-import type { Phase, PhaseStep } from '@/lib/scenario-phases'
+import { PHASES, getCurrentPhase, getPhaseForPersona, getStepPersonaId } from '@/lib/scenario-phases'
+import type { CheckpointPrincipal, PhaseStep } from '@/lib/scenario-phases'
 import { PERSONAS } from '@/lib/personas'
+import type { Asset } from '@/lib/data'
+import type { Grant } from '@/lib/grants'
+import { isGrantActive } from '@/lib/grants'
+import type { UnifiedFileNode } from '@/lib/workspace-data'
+import { USER_TAGS_CHANGED_EVENT, USER_TAGS_STORAGE_KEY, normalizeUserTagKey, readUserTagsMap } from '@/lib/user-tags'
 
 const GUIDE_STORAGE_KEY = 'scenario-guide-collapsed'
 const COMPLETED_STEPS_KEY = 'scenario-completed-steps'
@@ -38,12 +43,14 @@ function useCompletedSteps() {
     // Nuclear reset: enable phase mode, clear all app state, reload
     try {
       localStorage.setItem('scenario-phase-mode', 'true')
+      localStorage.setItem('scenario-reset-time', String(Date.now()))
       const keysToRemove = [
         COMPLETED_STEPS_KEY,
         GUIDE_STORAGE_KEY,
         // Grants
         'access-grants',
         'access-grants-version',
+        'access-grants-mode',
         'access-role-groups',
         // Collections
         'user-collections',
@@ -60,6 +67,8 @@ function useCompletedSteps() {
         // Guest links, blocks, etc.
         'guest-links',
         'user-blocks',
+        USER_TAGS_STORAGE_KEY,
+        'asset-hidden-tags',
         'read-share-ids',
       ]
       for (const key of keysToRemove) localStorage.removeItem(key)
@@ -68,6 +77,87 @@ function useCompletedSteps() {
   }, [])
 
   return { completedSteps, markCompleted, resetAll }
+}
+
+function readUserTags(): Record<string, string[]> {
+  return readUserTagsMap()
+}
+
+function normalizeTag(value: string): string {
+  return normalizeUserTagKey(value)
+}
+
+function isUserCreatedFileId(id: string): boolean {
+  return /^ws-\d{13}/.test(id)
+}
+
+function findNode(nodes: UnifiedFileNode[], id: string): UnifiedFileNode | null {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    if (node.children) {
+      const found = findNode(node.children, id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+function collectFileIds(nodes: UnifiedFileNode[]): string[] {
+  const ids: string[] = []
+  for (const node of nodes) {
+    if (node.type === 'file') ids.push(node.id)
+    if (node.children) ids.push(...collectFileIds(node.children))
+  }
+  return ids
+}
+
+function getFileIdsInFolder(nodes: UnifiedFileNode[], folderId: string): string[] {
+  const folder = findNode(nodes, folderId)
+  return folder?.children ? collectFileIds(folder.children) : []
+}
+
+function assetHasTag(
+  assetId: string,
+  tag: string,
+  assetById: Map<string, Asset>,
+  userTags: Record<string, string[]>,
+): boolean {
+  const target = normalizeTag(tag)
+  if ((userTags[assetId] ?? []).some(candidate => normalizeTag(candidate) === target)) return true
+
+  const asset = assetById.get(assetId)
+  if (!asset) return false
+  if (target === 'circle take' && asset.isCircleTake) return true
+  return asset.tags?.some(candidate => normalizeTag(candidate.label) === target) ?? false
+}
+
+function principalMatches(grant: Grant, requirement: CheckpointPrincipal): boolean {
+  if (requirement.principalType === 'user') {
+    return grant.principal.type === 'user' && grant.principal.userId === requirement.principalId
+  }
+  if (requirement.principalType === 'team') {
+    return grant.principal.type === 'team' && grant.principal.teamId === requirement.principalId
+  }
+  return grant.principal.type === 'domain' && grant.principal.domainId === requirement.principalId
+}
+
+function hasRequiredGrants(
+  grants: Grant[],
+  principals: CheckpointPrincipal[],
+  grantedByUserId: string,
+): boolean {
+  return principals.every(principal =>
+    grants.some(grant =>
+      isGrantActive(grant) &&
+      grant.grantedByUserId === grantedByUserId &&
+      principalMatches(grant, principal)
+    )
+  )
+}
+
+function pathContainsResource(pathname: string, basePath: string, resourceId: string): boolean {
+  if (!pathname.startsWith(basePath)) return false
+  return pathname.split('/').filter(Boolean).includes(resourceId)
 }
 
 function StepRow({ step, isCompleted, isActive }: { step: PhaseStep; isCompleted: boolean; isActive: boolean }) {
@@ -93,14 +183,15 @@ function StepRow({ step, isCompleted, isActive }: { step: PhaseStep; isCompleted
 
 export function ScenarioGuide() {
   const pathname = usePathname()
-  const { activePersona } = usePersona()
-  const { getResourceGrants, grants: allGrants } = useAccess()
+  const { activePersona, setActivePersona, allPersonas } = usePersona()
+  const { getResourceGrants, sharesReceivedByMe } = useAccess()
   const { collections } = useUserCollections()
-  const { tree: fileTree } = useFileTree()
+  const { tree: fileTree, assetById } = useFileTree()
   const { completedSteps, markCompleted, resetAll } = useCompletedSteps()
 
   const [collapsed, setCollapsed] = useState(false)
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
+  const [userTagsState, setUserTagsState] = useState<Record<string, string[]>>(() => readUserTags())
   const containerRef = useRef<HTMLDivElement>(null)
   const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number; dragged: boolean } | null>(null)
 
@@ -116,6 +207,20 @@ export function ScenarioGuide() {
     try {
       if (localStorage.getItem(GUIDE_STORAGE_KEY) === 'true') setCollapsed(true)
     } catch {}
+  }, [])
+
+  useEffect(() => {
+    const reloadTags = () => setUserTagsState(readUserTags())
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === USER_TAGS_STORAGE_KEY) reloadTags()
+    }
+
+    window.addEventListener(USER_TAGS_CHANGED_EVENT, reloadTags)
+    window.addEventListener('storage', handleStorage)
+    return () => {
+      window.removeEventListener(USER_TAGS_CHANGED_EVENT, reloadTags)
+      window.removeEventListener('storage', handleStorage)
+    }
   }, [])
 
   // Drag behavior — listeners on window so drag works outside the card
@@ -150,17 +255,25 @@ export function ScenarioGuide() {
   }, [completedSteps])
 
   const currentPhase = getCurrentPhase(completedPhaseIds)
-  const personaPhase = activePersona ? getPhaseForPersona(activePersona.id, completedPhaseIds) : null
-  const displayPhase = personaPhase ?? currentPhase
+  const personaPhase = activePersona ? getPhaseForPersona(activePersona.id, completedPhaseIds, completedSteps) : null
+  const handoffPhase = useMemo(() => {
+    if (!activePersona) return null
+    return PHASES.find((phase) => {
+      if (phase.personaId !== activePersona.id) return false
+      if (!phase.nextPersonaId || !completedPhaseIds.has(phase.id)) return false
+      return getPhaseForPersona(phase.nextPersonaId, completedPhaseIds, completedSteps) !== null
+    }) ?? null
+  }, [activePersona, completedPhaseIds, completedSteps])
+  // Only show another persona's phase if no persona is selected (admin mode)
+  const displayPhase = activePersona ? handoffPhase ?? personaPhase : currentPhase
   const phaseIndex = displayPhase ? PHASES.indexOf(displayPhase) : -1
   const allDone = !currentPhase
+  const userTags = userTagsState
 
   // Find the current active step (first incomplete)
   const activeStep = displayPhase?.steps.find(s => !completedSteps.has(s.id))
   // Which persona should be active for the current step?
-  const neededPersonaId = activeStep?.personaId ?? activeStep?.checkpoint.type === 'persona-switch'
-    ? (activeStep?.checkpoint as { personaId: string }).personaId
-    : displayPhase?.personaId
+  const neededPersonaId = displayPhase ? getStepPersonaId(displayPhase, activeStep) : undefined
   const isWrongPersona = !!neededPersonaId && !!activePersona && neededPersonaId !== activePersona.id
   const expectedPersona = neededPersonaId ? PERSONAS.find(p => p.id === neededPersonaId) : null
 
@@ -178,61 +291,71 @@ export function ScenarioGuide() {
         matched = activePersona.id === cp.personaId
       }
       // For other checkpoints, only check if the right persona is active
-      if (cp.type !== 'persona-switch' && step.personaId && step.personaId !== activePersona.id) break
+      const stepPersonaId = getStepPersonaId(displayPhase, step)
+      if (cp.type !== 'persona-switch' && stepPersonaId && stepPersonaId !== activePersona.id) break
 
-      if (cp.type === 'grant') {
-        const grants = getResourceGrants(cp.resourceId)
-        matched = grants.some(g => {
-          if (cp.principalType === 'user') return g.principal.type === 'user' && g.principal.userId === cp.principalId
-          if (cp.principalType === 'team') return g.principal.type === 'team' && g.principal.teamId === cp.principalId
-          if (cp.principalType === 'domain') return g.principal.type === 'domain' && g.principal.domainId === cp.principalId
-          return false
-        })
-      }
-      if (cp.type === 'any-grant-to') {
-        matched = allGrants.some(g => {
-          if (g.grantedByUserId !== activePersona.id) return false
-          if (cp.principalType === 'user') return g.principal.type === 'user' && g.principal.userId === cp.principalId
-          if (cp.principalType === 'team') return g.principal.type === 'team' && g.principal.teamId === cp.principalId
-          return false
-        })
+      if (cp.type === 'grant-set') {
+        matched = hasRequiredGrants(getResourceGrants(cp.resourceId), cp.principals, activePersona.id)
       }
       if (cp.type === 'collection-created') {
-        matched = collections.some(c => c.name.toLowerCase().includes(cp.nameContains.toLowerCase()))
+        const resetTime = Number(localStorage.getItem('scenario-reset-time') ?? '0')
+        matched = collections.some(c =>
+          c.name.toLowerCase().includes(cp.nameContains.toLowerCase()) &&
+          new Date(c.createdAt).getTime() > resetTime
+        )
+      }
+      if (cp.type === 'collection-contains') {
+        const collection = collections.find(c => c.id === cp.collectionId)
+        const minAssets = cp.minAssets ?? 1
+        if (collection) {
+          const matchingAssetIds = cp.tag
+            ? collection.assetIds.filter(assetId => assetHasTag(assetId, cp.tag, assetById, userTags))
+            : collection.assetIds
+          matched = matchingAssetIds.length >= minAssets
+        }
       }
       if (cp.type === 'file-created') {
-        const isUserCreated = (id: string) => /^ws-\d{13}/.test(id)
         const hasUserFile = (nodes: typeof fileTree): boolean => {
           for (const node of nodes) {
-            if (node.type === 'file' && isUserCreated(node.id)) return true
+            if (node.type === 'file' && isUserCreatedFileId(node.id)) return true
             if (node.children && hasUserFile(node.children)) return true
           }
           return false
         }
-        const findFolder = (nodes: typeof fileTree, id: string): typeof fileTree[0] | null => {
-          for (const node of nodes) {
-            if (node.id === id) return node
-            if (node.children) {
-              const found = findFolder(node.children, id)
-              if (found) return found
-            }
-          }
-          return null
-        }
-        const targetFolder = findFolder(fileTree, cp.parentFolderId)
+        const targetFolder = findNode(fileTree, cp.parentFolderId)
         if (targetFolder?.children && hasUserFile(targetFolder.children)) {
           matched = true
         }
       }
+      if (cp.type === 'asset-tagged') {
+        const candidateIds = cp.assetId
+          ? [cp.assetId]
+          : cp.parentFolderId
+            ? getFileIdsInFolder(fileTree, cp.parentFolderId)
+            : Object.keys(userTags)
+        matched = candidateIds.some(assetId =>
+          (!cp.requireUserCreated || isUserCreatedFileId(assetId)) &&
+          assetHasTag(assetId, cp.tag, assetById, userTags)
+        )
+      }
       if (cp.type === 'visit-page') {
-        matched = pathname.startsWith(cp.pathPrefix)
+        matched = cp.match === 'exact' ? pathname === cp.path : pathname.startsWith(cp.path)
+      }
+      if (cp.type === 'inbox-resource') {
+        matched = pathname === '/nextgen/inbox' && sharesReceivedByMe.some(share =>
+          share.resourceId === cp.resourceId &&
+          (!cp.grantedByUserId || share.grantedByUserId === cp.grantedByUserId)
+        )
+      }
+      if (cp.type === 'visit-resource') {
+        matched = pathContainsResource(pathname, cp.basePath, cp.resourceId)
       }
       if (matched) markCompleted(step.id)
       break
     }
-  }, [displayPhase, activePersona, completedSteps, getResourceGrants, collections, fileTree, pathname, markCompleted])
+  }, [displayPhase, activePersona, completedSteps, getResourceGrants, collections, fileTree, assetById, userTags, pathname, sharesReceivedByMe, markCompleted])
 
-  if (!displayPhase && !allDone) return null
+  // Always render so Reset button is accessible
 
   return (
     <div
@@ -265,13 +388,13 @@ export function ScenarioGuide() {
           >
             {collapsed ? (
               <>
-                <span className="text-body-0-bold text-foreground">Manual</span>
+                <span className="text-body-0-bold text-foreground">Guide</span>
                 <ChevronRight className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
               </>
             ) : (
               <>
                 <span className="text-body-0-bold text-foreground truncate">
-                  {allDone ? 'All scenarios done' : displayPhase!.title}
+                  {allDone ? 'All scenarios done' : displayPhase?.title ?? 'Explore'}
                 </span>
                 <ChevronDown className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
               </>
@@ -283,13 +406,17 @@ export function ScenarioGuide() {
         {!collapsed && (
           <div className="px-3 pb-3 space-y-3">
             {allDone ? (
-              <p className="text-body-0-regular text-foreground-dim">
-                You've completed all scenario phases. Reset to start over.
+              <p className="text-body-0-regular text-foreground">
+                All scenarios done. Reset to start over.
+              </p>
+            ) : !displayPhase ? (
+              <p className="text-body-0-regular text-foreground">
+                No tasks for this user. Switch to another persona or reset.
               </p>
             ) : (
               <>
                 <p className="text-body-0-regular text-foreground">
-                  {displayPhase!.description}
+                  {displayPhase.description}
                 </p>
 
                 {isWrongPersona && expectedPersona && (
@@ -301,15 +428,28 @@ export function ScenarioGuide() {
                   </div>
                 )}
 
-                {!isWrongPersona && (
-                  <div className="space-y-0">
-                    {displayPhase!.steps.map((step, i) => {
-                      const isDone = completedSteps.has(step.id)
-                      const isActive = !isDone && displayPhase!.steps.slice(0, i).every(s => completedSteps.has(s.id))
-                      return <StepRow key={step.id} step={step} isCompleted={isDone} isActive={isActive} />
-                    })}
-                  </div>
-                )}
+                {!isWrongPersona && (() => {
+                  const allStepsDone = displayPhase.steps.every(s => completedSteps.has(s.id))
+                  const nextPersona = displayPhase.nextPersonaId ? allPersonas.find(p => p.id === displayPhase.nextPersonaId) : null
+                  return (
+                    <div className="space-y-0">
+                      {displayPhase.steps.map((step, i) => {
+                        const isDone = completedSteps.has(step.id)
+                        const isActive = !isDone && displayPhase.steps.slice(0, i).every(s => completedSteps.has(s.id))
+                        return <StepRow key={step.id} step={step} isCompleted={isDone} isActive={isActive} />
+                      })}
+                      {allStepsDone && nextPersona && (
+                        <button
+                          onClick={() => setActivePersona(nextPersona)}
+                          className="flex items-center gap-2 py-1.5 text-body-0-regular text-foreground hover:text-foreground-system-link transition-colors"
+                        >
+                          <ArrowRight className="w-3 h-3 flex-shrink-0" />
+                          <span>Continue as {nextPersona.name}</span>
+                        </button>
+                      )}
+                    </div>
+                  )
+                })()}
               </>
             )}
 

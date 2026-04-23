@@ -181,7 +181,7 @@ export function SharedFolderView({ folderId }: SharedFolderViewProps) {
                 downloadAction={selectedIds.size > 0 ? {
                   enabled: true,
                   onClick: () => showToast(`Downloading ${selectedIds.size} asset${selectedIds.size !== 1 ? 's' : ''}...`),
-                  label: `Download ${selectedIds.size} asset${selectedIds.size !== 1 ? 's' : ''}`,
+                  label: `Download ${selectedIds.size} Asset${selectedIds.size !== 1 ? 's' : ''}`,
                 } : undefined}
               />
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { X, Layers, Pencil, MapPin, Film, Zap, Folder, Users } from 'lucide-react'
+import { X, Layers, MapPin, Film, Zap, Folder, Users } from 'lucide-react'
 import { ActivityFeed } from './activity-feed'
 import type { ActivityEvent } from './activity-feed'
 import { Button } from './button'
@@ -9,13 +9,10 @@ import { Avatar } from './avatar'
 import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
 import { PrincipalAvatar } from './principal-avatar'
 import { GrantBadge } from './grant-badge'
-import { Modal } from './modal'
-import { Card } from './card'
 import { ResponsivePanel } from './responsive-panel'
 import { AccessModal } from './access-modal'
 import { OntologySection } from './ontology-section'
-import { SmartCollectionFilterBuilder } from './smart-collection-filter-builder'
-import { Tag } from './tag'
+import { Chip } from './chip'
 import type { Collection } from '@/lib/collection-types'
 import { isSmart, isCollection, getCollectionCapabilities } from '@/lib/collection-types'
 import type { ResourceRef, Grant } from '@/lib/grants'
@@ -139,6 +136,7 @@ function describeFilters(filter: AssetFilter): string[] {
   if (filter.typeTags?.length) items.push(filter.typeTags.join(', '))
   if (filter.isFinal) items.push('Final only')
   if (filter.isKeyArt) items.push('Key Art only')
+  if (filter.isCircleTake) items.push('Tag: Circle Take')
   if (filter.aiCharacters?.length) items.push(`Characters: ${filter.aiCharacters.join(', ')}`)
   if (filter.aiLocation) items.push(`Location: ${filter.aiLocation}`)
   if (filter.aiScene) items.push(`Scene: ${filter.aiScene}`)
@@ -147,16 +145,10 @@ function describeFilters(filter: AssetFilter): string[] {
   return items
 }
 
-function filtersEqual(a: AssetFilter, b: AssetFilter): boolean {
-  return JSON.stringify(a) === JSON.stringify(b)
-}
-
 export function CollectionSidePanel({
   collection,
   open,
   onClose,
-  onAction,
-  actionPermissions,
   relationships,
   suppressDimension,
   matchingCount,
@@ -165,8 +157,6 @@ export function CollectionSidePanel({
   const smart = isSmart(collection) ? collection : null
   const curated = isCollection(collection) ? collection : null
   const caps = getCollectionCapabilities(collection)
-  const canEdit = Boolean(onAction && (actionPermissions?.canEdit ?? true) && (caps.canRename || caps.canEditFilter))
-  const canDelete = Boolean(onAction && (actionPermissions?.canDelete ?? true) && caps.canDelete)
 
   const ontologyMeta = smart ? getOntologyMeta(collection.name, smart.icon) : null
 
@@ -248,7 +238,7 @@ export function CollectionSidePanel({
       })
     }
     return events.sort((a, b) => b.date.localeCompare(a.date))
-  }, [accessResourceId, getResourceGrants, collection.createdAt, createdByName])
+  }, [accessResourceId, getResourceGrants, collection.createdAt, createdByName, curated])
 
   const grants = useMemo(() => {
     if (!smart || linkedSnapshotCollections.length <= 1) {
@@ -271,26 +261,6 @@ export function CollectionSidePanel({
   const connectionsCount = relationships
     ? relationships.characters.length + relationships.scenes.length + relationships.locations.length
     : 0
-
-  // Edit modal state
-  const [editModalOpen, setEditModalOpen] = useState(false)
-  const [draftName, setDraftName] = useState(collection.name)
-  const [draftFilter, setDraftFilter] = useState<AssetFilter>(smart?.filter ?? {})
-
-  const openEditModal = () => {
-    setDraftName(collection.name)
-    if (smart) setDraftFilter({ ...smart.filter })
-    setEditModalOpen(true)
-  }
-
-  const handleEditSave = () => {
-    if (!onAction) return
-    const updates: { name?: string; filter?: AssetFilter } = {}
-    if (caps.canRename && draftName !== collection.name) updates.name = draftName
-    if (caps.canEditFilter && smart && !filtersEqual(draftFilter, smart.filter)) updates.filter = draftFilter
-    if (Object.keys(updates).length > 0) onAction({ type: 'update', updates })
-    setEditModalOpen(false)
-  }
 
   return (
     <ResponsivePanel open={open} onClose={onClose}>
@@ -348,7 +318,7 @@ export function CollectionSidePanel({
               <h3 className="text-body-0-bold text-foreground-dim">Filters</h3>
               <div className="flex flex-wrap gap-1.5">
                 {filterItems.map((item, i) => (
-                  <Tag key={i} size="compact" type="neutral" variant="border">{item}</Tag>
+                  <Chip key={i} size="compact">{item}</Chip>
                 ))}
               </div>
             </section>
@@ -377,36 +347,6 @@ export function CollectionSidePanel({
         title={accessCollection?.name ?? collection.name}
       />
 
-      {/* Edit modal */}
-      {canEdit && (
-        <Modal open={editModalOpen} onOpenChange={setEditModalOpen} size="sm">
-          <Modal.Header title="Edit Collection" />
-          <Modal.Body>
-            {smart && caps.canEditFilter ? (
-              <SmartCollectionFilterBuilder
-                name={draftName}
-                filter={draftFilter}
-                onNameChange={setDraftName}
-                onFilterChange={setDraftFilter}
-              />
-            ) : (
-              <div>
-                <label className="text-label-1-bold text-foreground-dim block mb-1">Name</label>
-                <input
-                  type="text"
-                  value={draftName}
-                  onChange={e => setDraftName(e.target.value)}
-                  className="w-full h-10 px-3 rounded border border-border-dim bg-surface-highlight text-body-0-regular text-foreground focus:border-border-subtle outline-none transition-colors"
-                />
-              </div>
-            )}
-          </Modal.Body>
-          <Card.Footer>
-            <Button variant="secondary" onClick={() => setEditModalOpen(false)}>Cancel</Button>
-            <Button variant="primary" onClick={handleEditSave}>Save</Button>
-          </Card.Footer>
-        </Modal>
-      )}
     </ResponsivePanel>
   )
 }

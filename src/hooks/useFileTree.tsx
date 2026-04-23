@@ -18,6 +18,7 @@ import { generateAssetInstances, promotedInstanceToAsset } from '@/lib/asset-ins
 import { seedCutToAsset } from '@/lib/cuts'
 import { buildCuts } from '@/lib/scenario'
 import type { Asset } from '@/lib/data'
+import { USER_TAGS_CHANGED_EVENT, USER_TAGS_STORAGE_KEY, mergeUserTagsIntoAssets } from '@/lib/user-tags'
 import type { UserCollection } from './useUserCollections'
 
 const STORAGE_KEY = 'unified-workspace-files'
@@ -273,6 +274,9 @@ const FileTreeContext = createContext<FileTreeContextValue | null>(null)
 export function FileTreeProvider({ children }: { children: ReactNode }) {
   const { activePersona, hydrated } = usePersona()
   const [rawTree, setRawTree] = useState<UnifiedFileNode[]>(getFinderWorkspaceTree)
+  const [userTagsMap, setUserTagsMap] = useState<Record<string, string[]>>(() => {
+    try { return JSON.parse(localStorage.getItem(USER_TAGS_STORAGE_KEY) ?? '{}') } catch { return {} }
+  })
 
   useEffect(() => {
     if (!hydrated) return
@@ -299,6 +303,22 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     window.addEventListener('storage', handleStorage)
     return () => window.removeEventListener('storage', handleStorage)
   }, [hydrated, activePersona?.id])
+
+  useEffect(() => {
+    const reloadTags = () => {
+      try { setUserTagsMap(JSON.parse(localStorage.getItem(USER_TAGS_STORAGE_KEY) ?? '{}')) } catch {}
+    }
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === USER_TAGS_STORAGE_KEY) reloadTags()
+    }
+
+    window.addEventListener(USER_TAGS_CHANGED_EVENT, reloadTags)
+    window.addEventListener('storage', handleStorage)
+    return () => {
+      window.removeEventListener(USER_TAGS_CHANGED_EVENT, reloadTags)
+      window.removeEventListener('storage', handleStorage)
+    }
+  }, [])
 
   const updateTree = useCallback((updater: (prev: UnifiedFileNode[]) => UnifiedFileNode[]) => {
     setRawTree((prev) => {
@@ -335,10 +355,10 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     // Build set of constituent file IDs — these are internal to cuts, not standalone assets
     const constituentIds = new Set(cutAssets.flatMap(c => c.constituents ?? []))
     const filteredAssets = assets.filter(a => !constituentIds.has(a.id))
-    const all = [...filteredAssets, ...cutAssets]
+    const all = mergeUserTagsIntoAssets([...filteredAssets, ...cutAssets], userTagsMap)
     const byId = new Map(all.map(a => [a.id, a]))
     return { assetById: byId, allAssets: all }
-  }, [rawTree])
+  }, [rawTree, userTagsMap])
 
   const getAssetsByIdsFromTree = useCallback((ids: string[]): Asset[] => {
     return ids.map(id => assetById.get(id)).filter((a): a is Asset => a != null)

@@ -11,6 +11,7 @@ export interface ContextMenuItem {
   /** For toggle items like "Auto-promote" */
   checked?: boolean
   disabled?: boolean
+  destructive?: boolean
   dividerAfter?: boolean
   onClick: () => void
 }
@@ -74,7 +75,8 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
             }}
             disabled={item.disabled}
             className={cn(
-              'w-full flex items-center gap-2 px-3 py-2.5 text-body-0-regular text-foreground',
+              'w-full flex items-center gap-2 px-3 py-2.5 text-body-0-regular',
+              item.destructive ? 'text-foreground-system-error' : 'text-foreground',
               'hover:bg-surface-highlight transition-colors text-left',
               item.disabled && 'opacity-40 pointer-events-none',
             )}

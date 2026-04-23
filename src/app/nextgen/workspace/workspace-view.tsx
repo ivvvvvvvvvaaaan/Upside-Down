@@ -725,7 +725,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
         { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => showToast('Copy to not implemented yet') },
         { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => showToast('Move not implemented yet') },
         { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(node.id); if (entry) { selectOnly(entry.entity) } setShowPanel(true) }, dividerAfter: true },
-        { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => fileTreeDeleteNode(node.id) },
+        { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => fileTreeDeleteNode(node.id), destructive: true },
       )
     } else {
       items.push(
@@ -734,7 +734,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     }
 
     return items
-  }, [canEditResource, canShareResource, createGuestLink, getAclResourceId, getFileTreeDomainFiles, findDomainIdForNode, landingFolderId, urlPath, showToast, fileTreeRenameNode, fileTreeDeleteNode, selectionEntryById, selectOnly, setShowPanel, handleMountFolderToDrive])
+  }, [canEditResource, canShareResource, createGuestLink, getAclResourceId, getFileTreeDomainFiles, showToast, fileTreeRenameNode, fileTreeDeleteNode, selectionEntryById, selectOnly, setShowPanel, handleMountFolderToDrive])
 
   const buildAssetMenuItems = useCallback((node: WorkspaceFileNode, asset: Asset): ContextMenuItem[] => {
     const canEdit = canEditResource(node.id)
@@ -755,7 +755,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
         { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => showToast('Copy to not implemented yet') },
         { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => showToast('Move not implemented yet') },
         { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { const entry = selectionEntryById.get(asset.id); if (entry) { selectOnly(entry.entity); setShowPanel(true) } }, dividerAfter: true },
-        { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => fileTreeDeleteNode(node.id) },
+        { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => fileTreeDeleteNode(node.id), destructive: true },
       )
     } else {
       items.push(
@@ -915,7 +915,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                       downloadAction={{
                         enabled: true,
                         onClick: () => showToast(`Downloading ${selectedIds.size} item${selectedIds.size !== 1 ? 's' : ''}...`),
-                        label: `Download ${selectedIds.size} item${selectedIds.size !== 1 ? 's' : ''}`,
+                        label: `Download ${selectedIds.size} Item${selectedIds.size !== 1 ? 's' : ''}`,
                       }}
                       onPlaceInFolder={(folderId, folderName, assetIds) => {
                         for (const assetId of assetIds) {
@@ -928,8 +928,8 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                         const selectedNode = findNodeById(currentGridItems, Array.from(selectedIds)[0])
                         if (!selectedNode) return undefined
                         const kind = selectedNode.type === 'folder' ? 'folder' : 'asset'
-                        const suffix = `1 ${kind}`
-                        const countLabels = new Map([['Share', `Share ${suffix}`], ['Download', `Download ${suffix}`], ['Copy link', `Copy link`]])
+                        const kindLabel = kind === 'folder' ? 'Folder' : 'Asset'
+                        const countLabels = new Map([['Share', `Share 1 ${kindLabel}`], ['Download', `Download 1 ${kindLabel}`], ['Copy link', `Copy link`]])
                         const items = selectedNode.type === 'folder'
                           ? buildFolderContextMenuItems(selectedNode)
                           : buildAssetMenuItems(selectedNode, assetBySourceFileId.get(selectedNode.id) ?? folderNodeToAsset(selectedNode, findDomainIdForNode(selectedNode, getFileTreeDomainFiles) ?? activePersona?.domainId))
@@ -1044,7 +1044,8 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                                 numberOfAssets={folderThumbs.length >= 3 ? 'Many' : folderThumbs.length === 2 ? 'Two' : folderThumbs.length === 1 ? 'One' : 'None'}
                                 accessIcon={accessIcon}
                                 className={isLocked ? 'opacity-50 cursor-not-allowed' : undefined}
-                                state={selectedIds.has(node.id) ? 'Selected' : 'Normal'}
+                                isSelected={selectedIds.has(node.id)}
+                                primary={primaryId === node.id}
                                 onClick={isLocked
                                   ? () => alert('Access requested for "' + node.name + '". An administrator will review your request.')
                                   : isMobile

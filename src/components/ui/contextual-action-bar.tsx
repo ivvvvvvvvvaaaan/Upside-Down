@@ -1,12 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ArrowRight, Download, FolderInput, MoreVertical, Plus, X } from 'lucide-react'
+import { ArrowRight, Download, FolderInput, Plus, Trash2, X } from 'lucide-react'
 import { ShareIcon } from './share-icon'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { Tooltip } from './tooltip'
-import { Dropdown, DropdownMenuItem } from './dropdown'
 import { InlineActionBar, type ActionMenuItem } from './inline-action-bar'
 import { AccessModal } from './access-modal'
 import { CollectionMembershipModal } from './collection-membership-modal'
@@ -145,7 +144,7 @@ export function ContextualActionBar({
                       onClick={handleShare}
                       disabled={!evaluation.actions.share.enabled}
                     >
-                      <span className="hidden lg:inline">{evaluation.actions.share.label}</span>
+                      <span className="hidden md:inline">{evaluation.actions.share.label}</span>
                     </Button>
                   </DisabledTooltip>
                 )}
@@ -156,7 +155,7 @@ export function ContextualActionBar({
                     icon={<FolderInput className="w-4 h-4" />}
                     onClick={() => setShowFolderPicker(true)}
                   >
-                    <span className="hidden lg:inline">Copy to</span>
+                    <span className="hidden md:inline">Copy to</span>
                   </Button>
                 )}
                 {downloadAction && (
@@ -168,28 +167,30 @@ export function ContextualActionBar({
                       onClick={downloadAction.onClick}
                       disabled={!downloadAction.enabled}
                     >
-                      <span className="hidden lg:inline">{downloadAction.label ?? 'Download'}</span>
+                      <span className="hidden md:inline">{downloadAction.label ?? 'Download'}</span>
                     </Button>
                   </DisabledTooltip>
                 )}
-                <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
-                  <div className="py-1">
-                    {evaluation.actions.addToCollection.visible && evaluation.actions.addToCollection.enabled && (
-                      <DropdownMenuItem
-                        icon={<Plus className="w-4 h-4" />}
-                        label={evaluation.actions.addToCollection.label}
-                        onClick={() => setShowCollectionModal(true)}
-                      />
-                    )}
-                    {removeAction && removeAction.enabled && (
-                      <DropdownMenuItem
-                        label="Remove from collection"
-                        onClick={removeAction.onClick}
-                        destructive
-                      />
-                    )}
-                  </div>
-                </Dropdown>
+                {evaluation.actions.addToCollection.visible && evaluation.actions.addToCollection.enabled && (
+                  <Button
+                    variant="secondary"
+                    compact
+                    icon={<Plus className="w-4 h-4" />}
+                    onClick={() => setShowCollectionModal(true)}
+                  >
+                    <span className="hidden md:inline">{evaluation.actions.addToCollection.label}</span>
+                  </Button>
+                )}
+                {removeAction && removeAction.enabled && (
+                  <Button
+                    variant="secondary"
+                    compact
+                    icon={<Trash2 className="w-4 h-4" />}
+                    onClick={removeAction.onClick}
+                  >
+                    <span className="hidden md:inline">Remove</span>
+                  </Button>
+                )}
               </>
             )}
           </div>

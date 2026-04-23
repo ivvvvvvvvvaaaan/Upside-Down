@@ -1366,8 +1366,24 @@ const MOCK_AI_TAGS: Record<string, AITagResult> = {
 }
 
 /** Look up AI tags for a workspace file by its file node ID */
-export function getAITagsForFile(fileId: string): AITagResult | undefined {
-  return MOCK_AI_TAGS[fileId]
+export function getAITagsForFile(fileId: string, fileName?: string): AITagResult | undefined {
+  const existing = MOCK_AI_TAGS[fileId]
+  if (existing) return existing
+
+  // Generate fallback AI tags for dynamically created camera files
+  if (fileName && /\.(mxf|mov|r3d|braw)$/i.test(fileName)) {
+    return {
+      sourceFileId: fileId,
+      characters: [],
+      location: 'Circuit',
+      typeTag: 'Camera Daily',
+      confidence: 0.88,
+      keywords: ['dailies', 'camera original'],
+      analyzedAt: new Date().toISOString(),
+      status: 'complete',
+    }
+  }
+  return undefined
 }
 
 /** Find workspace file IDs whose AI tags match a given dimension value */

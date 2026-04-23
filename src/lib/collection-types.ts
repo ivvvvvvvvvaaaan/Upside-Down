@@ -51,10 +51,11 @@ export function getCollectionCapabilities(c: Collection): CollectionCapabilities
   if (isSmart(c)) {
     const isDerived = !!c.parentId
     const ontology = ONTOLOGY_ICON_TO_LABEL[c.icon]
+    const isOntology = !!ontology && (!!c.groupBy || isDerived)
 
     const isUserCreated = !!c.createdBy
 
-    if (ontology) {
+    if (isOntology) {
       return {
         canRename: false,
         canEditFilter: false,

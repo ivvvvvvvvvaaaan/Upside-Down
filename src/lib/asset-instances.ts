@@ -114,7 +114,7 @@ export function generateAssetInstances(
           size: node.size,
           modifiedAt: node.modifiedAt,
           modifiedBy: node.modifiedBy,
-          aiTags: getAITagsForFile(node.id),
+          aiTags: getAITagsForFile(node.id, node.name),
           // Track the immediate containing folder so direct folder shares
           // can resolve workspace membership accurately.
           sourceFolderId: containingFolderId,
@@ -268,7 +268,7 @@ export function promotedInstanceToAsset(instance: AssetInstance): Asset {
   if (typeTag) tags.push({ label: toTitleCase(typeTag), source: 'system' })
   if (base.isKeyArt) tags.push({ label: 'Key Art', source: 'system' })
   if (base.isFinal) tags.push({ label: 'Final', source: 'system' })
-  if (base.isCircleTake) tags.push({ label: 'Circle Take', source: 'system' })
+  if (base.isCircleTake) tags.push({ label: 'Circle Take', source: 'user' })
   if (instance.aiTags?.keywords) {
     for (const k of instance.aiTags.keywords) {
       tags.push({ label: toTitleCase(k), source: 'ai' })
@@ -287,4 +287,3 @@ export function mergeWorkspaceAssets(
   const promoted = instances.map(promotedInstanceToAsset)
   return [...apiAssets, ...promoted]
 }
-

@@ -13,6 +13,7 @@ import type { Asset, DomainId } from '@/lib/data'
 import type { MetadataFieldVisibility } from '@/hooks/useViewPreferences'
 
 const STATUS_LABELS = new Set(['Key Art', 'Final'])
+const CARD_HIDDEN_TAG_LABELS = new Set(['Circle Take'])
 const BADGE_EXTENSIONS = new Set(['exr', 'nk', 'mb', 'hip', 'prproj', 'psd', 'ai', 'ptx', 'tiff', 'tx', 'pdf', 'zip', 'cube', 'xlsx'])
 const FILE_3D_EXTENSIONS = new Set(['nk', 'mb', 'hip', 'prproj'])
 
@@ -228,9 +229,15 @@ export function AssetCard({
   }
 
   // Pre-compute tag classification (avoid recreating inside JSX IIFEs)
-  const typeTag = asset.tags?.find(t => t.source === 'system' && !STATUS_LABELS.has(t.label))
-  const statusTag = asset.tags?.find(t => STATUS_LABELS.has(t.label)) ?? (asset.isKeyArt ? { label: 'Key Art', source: 'system' as const } : null)
-  const releaseTags = asset.tags?.filter(t => t.source === 'system' && !STATUS_LABELS.has(t.label) && t !== typeTag) ?? []
+  const assetTags = asset.tags ?? []
+  const typeTag = assetTags.find(t => t.source === 'system' && !STATUS_LABELS.has(t.label))
+  const statusTag = assetTags.find(t => STATUS_LABELS.has(t.label)) ?? (asset.isKeyArt ? { label: 'Key Art', source: 'system' as const } : null)
+  const releaseTags = assetTags.filter(t =>
+    t.source === 'system' &&
+    !STATUS_LABELS.has(t.label) &&
+    !CARD_HIDDEN_TAG_LABELS.has(t.label) &&
+    t !== typeTag
+  )
   const showField = (f: keyof MetadataFieldVisibility) => metadataFields?.[f] !== false
 
   const renderThumbnail = () => {
@@ -268,6 +275,7 @@ export function AssetCard({
 
   return (
     <div
+      data-card={asset.id}
       draggable={!restricted}
       onDragStart={(e) => {
         if (restricted) return

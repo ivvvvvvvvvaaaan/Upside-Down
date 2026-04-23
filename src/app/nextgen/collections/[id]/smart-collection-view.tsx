@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { PanelRight, Info, Link2, Download, Trash2, FolderPlus, ArrowRight } from 'lucide-react'
+import { PanelRight, Info, Link2, Download, Plus, Trash2, FolderPlus, ArrowRight, Pencil } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
 import { PERSONAS } from '@/lib/personas'
 import { SelectAllRow } from '@/components/ui/select-all-row'
@@ -23,6 +23,9 @@ import {
   SortDropdown,
   AppearanceDropdown,
   MobileToolbar,
+  Modal,
+  Card,
+  SmartCollectionFilterBuilder,
 } from '@/components/ui'
 import type { CollectionCardType } from '@/components/ui/collection-card'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
@@ -35,10 +38,12 @@ import { assetToSelectionEntity, assetToResourceRef, collectionToSelectionEntity
 import { getContextAssetGroups } from '@/lib/context-relationships'
 import { useAccess } from '@/hooks'
 import { AccessModal } from '@/components/ui/access-modal'
+import { CollectionMembershipModal } from '@/components/ui/collection-membership-modal'
 import { ContextMenu } from '@/components/ui/context-menu'
 import type { ResourceRef } from '@/lib/grants'
 import { useToast } from '@/components/ui/toast'
 import { Dropdown, DropdownMenuItem, DropdownMenuDivider } from '@/components/ui'
+import { getCollectionCapabilities } from '@/lib/collection-types'
 
 interface SmartCollectionDetailViewProps {
   collectionId: string
@@ -85,12 +90,17 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const collectionResourceRef: ResourceRef = { id: collectionId, type: 'smart-collection' }
 
   const [assetContextMenu, setAssetContextMenu] = useState<{ x: number; y: number; asset: Asset } | null>(null)
+  const [showAddToCollectionModal, setShowAddToCollectionModal] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [draftName, setDraftName] = useState('')
+  const [draftFilter, setDraftFilter] = useState<AssetFilter>({})
   const [searchQuery, setSearchQuery] = useState('')
   const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
     { field: 'name', direction: 'asc' },
   ])
 
   const collection = getCollection(collectionId)
+  const collectionCapabilities = collection ? getCollectionCapabilities(collection) : null
   const linkedSnapshotCollections = useMemo(() => {
     if (!collection) return []
     return userCollections
@@ -106,7 +116,31 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const showShareButton = Boolean(collection) && canShare(shareResourceRef)
   const isOwner = collection?.createdBy === activePersona?.email
   const canManageCurrentCollection = Boolean(collection && (isOwner || isAdmin || canEditAcl(collectionResourceRef)))
-  const canDeleteCurrentCollection = Boolean(collection && (isOwner || isAdmin))
+  const canEditCurrentCollection = Boolean(
+    collection &&
+    collectionCapabilities &&
+    canManageCurrentCollection &&
+    (collectionCapabilities.canRename || collectionCapabilities.canEditFilter)
+  )
+  const canDeleteCurrentCollection = Boolean(collection && collectionCapabilities?.canDelete && (isOwner || isAdmin))
+
+  const openEditCollectionModal = useCallback(() => {
+    if (!collection || !canEditCurrentCollection) return
+    setDraftName(collection.name)
+    setDraftFilter({ ...collection.filter })
+    setEditModalOpen(true)
+  }, [canEditCurrentCollection, collection])
+
+  const saveEditedCollection = useCallback(() => {
+    if (!collection || !canEditCurrentCollection) return
+    const updates: { name?: string; filter?: AssetFilter } = {}
+    if (collectionCapabilities?.canRename && draftName !== collection.name) updates.name = draftName
+    if (collectionCapabilities?.canEditFilter && JSON.stringify(draftFilter) !== JSON.stringify(collection.filter)) {
+      updates.filter = draftFilter
+    }
+    if (Object.keys(updates).length > 0) updateCollection(collection.id, updates)
+    setEditModalOpen(false)
+  }, [canEditCurrentCollection, collection, collectionCapabilities, draftFilter, draftName, updateCollection])
 
   type MenuItem = import('@/components/ui/inline-action-bar').ActionMenuItem
 
@@ -115,12 +149,15 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     if (showShareButton) {
       items.push({ label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setShareModalOpen(true) })
     }
+    if (canEditCurrentCollection) {
+      items.push({ label: 'Edit', icon: <Pencil className="w-4 h-4" />, onClick: openEditCollectionModal })
+    }
     if (canDeleteCurrentCollection) {
       if (items.length > 0) items[items.length - 1].dividerAfter = true
       items.push({ label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => { if (collection) { deleteCollection(collection.id); router.push('/nextgen') } }, destructive: true })
     }
     return items
-  }, [showShareButton, canDeleteCurrentCollection, collection, deleteCollection, router])
+  }, [showShareButton, canEditCurrentCollection, canDeleteCurrentCollection, openEditCollectionModal, collection, deleteCollection, router])
 
   const subtitle = useMemo(() => {
     // Received from someone else
@@ -249,8 +286,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
         showToast('Link copied', 'success', { label: 'Share settings', onClick: () => setAssetShareTarget({ ref, title: asset.name }) })
       } },
       { label: 'Download', icon: <Download className="w-4 h-4" />, onClick: () => showToast(`Downloading "${asset.name}"...`), dividerAfter: true },
-      { label: 'Copy to', icon: <FolderPlus className="w-4 h-4" />, onClick: () => showToast('Copy to not implemented yet') },
-      { label: 'Move to', icon: <ArrowRight className="w-4 h-4" />, onClick: () => showToast('Move not implemented yet') },
+      { label: 'Add to Collection', icon: <Plus className="w-4 h-4" />, onClick: () => { selectOnlyAsset(asset); setShowAddToCollectionModal(true) } },
       { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { selectOnlyAsset(asset); setSidePanelOpen(true) } },
     ]
     return items
@@ -493,14 +529,14 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                             return {
                               enabled: true,
                               onClick: () => showToast(`Downloading ${selectedAssets.length} asset${selectedAssets.length !== 1 ? 's' : ''}...`),
-                              label: `Download ${selectedAssets.length} asset${selectedAssets.length !== 1 ? 's' : ''}`,
+                              label: `Download ${selectedAssets.length} Asset${selectedAssets.length !== 1 ? 's' : ''}`,
                             }
                           }
                           if (isParentWithChildren && selectedCollectionIds.size > 0) {
                             return {
                               enabled: true,
                               onClick: () => showToast(`Downloading ${selectedCollectionIds.size} collection${selectedCollectionIds.size !== 1 ? 's' : ''}...`),
-                              label: `Download ${selectedCollectionIds.size} collection${selectedCollectionIds.size !== 1 ? 's' : ''}`,
+                              label: `Download ${selectedCollectionIds.size} Collection${selectedCollectionIds.size !== 1 ? 's' : ''}`,
                             }
                           }
                           return undefined
@@ -508,7 +544,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                         menuItems={(() => {
                           if (!isParentWithChildren && selectedAssets.length === 1) {
                             const items = buildAssetMenuItems(selectedAssets[0])
-                            const countLabels = new Map([['Share', 'Share 1 asset'], ['Download', 'Download 1 asset']])
+                            const countLabels = new Map([['Share', 'Share 1 Asset'], ['Download', 'Download 1 Asset']])
                             return items.map(item => countLabels.has(item.label) ? { ...item, label: countLabels.get(item.label)! } : item)
                           }
                           return undefined
@@ -516,7 +552,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                         inline
                       />
                     ) : (
-                      <InlineActionBar items={smartCollectionMenuItems} />
+                      <InlineActionBar items={smartCollectionMenuItems} maxInline={showShareButton ? 1 : 0} />
                     )}
                   </div>
 
@@ -555,6 +591,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                               : 'Many'
                             }
                             isSelected={!isMobile && selectedCollectionIds.has(child.collection.id)}
+                            primary={!isMobile && selectedCollectionId === child.collection.id}
                             onClick={isMobile
                               ? () => router.push(`/nextgen/collections/${child.collection.id}`)
                               : (event) => handleCollectionCardClick(child.collection, event)
@@ -668,6 +705,23 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
         resourceRef={shareResourceRef}
         title={shareTargetCollection?.name ?? collection?.name}
       />
+      <Modal open={editModalOpen} onOpenChange={setEditModalOpen} size="sm">
+        <Modal.Header title="Edit Collection" />
+        <Modal.Body>
+          {collection && (
+            <SmartCollectionFilterBuilder
+              name={draftName}
+              filter={draftFilter}
+              onNameChange={setDraftName}
+              onFilterChange={setDraftFilter}
+            />
+          )}
+        </Modal.Body>
+        <Card.Footer>
+          <Button variant="secondary" onClick={() => setEditModalOpen(false)}>Cancel</Button>
+          <Button variant="primary" onClick={saveEditedCollection}>Save</Button>
+        </Card.Footer>
+      </Modal>
       {assetShareTarget && (
         <AccessModal
           open
@@ -677,6 +731,12 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
           title={assetShareTarget.title}
         />
       )}
+      <CollectionMembershipModal
+        open={showAddToCollectionModal}
+        onClose={() => setShowAddToCollectionModal(false)}
+        selectedAssets={selectedAssets}
+        onComplete={clearAssetSelection}
+      />
       {assetContextMenu && (
         <ContextMenu
           x={assetContextMenu.x}
