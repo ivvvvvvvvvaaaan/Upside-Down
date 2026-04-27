@@ -23,6 +23,8 @@ export interface UnifiedFileNode {
   modifiedBy?: string
   domainId?: DomainId
   zone?: 'managed' | 'wip'
+  /** User who created this node (used for ownership-based access control) */
+  createdByUserId?: string
   /** Local mount owner for reference folders shown in the Shared drive view */
   mountedByUserId?: string | null
   /** Folder-level: reference to a shared folder or collection */

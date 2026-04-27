@@ -44,6 +44,7 @@ import { getAssetIdsForFolderRecursive } from '@/lib/data-client'
 import {
   findNodeInTree,
   DOMAIN_FOLDER_MAP,
+  isReferenceFolder,
   type UnifiedFileNode,
 } from '@/lib/workspace-data'
 import { getStoredSmartCollectionById } from '@/lib/smart-collection-store'
@@ -520,8 +521,20 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [userId, grants])
 
   const resourceRefForId = useCallback((id: string): ResourceRef => {
-    const asset = assetById.get(id)
     const node = nodeById.get(id)
+
+    // Reference folders delegate to their underlying resource
+    if (node && isReferenceFolder(node)) {
+      const refId = node.reference.resourceId
+      const refAsset = assetById.get(refId)
+      return {
+        id: refId,
+        type: refAsset?.kind === 'cut' ? 'cut' : 'folder',
+        domainId: refAsset?.department ?? node.reference.domainId ?? getResourceDomainId(refId),
+      }
+    }
+
+    const asset = assetById.get(id)
     const type: ResourceType = collectionById.has(id)
       ? 'collection'
       : asset?.kind === 'cut'

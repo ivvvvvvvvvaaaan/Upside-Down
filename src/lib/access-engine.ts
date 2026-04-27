@@ -389,18 +389,26 @@ export function createAccessEngine(
 
       const paths: AccessPath[] = []
 
+      // Root-level nodes (no parent, not a domain root): only the creator has owner access.
+      // Seed data nodes without createdByUserId keep backward-compat owner access.
+      const rootNode = preparedContext.nodeById.get(resource.id)
       if (
-        preparedContext.nodeById.has(resource.id)
+        rootNode
         && !preparedContext.domainById.has(resource.id)
         && !preparedContext.parentById.has(resource.id)
       ) {
-        paths.push({
-          kind: 'owner',
-          scope: 'owner',
-          sourceResourceId: resource.id,
-          profile: 'manager',
-          permissions: getPermissionsForProfile('manager', preparedContext.roleGroups),
-        })
+        const isCreator = rootNode.createdByUserId
+          ? rootNode.createdByUserId === user.id
+          : true // seed data without creator → accessible (backward compat)
+        if (isCreator) {
+          paths.push({
+            kind: 'owner',
+            scope: 'owner',
+            sourceResourceId: resource.id,
+            profile: 'manager',
+            permissions: getPermissionsForProfile('manager', preparedContext.roleGroups),
+          })
+        }
       }
 
       const collection = preparedContext.collectionById.get(resource.id)

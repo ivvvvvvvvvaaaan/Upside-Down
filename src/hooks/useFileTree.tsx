@@ -389,10 +389,11 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
       type: 'folder',
       modifiedAt: new Date().toISOString().split('T')[0],
       children: initialChildren ?? [],
+      createdByUserId: activePersona?.id,
     }
     updateTree((prev) => addNodeToTree(prev, parentId, newFolder))
     return id
-  }, [updateTree])
+  }, [updateTree, activePersona])
 
   const createFile = useCallback((parentId: string, name: string, extension?: string): string => {
     const id = generateId()
