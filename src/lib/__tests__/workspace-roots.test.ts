@@ -47,13 +47,22 @@ describe('workspace-roots', () => {
     expect(roots.map((node) => node.id)).toEqual(['ws-vfx', 'ws-art'])
   })
 
-  it('does not auto-surface shared subfolders from other domains', () => {
+  it('deep-walks to find shared subfolders by default (nav sidebar)', () => {
     const roots = collectAccessibleWorkspaceRoots(
       tree,
       (id) => id === 'ws-vfx-framestore',
     )
 
-    // Shared sub-folders require explicit mounting — not auto-discovered
+    expect(roots.map((node) => node.id)).toEqual(['ws-vfx-framestore'])
+  })
+
+  it('only returns top-level roots in shallow mode (Finder)', () => {
+    const roots = collectAccessibleWorkspaceRoots(
+      tree,
+      (id) => id === 'ws-vfx-framestore',
+      true,
+    )
+
     expect(roots.map((node) => node.id)).toEqual([])
   })
 

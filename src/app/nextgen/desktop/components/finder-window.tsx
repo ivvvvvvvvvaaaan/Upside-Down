@@ -487,7 +487,7 @@ export function FinderWindow({
   // Team roots: folders the user owns via team membership
   const teamRoots = useMemo(() => {
     const nonShared = resolvedWorkspaceFiles.filter((n) => n.id !== SHARED_MOUNT_FOLDER_ID)
-    return collectAccessibleWorkspaceRoots(nonShared as FileNode[], canAccess)
+    return collectAccessibleWorkspaceRoots(nonShared as FileNode[], canAccess, true)
       .map((node) => filterWorkspaceNodeByAccess(node, canAccess, canSeeRestrictedFolders))
       .filter((node): node is FileNode => node !== null)
   }, [resolvedWorkspaceFiles, canAccess, canSeeRestrictedFolders])
