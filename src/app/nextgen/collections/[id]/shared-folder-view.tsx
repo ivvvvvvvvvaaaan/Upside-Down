@@ -21,7 +21,7 @@ export function SharedFolderView({ folderId }: SharedFolderViewProps) {
   const { selectedIds, primaryId, handleAssetClick, clearSelection } = useAssetSelection()
   const { showToast } = useToast()
   const { cardSize, setCardSize, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
-  const { getResourceGrants, canAccess } = useAccess()
+  const { getResourceGrants, canAccess, canEdit } = useAccess()
   const { tree } = useFileTree()
   const [searchQuery, setSearchQuery] = useState('')
   const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
@@ -138,7 +138,10 @@ export function SharedFolderView({ folderId }: SharedFolderViewProps) {
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <PageHeader
                   title={folderName}
-                  description={sharedBy ? `Shared by ${sharedBy} · View only` : 'View only'}
+                  description={(() => {
+                    const accessLevel = canEdit(folderId) ? 'Manager' : 'View only'
+                    return sharedBy ? `Shared by ${sharedBy} · ${accessLevel}` : accessLevel
+                  })()}
                   hideTitleOnMobile
                 />
                 <div className="hidden md:flex items-center gap-2 flex-shrink-0">

@@ -573,11 +573,12 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     const allGrants = [...direct, ...inherited.map(({ grant }) => grant)]
     if (allGrants.length === 0) return null
 
-    // Recipient: show who shared it
+    // Recipient: show who shared it and the access level
     if (!isCurrentFolderOwner) {
       const grantor = direct.length > 0 ? PERSONAS.find(p => p.id === direct[0].grantedByUserId) : undefined
       const sharedBy = grantor?.name ?? getDomainOwnerTeam(effectiveNodeDomainId ?? '')?.name ?? 'someone'
-      return { kind: 'recipient', subtitle: `Shared by ${sharedBy} · View only` }
+      const accessLevel = canEditResource(nodeId) ? 'Manager' : 'View only'
+      return { kind: 'recipient', subtitle: `Shared by ${sharedBy} · ${accessLevel}` }
     }
 
     // Owner: show how many people it's shared with
