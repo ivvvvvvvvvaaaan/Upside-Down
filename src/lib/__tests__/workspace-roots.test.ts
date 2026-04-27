@@ -47,13 +47,14 @@ describe('workspace-roots', () => {
     expect(roots.map((node) => node.id)).toEqual(['ws-vfx', 'ws-art'])
   })
 
-  it('returns deeper subfolders when that is the first accessible point', () => {
+  it('does not auto-surface shared subfolders from other domains', () => {
     const roots = collectAccessibleWorkspaceRoots(
       tree,
       (id) => id === 'ws-vfx-framestore',
     )
 
-    expect(roots.map((node) => node.id)).toEqual(['ws-vfx-framestore'])
+    // Shared sub-folders require explicit mounting — not auto-discovered
+    expect(roots.map((node) => node.id)).toEqual([])
   })
 
   it('collects shared folder ids from non-manager grants', () => {
