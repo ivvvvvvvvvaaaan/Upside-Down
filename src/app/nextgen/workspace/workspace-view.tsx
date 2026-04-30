@@ -197,13 +197,13 @@ interface WorkspaceViewProps {
 
 export function WorkspaceView({ folderPath: urlPath, landingFolderId }: WorkspaceViewProps) {
   const router = useRouter()
+  const { canAccess, canShare: canShareResource, canEdit: canEditResource, getInheritedGrants, getResourceGrants, isSensitiveAsset, createGuestLink } = useAccess()
 
   // Cut folders are composite assets — redirect to library
-  if (landingFolderId?.startsWith('cut-')) {
-    router.replace('/nextgen/library')
-    return null
-  }
-  const { canAccess, canShare: canShareResource, canEdit: canEditResource, getInheritedGrants, getResourceGrants, isSensitiveAsset, createGuestLink } = useAccess()
+  const isCutRedirect = landingFolderId?.startsWith('cut-') ?? false
+  useEffect(() => {
+    if (isCutRedirect) router.replace('/nextgen/library')
+  }, [isCutRedirect, router])
   const { activePersona } = usePersona()
   const { scopedAssets, ensureAssetsLoaded } = useCollections()
   const { layout, setLayout, cardSize, setCardSize, viewMode, setViewMode, sidePanelOpen: showPanel, setSidePanelOpen: setShowPanel, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
@@ -710,6 +710,8 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
 
   const isGridView = viewMode === 'grid'
   const explorerViewMode = (isGridView ? 'list' : viewMode) as FileViewMode
+
+  if (isCutRedirect) return null
 
   if (workspaceRootMissing) {
     return (
