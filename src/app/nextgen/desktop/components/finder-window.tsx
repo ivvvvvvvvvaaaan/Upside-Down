@@ -365,7 +365,7 @@ export function FinderWindow({
   const [columnPath, setColumnPath] = useState<FileNode[]>([])
 
   // Shared file tree from context
-  const { tree: workspaceFiles, createFolder: contextCreateFolder, createFile: contextCreateFile, createReferenceFolder: contextCreateReferenceFolder, renameNode: contextRenameNode, deleteNode: contextDeleteNode } = useFileTree()
+  const { tree: workspaceFiles, createFolder: contextCreateFolder, createFile: contextCreateFile, createReferenceFolder: contextCreateReferenceFolder, renameNode: contextRenameNode, deleteNode: contextDeleteNode, confirmMove: contextConfirmMove, createFileReference: contextCreateFileReference } = useFileTree()
   const { canAccess } = useAccess()
   const { activePersona } = usePersona()
   const { showToast } = useToast()
@@ -716,12 +716,51 @@ export function FinderWindow({
   }
 
   // Icons view
+  const [finderDragOverId, setFinderDragOverId] = useState<string | null>(null)
+
   const renderIconsView = () => (
     <div className="grid grid-cols-4 gap-4 p-4">
       {currentFiles.map((node) => (
         <div
           key={node.id}
           data-file-node
+          draggable={!isReferenceFolder(node) && node.id !== SHARED_MOUNT_FOLDER_ID}
+          onDragStart={(e) => {
+            const mimeType = node.type === 'folder' ? 'application/x-folder-ids' : 'application/x-asset-ids'
+            e.dataTransfer.setData(mimeType, JSON.stringify([node.id]))
+            e.dataTransfer.effectAllowed = 'move'
+          }}
+          onDragOver={node.type === 'folder' && !isReferenceFolder(node) ? (e) => {
+            if (e.dataTransfer.types.includes('application/x-folder-ids') || e.dataTransfer.types.includes('application/x-asset-ids')) {
+              e.preventDefault()
+              e.dataTransfer.dropEffect = 'move'
+              setFinderDragOverId(node.id)
+            }
+          } : undefined}
+          onDragLeave={node.type === 'folder' ? () => setFinderDragOverId(null) : undefined}
+          onDrop={node.type === 'folder' && !isReferenceFolder(node) ? (e) => {
+            e.preventDefault()
+            setFinderDragOverId(null)
+            const folderData = e.dataTransfer.getData('application/x-folder-ids')
+            if (folderData) {
+              try {
+                const ids = JSON.parse(folderData) as string[]
+                for (const id of ids) {
+                  if (id !== node.id) contextConfirmMove(id, node.id)
+                }
+                showToast(`Moved to ${node.name}`)
+              } catch {}
+              return
+            }
+            const assetData = e.dataTransfer.getData('application/x-asset-ids')
+            if (assetData) {
+              try {
+                const ids = JSON.parse(assetData) as string[]
+                for (const id of ids) contextCreateFileReference(id, node.id)
+                showToast(`Added to ${node.name}`)
+              } catch {}
+            }
+          } : undefined}
           onClick={() => setSelectedFile(node.id)}
           onDoubleClick={() => {
             if (node.type === 'folder') {
@@ -731,7 +770,9 @@ export function FinderWindow({
           onContextMenu={(e) => handleContextMenu(e, node)}
           className={cn(
             'flex flex-col items-center gap-2 p-3 rounded cursor-pointer transition-colors',
-            selectedFile === node.id ? 'bg-surface-selected' : 'hover:bg-surface-2'
+            finderDragOverId === node.id
+              ? 'bg-indigo-500/20 ring-1 ring-indigo-500/40'
+              : selectedFile === node.id ? 'bg-surface-selected' : 'hover:bg-surface-2'
           )}
         >
           {getFileIcon(node, 'w-12 h-12')}

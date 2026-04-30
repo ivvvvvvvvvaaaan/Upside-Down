@@ -214,6 +214,8 @@ interface TreeNavLinkProps {
   trailingIcon?: React.ReactNode
   /** Called when assets are dropped on this item */
   onAssetDrop?: (assetIds: string[]) => void
+  /** Called when a folder is dropped on this item */
+  onFolderDrop?: (folderIds: string[]) => void
 }
 
 function TreeNavLink({
@@ -231,6 +233,7 @@ function TreeNavLink({
   collapsedPreview,
   trailingIcon,
   onAssetDrop,
+  onFolderDrop,
 }: TreeNavLinkProps) {
   const pathname = usePathname()
   const mobile = useNavMobile()
@@ -325,22 +328,29 @@ function TreeNavLink({
     <div>
       <div
         onDragOver={(e) => {
-          if (!e.dataTransfer.types.includes('application/x-asset-ids')) return
+          const hasAssets = e.dataTransfer.types.includes('application/x-asset-ids')
+          const hasFolders = e.dataTransfer.types.includes('application/x-folder-ids')
+          if (!hasAssets && !hasFolders) return
           e.preventDefault()
-          if (onAssetDrop) {
-            e.dataTransfer.dropEffect = 'copy'
+          if ((hasAssets && onAssetDrop) || (hasFolders && onFolderDrop)) {
+            e.dataTransfer.dropEffect = hasFolders ? 'move' : 'copy'
             setIsDragOver(true)
           } else {
             e.dataTransfer.dropEffect = 'none'
           }
         }}
         onDragLeave={() => setIsDragOver(false)}
-        onDrop={onAssetDrop ? (e) => {
+        onDrop={(onAssetDrop || onFolderDrop) ? (e) => {
           e.preventDefault()
           setIsDragOver(false)
-          const data = e.dataTransfer.getData('application/x-asset-ids')
-          if (data) {
-            try { onAssetDrop(JSON.parse(data)) } catch {}
+          const folderData = e.dataTransfer.getData('application/x-folder-ids')
+          if (folderData && onFolderDrop) {
+            try { onFolderDrop(JSON.parse(folderData)) } catch {}
+            return
+          }
+          const assetData = e.dataTransfer.getData('application/x-asset-ids')
+          if (assetData && onAssetDrop) {
+            try { onAssetDrop(JSON.parse(assetData)) } catch {}
           }
         } : undefined}
         className={cn(
@@ -464,7 +474,7 @@ function SectionHeader({ title }: { title: string }) {
 }
 
 /** Recursively render workspace folders as nav tree items, filtering by access */
-function FolderNavTree({ nodes, basePath, sharedFolderIds, onAssetDropToFolder }: { nodes: WorkspaceFileNode[]; basePath: string; sharedFolderIds?: Set<string>; onAssetDropToFolder?: (folderId: string, folderName: string, assetIds: string[]) => void }) {
+function FolderNavTree({ nodes, basePath, sharedFolderIds, onAssetDropToFolder, onFolderDropToFolder }: { nodes: WorkspaceFileNode[]; basePath: string; sharedFolderIds?: Set<string>; onAssetDropToFolder?: (folderId: string, folderName: string, assetIds: string[]) => void; onFolderDropToFolder?: (targetFolderId: string, folderIds: string[]) => void }) {
   const { canAccess } = useAccess()
   const { activePersona } = usePersona()
   const { assetById } = useFileTree()
@@ -496,15 +506,18 @@ function FolderNavTree({ nodes, basePath, sharedFolderIds, onAssetDropToFolder }
         const folderDrop = onAssetDropToFolder
           ? (assetIds: string[]) => onAssetDropToFolder(folder.id, folder.name, assetIds)
           : undefined
+        const folderMoveDrop = onFolderDropToFolder
+          ? (folderIds: string[]) => onFolderDropToFolder(folder.id, folderIds)
+          : undefined
         if (subfolders.length > 0) {
           return (
-            <TreeNavLink key={folder.id} href={href} label={folder.name} icon={folderIcon} iconExpanded={folderOpenIcon} defaultExpanded={false} onAssetDrop={folderDrop}>
-              <FolderNavTree nodes={folder.children ?? []} basePath={href} sharedFolderIds={sharedFolderIds} onAssetDropToFolder={onAssetDropToFolder} />
+            <TreeNavLink key={folder.id} href={href} label={folder.name} icon={folderIcon} iconExpanded={folderOpenIcon} defaultExpanded={false} onAssetDrop={folderDrop} onFolderDrop={folderMoveDrop}>
+              <FolderNavTree nodes={folder.children ?? []} basePath={href} sharedFolderIds={sharedFolderIds} onAssetDropToFolder={onAssetDropToFolder} onFolderDropToFolder={onFolderDropToFolder} />
             </TreeNavLink>
           )
         }
         return (
-          <TreeNavLink key={folder.id} href={href} label={folder.name} icon={folderIcon} iconExpanded={folderOpenIcon} onAssetDrop={folderDrop} />
+          <TreeNavLink key={folder.id} href={href} label={folder.name} icon={folderIcon} iconExpanded={folderOpenIcon} onAssetDrop={folderDrop} onFolderDrop={folderMoveDrop} />
         )
       })}
     </>
@@ -539,6 +552,13 @@ function WorkspaceRootNavItem({ root }: { root: WorkspaceFileNode }) {
     )
   }, [createFileReference, confirmMove, showToast])
 
+  const handleFolderMoveDrop = useCallback((targetFolderId: string, folderIds: string[]) => {
+    for (const folderId of folderIds) {
+      if (folderId !== targetFolderId) confirmMove(folderId, targetFolderId)
+    }
+    showToast(`Moved ${folderIds.length === 1 ? '1 folder' : `${folderIds.length} folders`}`)
+  }, [confirmMove, showToast])
+
   const sharedFolderIds = useMemo(
     () => collectSharedFolderIds([root], getResourceGrants),
     [root, getResourceGrants],
@@ -558,7 +578,7 @@ function WorkspaceRootNavItem({ root }: { root: WorkspaceFileNode }) {
         iconExpanded={folderOpenIcon}
         defaultExpanded={false}
       >
-        <FolderNavTree nodes={files} basePath={href} sharedFolderIds={sharedFolderIds} onAssetDropToFolder={handleFolderDrop} />
+        <FolderNavTree nodes={files} basePath={href} sharedFolderIds={sharedFolderIds} onAssetDropToFolder={handleFolderDrop} onFolderDropToFolder={handleFolderMoveDrop} />
       </TreeNavLink>
     )
   }

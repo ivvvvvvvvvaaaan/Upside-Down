@@ -993,6 +993,21 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                                       }
                                 }
                                 onDoubleClick={isLocked || isMobile ? undefined : () => handleFolderDrilldown(node)}
+                                draggable={!isLocked && !isRefFolder}
+                                onDragStartData={!isLocked ? () => ({ type: 'folder' as const, ids: [node.id] }) : undefined}
+                                onItemDrop={!isLocked && !isRefFolder ? (data) => {
+                                  if (data.type === 'folder') {
+                                    for (const id of data.ids) {
+                                      if (id !== node.id) confirmMove(id, node.id)
+                                    }
+                                    showToast(`Moved ${data.ids.length === 1 ? '1 item' : `${data.ids.length} items`} to ${node.name}`)
+                                  } else {
+                                    for (const id of data.ids) {
+                                      createFileReference(id, node.id)
+                                    }
+                                    showToast(`Placed ${data.ids.length === 1 ? '1 asset' : `${data.ids.length} assets`} in ${node.name}`)
+                                  }
+                                } : undefined}
                                 menuContent={isLocked ? undefined : (
                                   <div className="py-1">
                                     {buildFolderContextMenuItems(node).map((item, i) => (

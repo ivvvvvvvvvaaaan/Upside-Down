@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Avatar } from './avatar'
 import { Button } from './button'
@@ -103,6 +104,12 @@ export interface CollectionCardProps extends React.HTMLAttributes<HTMLDivElement
   onMenuClick?: (e: React.MouseEvent) => void
   /** Dropdown menu content — renders inside a Dropdown anchored to the three-dots button */
   menuContent?: React.ReactNode
+  /** Enable drag-and-drop for this card */
+  draggable?: boolean
+  /** Called when drag starts — provide the folder/item ID */
+  onDragStartData?: () => { type: 'folder' | 'asset'; ids: string[] }
+  /** Called when a folder or asset is dropped onto this card */
+  onItemDrop?: (data: { type: 'folder' | 'asset'; ids: string[] }) => void
 }
 
 export function CollectionCard({
@@ -124,10 +131,14 @@ export function CollectionCard({
   onDoubleClick,
   onMenuClick,
   menuContent,
+  draggable: draggableProp,
+  onDragStartData,
+  onItemDrop,
   onClick,
   className,
   ...props
 }: CollectionCardProps) {
+  const [isDragOver, setIsDragOver] = useState(false)
   // Helper to render the asset count label with optional access-filtered parenthetical
   const isFolder = type === 'folder'
   const itemLabel = isFolder ? 'items' : 'assets'
@@ -484,13 +495,42 @@ export function CollectionCard({
         'border border-border-elevation',
         isSelected && primary && 'ring-2 ring-border-selected',
         'items-start',
-        isSelected
+        isDragOver
+          ? 'bg-indigo-500/20 ring-1 ring-indigo-500/40'
+          : isSelected
           ? ''
           : cn('bg-surface-2', isHovered && 'bg-surface-3', 'hover:bg-surface-3'),
         'transition-colors',
         onClick && 'cursor-pointer',
         className
       )}
+      draggable={draggableProp}
+      onDragStart={onDragStartData ? (e) => {
+        const data = onDragStartData()
+        e.dataTransfer.setData(`application/x-${data.type}-ids`, JSON.stringify(data.ids))
+        e.dataTransfer.effectAllowed = 'move'
+      } : undefined}
+      onDragOver={onItemDrop ? (e) => {
+        if (e.dataTransfer.types.includes('application/x-folder-ids') || e.dataTransfer.types.includes('application/x-asset-ids')) {
+          e.preventDefault()
+          e.dataTransfer.dropEffect = 'move'
+          setIsDragOver(true)
+        }
+      } : undefined}
+      onDragLeave={onItemDrop ? () => setIsDragOver(false) : undefined}
+      onDrop={onItemDrop ? (e) => {
+        e.preventDefault()
+        setIsDragOver(false)
+        const folderData = e.dataTransfer.getData('application/x-folder-ids')
+        if (folderData) {
+          try { onItemDrop({ type: 'folder', ids: JSON.parse(folderData) }) } catch {}
+          return
+        }
+        const assetData = e.dataTransfer.getData('application/x-asset-ids')
+        if (assetData) {
+          try { onItemDrop({ type: 'asset', ids: JSON.parse(assetData) }) } catch {}
+        }
+      } : undefined}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
       {...props}
