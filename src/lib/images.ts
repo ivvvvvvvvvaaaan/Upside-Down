@@ -45,7 +45,6 @@ const CAMERA_IMAGES: string[] = [
 
 const EDITORIAL_IMAGES = [
   '/images/edit/s1e1-all-to-play-for.jpg',
-  '/images/edit/s3-poster-alt.jpg',
   '/images/edit/s3-poster.jpg',
   '/images/edit/s4e1-clash-of-the-titans.jpg',
   '/images/edit/s6e1-money-talks.jpg',
