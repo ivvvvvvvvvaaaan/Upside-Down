@@ -51,16 +51,60 @@ interface SmartCollectionDetailViewProps {
   collectionId: string
 }
 
-// Render order for kind groups, designed to match the production timeline:
-// raw inputs first (Production Shots), then VFX work products (CG), then
-// the editorial outputs (Cuts), with loose files at the end.
-const KIND_GROUP_ORDER: ReadonlyArray<{ kind: NonNullable<Asset['kind']> | 'file'; label: string }> = [
-  { kind: 'production-shot', label: 'Production Shots' },
-  { kind: 'cg-sequence', label: 'CG Sequences' },
-  { kind: 'cg-shot', label: 'CG Shots' },
-  { kind: 'cut', label: 'Cuts' },
-  { kind: 'file', label: 'Files' },
+// Group order for asset grids when "group by type" is on. The first block is
+// Composite Concept kinds (the ontology layer); the rest are Media Asset Types
+// (the work-product layer). Ordering walks the production timeline: raw inputs
+// → VFX → editorial outputs → side-cars → untyped catch-all.
+type AssetGroupKey = NonNullable<Asset['kind']> | NonNullable<Asset['mediaAssetType']> | 'file'
+
+const ASSET_GROUP_ORDER: ReadonlyArray<{ key: AssetGroupKey; label: string }> = [
+  // Composite Concepts (kind-based)
+  { key: 'production-shot', label: 'Production Shots' },
+  { key: 'cg-sequence', label: 'CG Sequences' },
+  { key: 'cg-shot', label: 'CG Shots' },
+  { key: 'cut', label: 'Cuts' },
+  // Footage (Media Asset Type)
+  { key: 'camera-clip', label: 'Camera Clips' },
+  { key: 'dailies-proxy', label: 'Dailies Proxies' },
+  { key: 'proxy', label: 'Proxies' },
+  // VFX
+  { key: 'vfx-plate', label: 'VFX Plates' },
+  { key: 'vfx-comp', label: 'VFX Comps' },
+  // Editorial / picture
+  { key: 'editorial-cut', label: 'Editorial Cuts' },
+  { key: 'textless-master', label: 'Textless Masters' },
+  { key: 'reel', label: 'Reels' },
+  // Audio
+  { key: 'sound-mix', label: 'Sound Mixes' },
+  { key: 'audio-clip', label: 'Audio Clips' },
+  { key: 'adr', label: 'ADR' },
+  { key: 'foley', label: 'Foley' },
+  { key: 'score', label: 'Score' },
+  // Art / pre-production
+  { key: 'concept-art', label: 'Concept Art' },
+  { key: 'storyboard', label: 'Storyboards' },
+  { key: 'reference-image', label: 'References' },
+  { key: 'production-photo', label: 'Production Photos' },
+  { key: 'lookbook', label: 'Lookbooks' },
+  // Side-cars
+  { key: 'edl', label: 'EDLs' },
+  { key: 'closed-captions', label: 'Captions' },
+  { key: 'project-file', label: 'Project Files' },
+  { key: 'document', label: 'Documents' },
+  // Fallback for untyped assets
+  { key: 'file', label: 'Files' },
 ]
+
+// Decide the group an asset belongs to. Composite Concept kind takes priority
+// over Media Asset Type — a Production Shot Asset has both `kind: 'production-shot'`
+// and (potentially) no `mediaAssetType`, but should always group as a Production Shot.
+function getAssetGroupKey(asset: Asset): AssetGroupKey {
+  if (asset.kind === 'cut' || asset.kind === 'production-shot' || asset.kind === 'cg-shot' || asset.kind === 'cg-sequence') {
+    return asset.kind
+  }
+  if (asset.mediaAssetType) return asset.mediaAssetType
+  return 'file'
+}
 
 export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetailViewProps) {
   const router = useRouter()
@@ -409,15 +453,15 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
 
   const kindGroupedAssets = useMemo(() => {
     if (!groupByKind) return null
-    const buckets = new Map<string, Asset[]>()
+    const buckets = new Map<AssetGroupKey, Asset[]>()
     for (const a of filteredAssets) {
-      const k = a.kind && a.kind !== 'sequence' ? a.kind : 'file'
+      const k = getAssetGroupKey(a)
       const list = buckets.get(k) ?? []
       list.push(a)
       buckets.set(k, list)
     }
-    return KIND_GROUP_ORDER
-      .map((g) => ({ label: g.label, items: buckets.get(g.kind) ?? [] }))
+    return ASSET_GROUP_ORDER
+      .map((g) => ({ label: g.label, items: buckets.get(g.key) ?? [] }))
       .filter((g) => g.items.length > 0)
   }, [groupByKind, filteredAssets])
   const itemCount = isParentWithChildren
@@ -488,7 +532,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                       <Button
                         variant="icon"
                         onClick={() => setGroupByKind((v) => !v)}
-                        aria-label={groupByKind ? 'Ungroup' : 'Group by kind'}
+                        aria-label={groupByKind ? 'Ungroup' : 'Group by type'}
                         aria-pressed={groupByKind}
                       >
                         <LayersIcon className="w-4 h-4" />
@@ -551,7 +595,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                       <Button
                         variant="icon"
                         onClick={() => setGroupByKind((v) => !v)}
-                        aria-label={groupByKind ? 'Ungroup' : 'Group by kind'}
+                        aria-label={groupByKind ? 'Ungroup' : 'Group by type'}
                         aria-pressed={groupByKind}
                       >
                         <LayersIcon className="w-4 h-4" />

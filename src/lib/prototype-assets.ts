@@ -1,4 +1,4 @@
-import type { Asset, Collection, MediaAssetType } from '@/lib/data-client'
+import type { Asset, Collection } from '@/lib/data-client'
 import type { ProductionDomainId } from '@/components/department/types'
 import { mergeWorkspaceAssets, generateAssetInstances } from '@/lib/asset-instances'
 import { DEFAULT_GRANTS, getResourceLabel } from '@/lib/grants'
@@ -91,43 +91,6 @@ function getCompositeConceptComponents(): Asset[] {
       },
     },
   ]
-}
-
-/**
- * Infer the Media Asset Type for a constituent file inside a cut folder.
- * Pattern-based: maps the filename + extension to the controlled vocabulary
- * defined in MediaAssetType. The cut folder reality has a few distinct shapes
- * — picture master, sound mix variants, EDL, captions, project file, QC doc —
- * each of which is a real work product that deserves typing.
- */
-function inferEditConstituentType(
-  name: string,
-  extension: string | undefined,
-): { mediaAssetType: MediaAssetType; audioTag?: string } | undefined {
-  const ext = extension?.toLowerCase()
-  const lowerName = name.toLowerCase()
-
-  if (ext === 'edl') return { mediaAssetType: 'edl' }
-  if (ext === 'ttml' || ext === 'vtt' || ext === 'srt') return { mediaAssetType: 'closed-captions' }
-  if (ext === 'prproj' || ext === 'aep' || ext === 'fcpxml') return { mediaAssetType: 'project-file' }
-  if (ext === 'pdf' || ext === 'txt' || ext === 'doc' || ext === 'docx') return { mediaAssetType: 'document' }
-
-  if (ext === 'mxf' || ext === 'mov' || ext === 'mp4') {
-    if (lowerName.includes('textless')) return { mediaAssetType: 'textless-master' }
-    return { mediaAssetType: 'editorial-cut' }
-  }
-
-  if (ext === 'wav' || ext === 'aac' || ext === 'aiff') {
-    if (lowerName.includes('atmos')) return { mediaAssetType: 'sound-mix', audioTag: 'Atmos' }
-    if (lowerName.includes('audiome') || lowerName.includes('audio_me') || lowerName.includes('-me') || lowerName.includes('m&e'))
-      return { mediaAssetType: 'sound-mix', audioTag: 'M&E' }
-    if (lowerName.includes('audio51') || lowerName.includes('audio_51') || lowerName.includes('5.1') || lowerName.includes('5_1'))
-      return { mediaAssetType: 'sound-mix', audioTag: '5.1' }
-    if (lowerName.includes('stereo')) return { mediaAssetType: 'sound-mix', audioTag: 'Stereo' }
-    return { mediaAssetType: 'sound-mix' }
-  }
-
-  return undefined
 }
 
 /**
@@ -260,42 +223,6 @@ export function getCGSequenceAssets(): Asset[] {
   return listCGSequences().map(([key, meta]) => seedCGSequenceToAsset(key, meta))
 }
 
-/**
- * Decoration pass: for each scenario cut, tag its constituent file Assets with
- * a `mediaAssetType` (derived from filename) + `aiMeta.editSequence` pointing
- * at the parent Concept. This is the bridge that lets existing workspace files
- * participate in the new model without rewriting workspace-data.
- *
- * If/when we push tags upstream into workspace-data, this function deletes.
- */
-export function decorateCutConstituents(assets: Asset[]): Asset[] {
-  const constituentToCut = new Map<string, string>()
-  for (const cut of SCENARIO.cuts) {
-    for (const constituentId of cut.constituents) {
-      constituentToCut.set(constituentId, cut.id)
-    }
-  }
-
-  return assets.map((asset) => {
-    const editSequence = constituentToCut.get(asset.id)
-    if (!editSequence) return asset
-
-    const inferred = inferEditConstituentType(asset.name, asset.extension)
-    const next: Asset = {
-      ...asset,
-      mediaAssetType: asset.mediaAssetType ?? inferred?.mediaAssetType,
-      aiMeta: {
-        ...(asset.aiMeta ?? {}),
-        editSequence,
-      },
-    }
-    if (inferred?.audioTag && !next.audioMeta?.typeTag) {
-      next.audioMeta = { ...(next.audioMeta ?? {}), typeTag: inferred.audioTag }
-    }
-    return next
-  })
-}
-
 export function getPromotedWorkspaceAssets(): Asset[] {
   const domainInstances = ALL_DOMAINS.flatMap((domainId) => {
     const files = getDomainWorkspaceFiles(domainId)
@@ -343,14 +270,11 @@ export function mergePrototypeAssets(apiAssets: Asset[]): Asset[] {
     ...getCGSequenceAssets(),
   ]
 
-  const deduped = merged.filter((asset) => {
+  return merged.filter((asset) => {
     if (seen.has(asset.id)) return false
     seen.add(asset.id)
     return true
   })
-
-  // Decoration pass — tag cut constituents with mediaAssetType + aiMeta.editSequence.
-  return decorateCutConstituents(deduped)
 }
 
 /**

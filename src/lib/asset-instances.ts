@@ -257,9 +257,12 @@ export function promotedInstanceToAsset(instance: AssetInstance): Asset {
     }
   }
 
-  // Populate AI metadata
+  // Populate AI metadata + mediaAssetType (work-product classification from AI).
   if (instance.aiTags) {
     base.aiMeta = toAIMeta(instance.aiTags)
+    if (instance.aiTags.mediaAssetType) {
+      base.mediaAssetType = instance.aiTags.mediaAssetType
+    }
   }
 
   // Build unified tags (Title Case all labels)

@@ -1,11 +1,26 @@
-import type { AIMeta } from '@/lib/data'
+import type { AIMeta, MediaAssetType } from '@/lib/data'
 
+/**
+ * AI-derived analysis of a workspace file. Carries narrative-layer references
+ * (scene/character/location) AND Composite Concept references — productionShot,
+ * cgShot, cgSequence, editSequence — so the file's relationships to first-class
+ * ontology entities are a single source of truth. Plus mediaAssetType, the
+ * work-product classification (editorial-cut, sound-mix, vfx-comp, etc.).
+ */
 export type AITagResult = {
   sourceFileId: string
   characters: string[]
   scene?: string
   location?: string
+  /** Free-form display tag (e.g. "VFX Comp"). For controlled vocabulary, see mediaAssetType. */
   typeTag?: string
+  /** Work-product classification (controlled vocab from the asset-taxonomy spec). */
+  mediaAssetType?: MediaAssetType
+  /** Composite Concept references — the parent entities this file belongs to. */
+  productionShot?: string
+  cgShot?: string
+  cgSequence?: string
+  editSequence?: string
   confidence: number
   keywords: string[]
   analyzedAt: string
@@ -66,6 +81,7 @@ const MOCK_AI_TAGS: Record<string, AITagResult> = {
     scene: 'INT. APEX GARAGE - RACE DAY',
     location: 'Apex Garage',
     typeTag: 'VFX Comp',
+    mediaAssetType: 'vfx-comp',
     confidence: 0.92,
     keywords: ['comp', 'final', 'powers effect', 'particle'],
     analyzedAt: '2026-02-14T08:00:00Z',
@@ -77,6 +93,9 @@ const MOCK_AI_TAGS: Record<string, AITagResult> = {
     scene: 'EXT. CIRCUIT - LAP 52',
     location: 'Pit Lane',
     typeTag: 'VFX Comp',
+    mediaAssetType: 'vfx-comp',
+    cgShot: 'VFX_EP303_SC52_001',
+    cgSequence: 'VFX_EP303_LAP52',
     confidence: 0.89,
     keywords: ['car', 'pit stop', 'comp', 'atmosphere'],
     analyzedAt: '2026-02-13T11:30:00Z',
@@ -88,6 +107,7 @@ const MOCK_AI_TAGS: Record<string, AITagResult> = {
     scene: 'EXT. PADDOCK - POST-RACE',
     location: 'Paddock Club',
     typeTag: 'VFX Comp',
+    mediaAssetType: 'vfx-comp',
     confidence: 0.78,
     keywords: ['environment', 'destruction', 'debris', 'fire'],
     analyzedAt: '2026-02-12T15:00:00Z',
@@ -98,6 +118,7 @@ const MOCK_AI_TAGS: Record<string, AITagResult> = {
     characters: ['James Ashworth', 'Elena Richter'],
     scene: 'INT. MERCEDES MOTORHOME - DEBRIEF',
     typeTag: 'VFX Comp',
+    mediaAssetType: 'vfx-comp',
     confidence: 0.83,
     keywords: ['comp', 'team radio', 'map', 'plan scene'],
     analyzedAt: '2026-02-13T09:45:00Z',
@@ -108,6 +129,7 @@ const MOCK_AI_TAGS: Record<string, AITagResult> = {
     characters: ['Viktor Dragan'],
     scene: 'EXT. GRID WALK - PRE-RACE',
     typeTag: 'VFX Comp',
+    mediaAssetType: 'vfx-comp',
     confidence: 0.86,
     keywords: ['snow', 'guard tower', 'escape', 'comp'],
     analyzedAt: '2026-02-12T13:00:00Z',
@@ -144,6 +166,8 @@ const MOCK_AI_TAGS: Record<string, AITagResult> = {
     characters: ['Marco Vitale', 'James Ashworth', 'Viktor Dragan'],
     scene: 'INT. APEX GARAGE - RACE DAY',
     typeTag: 'Timeline',
+    mediaAssetType: 'project-file',
+    editSequence: 'cut-ep301-lc-1',
     confidence: 0.95,
     keywords: ['EP301', 'v4', 'full episode', 'premiere'],
     analyzedAt: '2026-02-14T12:00:00Z',
@@ -167,6 +191,191 @@ const MOCK_AI_TAGS: Record<string, AITagResult> = {
     keywords: ['EP302', 'v1', 'premiere'],
     analyzedAt: '2026-02-10T14:30:00Z',
     status: 'complete',
+  },
+
+  // Editorial — Cut Constituents (managed zone)
+  // Each file inside a cut folder gets editSequence (parent Edit Sequence
+  // Concept) + mediaAssetType (work-product classification). This replaces the
+  // earlier decorateCutConstituents pass — AI tags are now the single source.
+  'ws-edit-lc1-video': {
+    sourceFileId: 'ws-edit-lc1-video',
+    characters: [], editSequence: 'cut-ep301-lc-1', mediaAssetType: 'editorial-cut',
+    confidence: 1, keywords: ['picture lock', 'EP301', 'LC1'],
+    analyzedAt: '2026-02-08T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-lc1-audio-stereo': {
+    sourceFileId: 'ws-edit-lc1-audio-stereo',
+    characters: [], editSequence: 'cut-ep301-lc-1', mediaAssetType: 'sound-mix', typeTag: 'Stereo',
+    confidence: 1, keywords: ['mix', 'stereo'],
+    analyzedAt: '2026-02-08T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-lc1-edl': {
+    sourceFileId: 'ws-edit-lc1-edl',
+    characters: [], editSequence: 'cut-ep301-lc-1', mediaAssetType: 'edl',
+    confidence: 1, keywords: ['edit decision list'],
+    analyzedAt: '2026-02-08T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-lc2-video': {
+    sourceFileId: 'ws-edit-lc2-video',
+    characters: [], editSequence: 'cut-ep301-lc-2', mediaAssetType: 'editorial-cut',
+    confidence: 1, keywords: ['picture lock', 'EP301', 'LC2'],
+    analyzedAt: '2026-02-13T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-lc2-audio-stereo': {
+    sourceFileId: 'ws-edit-lc2-audio-stereo',
+    characters: [], editSequence: 'cut-ep301-lc-2', mediaAssetType: 'sound-mix', typeTag: 'Stereo',
+    confidence: 1, keywords: ['mix', 'stereo'],
+    analyzedAt: '2026-02-13T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-lc2-audio-51': {
+    sourceFileId: 'ws-edit-lc2-audio-51',
+    characters: [], editSequence: 'cut-ep301-lc-2', mediaAssetType: 'sound-mix', typeTag: '5.1',
+    confidence: 1, keywords: ['mix', 'surround'],
+    analyzedAt: '2026-02-13T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-lc2-edl': {
+    sourceFileId: 'ws-edit-lc2-edl',
+    characters: [], editSequence: 'cut-ep301-lc-2', mediaAssetType: 'edl',
+    confidence: 1, keywords: ['edit decision list'],
+    analyzedAt: '2026-02-13T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-lc3-video': {
+    sourceFileId: 'ws-edit-lc3-video',
+    characters: [], editSequence: 'cut-ep301-lc-3', mediaAssetType: 'editorial-cut',
+    confidence: 1, keywords: ['picture lock', 'EP301', 'LC3'],
+    analyzedAt: '2026-02-18T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-lc3-audio-stereo': {
+    sourceFileId: 'ws-edit-lc3-audio-stereo',
+    characters: [], editSequence: 'cut-ep301-lc-3', mediaAssetType: 'sound-mix', typeTag: 'Stereo',
+    confidence: 1, keywords: ['mix', 'stereo'],
+    analyzedAt: '2026-02-18T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-lc3-audio-51': {
+    sourceFileId: 'ws-edit-lc3-audio-51',
+    characters: [], editSequence: 'cut-ep301-lc-3', mediaAssetType: 'sound-mix', typeTag: '5.1',
+    confidence: 1, keywords: ['mix', 'surround'],
+    analyzedAt: '2026-02-18T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-lc3-cc': {
+    sourceFileId: 'ws-edit-lc3-cc',
+    characters: [], editSequence: 'cut-ep301-lc-3', mediaAssetType: 'closed-captions',
+    confidence: 1, keywords: ['captions', 'english', 'TTML'],
+    analyzedAt: '2026-02-18T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-lc3-edl': {
+    sourceFileId: 'ws-edit-lc3-edl',
+    characters: [], editSequence: 'cut-ep301-lc-3', mediaAssetType: 'edl',
+    confidence: 1, keywords: ['edit decision list'],
+    analyzedAt: '2026-02-18T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-fc-video': {
+    sourceFileId: 'ws-edit-fc-video',
+    characters: [], editSequence: 'cut-ep301-fc', mediaAssetType: 'editorial-cut',
+    confidence: 1, keywords: ['final cut', 'EP301'],
+    analyzedAt: '2026-02-28T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-fc-audio-stereo': {
+    sourceFileId: 'ws-edit-fc-audio-stereo',
+    characters: [], editSequence: 'cut-ep301-fc', mediaAssetType: 'sound-mix', typeTag: 'Stereo',
+    confidence: 1, keywords: ['final mix', 'stereo'],
+    analyzedAt: '2026-02-28T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-fc-audio-51': {
+    sourceFileId: 'ws-edit-fc-audio-51',
+    characters: [], editSequence: 'cut-ep301-fc', mediaAssetType: 'sound-mix', typeTag: '5.1',
+    confidence: 1, keywords: ['final mix', 'surround'],
+    analyzedAt: '2026-02-28T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-fc-audio-me': {
+    sourceFileId: 'ws-edit-fc-audio-me',
+    characters: [], editSequence: 'cut-ep301-fc', mediaAssetType: 'sound-mix', typeTag: 'M&E',
+    confidence: 1, keywords: ['music and effects', 'localization'],
+    analyzedAt: '2026-02-28T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-fc-textless': {
+    sourceFileId: 'ws-edit-fc-textless',
+    characters: [], editSequence: 'cut-ep301-fc', mediaAssetType: 'textless-master',
+    confidence: 1, keywords: ['textless', 'localization'],
+    analyzedAt: '2026-02-28T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-fc-edl': {
+    sourceFileId: 'ws-edit-fc-edl',
+    characters: [], editSequence: 'cut-ep301-fc', mediaAssetType: 'edl',
+    confidence: 1, keywords: ['edit decision list', 'final'],
+    analyzedAt: '2026-02-28T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-emf-video': {
+    sourceFileId: 'ws-edit-emf-video',
+    characters: [], editSequence: 'cut-ep301-emf', mediaAssetType: 'editorial-cut',
+    confidence: 1, keywords: ['delivery master', 'EP301', 'EMF'],
+    analyzedAt: '2026-03-05T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-emf-audio-stereo': {
+    sourceFileId: 'ws-edit-emf-audio-stereo',
+    characters: [], editSequence: 'cut-ep301-emf', mediaAssetType: 'sound-mix', typeTag: 'Stereo',
+    confidence: 1, keywords: ['delivery mix', 'stereo'],
+    analyzedAt: '2026-03-05T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-emf-audio-51': {
+    sourceFileId: 'ws-edit-emf-audio-51',
+    characters: [], editSequence: 'cut-ep301-emf', mediaAssetType: 'sound-mix', typeTag: '5.1',
+    confidence: 1, keywords: ['delivery mix', 'surround'],
+    analyzedAt: '2026-03-05T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-emf-audio-atmos': {
+    sourceFileId: 'ws-edit-emf-audio-atmos',
+    characters: [], editSequence: 'cut-ep301-emf', mediaAssetType: 'sound-mix', typeTag: 'Atmos',
+    confidence: 1, keywords: ['delivery mix', 'immersive'],
+    analyzedAt: '2026-03-05T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-emf-audio-me': {
+    sourceFileId: 'ws-edit-emf-audio-me',
+    characters: [], editSequence: 'cut-ep301-emf', mediaAssetType: 'sound-mix', typeTag: 'M&E',
+    confidence: 1, keywords: ['music and effects', 'localization'],
+    analyzedAt: '2026-03-05T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-emf-textless': {
+    sourceFileId: 'ws-edit-emf-textless',
+    characters: [], editSequence: 'cut-ep301-emf', mediaAssetType: 'textless-master',
+    confidence: 1, keywords: ['textless', 'delivery'],
+    analyzedAt: '2026-03-05T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-emf-cc': {
+    sourceFileId: 'ws-edit-emf-cc',
+    characters: [], editSequence: 'cut-ep301-emf', mediaAssetType: 'closed-captions',
+    confidence: 1, keywords: ['captions', 'english', 'TTML'],
+    analyzedAt: '2026-03-05T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-emf-qc': {
+    sourceFileId: 'ws-edit-emf-qc',
+    characters: [], editSequence: 'cut-ep301-emf', mediaAssetType: 'document',
+    confidence: 1, keywords: ['QC report', 'delivery'],
+    analyzedAt: '2026-03-05T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-cut-rough2': {
+    sourceFileId: 'ws-edit-cut-rough2',
+    characters: [], editSequence: 'cut-ep302-lc-1', mediaAssetType: 'project-file',
+    confidence: 1, keywords: ['EP302', 'timeline', 'v1'],
+    analyzedAt: '2026-02-20T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-ep302-lc1-video': {
+    sourceFileId: 'ws-edit-ep302-lc1-video',
+    characters: [], editSequence: 'cut-ep302-lc-1', mediaAssetType: 'editorial-cut',
+    confidence: 1, keywords: ['picture lock', 'EP302', 'LC1'],
+    analyzedAt: '2026-02-20T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-ep302-lc1-audio': {
+    sourceFileId: 'ws-edit-ep302-lc1-audio',
+    characters: [], editSequence: 'cut-ep302-lc-1', mediaAssetType: 'sound-mix', typeTag: 'Stereo',
+    confidence: 1, keywords: ['mix', 'stereo'],
+    analyzedAt: '2026-02-20T18:00:00Z', status: 'complete',
+  },
+  'ws-edit-ep302-lc1-edl': {
+    sourceFileId: 'ws-edit-ep302-lc1-edl',
+    characters: [], editSequence: 'cut-ep302-lc-1', mediaAssetType: 'edl',
+    confidence: 1, keywords: ['edit decision list'],
+    analyzedAt: '2026-02-20T18:00:00Z', status: 'complete',
   },
 
   // Audio — Sound Effects (managed zone)
@@ -681,6 +890,10 @@ const MOCK_AI_TAGS: Record<string, AITagResult> = {
     characters: ['AR-24'],
     scene: 'EXT. CIRCUIT - LAP 52',
     typeTag: 'VFX Plate',
+    mediaAssetType: 'vfx-plate',
+    cgShot: 'VFX_EP303_SC52_001',
+    cgSequence: 'VFX_EP303_LAP52',
+    productionShot: 'EP303-S52-T07A',
     confidence: 0.84,
     keywords: ['plate', 'SEQ010', 'SH020', 'clean plate'],
     analyzedAt: '2026-02-11T08:00:00Z',
@@ -1069,6 +1282,7 @@ const MOCK_AI_TAGS: Record<string, AITagResult> = {
     scene: 'INT. APEX GARAGE - RACE DAY',
     location: 'Apex Garage',
     typeTag: 'VFX Preview',
+    mediaAssetType: 'project-file',
     confidence: 0.92,
     keywords: ['powers', 'comp', 'vfx'],
     analyzedAt: '2026-02-11T10:00:00Z',
@@ -1080,6 +1294,7 @@ const MOCK_AI_TAGS: Record<string, AITagResult> = {
     scene: 'EXT. PADDOCK - POST-RACE',
     location: 'Apex Garage',
     typeTag: 'VFX Preview',
+    mediaAssetType: 'project-file',
     confidence: 0.86,
     keywords: ['destruction', 'comp', 'explosion'],
     analyzedAt: '2026-02-10T10:00:00Z',
@@ -1405,12 +1620,16 @@ export function getFileIdsByScene(scene: string): string[] {
   )
 }
 
-/** Convert an AITagResult to the AIMeta shape stored on Asset */
+/** Convert an AITagResult to the AIMeta shape stored on Asset. */
 export function toAIMeta(tags: AITagResult): AIMeta {
   return {
     characters: tags.characters.length > 0 ? tags.characters : undefined,
     scene: tags.scene,
     location: tags.location,
+    productionShot: tags.productionShot,
+    cgShot: tags.cgShot,
+    cgSequence: tags.cgSequence,
+    editSequence: tags.editSequence,
     confidence: tags.confidence,
     keywords: tags.keywords,
   }
