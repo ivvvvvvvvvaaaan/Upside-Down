@@ -680,9 +680,23 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // filterByAccess: filter assets by persona access.
+  //
+  // Composite Concept projections (Production Shot, CG Shot, CG Sequence) are
+  // tier-2 "ontology-level" entities per the asset-taxonomy spec — any project
+  // member can see them, regardless of which department's domain root they
+  // live under. Their constituent files remain gated normally below.
+  // Cuts are NOT in this bypass because they're the work product with explicit
+  // sharing semantics in scenario.shares.
   const filterByAccess = useCallback((assets: Asset[]): Asset[] => {
     if (!activePersona) return assets
     return assets.filter((asset) => {
+      if (
+        asset.kind === 'production-shot'
+        || asset.kind === 'cg-shot'
+        || asset.kind === 'cg-sequence'
+      ) {
+        return true
+      }
       if (canAccess(asset.id)) return true
       if (asset.sourceFolderIds?.some((fid) => canAccess(fid))) return true
       return false

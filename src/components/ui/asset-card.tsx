@@ -223,7 +223,19 @@ export function AssetCard({
     }
   }
 
+  // Composite Concept projections (Production Shot / CG Shot / CG Sequence)
+  // get a kind label instead of the generic type label, so the grid reads as
+  // first-class entities rather than as "videos."  Cuts already carry an
+  // explicit system tag (e.g., "Locked Cut V1") so they're excluded here.
+  const COMPOSITE_KIND_LABELS: Partial<Record<NonNullable<Asset['kind']>, string>> = {
+    'production-shot': 'Production Shot',
+    'cg-shot': 'CG Shot',
+    'cg-sequence': 'CG Sequence',
+  }
+  const compositeKindLabel = asset.kind ? COMPOSITE_KIND_LABELS[asset.kind] : undefined
+
   const renderTypeTag = () => {
+    if (compositeKindLabel) return <Tag variant="glass">{compositeKindLabel}</Tag>
     const tagLabel = getTypeTag()
     return <Tag variant="glass">{tagLabel}</Tag>
   }

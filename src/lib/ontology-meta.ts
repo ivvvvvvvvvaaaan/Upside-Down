@@ -316,6 +316,14 @@ const LOCATIONS: Record<string, NarrativeLocationMeta> = {
 // Keyed by a code that captures episode + scene + setup.
 
 const PRODUCTION_SCENES: Record<string, ProductionSceneMeta> = {
+  'EP301-S01-D02': {
+    narrativeScene: 'EXT. GRID WALK - PRE-RACE',
+    episode: 'EP301',
+    shootDay: 2,
+    shootDate: '2026-02-13',
+    unit: '1st unit',
+    description: 'Grid walk steadicam, full crowd dressing, pre-race tension.',
+  },
   'EP301-S05-D03': {
     narrativeScene: 'INT. APEX GARAGE - RACE DAY',
     episode: 'EP301',
@@ -323,6 +331,14 @@ const PRODUCTION_SCENES: Record<string, ProductionSceneMeta> = {
     shootDate: '2026-02-14',
     unit: '1st unit',
     description: 'Garage interior, race day. Telemetry monitors live, full crew dressing.',
+  },
+  'EP301-S07-D05': {
+    narrativeScene: 'EXT. PADDOCK - POST-RACE',
+    episode: 'EP301',
+    shootDay: 5,
+    shootDate: '2026-02-16',
+    unit: '1st unit',
+    description: 'Paddock crowd, post-race aftermath. Press scrum dressing.',
   },
   'EP303-S52-D11': {
     narrativeScene: 'EXT. CIRCUIT - LAP 52',
@@ -347,6 +363,28 @@ const PRODUCTION_SCENES: Record<string, ProductionSceneMeta> = {
 // Take-level granularity beneath production scenes.
 
 const PRODUCTION_SHOTS: Record<string, ProductionShotMeta> = {
+  // EXT. GRID WALK - PRE-RACE
+  'EP301-S01-T02A': {
+    productionScene: 'EP301-S01-D02',
+    narrativeScene: 'EXT. GRID WALK - PRE-RACE',
+    episode: 'EP301',
+    take: 2,
+    camera: 'A',
+    circle: true,
+    lens: '35mm',
+    description: 'Marco walks the grid, steadicam tracking shot.',
+  },
+  'EP301-S01-T02C': {
+    productionScene: 'EP301-S01-D02',
+    narrativeScene: 'EXT. GRID WALK - PRE-RACE',
+    episode: 'EP301',
+    take: 2,
+    camera: 'C',
+    circle: false,
+    lens: '50mm',
+    description: 'Reverse coverage on grid walk — crowd reactions.',
+  },
+  // INT. APEX GARAGE - RACE DAY
   'EP301-S05-T03A': {
     productionScene: 'EP301-S05-D03',
     narrativeScene: 'INT. APEX GARAGE - RACE DAY',
@@ -367,6 +405,28 @@ const PRODUCTION_SHOTS: Record<string, ProductionShotMeta> = {
     lens: '85mm',
     description: 'Tight on Marco — reaction coverage.',
   },
+  'EP301-S05-T05A': {
+    productionScene: 'EP301-S05-D03',
+    narrativeScene: 'INT. APEX GARAGE - RACE DAY',
+    episode: 'EP301',
+    take: 5,
+    camera: 'A',
+    circle: true,
+    lens: '24mm',
+    description: 'Wide master, full garage crew, alternate take.',
+  },
+  // EXT. PADDOCK - POST-RACE
+  'EP301-S07-T01A': {
+    productionScene: 'EP301-S07-D05',
+    narrativeScene: 'EXT. PADDOCK - POST-RACE',
+    episode: 'EP301',
+    take: 1,
+    camera: 'A',
+    circle: true,
+    lens: '24mm',
+    description: 'Wide paddock, press scrum forming around Marco.',
+  },
+  // EXT. CIRCUIT - LAP 52
   'EP303-S52-T07A': {
     productionScene: 'EP303-S52-D11',
     narrativeScene: 'EXT. CIRCUIT - LAP 52',
@@ -376,6 +436,47 @@ const PRODUCTION_SHOTS: Record<string, ProductionShotMeta> = {
     circle: true,
     lens: '50mm',
     description: 'Plate run, hero car through Maggotts-Becketts.',
+  },
+  'EP303-S52-T07B': {
+    productionScene: 'EP303-S52-D11',
+    narrativeScene: 'EXT. CIRCUIT - LAP 52',
+    episode: 'EP303',
+    take: 7,
+    camera: 'B',
+    circle: false,
+    lens: '200mm',
+    description: 'Tight track-level, hero car wheels.',
+  },
+  'EP303-S52-T08A': {
+    productionScene: 'EP303-S52-D11',
+    narrativeScene: 'EXT. CIRCUIT - LAP 52',
+    episode: 'EP303',
+    take: 8,
+    camera: 'A',
+    circle: false,
+    lens: '100mm',
+    description: 'Plate run, second pass, alternate line through Maggotts.',
+  },
+  // EXT. ABU DHABI MARINA CIRCUIT - CHAMPIONSHIP DECIDER - SUNSET
+  'EP306-S22-T01A': {
+    productionScene: 'EP306-S22-D18',
+    narrativeScene: 'EXT. ABU DHABI MARINA CIRCUIT - CHAMPIONSHIP DECIDER - SUNSET',
+    episode: 'EP306',
+    take: 1,
+    camera: 'A',
+    circle: true,
+    lens: '50mm',
+    description: 'Sunset establishing wide, championship decider.',
+  },
+  'EP306-S22-T01B': {
+    productionScene: 'EP306-S22-D18',
+    narrativeScene: 'EXT. ABU DHABI MARINA CIRCUIT - CHAMPIONSHIP DECIDER - SUNSET',
+    episode: 'EP306',
+    take: 1,
+    camera: 'B',
+    circle: false,
+    lens: '35mm',
+    description: 'Driver POV, start-finish straight.',
   },
 }
 

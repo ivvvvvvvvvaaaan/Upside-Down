@@ -21,7 +21,7 @@ import { getCutStageLabel } from '@/lib/cuts'
 import { Dropdown, DropdownMenuItem } from '@/components/ui'
 import type { Asset, DomainId } from '@/lib/data'
 import { getContextAssetGroups } from '@/lib/context-relationships'
-import { getEditSequence } from '@/lib/ontology-meta'
+import { getEditSequence, getCGSequence } from '@/lib/ontology-meta'
 
 const DOMAIN_NAMES: Record<DomainId, string> = {
   'art-design': 'Art & Design',
@@ -229,20 +229,34 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
    */
   const parentConcepts = useMemo(() => {
     if (!asset?.aiMeta) return []
-    const parents: { label: string; kind: string; href: string }[] = []
+    const parents: { verb: string; label: string; kind: string; href: string }[] = []
     if (asset.aiMeta.editSequence) {
       const seq = getEditSequence(asset.aiMeta.editSequence)
       parents.push({
+        verb: 'Part of',
         label: seq?.name ?? asset.aiMeta.editSequence,
         kind: 'Edit Sequence',
         href: `/nextgen/assets/${asset.aiMeta.editSequence}`,
       })
     }
-    if (asset.aiMeta.productionShot) {
+    if (asset.aiMeta.cgSequence && asset.id !== asset.aiMeta.cgSequence) {
+      const seq = getCGSequence(asset.aiMeta.cgSequence)
       parents.push({
+        verb: 'Part of',
+        label: seq?.vendor ? `${asset.aiMeta.cgSequence} (${seq.vendor})` : asset.aiMeta.cgSequence,
+        kind: 'CG Sequence',
+        href: `/nextgen/assets/${encodeURIComponent(asset.aiMeta.cgSequence)}`,
+      })
+    }
+    if (asset.aiMeta.productionShot && asset.id !== asset.aiMeta.productionShot) {
+      // A CG Shot REPLACES a Production Shot — different semantics than a Media
+      // Asset that's PART OF one. Label accordingly.
+      const verb = asset.kind === 'cg-shot' ? 'Replaces' : 'Part of'
+      parents.push({
+        verb,
         label: asset.aiMeta.productionShot,
         kind: 'Production Shot',
-        href: `/nextgen/concepts/production-shot/${asset.aiMeta.productionShot}`,
+        href: `/nextgen/assets/${encodeURIComponent(asset.aiMeta.productionShot)}`,
       })
     }
     return parents
@@ -388,7 +402,7 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
                       className="group inline-flex items-center gap-1.5 text-body-1-regular text-foreground-dim hover:text-foreground-system-link transition-colors"
                     >
                       <CornerUpLeft className="w-3.5 h-3.5" />
-                      <span>Part of {parent.kind}:</span>
+                      <span>{parent.verb} {parent.kind}:</span>
                       <span className="text-foreground group-hover:text-foreground-system-link transition-colors">
                         {parent.label}
                       </span>

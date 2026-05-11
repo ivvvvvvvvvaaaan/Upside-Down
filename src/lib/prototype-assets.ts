@@ -4,6 +4,9 @@ import { mergeWorkspaceAssets, generateAssetInstances } from '@/lib/asset-instan
 import { DEFAULT_GRANTS, getResourceLabel } from '@/lib/grants'
 import { getDomainWorkspaceFiles } from '@/lib/workspace-data'
 import { SCENARIO } from '@/lib/scenario'
+import { listProductionShots, getProductionScene, listCGShots, listCGSequences } from '@/lib/ontology-meta'
+import type { ProductionShotMeta, CGShotMeta, CGSequenceMeta } from '@/lib/ontology-meta'
+import { pickForDomain } from '@/lib/images'
 
 const ALL_DOMAINS: ProductionDomainId[] = ['art-design', 'vfx', 'editorial']
 
@@ -157,6 +160,107 @@ export function getConceptAssetCollection(conceptKey: string): Collection | unde
 }
 
 /**
+ * Project a Production Shot Concept into an Asset record so it flows through
+ * the canonical asset-detail pipeline alongside cuts and regular files. Same
+ * pattern as `seedCutToAsset` for Edit Sequence Concepts — the Asset is a view
+ * over the Concept + its Concept-Asset Collection.
+ *
+ * The projected Asset carries:
+ * - `kind: 'production-shot'` discriminator
+ * - `type: 'shot'` so AssetDetailPanel renders shot-style metadata (Scene/Take/Camera)
+ * - `aiMeta.scene` set to the parent Narrative Scene so it appears in scene
+ *   smart-collection grids alongside the loose dailies tagged with that scene
+ * - A deterministic thumbnail from the editorial image pool
+ */
+export function seedProductionShotToAsset(key: string, meta: ProductionShotMeta): Asset {
+  const productionScene = getProductionScene(meta.productionScene)
+  return {
+    id: key,
+    name: key,
+    type: 'shot',
+    kind: 'production-shot',
+    department: 'editorial',
+    episode: meta.episode,
+    thumbnail: pickForDomain('editorial', key)[0],
+    shotMeta: {
+      scene: meta.narrativeScene,
+      take: String(meta.take),
+      camera: meta.camera,
+    },
+    aiMeta: {
+      scene: meta.narrativeScene,
+    },
+    isCircleTake: meta.circle ?? false,
+    created_at: productionScene?.shootDate,
+  }
+}
+
+/** All Production Shot Concepts projected as Assets. */
+export function getProductionShotAssets(): Asset[] {
+  return listProductionShots().map(([key, meta]) => seedProductionShotToAsset(key, meta))
+}
+
+/**
+ * Project a CG Shot Concept into an Asset record. Same pattern as
+ * `seedProductionShotToAsset` — the Asset is a view over the CG Shot Concept.
+ *
+ * CG Shots carry a `version` (iteration number) and an optional
+ * `replacesProductionShot` relationship — surfaced as `versionGroupId` and a
+ * stub aiMeta back-ref so the page can show "Replaces Production Shot: …".
+ */
+export function seedCGShotToAsset(key: string, meta: CGShotMeta): Asset {
+  return {
+    id: key,
+    name: key,
+    type: 'video',
+    kind: 'cg-shot',
+    department: 'vfx',
+    episode: meta.episode,
+    thumbnail: pickForDomain('vfx', key)[0],
+    version: meta.version,
+    versionGroupId: `cg:${meta.cgSequence}:${key.split('_').slice(-1)[0]}`,
+    isFinal: meta.status === 'final',
+    aiMeta: {
+      scene: meta.narrativeScene,
+      cgSequence: meta.cgSequence,
+      cgShot: key,
+      ...(meta.replacesProductionShot ? { productionShot: meta.replacesProductionShot } : {}),
+    },
+  }
+}
+
+/** All CG Shot Concepts projected as Assets. */
+export function getCGShotAssets(): Asset[] {
+  return listCGShots().map(([key, meta]) => seedCGShotToAsset(key, meta))
+}
+
+/**
+ * Project a CG Sequence Concept into an Asset record. A CG Sequence is the
+ * VFX vendor's wrapper around a set of CG Shots — the unit of vendor
+ * accountability and version lineage.
+ */
+export function seedCGSequenceToAsset(key: string, meta: CGSequenceMeta): Asset {
+  return {
+    id: key,
+    name: key,
+    type: 'video',
+    kind: 'cg-sequence',
+    department: 'vfx',
+    episode: meta.episode,
+    thumbnail: pickForDomain('vfx', key)[0],
+    isFinal: meta.status === 'final',
+    aiMeta: {
+      scene: meta.narrativeScene,
+    },
+  }
+}
+
+/** All CG Sequence Concepts projected as Assets. */
+export function getCGSequenceAssets(): Asset[] {
+  return listCGSequences().map(([key, meta]) => seedCGSequenceToAsset(key, meta))
+}
+
+/**
  * Decoration pass: for each scenario cut, tag its constituent file Assets with
  * a `mediaAssetType` (derived from filename) + `aiMeta.editSequence` pointing
  * at the parent Concept. This is the bridge that lets existing workspace files
@@ -234,6 +338,9 @@ export function mergePrototypeAssets(apiAssets: Asset[]): Asset[] {
     ...getPromotedWorkspaceAssets(),
     ...getSharedSnapshotAssets(),
     ...getCompositeConceptComponents(),
+    ...getProductionShotAssets(),
+    ...getCGShotAssets(),
+    ...getCGSequenceAssets(),
   ]
 
   const deduped = merged.filter((asset) => {

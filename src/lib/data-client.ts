@@ -45,8 +45,12 @@ export type MediaAssetType =
   | 'project-file'
   | 'document'
 
-/** Composite asset kinds — assembled from multiple source files */
-export type AssetKind = 'file' | 'cut' | 'sequence'
+/** Composite asset kinds — assembled from multiple source files.
+ *  `cut`, `production-shot`, `cg-shot`, and `cg-sequence` are projections of
+ *  their ontology Concepts (Edit Sequence / Production Shot / CG Shot /
+ *  CG Sequence), exposed as Assets so they flow through the canonical
+ *  asset-detail pipeline alongside regular files. */
+export type AssetKind = 'file' | 'cut' | 'sequence' | 'production-shot' | 'cg-shot' | 'cg-sequence'
 
 /** Cut progression stages */
 export type CutStage =

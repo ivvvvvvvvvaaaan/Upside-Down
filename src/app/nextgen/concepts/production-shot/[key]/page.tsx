@@ -1,20 +1,15 @@
-import { ProductionShotDetailView } from './view'
+import { redirect } from 'next/navigation'
 
 interface Props {
   params: { key: string }
 }
 
 /**
- * Production Shot detail page (Composite Concept).
- *
- * Renders a Production Shot Concept (e.g., 'EP301-S05-T03A') along with its
- * constituent Media Assets (camera clip + audio clip + dailies proxy) grouped
- * by Media Asset Type.
- *
- * Part of the Phase B stress test of the asset-taxonomy spec — proves the
- * data layer's Composite Concept pattern (Concept node + Media Asset
- * components connected via aiMeta) actually renders end-to-end.
+ * Production Shot Concepts are now projected as Assets (kind: 'production-shot')
+ * and live at the canonical asset detail URL. This route exists only to keep
+ * old links working — it forwards to `/nextgen/assets/[key]` where the
+ * canonical AssetDetailView reads the projected Asset.
  */
 export default function ProductionShotPage({ params }: Props) {
-  return <ProductionShotDetailView shotKey={decodeURIComponent(params.key)} />
+  redirect(`/nextgen/assets/${encodeURIComponent(decodeURIComponent(params.key))}`)
 }

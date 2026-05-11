@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { PanelRight, Info, Link2, Download, Plus, Trash2, Pencil } from 'lucide-react'
+import { PanelRight, Info, Link2, Download, Plus, Trash2, Pencil, Layers as LayersIcon } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
 import { PERSONAS } from '@/lib/personas'
 import { SelectAllRow } from '@/components/ui/select-all-row'
@@ -50,6 +50,17 @@ import { getCollectionCapabilities } from '@/lib/collection-types'
 interface SmartCollectionDetailViewProps {
   collectionId: string
 }
+
+// Render order for kind groups, designed to match the production timeline:
+// raw inputs first (Production Shots), then VFX work products (CG), then
+// the editorial outputs (Cuts), with loose files at the end.
+const KIND_GROUP_ORDER: ReadonlyArray<{ kind: NonNullable<Asset['kind']> | 'file'; label: string }> = [
+  { kind: 'production-shot', label: 'Production Shots' },
+  { kind: 'cg-sequence', label: 'CG Sequences' },
+  { kind: 'cg-shot', label: 'CG Shots' },
+  { kind: 'cut', label: 'Cuts' },
+  { kind: 'file', label: 'Files' },
+]
 
 export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetailViewProps) {
   const router = useRouter()
@@ -390,6 +401,25 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     return getOntologyMeta(collection.name, collection.icon)
   }, [collection?.name, collection?.icon])
   const showOntologyHero = ontologyMeta !== null
+
+  // Local view preference: group the asset grid by Composite Concept kind.
+  // Useful on scene pages where Production Shots, CG Shots, Cuts, and raw
+  // files all coexist and benefit from being visually separated.
+  const [groupByKind, setGroupByKind] = useState(false)
+
+  const kindGroupedAssets = useMemo(() => {
+    if (!groupByKind) return null
+    const buckets = new Map<string, Asset[]>()
+    for (const a of filteredAssets) {
+      const k = a.kind && a.kind !== 'sequence' ? a.kind : 'file'
+      const list = buckets.get(k) ?? []
+      list.push(a)
+      buckets.set(k, list)
+    }
+    return KIND_GROUP_ORDER
+      .map((g) => ({ label: g.label, items: buckets.get(g.kind) ?? [] }))
+      .filter((g) => g.items.length > 0)
+  }, [groupByKind, filteredAssets])
   const itemCount = isParentWithChildren
     ? childCollections.length
     : filteredAssets.length
@@ -455,6 +485,14 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                         onChange={setSortCriteria}
                         iconOnly
                       />
+                      <Button
+                        variant="icon"
+                        onClick={() => setGroupByKind((v) => !v)}
+                        aria-label={groupByKind ? 'Ungroup' : 'Group by kind'}
+                        aria-pressed={groupByKind}
+                      >
+                        <LayersIcon className="w-4 h-4" />
+                      </Button>
                       <AppearanceDropdown
                         iconOnly
                         layout={layout}
@@ -510,6 +548,14 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                         onChange={setSortCriteria}
                         iconOnly
                       />
+                      <Button
+                        variant="icon"
+                        onClick={() => setGroupByKind((v) => !v)}
+                        aria-label={groupByKind ? 'Ungroup' : 'Group by kind'}
+                        aria-pressed={groupByKind}
+                      >
+                        <LayersIcon className="w-4 h-4" />
+                      </Button>
                       <AppearanceDropdown
                         layout={layout}
                         onLayoutChange={setLayout}
@@ -622,21 +668,8 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                         ))}
                       </CardGrid>
                     ) : filteredAssets.length > 0 ? (
-                      <CardGrid
-                        columns={getGridColumns(cardSize)}
-                        gap="4"
-                        onContextMenu={(e) => {
-                          const card = (e.target as HTMLElement).closest('[data-asset-id]')
-                          if (!card) return
-                          const assetId = card.getAttribute('data-asset-id')
-                          const asset = assetId ? filteredAssets.find(a => a.id === assetId) : null
-                          if (asset) {
-                            e.preventDefault()
-                            setAssetContextMenu({ x: e.clientX, y: e.clientY, asset })
-                          }
-                        }}
-                      >
-                        {filteredAssets.map((asset) => (
+                      (() => {
+                        const renderAssetCard = (asset: Asset) => (
                           <div key={asset.id} data-asset-id={asset.id}>
                             <AssetCard
                               asset={asset}
@@ -659,8 +692,40 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                               allSelectedIds={selectedAssetIds}
                             />
                           </div>
-                        ))}
-                      </CardGrid>
+                        )
+                        const handleGridContextMenu = (e: React.MouseEvent) => {
+                          const card = (e.target as HTMLElement).closest('[data-asset-id]')
+                          if (!card) return
+                          const assetId = card.getAttribute('data-asset-id')
+                          const asset = assetId ? filteredAssets.find(a => a.id === assetId) : null
+                          if (asset) {
+                            e.preventDefault()
+                            setAssetContextMenu({ x: e.clientX, y: e.clientY, asset })
+                          }
+                        }
+                        if (kindGroupedAssets) {
+                          return (
+                            <div className="space-y-6">
+                              {kindGroupedAssets.map((group) => (
+                                <section key={group.label} className="space-y-3">
+                                  <h3 className="text-heading-4 font-bold text-foreground">
+                                    {group.label}
+                                    <span className="text-body-1-regular text-foreground-dim ml-2">{group.items.length}</span>
+                                  </h3>
+                                  <CardGrid columns={getGridColumns(cardSize)} gap="4" onContextMenu={handleGridContextMenu}>
+                                    {group.items.map(renderAssetCard)}
+                                  </CardGrid>
+                                </section>
+                              ))}
+                            </div>
+                          )
+                        }
+                        return (
+                          <CardGrid columns={getGridColumns(cardSize)} gap="4" onContextMenu={handleGridContextMenu}>
+                            {filteredAssets.map(renderAssetCard)}
+                          </CardGrid>
+                        )
+                      })()
                     ) : (
                       <EmptyState
                         title="No matching assets"

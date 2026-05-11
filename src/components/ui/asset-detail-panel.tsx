@@ -23,6 +23,7 @@ import { useUserCollections } from '@/hooks/useUserCollections'
 import { PERSONAS } from '@/lib/personas'
 import { TEAMS } from '@/lib/teams'
 import { slugify } from '@/lib/smart-collection-filters'
+import { getCGShot, getCGSequence, getProductionShot } from '@/lib/ontology-meta'
 import { OntologySection } from './ontology-section'
 import type { ContainerItem } from './ontology-section'
 import type { RelatedAssetGroup } from '@/lib/context-relationships'
@@ -783,6 +784,39 @@ export function AssetDetailPanelContent({
                   {asset.shotMeta.camera && <MetaRow label="Camera" value={asset.shotMeta.camera} />}
                 </>
               )}
+              {/* Production Shot Concept extras — lens/circle-take from the ontology meta */}
+              {asset.kind === 'production-shot' && (() => {
+                const meta = getProductionShot(asset.id)
+                if (!meta) return null
+                return (
+                  <>
+                    {meta.lens && <MetaRow label="Lens" value={meta.lens} />}
+                    {meta.circle && <MetaRow label="Circle take" value="Yes" />}
+                  </>
+                )
+              })()}
+              {/* CG Shot Concept extras — vendor, status from the ontology meta */}
+              {asset.kind === 'cg-shot' && (() => {
+                const meta = getCGShot(asset.id)
+                if (!meta) return null
+                return (
+                  <>
+                    {meta.vendor && <MetaRow label="Vendor" value={meta.vendor} />}
+                    {meta.status && <MetaRow label="Status" value={meta.status} capitalize />}
+                  </>
+                )
+              })()}
+              {/* CG Sequence Concept extras */}
+              {asset.kind === 'cg-sequence' && (() => {
+                const meta = getCGSequence(asset.id)
+                if (!meta) return null
+                return (
+                  <>
+                    {meta.vendor && <MetaRow label="Vendor" value={meta.vendor} />}
+                    {meta.status && <MetaRow label="Status" value={meta.status} capitalize />}
+                  </>
+                )
+              })()}
               {asset.workspacePath && (
                 <MetaRow label="Location" value={`${asset.department ? `${DOMAIN_NAMES[asset.department]} / ` : ''}${asset.workspacePath}`} />
               )}

@@ -16,7 +16,7 @@ import { assignSharedMountOwner, filterSharedMountsForViewer } from '@/lib/share
 import { generateAssetInstances, promotedInstanceToAsset } from '@/lib/asset-instances'
 import { seedCutToAsset } from '@/lib/cuts'
 import { buildCuts } from '@/lib/scenario'
-import { decorateCutConstituents } from '@/lib/prototype-assets'
+import { decorateCutConstituents, getProductionShotAssets, getCGShotAssets, getCGSequenceAssets } from '@/lib/prototype-assets'
 import type { Asset } from '@/lib/data'
 import { USER_TAGS_CHANGED_EVENT, USER_TAGS_STORAGE_KEY, mergeUserTagsIntoAssets } from '@/lib/user-tags'
 import type { UserCollection } from './useUserCollections'
@@ -356,8 +356,14 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     // sound-mix, edl, etc.) and must be resolvable as Assets so the cut's
     // Source Files section can show them with typing + back-references.
     const cutAssets = buildCuts().map(c => seedCutToAsset(c))
+    const productionShotAssets = getProductionShotAssets()
+    const cgShotAssets = getCGShotAssets()
+    const cgSequenceAssets = getCGSequenceAssets()
     const decoratedAssets = decorateCutConstituents(assets)
-    const all = mergeUserTagsIntoAssets([...decoratedAssets, ...cutAssets], userTagsMap)
+    const all = mergeUserTagsIntoAssets(
+      [...decoratedAssets, ...cutAssets, ...productionShotAssets, ...cgShotAssets, ...cgSequenceAssets],
+      userTagsMap,
+    )
     const byId = new Map(all.map(a => [a.id, a]))
     return { assetById: byId, allAssets: all }
   }, [rawTree, userTagsMap])
