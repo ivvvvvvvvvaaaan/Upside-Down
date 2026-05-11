@@ -25,6 +25,7 @@ export type {
   AIMeta,
   Asset,
   Collection,
+  MediaAssetType,
 } from '@/lib/data-client'
 
 const MOCK_ASSETS: Asset[] = []

@@ -5,7 +5,45 @@ import type { ImageDimension } from '@/lib/images'
 import { getPromotedWorkspaceAssets } from '@/lib/prototype-assets'
 
 // Asset Types
+// NB: this field is format-flavored (how the bytes render). The work-product
+// classification lives on `mediaAssetType` below — see the asset-taxonomy spec.
 export type AssetType = 'shot' | 'video' | 'image' | 'text' | 'audio'
+
+/**
+ * Media Asset Type — the work-product classification a Media Asset belongs to.
+ * Controlled vocabulary per the asset-taxonomy spec. Optional on Asset so
+ * existing seeds don't break; new seeds set it explicitly.
+ */
+export type MediaAssetType =
+  // Editorial / picture
+  | 'cut'
+  | 'editorial-cut'
+  | 'textless-master'
+  | 'reel'
+  // Footage
+  | 'camera-clip'
+  | 'dailies-proxy'
+  | 'proxy'
+  // Audio
+  | 'audio-clip'
+  | 'adr'
+  | 'foley'
+  | 'score'
+  | 'sound-mix'
+  // Art / pre-production
+  | 'concept-art'
+  | 'storyboard'
+  | 'reference-image'
+  | 'production-photo'
+  | 'lookbook'
+  // VFX
+  | 'vfx-plate'
+  | 'vfx-comp'
+  // Editorial side-cars
+  | 'edl'
+  | 'closed-captions'
+  | 'project-file'
+  | 'document'
 
 /** Composite asset kinds — assembled from multiple source files */
 export type AssetKind = 'file' | 'cut' | 'sequence'
@@ -99,9 +137,21 @@ export type AssetTag = {
 }
 
 export type AIMeta = {
+  // Narrative layer (legacy field names; treated as narrative-layer references).
   characters?: string[]
   scene?: string
   location?: string
+  // Production layer
+  productionScene?: string
+  productionShot?: string
+  // CG layer
+  cgSequence?: string
+  cgShot?: string
+  // Edit layer
+  editSequence?: string
+  editScene?: string
+  editShot?: string
+  // Confidence and keywords stay shared across layers.
   confidence?: number
   keywords?: string[]
 }
@@ -133,6 +183,8 @@ export type Asset = {
   sequenceMeta?: SequenceMetadata
   collectionIds?: string[]
   department?: DomainId
+  /** Work-product classification — what kind of Media Asset is this? Controlled vocab. */
+  mediaAssetType?: MediaAssetType
   isKeyArt?: boolean
   isFinal?: boolean
   isCircleTake?: boolean
@@ -145,11 +197,26 @@ export type Asset = {
   tags?: AssetTag[]
 }
 
+/**
+ * Collection role/lifecycle. Per the asset-taxonomy spec, a Concept-Asset
+ * Collection is the container side of a Composite Concept — it binds 1:1
+ * to a Concept (via `conceptKey`) and holds the Media Assets that compose it.
+ * `standard` covers narrative/department groupings that don't bind to a Concept.
+ */
+export type CollectionKind = 'standard' | 'concept-asset'
+
 export type Collection = {
   id: string
   name: string
-  type: 'character' | 'location' | 'scene' | 'art-type'
+  /** Narrative grouping flavor (character/location/scene/art-type). Optional —
+   *  Concept-Asset Collections leave this undefined and use `kind` instead. */
+  type?: 'character' | 'location' | 'scene' | 'art-type'
+  /** Role within the spec's three super-classes. Defaults to 'standard'. */
+  kind?: CollectionKind
+  /** For `kind: 'concept-asset'` — the Concept this Collection binds to. */
+  conceptKey?: string
   assetCount: number
+  assetIds?: string[]
   mainImage?: string
   thumbnailImages?: string[]
   avatarSrc?: string
@@ -395,6 +462,16 @@ function getCollectionImages(collectionId: string): { mainImage?: string; thumbn
     mainImage: pick(allImages, collectionId, 1)[0],
     thumbnails: pick(allImages, `${collectionId}-thumb`, 2),
   }
+}
+
+/**
+ * Look up the avatar / main image for a collection by its display name.
+ * Used by ontology hero pages where the collection in scope is a SmartCollection
+ * (which doesn't carry image data) but the matching MOCK_COLLECTIONS entry does.
+ */
+export function getCollectionImagesByName(name: string): { avatarSrc?: string; mainImage?: string } {
+  const c = MOCK_COLLECTIONS.find(c => c.name === name)
+  return c ? { avatarSrc: c.avatarSrc, mainImage: c.mainImage } : {}
 }
 
 export function getSharePreviewImages(

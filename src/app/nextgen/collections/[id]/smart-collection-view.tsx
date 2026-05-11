@@ -32,6 +32,9 @@ import { getGridColumns, useAssetSelection, useViewPreferences, useResourceSelec
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { matchesFilter } from '@/hooks/useSmartCollections'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
+import { OntologyHero } from '@/components/ui/ontology-hero'
+import { getOntologyMeta } from '@/lib/ontology-meta'
+import { getCollectionImagesByName } from '@/lib/data-client'
 import type { Asset, AssetFilter } from '@/lib/data'
 import { assetToSelectionEntity, assetToResourceRef, collectionToSelectionEntity } from '@/lib/selection-actions'
 import { getContextAssetGroups } from '@/lib/context-relationships'
@@ -236,14 +239,14 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   // For each child, compute matching assets (for count + thumbnails + avatar)
   const childData = useMemo(() => {
     if (!isParentWithChildren) return []
-    return childCollections.map((child, i) => {
+    return childCollections.map((child) => {
       const assets = scopedAssets.filter(a => matchesFilter(a, child.filter))
       return {
         collection: child,
         assetCount: assets.length,
         mainImage: assets[0]?.thumbnail,
         thumbnailImages: assets.slice(1, 3).map(a => a.thumbnail).filter((t): t is string => t != null),
-        avatarSrc: `https://i.pravatar.cc/150?img=${(i * 7 + 3) % 70}`,
+        avatarSrc: getCollectionImagesByName(child.name).avatarSrc,
       }
     })
   }, [childCollections, isParentWithChildren, scopedAssets])
@@ -379,6 +382,14 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   }, [collection])
 
   const pageTitle = collection?.name || 'Loading...'
+
+  // When the collection represents a narrative ontology entity (character/scene/location)
+  // and we have rich metadata for it, swap the generic PageHeader for a bespoke hero.
+  const ontologyMeta = useMemo(() => {
+    if (!collection?.name || !collection?.icon) return null
+    return getOntologyMeta(collection.name, collection.icon)
+  }, [collection?.name, collection?.icon])
+  const showOntologyHero = ontologyMeta !== null
   const itemCount = isParentWithChildren
     ? childCollections.length
     : filteredAssets.length
@@ -467,13 +478,25 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                     </>
                   } />
 
+                  {/* Bespoke hero for narrative ontology entities. */}
+                  {showOntologyHero && collection && (
+                    <div className="hidden md:block">
+                      <OntologyHero
+                        name={collection.name}
+                        icon={collection.icon}
+                      />
+                    </div>
+                  )}
+
                   {/* Row 1: Title + Search + Sort + Appearance + Panel toggle */}
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <PageHeader
-                      title={pageTitle}
-                      description={subtitle}
-                      hideTitleOnMobile
-                    />
+                  <div className={showOntologyHero ? 'flex justify-end' : 'flex flex-wrap items-center justify-between gap-4'}>
+                    {!showOntologyHero && (
+                      <PageHeader
+                        title={pageTitle}
+                        description={subtitle}
+                        hideTitleOnMobile
+                      />
+                    )}
                     <div className="hidden md:flex items-center gap-2 flex-shrink-0">
                       <HawkinsSearch
                         value={searchQuery}
@@ -693,6 +716,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
           matchingCount={filteredAssets.length}
           relationships={relationships}
           suppressDimension={parentCollection?.groupBy}
+          avatarSrc={getCollectionImagesByName(collection.name).avatarSrc}
         />
       )}
 

@@ -1,10 +1,196 @@
-import type { Asset } from '@/lib/data'
+import type { Asset, Collection, MediaAssetType } from '@/lib/data-client'
 import type { ProductionDomainId } from '@/components/department/types'
 import { mergeWorkspaceAssets, generateAssetInstances } from '@/lib/asset-instances'
 import { DEFAULT_GRANTS, getResourceLabel } from '@/lib/grants'
 import { getDomainWorkspaceFiles } from '@/lib/workspace-data'
+import { SCENARIO } from '@/lib/scenario'
 
 const ALL_DOMAINS: ProductionDomainId[] = ['art-design', 'vfx', 'editorial']
+
+/**
+ * Composite-Concept stress test (Phase A of asset-taxonomy spec work).
+ *
+ * Seeds Media Asset components for the existing Production Shot Concept
+ * `EP301-S05-T03A` (defined in ontology-meta.ts). Each component is a real Asset
+ * with mediaAssetType set + aiMeta.productionShot pointing at the parent shot.
+ *
+ * If a query like `getMediaAssetsByProductionShot('EP301-S05-T03A')` returns
+ * these three assets cleanly, the foundation holds and the doc's Composite
+ * Concept pattern works in our data layer.
+ */
+function getCompositeConceptComponents(): Asset[] {
+  const productionShotKey = 'EP301-S05-T03A'
+  const narrativeScene = 'INT. APEX GARAGE - RACE DAY'
+  const location = 'Apex Garage'
+  const episode = 'EP301'
+  const characters = ['Marco Vitale']
+
+  return [
+    {
+      id: `ms-${productionShotKey}-camera-A`,
+      name: `${productionShotKey} — Camera A master`,
+      type: 'video',
+      mediaAssetType: 'camera-clip',
+      department: 'editorial',
+      episode,
+      extension: 'mov',
+      shotMeta: {
+        scene: narrativeScene,
+        take: '3',
+        camera: 'A',
+        duration: '00:01:42',
+      },
+      aiMeta: {
+        characters,
+        scene: narrativeScene,
+        location,
+        productionShot: productionShotKey,
+      },
+    },
+    {
+      id: `ms-${productionShotKey}-audio-boom`,
+      name: `${productionShotKey} — Boom audio`,
+      type: 'audio',
+      mediaAssetType: 'audio-clip',
+      department: 'editorial',
+      episode,
+      extension: 'wav',
+      audioMeta: {
+        duration: '00:01:42',
+        typeTag: 'production sound',
+      },
+      aiMeta: {
+        characters,
+        scene: narrativeScene,
+        location,
+        productionShot: productionShotKey,
+      },
+    },
+    {
+      id: `ms-${productionShotKey}-proxy`,
+      name: `${productionShotKey} — Editorial proxy`,
+      type: 'video',
+      mediaAssetType: 'dailies-proxy',
+      department: 'editorial',
+      episode,
+      extension: 'mp4',
+      shotMeta: {
+        scene: narrativeScene,
+        take: '3',
+        camera: 'A',
+        duration: '00:01:42',
+      },
+      aiMeta: {
+        characters,
+        scene: narrativeScene,
+        location,
+        productionShot: productionShotKey,
+      },
+    },
+  ]
+}
+
+/**
+ * Infer the Media Asset Type for a constituent file inside a cut folder.
+ * Pattern-based: maps the filename + extension to the controlled vocabulary
+ * defined in MediaAssetType. The cut folder reality has a few distinct shapes
+ * — picture master, sound mix variants, EDL, captions, project file, QC doc —
+ * each of which is a real work product that deserves typing.
+ */
+function inferEditConstituentType(
+  name: string,
+  extension: string | undefined,
+): { mediaAssetType: MediaAssetType; audioTag?: string } | undefined {
+  const ext = extension?.toLowerCase()
+  const lowerName = name.toLowerCase()
+
+  if (ext === 'edl') return { mediaAssetType: 'edl' }
+  if (ext === 'ttml' || ext === 'vtt' || ext === 'srt') return { mediaAssetType: 'closed-captions' }
+  if (ext === 'prproj' || ext === 'aep' || ext === 'fcpxml') return { mediaAssetType: 'project-file' }
+  if (ext === 'pdf' || ext === 'txt' || ext === 'doc' || ext === 'docx') return { mediaAssetType: 'document' }
+
+  if (ext === 'mxf' || ext === 'mov' || ext === 'mp4') {
+    if (lowerName.includes('textless')) return { mediaAssetType: 'textless-master' }
+    return { mediaAssetType: 'editorial-cut' }
+  }
+
+  if (ext === 'wav' || ext === 'aac' || ext === 'aiff') {
+    if (lowerName.includes('atmos')) return { mediaAssetType: 'sound-mix', audioTag: 'Atmos' }
+    if (lowerName.includes('audiome') || lowerName.includes('audio_me') || lowerName.includes('-me') || lowerName.includes('m&e'))
+      return { mediaAssetType: 'sound-mix', audioTag: 'M&E' }
+    if (lowerName.includes('audio51') || lowerName.includes('audio_51') || lowerName.includes('5.1') || lowerName.includes('5_1'))
+      return { mediaAssetType: 'sound-mix', audioTag: '5.1' }
+    if (lowerName.includes('stereo')) return { mediaAssetType: 'sound-mix', audioTag: 'Stereo' }
+    return { mediaAssetType: 'sound-mix' }
+  }
+
+  return undefined
+}
+
+/**
+ * Concept-Asset Collections — the spec's "folder" side of a Composite Concept.
+ *
+ * For each scenario cut, we derive a Collection bound 1:1 to its Edit Sequence
+ * Concept. The Concept (in ontology-meta.ts) holds identity — stage, version,
+ * description. The Collection (here) holds the folder bundle — its `assetIds`
+ * are the constituent file IDs that already live in the editorial workspace tree.
+ */
+function getConceptAssetCollectionsForCuts(): Collection[] {
+  return SCENARIO.cuts.map((cut) => ({
+    id: `concept-folder-${cut.id}`,
+    name: cut.name,
+    kind: 'concept-asset',
+    conceptKey: cut.id,
+    assetCount: cut.constituents.length,
+    assetIds: [...cut.constituents],
+  }))
+}
+
+/** Public — return all Concept-Asset Collections (one per Edit Sequence). */
+export function listConceptAssetCollections(): Collection[] {
+  return getConceptAssetCollectionsForCuts()
+}
+
+/** Public — look up the Concept-Asset Collection bound to a given Concept. */
+export function getConceptAssetCollection(conceptKey: string): Collection | undefined {
+  return getConceptAssetCollectionsForCuts().find((c) => c.conceptKey === conceptKey)
+}
+
+/**
+ * Decoration pass: for each scenario cut, tag its constituent file Assets with
+ * a `mediaAssetType` (derived from filename) + `aiMeta.editSequence` pointing
+ * at the parent Concept. This is the bridge that lets existing workspace files
+ * participate in the new model without rewriting workspace-data.
+ *
+ * If/when we push tags upstream into workspace-data, this function deletes.
+ */
+export function decorateCutConstituents(assets: Asset[]): Asset[] {
+  const constituentToCut = new Map<string, string>()
+  for (const cut of SCENARIO.cuts) {
+    for (const constituentId of cut.constituents) {
+      constituentToCut.set(constituentId, cut.id)
+    }
+  }
+
+  return assets.map((asset) => {
+    const editSequence = constituentToCut.get(asset.id)
+    if (!editSequence) return asset
+
+    const inferred = inferEditConstituentType(asset.name, asset.extension)
+    const next: Asset = {
+      ...asset,
+      mediaAssetType: asset.mediaAssetType ?? inferred?.mediaAssetType,
+      aiMeta: {
+        ...(asset.aiMeta ?? {}),
+        editSequence,
+      },
+    }
+    if (inferred?.audioTag && !next.audioMeta?.typeTag) {
+      next.audioMeta = { ...(next.audioMeta ?? {}), typeTag: inferred.audioTag }
+    }
+    return next
+  })
+}
 
 export function getPromotedWorkspaceAssets(): Asset[] {
   const domainInstances = ALL_DOMAINS.flatMap((domainId) => {
@@ -47,11 +233,43 @@ export function mergePrototypeAssets(apiAssets: Asset[]): Asset[] {
     ...mergeWorkspaceAssets(apiAssets, []),
     ...getPromotedWorkspaceAssets(),
     ...getSharedSnapshotAssets(),
+    ...getCompositeConceptComponents(),
   ]
 
-  return merged.filter((asset) => {
+  const deduped = merged.filter((asset) => {
     if (seen.has(asset.id)) return false
     seen.add(asset.id)
     return true
   })
+
+  // Decoration pass — tag cut constituents with mediaAssetType + aiMeta.editSequence.
+  return decorateCutConstituents(deduped)
+}
+
+/**
+ * Composite Concept query: return all Media Assets that are components of
+ * the given Production Shot. The relationship lives on aiMeta.productionShot.
+ */
+export function getMediaAssetsByProductionShot(shotKey: string): Asset[] {
+  const allAssets = mergePrototypeAssets([])
+  return allAssets.filter(asset => asset.aiMeta?.productionShot === shotKey)
+}
+
+/**
+ * Composite Concept query: return all Media Assets that are components of
+ * the given Edit Sequence Concept.
+ *
+ * Clean path: read the Concept-Asset Collection bound to this Concept and
+ * resolve its `assetIds` against the merged asset pool. The folder IS the
+ * Collection, so we just dereference what the spec already names.
+ */
+export function getMediaAssetsByEditSequence(seqKey: string): Asset[] {
+  const collection = getConceptAssetCollection(seqKey)
+  if (!collection?.assetIds || collection.assetIds.length === 0) return []
+
+  const allAssets = mergePrototypeAssets([])
+  const byId = new Map(allAssets.map((a) => [a.id, a]))
+  return collection.assetIds
+    .map((id) => byId.get(id))
+    .filter((a): a is Asset => a != null)
 }

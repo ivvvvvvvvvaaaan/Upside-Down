@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, PanelRight, Info, Play, Music, FileText, Download, Image as ImageIcon } from 'lucide-react'
+import { ArrowLeft, PanelRight, Info, Play, Music, FileText, Download, Image as ImageIcon, CornerUpLeft } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Stack,
@@ -20,6 +21,7 @@ import { getCutStageLabel } from '@/lib/cuts'
 import { Dropdown, DropdownMenuItem } from '@/components/ui'
 import type { Asset, DomainId } from '@/lib/data'
 import { getContextAssetGroups } from '@/lib/context-relationships'
+import { getEditSequence } from '@/lib/ontology-meta'
 
 const DOMAIN_NAMES: Record<DomainId, string> = {
   'art-design': 'Art & Design',
@@ -219,6 +221,32 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
     if (!asset) return undefined
     return getContextAssetGroups(asset, scopedAssets)
   }, [asset, scopedAssets])
+
+  /**
+   * Parent Composite Concepts this Media Asset belongs to, surfaced as the
+   * back-reference loop the spec calls out: Concept → Concept-Asset Collection
+   * → Media Asset, navigable both ways. Each parent is one clickable link.
+   */
+  const parentConcepts = useMemo(() => {
+    if (!asset?.aiMeta) return []
+    const parents: { label: string; kind: string; href: string }[] = []
+    if (asset.aiMeta.editSequence) {
+      const seq = getEditSequence(asset.aiMeta.editSequence)
+      parents.push({
+        label: seq?.name ?? asset.aiMeta.editSequence,
+        kind: 'Edit Sequence',
+        href: `/nextgen/assets/${asset.aiMeta.editSequence}`,
+      })
+    }
+    if (asset.aiMeta.productionShot) {
+      parents.push({
+        label: asset.aiMeta.productionShot,
+        kind: 'Production Shot',
+        href: `/nextgen/concepts/production-shot/${asset.aiMeta.productionShot}`,
+      })
+    }
+    return parents
+  }, [asset])
   const allVersions = useMemo(() => {
     if (!asset?.versionGroupId) return []
     return getVersionsForGroup(asset.versionGroupId)
@@ -348,6 +376,26 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
                   </Button>
                 </div>
               </div>
+
+              {/* Parent Concept back-references — the navigation loop up to
+                  the Composite Concept(s) this Media Asset is a component of. */}
+              {parentConcepts.length > 0 && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                  {parentConcepts.map((parent) => (
+                    <Link
+                      key={parent.href}
+                      href={parent.href}
+                      className="group inline-flex items-center gap-1.5 text-body-1-regular text-foreground-dim hover:text-foreground-system-link transition-colors"
+                    >
+                      <CornerUpLeft className="w-3.5 h-3.5" />
+                      <span>Part of {parent.kind}:</span>
+                      <span className="text-foreground group-hover:text-foreground-system-link transition-colors">
+                        {parent.label}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
 
               {/* Asset Preview */}
               <div className="bg-surface-flat rounded overflow-hidden aspect-video relative">

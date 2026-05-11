@@ -16,6 +16,7 @@ import { assignSharedMountOwner, filterSharedMountsForViewer } from '@/lib/share
 import { generateAssetInstances, promotedInstanceToAsset } from '@/lib/asset-instances'
 import { seedCutToAsset } from '@/lib/cuts'
 import { buildCuts } from '@/lib/scenario'
+import { decorateCutConstituents } from '@/lib/prototype-assets'
 import type { Asset } from '@/lib/data'
 import { USER_TAGS_CHANGED_EVENT, USER_TAGS_STORAGE_KEY, mergeUserTagsIntoAssets } from '@/lib/user-tags'
 import type { UserCollection } from './useUserCollections'
@@ -349,12 +350,14 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
       const instances = generateAssetInstances(children as WorkspaceFileNode[], domainId)
       assets.push(...instances.map(promotedInstanceToAsset))
     }
-    // Merge cut assets (not from file tree)
+    // Merge cut assets (not from file tree).
+    // Constituents are kept first-class — per the asset-taxonomy spec, the files
+    // inside a cut folder are Media Assets in their own right (editorial-cut,
+    // sound-mix, edl, etc.) and must be resolvable as Assets so the cut's
+    // Source Files section can show them with typing + back-references.
     const cutAssets = buildCuts().map(c => seedCutToAsset(c))
-    // Build set of constituent file IDs — these are internal to cuts, not standalone assets
-    const constituentIds = new Set(cutAssets.flatMap(c => c.constituents ?? []))
-    const filteredAssets = assets.filter(a => !constituentIds.has(a.id))
-    const all = mergeUserTagsIntoAssets([...filteredAssets, ...cutAssets], userTagsMap)
+    const decoratedAssets = decorateCutConstituents(assets)
+    const all = mergeUserTagsIntoAssets([...decoratedAssets, ...cutAssets], userTagsMap)
     const byId = new Map(all.map(a => [a.id, a]))
     return { assetById: byId, allAssets: all }
   }, [rawTree, userTagsMap])

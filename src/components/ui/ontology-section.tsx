@@ -11,6 +11,7 @@ import type { ImageDimension } from '@/lib/images'
 import type { SmartCollection, SmartCollectionGroupBy, Asset } from '@/lib/data'
 import type { RelatedAssetGroup } from '@/lib/context-relationships'
 import { getCutStageLabel } from '@/lib/cuts'
+import { AssetThumbnailCard } from './asset-thumbnail-card'
 
 // Info tooltip for section headings
 
@@ -103,27 +104,6 @@ function EntityCards({ items, dimension }: { items: SmartCollection[]; dimension
 }
 
 // Shot Context — asset-to-asset relationships
-
-function AssetThumbnailCard({ asset, onClick }: { asset: Asset; onClick?: (asset: Asset) => void }) {
-  const thumbnail = asset.thumbnail ?? pick(IMAGE_POOL, asset.id, 1)[0]
-  const content = (
-    <div className="shrink-0 w-[100px] rounded overflow-hidden border border-border-dim hover:border-border-subtle transition-colors relative group">
-      <div className="h-16 relative bg-surface-2">
-        {thumbnail && <Image src={thumbnail} alt={asset.name} fill sizes="100px" className="object-cover" />}
-      </div>
-      <div className="px-1 py-0.5">
-        <span className="text-label-0-regular text-foreground truncate block group-hover:text-foreground-system-link transition-colors">
-          {asset.name}
-        </span>
-      </div>
-    </div>
-  )
-
-  if (onClick) {
-    return <button key={asset.id} onClick={() => onClick(asset)} className="text-left">{content}</button>
-  }
-  return <Link key={asset.id} href={`/nextgen/assets/${asset.id}`}>{content}</Link>
-}
 
 function ShotContextRow({
   group,

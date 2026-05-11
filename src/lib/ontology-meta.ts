@@ -1,18 +1,32 @@
 /**
- * Ontology metadata — enriched context for characters, scenes, and locations.
+ * Ontology metadata — enriched context for the entities that make up a production.
+ *
+ * Three layers, each modeling a different stage of the production pipeline:
+ *
+ *   Narrative   — abstractions from the script (Character, Scene, Location)
+ *   Production  — what was actually shot (Shot, Scene)
+ *   CG          — what was built in VFX (Shot, Sequence)
+ *   Edit        — what was assembled in post (Shot, Scene, Sequence)
+ *
+ * Cross-layer references stitch the graph together: a Narrative Scene can have
+ * multiple Production Scenes (shoot days), each with several Production Shots,
+ * some replaced by CG Shots, eventually assembled into an Edit Scene that sits
+ * in an Edit Sequence (the episode-as-deliverable).
  *
  * In production this would come from script breakdowns, production databases,
- * and AI pipeline analysis. Here we seed representative data.
+ * VFX pipelines, and edit decision lists. Here we seed representative data.
  */
 
-export type CharacterMeta = {
+// === NARRATIVE LAYER ===
+
+export type NarrativeCharacterMeta = {
   bio: string
   role: 'lead' | 'supporting' | 'recurring' | 'guest'
   episodes: string[]
   notes?: string
 }
 
-export type SceneMeta = {
+export type NarrativeSceneMeta = {
   description: string
   episode: string
   pageRange?: string
@@ -21,21 +35,134 @@ export type SceneMeta = {
   notes?: string
 }
 
-export type LocationMeta = {
+export type NarrativeLocationMeta = {
   description: string
   setting: 'interior' | 'exterior' | 'mixed'
   episodes: string[]
   notes?: string
 }
 
+// === PRODUCTION LAYER ===
+
+export type ProductionSceneMeta = {
+  /** Parent narrative scene (key into NARRATIVE_SCENES). */
+  narrativeScene: string
+  episode: string
+  shootDay?: number
+  shootDate?: string
+  unit?: '1st unit' | '2nd unit' | 'splinter' | 'visual effects' | string
+  /** Brief description of this shoot setup. */
+  description?: string
+  notes?: string
+}
+
+export type ProductionShotMeta = {
+  /** Parent production scene key. */
+  productionScene: string
+  /** Convenience: parent narrative scene (denormalized for fast lookups). */
+  narrativeScene: string
+  episode: string
+  /** Take number within this setup. */
+  take: number
+  /** Camera designation, e.g. 'A', 'B', 'C'. */
+  camera: string
+  /** Circled (best) take. */
+  circle?: boolean
+  lens?: string
+  description?: string
+  notes?: string
+}
+
+// === CG LAYER ===
+
+export type CGSequenceMeta = {
+  /** Parent narrative scene this CG sequence belongs to. */
+  narrativeScene: string
+  episode: string
+  vendor?: string
+  description?: string
+  status?: 'concept' | 'previs' | 'in-progress' | 'final'
+  notes?: string
+}
+
+export type CGShotMeta = {
+  /** Parent narrative scene. */
+  narrativeScene: string
+  /** Parent CG sequence (optional — not every CG shot is part of a sequence). */
+  cgSequence?: string
+  /** If this CG shot replaces or augments a production shot. */
+  replacesProductionShot?: string
+  episode: string
+  status: 'concept' | 'previs' | 'in-progress' | 'final'
+  version: number
+  vendor?: string
+  description?: string
+  notes?: string
+}
+
+// === EDIT LAYER ===
+
+export type EditSequenceMeta = {
+  /** The episode this sequence is the assembly for. */
+  episode: string
+  /** Friendly display name, e.g. "EP301 Locked Cut 3". Falls back to the key. */
+  name?: string
+  /** Cut stage in the editorial progression (matches prototype CutStage values). */
+  stage?: 'locked-cut' | 'final-cut' | 'emf'
+  /** Cut authorship type — orthogonal to stage. */
+  cutType?: 'editor' | 'directors' | 'producers' | 'network' | 'final' | string
+  version?: number
+  description?: string
+  notes?: string
+}
+
+export type EditSceneMeta = {
+  /** Parent narrative scene. */
+  narrativeScene: string
+  /** Parent edit sequence (the cut this scene is part of). */
+  editSequence?: string
+  episode: string
+  description?: string
+  notes?: string
+}
+
+export type EditShotMeta = {
+  /** Parent edit scene. */
+  editScene?: string
+  /** Source: production shot OR CG shot. */
+  productionShot?: string
+  cgShot?: string
+  /** Convenience: parent narrative scene (denormalized). */
+  narrativeScene: string
+  episode: string
+  /** Timecode in/out within the assembly. */
+  inPoint?: string
+  outPoint?: string
+  description?: string
+  notes?: string
+}
+
+// === DISCRIMINATED UNION ===
+
 export type OntologyMeta =
-  | { type: 'character'; data: CharacterMeta }
-  | { type: 'scene'; data: SceneMeta }
-  | { type: 'location'; data: LocationMeta }
+  // Narrative layer — short discriminators match existing seed icon strings.
+  | { type: 'character'; data: NarrativeCharacterMeta }
+  | { type: 'scene'; data: NarrativeSceneMeta }
+  | { type: 'location'; data: NarrativeLocationMeta }
+  // Production
+  | { type: 'production-scene'; data: ProductionSceneMeta }
+  | { type: 'production-shot'; data: ProductionShotMeta }
+  // CG
+  | { type: 'cg-sequence'; data: CGSequenceMeta }
+  | { type: 'cg-shot'; data: CGShotMeta }
+  // Edit
+  | { type: 'edit-sequence'; data: EditSequenceMeta }
+  | { type: 'edit-scene'; data: EditSceneMeta }
+  | { type: 'edit-shot'; data: EditShotMeta }
 
 // Characters
 
-const CHARACTERS: Record<string, CharacterMeta> = {
+const CHARACTERS: Record<string, NarrativeCharacterMeta> = {
   'Luca Ferreira': {
     bio: 'Second-year driver for Apex Racing, fighting to prove he belongs at the front of the grid. Brazilian-Italian heritage, intensely competitive but privately struggling with the pressure of replacing a fan-favorite driver mid-season.',
     role: 'lead',
@@ -78,7 +205,7 @@ const CHARACTERS: Record<string, CharacterMeta> = {
 
 // Scenes
 
-const SCENES: Record<string, SceneMeta> = {
+const SCENES: Record<string, NarrativeSceneMeta> = {
   'EXT. GRID WALK - PRE-RACE': {
     description: 'The electric atmosphere of the grid 30 minutes before lights out. Drivers navigate through journalists, celebrities, and team personnel. Key character introductions and tension-setting through overheard radio checks.',
     episode: 'EP301',
@@ -149,7 +276,7 @@ const SCENES: Record<string, SceneMeta> = {
 
 // Locations
 
-const LOCATIONS: Record<string, LocationMeta> = {
+const LOCATIONS: Record<string, NarrativeLocationMeta> = {
   'Pit Lane': {
     description: 'The narrow corridor of controlled chaos where pit stops happen in under two seconds. A place of mechanical precision and human error, separated from the track by a low wall and a world of consequences.',
     setting: 'exterior',
@@ -184,9 +311,201 @@ const LOCATIONS: Record<string, LocationMeta> = {
   },
 }
 
-// Lookup
+// === PRODUCTION SCENES ===
+// A narrative scene can have multiple production scenes (shoot days, setups).
+// Keyed by a code that captures episode + scene + setup.
+
+const PRODUCTION_SCENES: Record<string, ProductionSceneMeta> = {
+  'EP301-S05-D03': {
+    narrativeScene: 'INT. APEX GARAGE - RACE DAY',
+    episode: 'EP301',
+    shootDay: 3,
+    shootDate: '2026-02-14',
+    unit: '1st unit',
+    description: 'Garage interior, race day. Telemetry monitors live, full crew dressing.',
+  },
+  'EP303-S52-D11': {
+    narrativeScene: 'EXT. CIRCUIT - LAP 52',
+    episode: 'EP303',
+    shootDay: 11,
+    shootDate: '2026-03-04',
+    unit: '2nd unit',
+    description: 'Plate photography at Silverstone for the wheel-to-wheel sequence.',
+    notes: 'No drivers in car for plate run. Tracking markers in place.',
+  },
+  'EP306-S22-D18': {
+    narrativeScene: 'EXT. ABU DHABI MARINA CIRCUIT - CHAMPIONSHIP DECIDER - SUNSET',
+    episode: 'EP306',
+    shootDay: 18,
+    shootDate: '2026-04-22',
+    unit: '1st unit',
+    description: 'Sunset principal photography, championship decider. Two-camera setup on the start/finish straight.',
+  },
+}
+
+// === PRODUCTION SHOTS ===
+// Take-level granularity beneath production scenes.
+
+const PRODUCTION_SHOTS: Record<string, ProductionShotMeta> = {
+  'EP301-S05-T03A': {
+    productionScene: 'EP301-S05-D03',
+    narrativeScene: 'INT. APEX GARAGE - RACE DAY',
+    episode: 'EP301',
+    take: 3,
+    camera: 'A',
+    circle: true,
+    lens: '32mm',
+    description: 'Marco at strategy wall, master angle.',
+  },
+  'EP301-S05-T03B': {
+    productionScene: 'EP301-S05-D03',
+    narrativeScene: 'INT. APEX GARAGE - RACE DAY',
+    episode: 'EP301',
+    take: 3,
+    camera: 'B',
+    circle: false,
+    lens: '85mm',
+    description: 'Tight on Marco — reaction coverage.',
+  },
+  'EP303-S52-T07A': {
+    productionScene: 'EP303-S52-D11',
+    narrativeScene: 'EXT. CIRCUIT - LAP 52',
+    episode: 'EP303',
+    take: 7,
+    camera: 'A',
+    circle: true,
+    lens: '50mm',
+    description: 'Plate run, hero car through Maggotts-Becketts.',
+  },
+}
+
+// === CG SEQUENCES ===
+
+const CG_SEQUENCES: Record<string, CGSequenceMeta> = {
+  'VFX_EP303_LAP52': {
+    narrativeScene: 'EXT. CIRCUIT - LAP 52',
+    episode: 'EP303',
+    vendor: 'Framestore',
+    description: 'Wheel-to-wheel CG car compositing across the wheel-to-wheel section. Hero cars + tire smoke + crowd extension.',
+    status: 'in-progress',
+  },
+  'VFX_EP306_SKY': {
+    narrativeScene: 'EXT. ABU DHABI MARINA CIRCUIT - CHAMPIONSHIP DECIDER - SUNSET',
+    episode: 'EP306',
+    vendor: 'DNEG',
+    description: 'Day-to-night sky replacement and stadium lighting integration.',
+    status: 'previs',
+    notes: 'Critical for continuity through the championship-decider montage.',
+  },
+}
+
+// === CG SHOTS ===
+
+const CG_SHOTS: Record<string, CGShotMeta> = {
+  'VFX_EP303_SC52_001': {
+    narrativeScene: 'EXT. CIRCUIT - LAP 52',
+    cgSequence: 'VFX_EP303_LAP52',
+    replacesProductionShot: 'EP303-S52-T07A',
+    episode: 'EP303',
+    status: 'in-progress',
+    version: 4,
+    vendor: 'Framestore',
+    description: 'Hero car CG composite over Silverstone plate. Tire smoke and heat haze added.',
+  },
+  'VFX_EP303_SC52_002': {
+    narrativeScene: 'EXT. CIRCUIT - LAP 52',
+    cgSequence: 'VFX_EP303_LAP52',
+    episode: 'EP303',
+    status: 'previs',
+    version: 1,
+    vendor: 'Framestore',
+    description: 'Wide aerial CG car pass, no plate reference.',
+  },
+  'VFX_EP306_SKY_011': {
+    narrativeScene: 'EXT. ABU DHABI MARINA CIRCUIT - CHAMPIONSHIP DECIDER - SUNSET',
+    cgSequence: 'VFX_EP306_SKY',
+    episode: 'EP306',
+    status: 'concept',
+    version: 1,
+    vendor: 'DNEG',
+    description: 'Sky replacement, marina lights coming up as light fades.',
+  },
+}
+
+// === EDIT SEQUENCES ===
+// The top-level assembly. EP301's final sequence IS the cut that becomes the episode.
+
+/**
+ * Edit Sequence Concepts — bound 1:1 to the cut folders in the editorial
+ * workspace. Identity (stage, version, description) lives here on the Concept.
+ * The folder (Concept-Asset Collection) and its file children (Media Assets)
+ * are wired up in prototype-assets.ts.
+ *
+ * Keys mirror the scenario cut IDs so a Concept and its corresponding cut
+ * Asset record share a single name.
+ */
+const EDIT_SEQUENCES: Record<string, EditSequenceMeta> = {
+  'cut-ep301-lc-1': {
+    episode: 'EP301',
+    name: 'EP301 Locked Cut 1',
+    stage: 'locked-cut',
+    version: 1,
+    description: "Initial picture lock; temp sound/music, no VFX.",
+  },
+  'cut-ep301-lc-2': {
+    episode: 'EP301',
+    name: 'EP301 Locked Cut 2',
+    stage: 'locked-cut',
+    version: 2,
+    description: "Updated picture per David's pacing notes; added score cues for race sequences.",
+  },
+  'cut-ep301-lc-3': {
+    episode: 'EP301',
+    name: 'EP301 Locked Cut 3',
+    stage: 'locked-cut',
+    version: 3,
+    description: 'Updated picture & subtitles; temp sound/music/ADR/VFX.',
+  },
+  'cut-ep301-fc': {
+    episode: 'EP301',
+    name: 'EP301 Final Cut',
+    stage: 'final-cut',
+    version: 1,
+    description: 'Final picture and sound; all VFX final; approved for delivery.',
+  },
+  'cut-ep301-emf': {
+    episode: 'EP301',
+    name: 'EP301 EMF',
+    stage: 'emf',
+    version: 1,
+    description: 'Delivery master; includes textless elements for localization.',
+  },
+  'cut-ep302-lc-1': {
+    episode: 'EP302',
+    name: 'EP302 Locked Cut 1',
+    stage: 'locked-cut',
+    version: 1,
+    description: 'Initial lock; temp sound only, no VFX.',
+  },
+}
+
+// === EDIT SCENES ===
+
+// Empty for now — Edit Scenes (sub-divisions of an Edit Sequence) aren't
+// modeled at this level of the prototype. Type machinery stays in place so
+// the layer can be populated when needed.
+const EDIT_SCENES: Record<string, EditSceneMeta> = {}
+
+// === EDIT SHOTS ===
+
+// Empty for now — Edit Shots (timeline-level grains within an Edit Scene) aren't
+// modeled at this level of the prototype. Type machinery stays in place.
+const EDIT_SHOTS: Record<string, EditShotMeta> = {}
+
+// === LOOKUP ===
 
 export function getOntologyMeta(name: string, icon: string): OntologyMeta | null {
+  // Narrative
   if (icon === 'character' && CHARACTERS[name]) {
     return { type: 'character', data: CHARACTERS[name] }
   }
@@ -196,5 +515,89 @@ export function getOntologyMeta(name: string, icon: string): OntologyMeta | null
   if (icon === 'location' && LOCATIONS[name]) {
     return { type: 'location', data: LOCATIONS[name] }
   }
+  // Production
+  if (icon === 'production-scene' && PRODUCTION_SCENES[name]) {
+    return { type: 'production-scene', data: PRODUCTION_SCENES[name] }
+  }
+  if (icon === 'production-shot' && PRODUCTION_SHOTS[name]) {
+    return { type: 'production-shot', data: PRODUCTION_SHOTS[name] }
+  }
+  // CG
+  if (icon === 'cg-sequence' && CG_SEQUENCES[name]) {
+    return { type: 'cg-sequence', data: CG_SEQUENCES[name] }
+  }
+  if (icon === 'cg-shot' && CG_SHOTS[name]) {
+    return { type: 'cg-shot', data: CG_SHOTS[name] }
+  }
+  // Edit
+  if (icon === 'edit-sequence' && EDIT_SEQUENCES[name]) {
+    return { type: 'edit-sequence', data: EDIT_SEQUENCES[name] }
+  }
+  if (icon === 'edit-scene' && EDIT_SCENES[name]) {
+    return { type: 'edit-scene', data: EDIT_SCENES[name] }
+  }
+  if (icon === 'edit-shot' && EDIT_SHOTS[name]) {
+    return { type: 'edit-shot', data: EDIT_SHOTS[name] }
+  }
   return null
+}
+
+// Convenience accessors for the new entity dictionaries.
+
+export function getProductionScene(key: string): ProductionSceneMeta | undefined {
+  return PRODUCTION_SCENES[key]
+}
+
+export function getProductionShot(key: string): ProductionShotMeta | undefined {
+  return PRODUCTION_SHOTS[key]
+}
+
+export function getCGSequence(key: string): CGSequenceMeta | undefined {
+  return CG_SEQUENCES[key]
+}
+
+export function getCGShot(key: string): CGShotMeta | undefined {
+  return CG_SHOTS[key]
+}
+
+export function getEditSequence(key: string): EditSequenceMeta | undefined {
+  return EDIT_SEQUENCES[key]
+}
+
+export function getEditScene(key: string): EditSceneMeta | undefined {
+  return EDIT_SCENES[key]
+}
+
+export function getEditShot(key: string): EditShotMeta | undefined {
+  return EDIT_SHOTS[key]
+}
+
+// Bulk listings — useful for browse routes.
+
+export function listProductionScenes(): Array<[string, ProductionSceneMeta]> {
+  return Object.entries(PRODUCTION_SCENES)
+}
+
+export function listProductionShots(): Array<[string, ProductionShotMeta]> {
+  return Object.entries(PRODUCTION_SHOTS)
+}
+
+export function listCGSequences(): Array<[string, CGSequenceMeta]> {
+  return Object.entries(CG_SEQUENCES)
+}
+
+export function listCGShots(): Array<[string, CGShotMeta]> {
+  return Object.entries(CG_SHOTS)
+}
+
+export function listEditSequences(): Array<[string, EditSequenceMeta]> {
+  return Object.entries(EDIT_SEQUENCES)
+}
+
+export function listEditScenes(): Array<[string, EditSceneMeta]> {
+  return Object.entries(EDIT_SCENES)
+}
+
+export function listEditShots(): Array<[string, EditShotMeta]> {
+  return Object.entries(EDIT_SHOTS)
 }
