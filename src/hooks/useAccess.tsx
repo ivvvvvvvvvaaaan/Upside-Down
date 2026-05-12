@@ -680,28 +680,40 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // filterByAccess: filter assets by persona access.
-  //
-  // Composite Concept projections (Production Shot, CG Shot, CG Sequence) are
-  // tier-2 "ontology-level" entities per the asset-taxonomy spec — any project
-  // member can see them, regardless of which department's domain root they
-  // live under. Their constituent files remain gated normally below.
-  // Cuts are NOT in this bypass because they're the work product with explicit
-  // sharing semantics in scenario.shares.
   const filterByAccess = useCallback((assets: Asset[]): Asset[] => {
     if (!activePersona) return assets
+    const projectDecision = resolveAccessDecisionForResource(PROJECT_RESOURCE)
+
     return assets.filter((asset) => {
       if (
         asset.kind === 'production-shot'
         || asset.kind === 'cg-shot'
         || asset.kind === 'cg-sequence'
       ) {
-        return true
+        // Composite Concept projections are ontology-level entities visible at
+        // project scope, but they still honor hard denials from the access
+        // engine: project lock, explicit blocks, and sensitive-media policy.
+        const conceptDecision = resolveAccessDecisionForResource({
+          id: asset.id,
+          type: 'asset',
+        })
+        if (
+          conceptDecision.deniedBy === 'block'
+          || conceptDecision.deniedBy === 'project-lock'
+          || conceptDecision.deniedBy === 'sensitive-media'
+        ) {
+          return false
+        }
+        if (SENSITIVE_ASSET_IDS.has(asset.id) && activePersona.sensitiveMediaCapability !== true) {
+          return false
+        }
+        return conceptDecision.allowed || projectDecision.allowed
       }
       if (canAccess(asset.id)) return true
       if (asset.sourceFolderIds?.some((fid) => canAccess(fid))) return true
       return false
     })
-  }, [activePersona, canAccess])
+  }, [activePersona, canAccess, resolveAccessDecisionForResource])
 
   // Collection asset counts — uses live file tree for folder-bound collections
   // Tracks both total (before access filtering) and accessible (after filtering) counts

@@ -1,7 +1,6 @@
 'use client'
 
 import { Clapperboard, MapPin } from 'lucide-react'
-import { Text } from './text'
 import { getOntologyMeta } from '@/lib/ontology-meta'
 import { getCollectionImagesByName } from '@/lib/data-client'
 import type {
@@ -65,8 +64,8 @@ function CharacterAvatar({ src, name }: { src?: string; name: string }) {
     )
   }
   return (
-    <div className="aspect-square w-full rounded-full bg-gray-500/20 flex items-center justify-center text-gray-500 dark:text-white">
-      <span className="text-display-2 font-bold">{getInitials(name)}</span>
+    <div className="aspect-square w-full rounded-full bg-surface-selected-subtle flex items-center justify-center text-foreground-dim">
+      <span className="text-heading-3 text-foreground">{getInitials(name)}</span>
     </div>
   )
 }
@@ -90,12 +89,14 @@ function EntityImage({ src, alt, fallbackIcon }: { src?: string; alt: string; fa
 
 function NarrativeCharacterHero({ name, data, avatarSrc }: { name: string; data: NarrativeCharacterMeta; avatarSrc?: string }) {
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-[200px_1fr] md:gap-8">
-      <CharacterAvatar src={avatarSrc} name={name} />
+    <div className="flex flex-col gap-6 md:flex-row md:gap-8">
+      <div className="w-48 flex-shrink-0">
+        <CharacterAvatar src={avatarSrc} name={name} />
+      </div>
       <div className="flex flex-col gap-5 min-w-0">
         <div className="flex flex-col gap-1">
-          <h2 className="truncate text-heading-2 font-bold">{name}</h2>
-          <Text variant="body-1" color="secondary">{CAST_TIER_LABEL[data.role]}</Text>
+          <h2 className="truncate text-heading-2 text-foreground">{name}</h2>
+          <p className="text-body-1-regular text-foreground-dim">{CAST_TIER_LABEL[data.role]}</p>
         </div>
         <MetaRow label="Bio">{data.bio}</MetaRow>
         {data.episodes.length > 0 && (
@@ -111,16 +112,18 @@ function NarrativeCharacterHero({ name, data, avatarSrc }: { name: string; data:
 
 function NarrativeSceneHero({ name, data, mainImage }: { name: string; data: NarrativeSceneMeta; mainImage?: string }) {
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_1fr] md:gap-8">
-      <EntityImage
-        src={mainImage}
-        alt={name}
-        fallbackIcon={<Clapperboard className="h-10 w-10" />}
-      />
+    <div className="flex flex-col gap-6 md:flex-row md:gap-8">
+      <div className="w-full md:w-72 flex-shrink-0">
+        <EntityImage
+          src={mainImage}
+          alt={name}
+          fallbackIcon={<Clapperboard className="h-10 w-10" />}
+        />
+      </div>
       <div className="flex flex-col gap-5 min-w-0">
         <div className="flex flex-col gap-1">
-          <h2 className="truncate text-heading-2 font-bold">{name}</h2>
-          <Text variant="body-1" color="secondary">{data.episode}{data.pageRange ? ` · ${data.pageRange}` : ''}</Text>
+          <h2 className="truncate text-heading-2 text-foreground">{name}</h2>
+          <p className="text-body-1-regular text-foreground-dim">{data.episode}{data.pageRange ? ` · ${data.pageRange}` : ''}</p>
         </div>
         <MetaRow label="Description">{data.description}</MetaRow>
         <div className="grid grid-cols-2 gap-5">
@@ -137,16 +140,18 @@ function NarrativeSceneHero({ name, data, mainImage }: { name: string; data: Nar
 
 function NarrativeLocationHero({ name, data, mainImage }: { name: string; data: NarrativeLocationMeta; mainImage?: string }) {
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_1fr] md:gap-8">
-      <EntityImage
-        src={mainImage}
-        alt={name}
-        fallbackIcon={<MapPin className="h-10 w-10" />}
-      />
+    <div className="flex flex-col gap-6 md:flex-row md:gap-8">
+      <div className="w-full md:w-72 flex-shrink-0">
+        <EntityImage
+          src={mainImage}
+          alt={name}
+          fallbackIcon={<MapPin className="h-10 w-10" />}
+        />
+      </div>
       <div className="flex flex-col gap-5 min-w-0">
         <div className="flex flex-col gap-1">
-          <h2 className="truncate text-heading-2 font-bold">{name}</h2>
-          <Text variant="body-1" color="secondary">{SETTING_LABEL[data.setting]}</Text>
+          <h2 className="truncate text-heading-2 text-foreground">{name}</h2>
+          <p className="text-body-1-regular text-foreground-dim">{SETTING_LABEL[data.setting]}</p>
         </div>
         <MetaRow label="Description">{data.description}</MetaRow>
         {data.episodes.length > 0 && (

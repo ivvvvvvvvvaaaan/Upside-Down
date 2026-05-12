@@ -16,7 +16,7 @@ import { assignSharedMountOwner, filterSharedMountsForViewer } from '@/lib/share
 import { generateAssetInstances, promotedInstanceToAsset } from '@/lib/asset-instances'
 import { seedCutToAsset } from '@/lib/cuts'
 import { buildCuts } from '@/lib/scenario'
-import { getProductionShotAssets, getCGShotAssets, getCGSequenceAssets } from '@/lib/prototype-assets'
+import { getCompositeConceptComponents, getProductionShotAssets, getCGShotAssets, getCGSequenceAssets } from '@/lib/prototype-assets'
 import type { Asset } from '@/lib/data'
 import { USER_TAGS_CHANGED_EVENT, USER_TAGS_STORAGE_KEY, mergeUserTagsIntoAssets } from '@/lib/user-tags'
 import type { UserCollection } from './useUserCollections'
@@ -355,11 +355,19 @@ export function FileTreeProvider({ children }: { children: ReactNode }) {
     // Concept back-references (editSequence, productionShot, cgShot, etc.)
     // come from AI tags (see ai-tags.ts) populated upstream in generateAssetInstances.
     const cutAssets = buildCuts().map(c => seedCutToAsset(c))
+    const compositeConceptComponents = getCompositeConceptComponents()
     const productionShotAssets = getProductionShotAssets()
     const cgShotAssets = getCGShotAssets()
     const cgSequenceAssets = getCGSequenceAssets()
     const all = mergeUserTagsIntoAssets(
-      [...assets, ...cutAssets, ...productionShotAssets, ...cgShotAssets, ...cgSequenceAssets],
+      [
+        ...assets,
+        ...cutAssets,
+        ...compositeConceptComponents,
+        ...productionShotAssets,
+        ...cgShotAssets,
+        ...cgSequenceAssets,
+      ],
       userTagsMap,
     )
     const byId = new Map(all.map(a => [a.id, a]))

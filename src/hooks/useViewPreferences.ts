@@ -25,7 +25,10 @@ export type MetadataFieldVisibility = {
 }
 
 const DEFAULT_METADATA_FIELDS: MetadataFieldVisibility = {
-  scene: true,
+  // Scene OFF by default — it's almost always redundant page context (users
+  // typically arrive at a card through a scene/character/location page where
+  // the scene is already implicit in the breadcrumb). Toggle in Appearance.
+  scene: false,
   take: true,
   camera: true,
   sequence: true,

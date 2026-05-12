@@ -21,7 +21,7 @@ const ALL_DOMAINS: ProductionDomainId[] = ['art-design', 'vfx', 'editorial']
  * these three assets cleanly, the foundation holds and the doc's Composite
  * Concept pattern works in our data layer.
  */
-function getCompositeConceptComponents(): Asset[] {
+export function getCompositeConceptComponents(): Asset[] {
   const productionShotKey = 'EP301-S05-T03A'
   const narrativeScene = 'INT. APEX GARAGE - RACE DAY'
   const location = 'Apex Garage'
@@ -369,7 +369,10 @@ export function mergePrototypeAssets(apiAssets: Asset[]): Asset[] {
  */
 export function getMediaAssetsByProductionShot(shotKey: string): Asset[] {
   const allAssets = mergePrototypeAssets([])
-  return allAssets.filter(asset => asset.aiMeta?.productionShot === shotKey)
+  return allAssets.filter(asset =>
+    asset.aiMeta?.productionShot === shotKey
+    && (!asset.kind || asset.kind === 'file')
+  )
 }
 
 /**

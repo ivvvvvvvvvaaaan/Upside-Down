@@ -102,7 +102,7 @@ export function AssetThumbnailMedia({ asset }: { asset: Asset }) {
 
   const thumbnail = asset.thumbnail ?? pick(IMAGE_POOL, asset.id, 1)[0]
   if (thumbnail) {
-    return <Image src={thumbnail} alt={asset.name} fill sizes="110px" className="object-cover" />
+    return <Image src={thumbnail} alt={asset.name} fill sizes="7rem" className="object-cover" />
   }
   return <div className="h-full bg-surface-low" />
 }
@@ -114,7 +114,7 @@ export function AssetThumbnailMedia({ asset }: { asset: Asset }) {
 export function AssetThumbnailCard({ asset, onClick }: { asset: Asset; onClick?: (asset: Asset) => void }) {
   const typeLabel = getMediaAssetTypeLabel(asset)
   const content = (
-    <div className="shrink-0 w-[110px] rounded overflow-hidden border border-border-dim hover:border-border-subtle transition-colors relative group">
+    <div className="shrink-0 w-28 rounded overflow-hidden border border-border-dim hover:border-border-subtle transition-colors relative group">
       <div className="h-16 relative bg-surface-2">
         <AssetThumbnailMedia asset={asset} />
       </div>

@@ -89,10 +89,10 @@ const ASSET_GROUP_ORDER: ReadonlyArray<{ key: AssetGroupKey; label: string }> = 
   // Side-cars
   { key: 'edl', label: 'EDLs' },
   { key: 'closed-captions', label: 'Captions' },
-  { key: 'project-file', label: 'Project Files' },
+  { key: 'project-file', label: 'Edit Projects' },
   { key: 'document', label: 'Documents' },
   // Fallback for untyped assets
-  { key: 'file', label: 'Files' },
+  { key: 'file', label: 'Other' },
 ]
 
 // Decide the group an asset belongs to. Composite Concept kind takes priority
