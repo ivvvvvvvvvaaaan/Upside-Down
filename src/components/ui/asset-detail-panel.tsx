@@ -633,12 +633,42 @@ export function AssetDetailPanelContent({
     return getCutsForAsset(asset.id)
   }, [cuts, asset, getCutsForAsset])
 
-  // For cuts: resolve constituent assets and aggregate their AI metadata for dimensions
+  // Resolve constituent (source) Media Assets for any Composite Concept Asset.
+  // Each Concept kind has a different idea of "what's inside me":
+  // - Cut: explicit constituent IDs (set by seedCutToAsset)
+  // - Production Shot: Media Asset files tagged with aiMeta.productionShot
+  // - CG Shot: Media Asset files tagged with aiMeta.cgShot (plates, comps)
+  // - CG Sequence: its CG Shots (structural children; the Shots in turn
+  //   carry the Media Asset files)
   const constituentAssets = useMemo(() => {
-    if (!asset || asset.kind !== 'cut' || !asset.constituents) return []
-    return asset.constituents
-      .map(cid => assetById.get(cid))
-      .filter((a): a is Asset => !!a)
+    if (!asset) return []
+    if (asset.kind === 'cut' && asset.constituents) {
+      return asset.constituents
+        .map(cid => assetById.get(cid))
+        .filter((a): a is Asset => !!a)
+    }
+    if (asset.kind === 'production-shot' || asset.kind === 'cg-shot') {
+      const field = asset.kind === 'production-shot' ? 'productionShot' : 'cgShot'
+      const out: Asset[] = []
+      assetById.forEach((candidate) => {
+        if (candidate.id === asset.id) return
+        // Skip other Composite Concept projections — they're related entities
+        // (e.g., a CG Shot that REPLACES a Production Shot), not file constituents.
+        if (candidate.kind && candidate.kind !== 'file') return
+        if (candidate.aiMeta?.[field] === asset.id) out.push(candidate)
+      })
+      return out
+    }
+    if (asset.kind === 'cg-sequence') {
+      const out: Asset[] = []
+      assetById.forEach((candidate) => {
+        if (candidate.kind === 'cg-shot' && candidate.aiMeta?.cgSequence === asset.id) {
+          out.push(candidate)
+        }
+      })
+      return out
+    }
+    return []
   }, [asset, assetById])
 
   // Aggregate AI metadata from constituents (for cuts that don't have their own aiMeta)

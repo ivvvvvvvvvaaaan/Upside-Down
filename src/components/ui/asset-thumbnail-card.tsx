@@ -42,15 +42,29 @@ const MEDIA_ASSET_TYPE_LABELS: Record<MediaAssetType, string> = {
   'document': 'Document',
 }
 
+// When an asset is a Composite Concept projection (no mediaAssetType but a
+// distinct kind), fall back to the kind label so the strip reads correctly.
+const COMPOSITE_KIND_LABELS: Partial<Record<NonNullable<Asset['kind']>, string>> = {
+  'production-shot': 'Production Shot',
+  'cg-shot': 'CG Shot',
+  'cg-sequence': 'CG Sequence',
+  'cut': 'Cut',
+}
+
 export function getMediaAssetTypeLabel(asset: Asset): string | undefined {
-  if (!asset.mediaAssetType) return undefined
-  const base = MEDIA_ASSET_TYPE_LABELS[asset.mediaAssetType]
-  if (!base) return undefined
-  // Sound mixes carry their channel layout on audioMeta.typeTag — surface it.
-  if (asset.mediaAssetType === 'sound-mix' && asset.audioMeta?.typeTag) {
-    return `${base} · ${asset.audioMeta.typeTag}`
+  if (asset.mediaAssetType) {
+    const base = MEDIA_ASSET_TYPE_LABELS[asset.mediaAssetType]
+    if (!base) return undefined
+    // Sound mixes carry their channel layout on audioMeta.typeTag — surface it.
+    if (asset.mediaAssetType === 'sound-mix' && asset.audioMeta?.typeTag) {
+      return `${base} · ${asset.audioMeta.typeTag}`
+    }
+    return base
   }
-  return base
+  if (asset.kind && COMPOSITE_KIND_LABELS[asset.kind]) {
+    return COMPOSITE_KIND_LABELS[asset.kind]
+  }
+  return undefined
 }
 
 /**
