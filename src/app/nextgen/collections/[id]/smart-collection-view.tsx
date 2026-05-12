@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { PanelRight, Info, Link2, Download, Plus, Trash2, Pencil, Layers as LayersIcon } from 'lucide-react'
+import { PanelRight, Info, Link2, Download, Plus, Trash2, Pencil, Layers as LayersIcon, Film } from 'lucide-react'
 import { ShareIcon } from '@/components/ui/share-icon'
 import { PERSONAS } from '@/lib/personas'
 import { SelectAllRow } from '@/components/ui/select-all-row'
@@ -33,7 +33,15 @@ import { useIsMobile } from '@/hooks/useMediaQuery'
 import { matchesFilter } from '@/hooks/useSmartCollections'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
 import { OntologyHero } from '@/components/ui/ontology-hero'
-import { getOntologyMeta } from '@/lib/ontology-meta'
+import { getOntologyMeta, getNarrativeCharacter, getNarrativeScene } from '@/lib/ontology-meta'
+import type { NarrativeCharacterMeta } from '@/lib/ontology-meta'
+import type { CardSize } from '@/components/ui/appearance-dropdown'
+import { CharacterCastingCard } from '@/components/ui/character-casting-card'
+import type { CharacterCastingCardSize } from '@/components/ui/character-casting-card'
+import { SceneScriptCard } from '@/components/ui/scene-script-card'
+import type { SceneScriptCardSize } from '@/components/ui/scene-script-card'
+import { LocationCard } from '@/components/ui/location-card'
+import type { LocationCardSize } from '@/components/ui/location-card'
 import { getCollectionImagesByName } from '@/lib/data-client'
 import type { Asset, AssetFilter } from '@/lib/data'
 import { assetToSelectionEntity, assetToResourceRef, collectionToSelectionEntity } from '@/lib/selection-actions'
@@ -44,11 +52,126 @@ import { CollectionMembershipModal } from '@/components/ui/collection-membership
 import { ContextMenu } from '@/components/ui/context-menu'
 import type { ResourceRef } from '@/lib/grants'
 import { useToast } from '@/components/ui/toast'
-import { DropdownMenuItem, DropdownMenuDivider } from '@/components/ui'
+import { Dropdown, DropdownMenuItem, DropdownMenuDivider } from '@/components/ui'
 import { getCollectionCapabilities } from '@/lib/collection-types'
 
 interface SmartCollectionDetailViewProps {
   collectionId: string
+}
+
+type GroupByMode = 'none' | 'kind' | 'episode' | 'time-of-day'
+
+type CastingGroup = {
+  role: NarrativeCharacterMeta['role']
+  label: string
+  cardSize: CardSize
+  columns: 3 | 4 | 6
+}
+
+const CASTING_GROUP_ORDER: ReadonlyArray<CastingGroup> = [
+  { role: 'lead', label: 'Lead', cardSize: 'lg', columns: 3 },
+  { role: 'supporting', label: 'Supporting', cardSize: 'md', columns: 4 },
+  { role: 'recurring', label: 'Recurring', cardSize: 'sm', columns: 6 },
+  { role: 'guest', label: 'Guest', cardSize: 'sm', columns: 6 },
+]
+
+interface GroupingToolbarProps {
+  collectionIcon: string | undefined
+  isParentWithChildren: boolean
+  groupBy: GroupByMode
+  onGroupByChange: (mode: GroupByMode) => void
+  episodeFilter: string
+  onEpisodeFilterChange: (ep: string) => void
+  availableEpisodes: string[]
+}
+
+/**
+ * The Episode filter + Group dropdown pair. Both controls only render when
+ * the current view has something meaningful to filter or group by — scene
+ * parents get all four options, asset grids get type+episode, character /
+ * location parents get nothing (homogeneous children).
+ */
+function GroupingToolbar({
+  collectionIcon,
+  isParentWithChildren,
+  groupBy,
+  onGroupByChange,
+  episodeFilter,
+  onEpisodeFilterChange,
+  availableEpisodes,
+}: GroupingToolbarProps) {
+  const isSceneParent = collectionIcon === 'scene'
+  const showGroupDropdown = isSceneParent || !isParentWithChildren
+  const showEpisodeFilter = isSceneParent && availableEpisodes.length > 0
+  if (!showGroupDropdown && !showEpisodeFilter) return null
+  return (
+    <>
+      {showEpisodeFilter && (
+        <Dropdown
+          label={episodeFilter === 'all' ? 'All episodes' : episodeFilter}
+          icon={<Film />}
+          size="standard"
+          align="end"
+          width="sm"
+          ghost
+        >
+          <div className="py-1">
+            <DropdownMenuItem
+              selected={episodeFilter === 'all'}
+              label="All episodes"
+              onClick={() => onEpisodeFilterChange('all')}
+            />
+            {availableEpisodes.map((ep) => (
+              <DropdownMenuItem
+                key={ep}
+                selected={episodeFilter === ep}
+                label={ep}
+                onClick={() => onEpisodeFilterChange(ep)}
+              />
+            ))}
+          </div>
+        </Dropdown>
+      )}
+      {showGroupDropdown && (
+        <Dropdown
+          label="Group"
+          icon={<LayersIcon />}
+          size="standard"
+          align="end"
+          width="sm"
+          iconOnly
+          ghost={false}
+        >
+          <div className="py-1">
+            <DropdownMenuItem
+              selected={groupBy === 'none'}
+              label="None"
+              onClick={() => onGroupByChange('none')}
+            />
+            {!isParentWithChildren && (
+              <DropdownMenuItem
+                selected={groupBy === 'kind'}
+                label="Type"
+                onClick={() => onGroupByChange('kind')}
+              />
+            )}
+            <DropdownMenuItem
+              selected={groupBy === 'episode'}
+              label="Episode"
+              onClick={() => onGroupByChange('episode')}
+            />
+            {isSceneParent && (
+              <DropdownMenuItem
+                selected={groupBy === 'time-of-day'}
+                label="Time of day"
+                onClick={() => onGroupByChange('time-of-day')}
+              />
+            )}
+          </div>
+        </Dropdown>
+      )}
+    </>
+  )
 }
 
 // Group order for asset grids when "group by type" is on. The first block is
@@ -407,35 +530,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     { value: 'kind', label: 'Kind' },
   ]
 
-  // Contextual filter chips based on collection type
-  const filterOptions = useMemo(() => {
-    if (!collection) return []
-    switch (collection.icon) {
-      case 'character':
-        return [
-          { id: 'episode', label: 'Episode' },
-          { id: 'role', label: 'Role' },
-          { id: 'status', label: 'Status' },
-        ]
-      case 'scene':
-        return [
-          { id: 'episode', label: 'Episode' },
-          { id: 'location', label: 'Location' },
-          { id: 'time-of-day', label: 'Time of Day' },
-        ]
-      case 'location':
-        return [
-          { id: 'episode', label: 'Episode' },
-          { id: 'scene', label: 'Scene' },
-        ]
-      default:
-        return [
-          { id: 'type', label: 'Type' },
-          { id: 'modified', label: 'Modified' },
-        ]
-    }
-  }, [collection])
-
   const pageTitle = collection?.name || 'Loading...'
 
   // When the collection represents a narrative ontology entity (character/scene/location)
@@ -446,26 +540,127 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   }, [collection?.name, collection?.icon])
   const showOntologyHero = ontologyMeta !== null
 
-  // Local view preference: group the asset grid by Composite Concept kind.
-  // Useful on scene pages where Production Shots, CG Shots, Cuts, and raw
-  // files all coexist and benefit from being visually separated.
-  const [groupByKind, setGroupByKind] = useState(false)
+  // Grouping mode for the current view. Applies to both asset grids (Kind)
+  // and child-collection grids (Episode, Time of Day). 'none' renders flat.
+  const [groupBy, setGroupBy] = useState<GroupByMode>('none')
 
-  const kindGroupedAssets = useMemo(() => {
-    if (!groupByKind) return null
-    const buckets = new Map<AssetGroupKey, Asset[]>()
-    for (const a of filteredAssets) {
-      const k = getAssetGroupKey(a)
-      const list = buckets.get(k) ?? []
-      list.push(a)
-      buckets.set(k, list)
+  // One pass over scopedAssets builds the indexes the location/scene cards
+  // need — without this the children loop is O(N children * M assets).
+  const { scenesByLocation, charactersByScene } = useMemo(() => {
+    const byLoc = new Map<string, Set<string>>()
+    const byScene = new Map<string, Set<string>>()
+    for (const a of scopedAssets) {
+      const m = a.aiMeta
+      if (!m) continue
+      if (m.location && m.scene) {
+        let set = byLoc.get(m.location)
+        if (!set) { set = new Set(); byLoc.set(m.location, set) }
+        set.add(m.scene)
+      }
+      if (m.scene && m.characters?.length) {
+        let set = byScene.get(m.scene)
+        if (!set) { set = new Set(); byScene.set(m.scene, set) }
+        for (const c of m.characters) set.add(c)
+      }
     }
-    return ASSET_GROUP_ORDER
-      .map((g) => ({ label: g.label, items: buckets.get(g.key) ?? [] }))
+    return { scenesByLocation: byLoc, charactersByScene: byScene }
+  }, [scopedAssets])
+
+  // Episode filter (scene parent only). 'all' shows every scene; specific
+  // episode key narrows to that one.
+  const [episodeFilter, setEpisodeFilter] = useState<string>('all')
+
+  const filteredChildData = useMemo(() => {
+    if (collection?.icon !== 'scene' || episodeFilter === 'all') return childData
+    return childData.filter((child) => getNarrativeScene(child.collection.name)?.episode === episodeFilter)
+  }, [childData, collection?.icon, episodeFilter])
+  const visibleChildData = collection?.icon === 'scene' ? filteredChildData : childData
+
+  useEffect(() => {
+    if (collection?.icon === 'scene') clearCollectionSelection()
+  }, [clearCollectionSelection, collection?.icon, episodeFilter])
+
+  const availableEpisodes = useMemo(() => {
+    if (collection?.icon !== 'scene') return [] as string[]
+    const set = new Set<string>()
+    for (const child of childData) {
+      const ep = getNarrativeScene(child.collection.name)?.episode
+      if (ep) set.add(ep)
+    }
+    return Array.from(set).sort()
+  }, [collection?.icon, childData])
+
+  // Character parent: group children by narrative role so the page reads as
+  // a casting list — leads big, recurring & guest compact.
+  const castingGroups = useMemo(() => {
+    if (collection?.icon !== 'character' || !isParentWithChildren) return undefined
+    const buckets = new Map<NarrativeCharacterMeta['role'] | 'unknown', typeof childData>()
+    for (const child of childData) {
+      const role = getNarrativeCharacter(child.collection.name)?.role ?? 'unknown'
+      const list = buckets.get(role) ?? []
+      list.push(child)
+      buckets.set(role, list)
+    }
+    const groups = CASTING_GROUP_ORDER
+      .map((g) => ({ ...g, items: buckets.get(g.role) ?? [] }))
       .filter((g) => g.items.length > 0)
-  }, [groupByKind, filteredAssets])
+    const unknown = buckets.get('unknown') ?? []
+    if (unknown.length > 0) {
+      groups.push({ role: 'guest', label: 'Other', cardSize: 'sm', columns: 6, items: unknown })
+    }
+    return groups
+  }, [collection?.icon, isParentWithChildren, childData])
+
+  // Asset grouping — handles both Kind and Episode modes. Kind buckets by
+  // Composite Concept kind / mediaAssetType; Episode buckets by asset.episode.
+  const groupedAssets = useMemo(() => {
+    if (groupBy === 'kind') {
+      const buckets = new Map<AssetGroupKey, Asset[]>()
+      for (const a of filteredAssets) {
+        const k = getAssetGroupKey(a)
+        const list = buckets.get(k) ?? []
+        list.push(a)
+        buckets.set(k, list)
+      }
+      return ASSET_GROUP_ORDER
+        .map((g) => ({ label: g.label, items: buckets.get(g.key) ?? [] }))
+        .filter((g) => g.items.length > 0)
+    }
+    if (groupBy === 'episode') {
+      const buckets = new Map<string, Asset[]>()
+      for (const a of filteredAssets) {
+        const key = a.episode ?? 'Other'
+        const list = buckets.get(key) ?? []
+        list.push(a)
+        buckets.set(key, list)
+      }
+      return Array.from(buckets.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([label, items]) => ({ label, items }))
+    }
+    return null
+  }, [groupBy, filteredAssets])
+
+  // For scene parent: groups of child scenes by episode or time of day.
+  const sceneGroupedChildren = useMemo(() => {
+    if (collection?.icon !== 'scene' || (groupBy !== 'episode' && groupBy !== 'time-of-day')) return null
+    const buckets = new Map<string, typeof filteredChildData>()
+    for (const child of filteredChildData) {
+      const sceneMeta = getNarrativeScene(child.collection.name)
+      const key = groupBy === 'episode'
+        ? (sceneMeta?.episode ?? 'Unscheduled')
+        : (sceneMeta?.timeOfDay ?? 'Unspecified')
+      const list = buckets.get(key) ?? []
+      list.push(child)
+      buckets.set(key, list)
+    }
+    // Sort by label so episodes / times read in natural order.
+    return Array.from(buckets.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([label, items]) => ({ label, items }))
+  }, [collection?.icon, groupBy, filteredChildData])
   const itemCount = isParentWithChildren
-    ? childCollections.length
+    ? visibleChildData.length
     : filteredAssets.length
   const countLabel = isParentWithChildren ? 'collection' : 'asset'
 
@@ -506,6 +701,215 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     )
   }
 
+  // ── Render helpers — broken out to keep the JSX tree readable. Each owns
+  // one branch of the children/assets dispatch and closes over component state.
+
+  const childCardClickHandlers = (child: typeof childData[number]) => ({
+    onClick: isMobile
+      ? () => router.push(`/nextgen/collections/${child.collection.id}`)
+      : (event: React.MouseEvent) => handleCollectionCardClick(child.collection, event),
+    onDoubleClick: isMobile ? undefined : () => router.push(`/nextgen/collections/${child.collection.id}`),
+  })
+
+  const childSelectionState = (child: typeof childData[number]) => ({
+    isSelected: !isMobile && selectedCollectionIds.has(child.collection.id),
+    primary: !isMobile && selectedCollectionId === child.collection.id,
+  })
+
+  const renderLocationChildren = () => (
+    <CardGrid columns={getGridColumns(cardSize)} gap="4">
+      {childData.map((child) => {
+        const ontology = getOntologyMeta(child.collection.name, 'location')
+        const locMeta = ontology?.type === 'location' ? ontology.data : undefined
+        const scenes = Array.from(scenesByLocation.get(child.collection.name) ?? []).map((sceneName) => ({
+          name: sceneName,
+          image: getCollectionImagesByName(sceneName).mainImage,
+        }))
+        return (
+          <LocationCard
+            key={child.collection.id}
+            name={child.collection.name}
+            mainImage={child.mainImage}
+            assetCount={child.assetCount}
+            meta={locMeta}
+            scenes={scenes}
+            size={cardSize as LocationCardSize}
+            {...childSelectionState(child)}
+            {...childCardClickHandlers(child)}
+          />
+        )
+      })}
+    </CardGrid>
+  )
+
+  const renderSceneChildren = () => {
+    const renderSceneCard = (child: typeof filteredChildData[number]) => {
+      const sceneMeta = getNarrativeScene(child.collection.name)
+      const characters = Array.from(charactersByScene.get(child.collection.name) ?? []).map((charName) => ({
+        name: charName,
+        avatarSrc: getCollectionImagesByName(charName).avatarSrc,
+      }))
+      return (
+        <SceneScriptCard
+          key={child.collection.id}
+          name={child.collection.name}
+          mainImage={child.mainImage}
+          assetCount={child.assetCount}
+          meta={sceneMeta}
+          characters={characters}
+          size={cardSize as SceneScriptCardSize}
+          {...childSelectionState(child)}
+          {...childCardClickHandlers(child)}
+        />
+      )
+    }
+    if (sceneGroupedChildren) {
+      return (
+        <div className="space-y-6">
+          {sceneGroupedChildren.map((group) => (
+            <section key={group.label} className="space-y-3">
+              <h3 className="text-body-0-regular text-foreground-subtle">
+                {group.label}
+                <span className="text-foreground-subtle ml-2">{group.items.length}</span>
+              </h3>
+              <CardGrid columns={getGridColumns(cardSize)} gap="4">
+                {group.items.map(renderSceneCard)}
+              </CardGrid>
+            </section>
+          ))}
+        </div>
+      )
+    }
+    return (
+      <CardGrid columns={getGridColumns(cardSize)} gap="4">
+        {filteredChildData.map(renderSceneCard)}
+      </CardGrid>
+    )
+  }
+
+  const renderCastingChildren = () => {
+    if (!castingGroups) return null
+    return (
+      <div className="space-y-6">
+        {castingGroups.map((group) => (
+          <section key={group.label} className="space-y-3">
+            <h3 className="text-body-0-regular text-foreground-subtle">
+              {group.label}
+              <span className="text-foreground-subtle ml-2">{group.items.length}</span>
+            </h3>
+            <div className="flex flex-wrap gap-6">
+              {group.items.map((child) => (
+                <CharacterCastingCard
+                  key={child.collection.id}
+                  name={child.collection.name}
+                  avatarSrc={child.avatarSrc}
+                  assetCount={child.assetCount}
+                  role={getNarrativeCharacter(child.collection.name)?.role}
+                  size={group.cardSize as CharacterCastingCardSize}
+                  {...childSelectionState(child)}
+                  {...childCardClickHandlers(child)}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    )
+  }
+
+  const renderDefaultChildren = () => (
+    <CardGrid columns={getGridColumns(cardSize)} gap="4">
+      {childData.map((child) => (
+        <CollectionCard
+          key={child.collection.id}
+          title={child.collection.name}
+          assetCount={child.assetCount}
+          type={cardType}
+          mainImage={child.mainImage}
+          thumbnailImages={child.thumbnailImages}
+          avatarSrc={child.avatarSrc}
+          avatarName={child.collection.name}
+          size={cardSize}
+          numberOfAssets={
+            child.assetCount === 0 ? 'None'
+            : child.assetCount === 1 ? 'One'
+            : child.assetCount === 2 ? 'Two'
+            : 'Many'
+          }
+          {...childSelectionState(child)}
+          {...childCardClickHandlers(child)}
+        />
+      ))}
+    </CardGrid>
+  )
+
+  const renderChildren = () => {
+    if (collection?.icon === 'location') return renderLocationChildren()
+    if (collection?.icon === 'scene') return renderSceneChildren()
+    if (castingGroups) return renderCastingChildren()
+    return renderDefaultChildren()
+  }
+
+  const renderAssets = () => {
+    const renderAssetCard = (asset: Asset) => (
+      <div key={asset.id} data-asset-id={asset.id}>
+        <AssetCard
+          asset={asset}
+          selected={selectedAssetIds.has(asset.id)}
+          primary={primaryAssetId === asset.id}
+          onClick={(a, e) => handleAssetCardClick(a, e)}
+          menuContent={
+            <div className="py-1">
+              {buildAssetMenuItems(asset).map((item, i) => (
+                <div key={i}>
+                  <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} />
+                  {item.dividerAfter && <DropdownMenuDivider />}
+                </div>
+              ))}
+            </div>
+          }
+          showDepartment
+          shared={asset.department != null && activePersona?.domainId != null && asset.department !== activePersona.domainId}
+          sensitive={isSensitiveAsset(asset.id)}
+          allSelectedIds={selectedAssetIds}
+          metadataFields={metadataFields}
+        />
+      </div>
+    )
+    const handleGridContextMenu = (e: React.MouseEvent) => {
+      const card = (e.target as HTMLElement).closest('[data-asset-id]')
+      if (!card) return
+      const assetId = card.getAttribute('data-asset-id')
+      const asset = assetId ? filteredAssets.find((a) => a.id === assetId) : null
+      if (asset) {
+        e.preventDefault()
+        setAssetContextMenu({ x: e.clientX, y: e.clientY, asset })
+      }
+    }
+    if (groupedAssets) {
+      return (
+        <div className="space-y-6">
+          {groupedAssets.map((group) => (
+            <section key={group.label} className="space-y-3">
+              <h3 className="text-body-0-regular text-foreground-subtle">
+                {group.label}
+                <span className="text-foreground-subtle ml-2">{group.items.length}</span>
+              </h3>
+              <CardGrid columns={getGridColumns(cardSize)} gap="4" onContextMenu={handleGridContextMenu}>
+                {group.items.map(renderAssetCard)}
+              </CardGrid>
+            </section>
+          ))}
+        </div>
+      )
+    }
+    return (
+      <CardGrid columns={getGridColumns(cardSize)} gap="4" onContextMenu={handleGridContextMenu}>
+        {filteredAssets.map(renderAssetCard)}
+      </CardGrid>
+    )
+  }
+
   return (
     <div className="h-full flex">
       {/* Main content area */}
@@ -520,7 +924,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                       <HawkinsSearch
                         value={searchQuery}
                         onValueChange={setSearchQuery}
-                        filters={filterOptions}
                         collapsible
                       />
                       <SortDropdown
@@ -529,14 +932,15 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                         onChange={setSortCriteria}
                         iconOnly
                       />
-                      <Button
-                        variant="icon"
-                        onClick={() => setGroupByKind((v) => !v)}
-                        aria-label={groupByKind ? 'Ungroup' : 'Group by type'}
-                        aria-pressed={groupByKind}
-                      >
-                        <LayersIcon className="w-4 h-4" />
-                      </Button>
+                      <GroupingToolbar
+                        collectionIcon={collection?.icon}
+                        isParentWithChildren={isParentWithChildren}
+                        groupBy={groupBy}
+                        onGroupByChange={setGroupBy}
+                        episodeFilter={episodeFilter}
+                        onEpisodeFilterChange={setEpisodeFilter}
+                        availableEpisodes={availableEpisodes}
+                      />
                       <AppearanceDropdown
                         iconOnly
                         layout={layout}
@@ -583,8 +987,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                       <HawkinsSearch
                         value={searchQuery}
                         onValueChange={setSearchQuery}
-                        filters={filterOptions}
-                        expandable
                       />
                       <SortDropdown
                         fields={sortFields}
@@ -592,14 +994,15 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                         onChange={setSortCriteria}
                         iconOnly
                       />
-                      <Button
-                        variant="icon"
-                        onClick={() => setGroupByKind((v) => !v)}
-                        aria-label={groupByKind ? 'Ungroup' : 'Group by type'}
-                        aria-pressed={groupByKind}
-                      >
-                        <LayersIcon className="w-4 h-4" />
-                      </Button>
+                      <GroupingToolbar
+                        collectionIcon={collection?.icon}
+                        isParentWithChildren={isParentWithChildren}
+                        groupBy={groupBy}
+                        onGroupByChange={setGroupBy}
+                        episodeFilter={episodeFilter}
+                        onEpisodeFilterChange={setEpisodeFilter}
+                        availableEpisodes={availableEpisodes}
+                      />
                       <AppearanceDropdown
                         layout={layout}
                         onLayoutChange={setLayout}
@@ -620,11 +1023,11 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
 
                   <div className="flex items-center justify-between min-h-8">
                     <SelectAllRow
-                      selectedCount={selectedAssetIds.size + selectedCollectionIds.size}
+                      selectedCount={isParentWithChildren ? selectedCollectionIds.size : selectedAssetIds.size}
                       totalCount={itemCount}
                       onSelectAll={() => {
                         if (isParentWithChildren) {
-                          selectAllCollections(childData.map(c => c.collection))
+                          selectAllCollections(visibleChildData.map(c => c.collection))
                         } else {
                           selectAllAssets(filteredAssets)
                         }
@@ -632,7 +1035,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                       onClearSelection={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
                       label={!loading ? `${itemCount} ${countLabel}${itemCount !== 1 ? 's' : ''}` : 'Loading...'}
                     />
-                    {(selectedAssetIds.size > 0 || selectedCollectionIds.size > 0) ? (
+                    {activeSelectionEntities.length > 0 ? (
                       <ContextualActionBar
                         selectedEntities={activeSelectionEntities}
                         onClearSelection={isParentWithChildren ? clearCollectionSelection : clearAssetSelection}
@@ -668,7 +1071,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                   </div>
 
                   {/* Content */}
-                  <div className="min-h-[400px]">
+                  <div className="min-h-96">
                     {loading ? (
                       <CardGrid columns={getGridColumns(cardSize)} gap="4">
                         {[...Array(6)].map((_, i) => (
@@ -683,94 +1086,9 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                         ))}
                       </CardGrid>
                     ) : isParentWithChildren ? (
-                      <CardGrid columns={getGridColumns(cardSize)} gap="4">
-                        {childData.map((child) => (
-                          <CollectionCard
-                            key={child.collection.id}
-                            title={child.collection.name}
-                            assetCount={child.assetCount}
-                            type={cardType}
-                            mainImage={child.mainImage}
-                            thumbnailImages={child.thumbnailImages}
-                            avatarSrc={child.avatarSrc}
-                            avatarName={child.collection.name}
-                            size={cardSize}
-                            numberOfAssets={
-                              child.assetCount === 0 ? 'None'
-                              : child.assetCount === 1 ? 'One'
-                              : child.assetCount === 2 ? 'Two'
-                              : 'Many'
-                            }
-                            isSelected={!isMobile && selectedCollectionIds.has(child.collection.id)}
-                            primary={!isMobile && selectedCollectionId === child.collection.id}
-                            onClick={isMobile
-                              ? () => router.push(`/nextgen/collections/${child.collection.id}`)
-                              : (event) => handleCollectionCardClick(child.collection, event)
-                            }
-                            onDoubleClick={isMobile ? undefined : () => router.push(`/nextgen/collections/${child.collection.id}`)}
-                          />
-                        ))}
-                      </CardGrid>
+                      renderChildren()
                     ) : filteredAssets.length > 0 ? (
-                      (() => {
-                        const renderAssetCard = (asset: Asset) => (
-                          <div key={asset.id} data-asset-id={asset.id}>
-                            <AssetCard
-                              asset={asset}
-                              selected={selectedAssetIds.has(asset.id)}
-                              primary={primaryAssetId === asset.id}
-                              onClick={(a, e) => handleAssetCardClick(a, e)}
-                              menuContent={
-                                <div className="py-1">
-                                  {buildAssetMenuItems(asset).map((item, i) => (
-                                    <div key={i}>
-                                      <DropdownMenuItem icon={item.icon} label={item.label} onClick={item.onClick} destructive={item.destructive} />
-                                      {item.dividerAfter && <DropdownMenuDivider />}
-                                    </div>
-                                  ))}
-                                </div>
-                              }
-                              showDepartment
-                              shared={asset.department != null && activePersona?.domainId != null && asset.department !== activePersona.domainId}
-                              sensitive={isSensitiveAsset(asset.id)}
-                              allSelectedIds={selectedAssetIds}
-                              metadataFields={metadataFields}
-                            />
-                          </div>
-                        )
-                        const handleGridContextMenu = (e: React.MouseEvent) => {
-                          const card = (e.target as HTMLElement).closest('[data-asset-id]')
-                          if (!card) return
-                          const assetId = card.getAttribute('data-asset-id')
-                          const asset = assetId ? filteredAssets.find(a => a.id === assetId) : null
-                          if (asset) {
-                            e.preventDefault()
-                            setAssetContextMenu({ x: e.clientX, y: e.clientY, asset })
-                          }
-                        }
-                        if (kindGroupedAssets) {
-                          return (
-                            <div className="space-y-6">
-                              {kindGroupedAssets.map((group) => (
-                                <section key={group.label} className="space-y-3">
-                                  <h3 className="text-body-0-regular text-foreground-subtle">
-                                    {group.label}
-                                    <span className="text-foreground-subtle ml-2">{group.items.length}</span>
-                                  </h3>
-                                  <CardGrid columns={getGridColumns(cardSize)} gap="4" onContextMenu={handleGridContextMenu}>
-                                    {group.items.map(renderAssetCard)}
-                                  </CardGrid>
-                                </section>
-                              ))}
-                            </div>
-                          )
-                        }
-                        return (
-                          <CardGrid columns={getGridColumns(cardSize)} gap="4" onContextMenu={handleGridContextMenu}>
-                            {filteredAssets.map(renderAssetCard)}
-                          </CardGrid>
-                        )
-                      })()
+                      renderAssets()
                     ) : (
                       <EmptyState
                         title="No matching assets"
@@ -807,7 +1125,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
           matchingCount={childData.find(c => c.collection.id === selectedCollectionId)?.assetCount}
           relationships={selectedChildRelationships}
           suppressDimension={collection?.groupBy}
-          avatarSrc={childData.find(c => c.collection.id === selectedCollectionId)?.avatarSrc}
         />
       )}
       {collection && (
@@ -826,7 +1143,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
           matchingCount={filteredAssets.length}
           relationships={relationships}
           suppressDimension={parentCollection?.groupBy}
-          avatarSrc={getCollectionImagesByName(collection.name).avatarSrc}
         />
       )}
 

@@ -47,7 +47,6 @@ interface CollectionBrowserViewProps {
   description: string
   detailBackLabel: string
   collections: Collection[]
-  filterOptions: { id: string; label: string }[]
   allowHideEmptyCollections?: boolean
 }
 
@@ -78,7 +77,6 @@ export function CollectionBrowserView({
   description,
   detailBackLabel,
   collections,
-  filterOptions,
   allowHideEmptyCollections = false,
 }: CollectionBrowserViewProps) {
   const {
@@ -358,7 +356,6 @@ export function CollectionBrowserView({
                   <HawkinsSearch
                     value={searchQuery}
                     onValueChange={setSearchQuery}
-                    filters={filterOptions}
                     collapsible
                   />
                   <SortDropdown
@@ -389,8 +386,6 @@ export function CollectionBrowserView({
                   <HawkinsSearch
                     value={searchQuery}
                     onValueChange={setSearchQuery}
-                    filters={filterOptions}
-                    expandable
                   />
                   <SortDropdown
                     fields={sortFields}

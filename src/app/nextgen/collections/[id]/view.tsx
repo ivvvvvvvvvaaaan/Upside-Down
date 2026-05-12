@@ -349,7 +349,6 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                     <HawkinsSearch
                       value={searchQuery}
                       onValueChange={setSearchQuery}
-                      expandable
                     />
                     <SortDropdown
                       fields={[

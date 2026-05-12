@@ -65,3 +65,17 @@ export function formatFileSize(bytes?: number): string {
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }
+
+export function getInitials(name: string, maxLength = 2): string {
+  return name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .filter(Boolean)
+    .join('')
+    .toUpperCase()
+    .slice(0, maxLength) || '?'
+}
+
+export function pluralize(count: number, singular: string, plural?: string): string {
+  return `${count} ${count === 1 ? singular : (plural ?? `${singular}s`)}`
+}

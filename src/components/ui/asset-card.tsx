@@ -171,7 +171,7 @@ export function AssetCard({
           {/* Left: Title + Processing tag */}
           <div className="flex-1 min-w-0 flex flex-col gap-1">
             {/* Title - body-0-bold */}
-            <div className="text-body-0-bold text-foreground truncate group-hover:text-foreground-system-link group-hover:underline">
+            <div className="text-body-0-bold text-foreground truncate group-hover:text-foreground-system-link transition-colors">
               {asset.name}
             </div>
             {/* Processing tag */}
@@ -375,7 +375,7 @@ export function AssetCard({
               <Link
                 href={`/nextgen/assets/${asset.id}`}
                 onClick={(e) => e.stopPropagation()}
-                className="text-body-0-bold text-foreground truncate block hover:text-foreground-system-link hover:underline"
+                className="text-body-0-bold text-foreground truncate block group-hover:text-foreground-system-link transition-colors"
               >
                 {asset.name}
               </Link>

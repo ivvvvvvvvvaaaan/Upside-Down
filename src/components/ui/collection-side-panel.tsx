@@ -5,7 +5,6 @@ import { X, Layers, MapPin, Film, Zap, Folder, Users } from 'lucide-react'
 import { ActivityFeed } from './activity-feed'
 import type { ActivityEvent } from './activity-feed'
 import { Button } from './button'
-import { Avatar } from './avatar'
 import { ResponsivePanel } from './responsive-panel'
 import { OntologySection } from './ontology-section'
 import { Chip } from './chip'
@@ -26,8 +25,7 @@ const PANEL_ICONS: Record<string, typeof Layers> = {
   folder: Folder,
 }
 
-function PanelHeaderIcon({ icon, name, isEntity, avatarSrc }: { icon: string; name: string; isEntity?: boolean; avatarSrc?: string }) {
-  if (icon === 'character' && isEntity) return <Avatar name={name} src={avatarSrc} size="lg" />
+function PanelHeaderIcon({ icon }: { icon: string }) {
   const Icon = icon === 'character' ? Users : (PANEL_ICONS[icon] ?? Layers)
   return <Icon className="w-8 h-8 text-foreground flex-shrink-0" />
 }
@@ -43,7 +41,7 @@ function MetaField({ label, value }: { label: string; value: string }) {
 
 function OntologyDetails({ meta }: { meta: OntologyMeta }) {
   if (meta.type === 'character') {
-    const { bio, role, episodes, notes } = meta.data
+    const { bio, role, episodes } = meta.data
     const roleLabel = role.charAt(0).toUpperCase() + role.slice(1)
     return (
       <div className="space-y-4">
@@ -51,14 +49,13 @@ function OntologyDetails({ meta }: { meta: OntologyMeta }) {
         <div className="space-y-3">
           <MetaField label="Role" value={roleLabel} />
           <MetaField label="Episodes" value={episodes.join(', ')} />
-          {notes && <MetaField label="Production notes" value={notes} />}
         </div>
       </div>
     )
   }
 
   if (meta.type === 'scene') {
-    const { description, episode, pageRange, timeOfDay, mood, notes } = meta.data
+    const { description, episode, pageRange, timeOfDay } = meta.data
     return (
       <div className="space-y-4">
         <p className="text-body-0-regular text-foreground leading-relaxed">{description}</p>
@@ -69,16 +66,14 @@ function OntologyDetails({ meta }: { meta: OntologyMeta }) {
           </div>
           <div className="flex gap-4">
             {timeOfDay && <MetaField label="Time of day" value={timeOfDay} />}
-            {mood && <MetaField label="Mood" value={mood} />}
           </div>
-          {notes && <MetaField label="Production notes" value={notes} />}
         </div>
       </div>
     )
   }
 
   if (meta.type === 'location') {
-    const { description, setting, episodes, notes } = meta.data
+    const { description, setting, episodes } = meta.data
     const settingLabel = setting.charAt(0).toUpperCase() + setting.slice(1)
     return (
       <div className="space-y-4">
@@ -86,7 +81,6 @@ function OntologyDetails({ meta }: { meta: OntologyMeta }) {
         <div className="space-y-3">
           <MetaField label="Setting" value={settingLabel} />
           <MetaField label="Episodes" value={episodes.join(', ')} />
-          {notes && <MetaField label="Production notes" value={notes} />}
         </div>
       </div>
     )
@@ -114,7 +108,6 @@ interface CollectionSidePanelProps {
   relationships?: RelatedCollections
   suppressDimension?: SmartCollectionGroupBy
   matchingCount?: number
-  avatarSrc?: string
 }
 
 function describeFilters(filter: AssetFilter): string[] {
@@ -140,7 +133,6 @@ export function CollectionSidePanel({
   relationships,
   suppressDimension,
   matchingCount,
-  avatarSrc,
 }: CollectionSidePanelProps) {
   const smart = isSmart(collection) ? collection : null
   const curated = isCollection(collection) ? collection : null
@@ -230,7 +222,7 @@ export function CollectionSidePanel({
     <ResponsivePanel open={open} onClose={onClose}>
       <div className="flex items-center justify-between gap-3 p-4">
         <div className="flex items-center gap-3 min-w-0">
-          <PanelHeaderIcon icon={caps.icon} name={collection.name} isEntity={!!smart?.parentId} avatarSrc={avatarSrc} />
+          <PanelHeaderIcon icon={caps.icon} />
           <div className="min-w-0">
             <p className="text-body-0-bold text-foreground truncate flex items-center gap-1.5">
               {collection.name}

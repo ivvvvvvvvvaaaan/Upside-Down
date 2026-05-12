@@ -333,7 +333,7 @@ export function CollectionCard({
 
   const renderFooter = () => {
     // Link styling applies on hover (via CSS) or when explicitly set via state prop
-    const linkClass = 'group-hover:underline group-hover:text-foreground-system-link transition-colors'
+    const linkClass = 'group-hover:text-foreground-system-link transition-colors'
     
     if (type === 'location') {
       return (
@@ -493,8 +493,9 @@ export function CollectionCard({
   return (
     <div
       className={cn(
-        'group flex flex-col gap-2 p-2 relative w-full rounded',
-        'border border-border-elevation',
+        'group flex flex-col gap-2 p-2 relative w-full rounded overflow-hidden',
+        'border',
+        isFolder && isSelected ? 'border-border-selected' : 'border-border-elevation',
         isSelected && primary && 'ring-2 ring-border-selected',
         'items-start',
         isDragOver
@@ -541,11 +542,11 @@ export function CollectionCard({
       {isSelected && (
         <>
           <div
-            className="absolute inset-0 pointer-events-none rounded z-0"
+            className="absolute inset-0 pointer-events-none z-0"
             style={{ background: 'linear-gradient(to bottom right, rgb(var(--surface-selected)), rgb(var(--surface-selected-hover)))' }}
           />
           <div
-            className="absolute inset-0 pointer-events-none rounded z-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute inset-0 pointer-events-none z-0 opacity-0 group-hover:opacity-100 transition-opacity"
             style={{ background: 'rgb(var(--surface-selected-hover) / 0.3)' }}
           />
         </>
@@ -554,7 +555,7 @@ export function CollectionCard({
       {/* Thumbnail grid */}
       <div className="relative shrink-0 w-full z-10">
         {isFolder && (
-          <div className={cn('w-[40%] h-1.5 rounded-t transition-colors', isSelected ? 'bg-white/10' : 'bg-surface-3 group-hover:bg-surface-4')} />
+          <div className={cn('w-2/5 h-1.5 rounded-t transition-colors', isSelected ? 'bg-white/10' : 'bg-surface-3 group-hover:bg-surface-4')} />
         )}
         <div className={cn(isFolder && cn('rounded-md rounded-tl-none p-1 transition-colors', isSelected ? 'bg-white/10' : 'bg-surface-3 group-hover:bg-surface-4'))}>
           {renderThumbnails()}

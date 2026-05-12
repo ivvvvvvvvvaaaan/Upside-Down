@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useCallback, useMemo, useRef, useE
 import type { SmartCollection, SmartCollectionGroupBy, AssetFilter, Asset, SmartCollectionIcon } from '@/lib/data'
 import { mergePrototypeAssets } from '@/lib/prototype-assets'
 import { matchesFilter, slugify, generateChildCollections } from '@/lib/smart-collection-filters'
+import { listNarrativeScenes, listNarrativeCharacters, listNarrativeLocations } from '@/lib/ontology-meta'
 import { useAccess } from './useAccess'
 import { usePersona } from './usePersona'
 import { useFileTree } from './useFileTree'
@@ -126,10 +127,59 @@ export function SmartCollectionsProvider({ children }: { children: ReactNode }) 
   const assetsLoaded = assetLoadState === 'loaded'
   const assetsLoading = assetLoadState === 'loading'
 
-  // Compute child collections from scoped assets (only for visible parents)
+  // Compute child collections from scoped assets (only for visible parents).
+  // Augment with ontology-defined entries so all narrative scenes/characters/
+  // locations appear even when no asset has been tagged with them yet —
+  // ontology is the source of truth, AI tags fill in matching assets.
   const childCollections = useMemo(() => {
-    if (scopedAssets.length === 0) return []
-    return visibleCollections.flatMap(parent => generateChildCollections(parent, scopedAssets))
+    const assetDerived = scopedAssets.length === 0
+      ? []
+      : visibleCollections.flatMap(parent => generateChildCollections(parent, scopedAssets))
+
+    const augmented: typeof assetDerived = [...assetDerived]
+    const seen = new Set(assetDerived.map(c => c.id))
+
+    for (const parent of visibleCollections) {
+      let ontologyNames: string[] = []
+      let filterKey: keyof AssetFilter | null = null
+      if (parent.groupBy === 'scenes') {
+        ontologyNames = listNarrativeScenes().map(([name]) => name)
+        filterKey = 'aiScene'
+      } else if (parent.groupBy === 'characters') {
+        ontologyNames = listNarrativeCharacters().map(([name]) => name)
+        filterKey = 'aiCharacters'
+      } else if (parent.groupBy === 'locations') {
+        ontologyNames = listNarrativeLocations().map(([name]) => name)
+        filterKey = 'aiLocation'
+      }
+      if (!filterKey || ontologyNames.length === 0) continue
+
+      for (const name of ontologyNames) {
+        const id = `${parent.id}--${slugify(name)}`
+        if (seen.has(id)) continue
+        const childFilter: AssetFilter = {}
+        if (filterKey === 'aiCharacters') {
+          childFilter.aiCharacters = [name]
+        } else if (filterKey === 'aiLocation') {
+          childFilter.aiLocation = name
+        } else if (filterKey === 'aiScene') {
+          childFilter.aiScene = name
+        }
+        augmented.push({
+          flavor: 'smart' as const,
+          id,
+          name,
+          icon: parent.icon,
+          filter: childFilter,
+          visibleToAll: true,
+          createdAt: parent.createdAt,
+          parentId: parent.id,
+        })
+        seen.add(id)
+      }
+    }
+
+    return augmented
   }, [visibleCollections, scopedAssets])
 
   // All collections = parents + children

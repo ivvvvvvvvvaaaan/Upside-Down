@@ -23,7 +23,6 @@ export type NarrativeCharacterMeta = {
   bio: string
   role: 'lead' | 'supporting' | 'recurring' | 'guest'
   episodes: string[]
-  notes?: string
 }
 
 export type NarrativeSceneMeta = {
@@ -31,15 +30,12 @@ export type NarrativeSceneMeta = {
   episode: string
   pageRange?: string
   timeOfDay?: string
-  mood?: string
-  notes?: string
 }
 
 export type NarrativeLocationMeta = {
   description: string
   setting: 'interior' | 'exterior' | 'mixed'
   episodes: string[]
-  notes?: string
 }
 
 // === PRODUCTION LAYER ===
@@ -53,7 +49,6 @@ export type ProductionSceneMeta = {
   unit?: '1st unit' | '2nd unit' | 'splinter' | 'visual effects' | string
   /** Brief description of this shoot setup. */
   description?: string
-  notes?: string
 }
 
 export type ProductionShotMeta = {
@@ -70,7 +65,6 @@ export type ProductionShotMeta = {
   circle?: boolean
   lens?: string
   description?: string
-  notes?: string
 }
 
 // === CG LAYER ===
@@ -82,7 +76,6 @@ export type CGSequenceMeta = {
   vendor?: string
   description?: string
   status?: 'concept' | 'previs' | 'in-progress' | 'final'
-  notes?: string
 }
 
 export type CGShotMeta = {
@@ -97,7 +90,6 @@ export type CGShotMeta = {
   version: number
   vendor?: string
   description?: string
-  notes?: string
 }
 
 // === EDIT LAYER ===
@@ -113,7 +105,6 @@ export type EditSequenceMeta = {
   cutType?: 'editor' | 'directors' | 'producers' | 'network' | 'final' | string
   version?: number
   description?: string
-  notes?: string
 }
 
 export type EditSceneMeta = {
@@ -123,7 +114,6 @@ export type EditSceneMeta = {
   editSequence?: string
   episode: string
   description?: string
-  notes?: string
 }
 
 export type EditShotMeta = {
@@ -139,7 +129,6 @@ export type EditShotMeta = {
   inPoint?: string
   outPoint?: string
   description?: string
-  notes?: string
 }
 
 // === DISCRIMINATED UNION ===
@@ -167,7 +156,6 @@ const CHARACTERS: Record<string, NarrativeCharacterMeta> = {
     bio: 'Second-year driver for Apex Racing, fighting to prove he belongs at the front of the grid. Brazilian-Italian heritage, intensely competitive but privately struggling with the pressure of replacing a fan-favorite driver mid-season.',
     role: 'lead',
     episodes: ['EP301', 'EP302', 'EP303', 'EP304', 'EP305', 'EP306'],
-    notes: 'Helmet cam rig required for cockpit POV sequences. Stunt double cleared for Ep305 crash.',
   },
   'Marco Vitale': {
     bio: 'Veteran team principal of Apex Racing, navigating the politics of a title fight while managing a volatile driver pairing. Italian, mid-50s, old-school racing mentality clashing with modern corporate ownership.',
@@ -183,7 +171,6 @@ const CHARACTERS: Record<string, NarrativeCharacterMeta> = {
     bio: 'Chief strategist at Apex Racing. German-Austrian, data-driven and politically savvy. Caught between loyalty to Ashworth and the team\'s best interests as Ferreira outperforms expectations.',
     role: 'supporting',
     episodes: ['EP301', 'EP302', 'EP303', 'EP304', 'EP306'],
-    notes: 'War room monitors need real telemetry graphics overlay — coordinate with VFX.',
   },
   'Frank Castellano': {
     bio: 'CEO of Castellano Motors, the parent company bankrolling Apex Racing. American-Italian, a disruptive tech billionaire who treats the team like a Silicon Valley startup. His interference threatens the racing operation.',
@@ -199,7 +186,52 @@ const CHARACTERS: Record<string, NarrativeCharacterMeta> = {
     bio: 'Apex Racing\'s 2024 challenger — the car itself, designated AR-24. A carbon fiber protagonist in its own right, tagged by the AI pipeline whenever the livery is identifiable on screen regardless of driver.',
     role: 'recurring',
     episodes: ['EP301', 'EP302', 'EP303', 'EP305', 'EP306'],
-    notes: 'AI identifies car by livery pattern, not driver. Multiple hero car builds exist — confirm which chassis for continuity.',
+  },
+
+  // === Supporting ===
+  'Sarah Walsh': {
+    bio: 'Lead race engineer for Luca Ferreira. British, mid-30s. The voice in Luca\'s helmet that keeps him pointed forward when the race is collapsing. Calm under pressure, more devoted to her driver than to the team that pays her.',
+    role: 'supporting',
+    episodes: ['EP301', 'EP302', 'EP303', 'EP304', 'EP305', 'EP306'],
+  },
+  'Diego Castellano': {
+    bio: 'Frank\'s son, brought in to "learn the family business." Late 20s, Stanford MBA, charming on camera and ruthless off it. A direct threat to Marco\'s authority over the racing operation.',
+    role: 'supporting',
+    episodes: ['EP302', 'EP303', 'EP304', 'EP305', 'EP306'],
+  },
+  'Hiroshi Tanaka': {
+    bio: 'Apex Racing\'s technical director and lead designer of the AR-24 chassis. Japanese, late 50s, soft-spoken but uncompromising. The technical conscience of the team.',
+    role: 'supporting',
+    episodes: ['EP301', 'EP303', 'EP304', 'EP305', 'EP306'],
+  },
+
+  // === Recurring ===
+  'Astrid Vance': {
+    bio: 'Team principal of rival Titan Motorsport. Marco\'s professional opposite — Silicon Valley pedigree, corporate polish, runs Titan like a tech startup. Public rivalry with Apex masks a private respect for Marco.',
+    role: 'recurring',
+    episodes: ['EP302', 'EP303', 'EP305', 'EP306'],
+  },
+  'Karl Steinmann': {
+    bio: 'FIA race director. Swiss-German, 60s, three decades enforcing the rulebook. The one who decides which racing incidents become penalties. Holds the line that the sport\'s legitimacy depends on consistency.',
+    role: 'recurring',
+    episodes: ['EP301', 'EP303', 'EP305'],
+  },
+  'Maya Brooks': {
+    bio: 'British-American F1 journalist with a popular podcast and unrivaled paddock access. Her opinion moves the conversation about the team. Friendly with Marco, dangerous to him.',
+    role: 'recurring',
+    episodes: ['EP301', 'EP302', 'EP304', 'EP306'],
+  },
+
+  // === Guest ===
+  'Hans Berger': {
+    bio: 'Retired Apex Racing legend, three-time champion in his era. Now a consultant to Castellano Motors. Surfaces when the team\'s identity is in question — a reminder of what Apex used to be.',
+    role: 'guest',
+    episodes: ['EP301', 'EP306'],
+  },
+  'Pippa Ferreira': {
+    bio: 'Luca\'s younger sister, briefly seconded to Apex\'s PR department during the European leg. Brings family stakes into the paddock. Sharper than her brother credits her for.',
+    role: 'guest',
+    episodes: ['EP303', 'EP304'],
   },
 }
 
@@ -211,66 +243,234 @@ const SCENES: Record<string, NarrativeSceneMeta> = {
     episode: 'EP301',
     pageRange: 'pp. 1–8',
     timeOfDay: 'Day',
-    mood: 'Anticipation, controlled chaos',
   },
   'INT. APEX GARAGE - RACE DAY': {
     description: 'The nerve center of the team during a race weekend. Banks of monitors, strategy screens, and the deafening sound of engines bleeding through the walls. Where the real decisions are made under extreme time pressure.',
     episode: 'EP301',
     pageRange: 'pp. 12–18',
     timeOfDay: 'Day',
-    mood: 'High tension, clinical focus',
-    notes: 'Practical lighting from monitor screens. Need clearance for smoke/haze in background.',
   },
   'EXT. PADDOCK - POST-RACE': {
     description: 'The decompression zone after the checkered flag. A mix of celebration and devastation, media scrums and private moments. The paddock reveals character through how each person handles the result.',
     episode: 'EP301',
     pageRange: 'pp. 42–48',
     timeOfDay: 'Golden hour',
-    mood: 'Emotional release, exhaustion',
   },
   'INT. MERCEDES MOTORHOME - DEBRIEF': {
     description: 'A sterile, corporate meeting room where the team dissects what went wrong. Glass walls, fluorescent light, uncomfortable silences. The politics of blame unfold behind closed doors.',
     episode: 'EP302',
     pageRange: 'pp. 3–7',
     timeOfDay: 'Night',
-    mood: 'Confrontational, claustrophobic',
   },
   'EXT. CIRCUIT - LAP 52': {
     description: 'The decisive moment of the race. High-speed wheel-to-wheel combat through a technical section. The outcome reshapes the championship and relationships within the team.',
     episode: 'EP303',
     pageRange: 'pp. 28–34',
     timeOfDay: 'Day',
-    mood: 'Maximum intensity, danger',
-    notes: 'Requires full VFX car compositing. Plate shots at Silverstone.',
   },
   'INT. FIA STEWARDS ROOM - PENALTY HEARING - RACE DAY': {
     description: 'A windowless room where three stewards review onboard footage and telemetry data to adjudicate a controversial racing incident. The accused driver and team representative present their case.',
     episode: 'EP303',
     pageRange: 'pp. 35–39',
     timeOfDay: 'Day',
-    mood: 'Judicial, tense',
   },
   'EXT. SILVERSTONE CIRCUIT PIT STRAIGHT GRANDSTAND - CONTINUOUS': {
     description: 'The roar of a home crowd as cars blast past the main grandstand. Union flags, air horns, the visceral experience of speed from the spectator\'s perspective.',
     episode: 'EP305',
     pageRange: 'pp. 14–16',
     timeOfDay: 'Day',
-    mood: 'Euphoric, patriotic',
   },
   'INT. PADDOCK CLUB VIP HOSPITALITY - DRIVERS PARADE LOUNGE - RACE DAY': {
     description: 'The gilded cage of F1\'s upper echelon. Sponsors, celebrities, and team owners circulate with champagne while the real power plays happen in quiet corners.',
     episode: 'EP304',
     pageRange: 'pp. 8–14',
     timeOfDay: 'Day',
-    mood: 'Performative luxury, undercurrents',
   },
   'EXT. ABU DHABI MARINA CIRCUIT - CHAMPIONSHIP DECIDER - SUNSET': {
     description: 'The season finale under fading desert light. The circuit transforms from daylight to floodlit as the championship hangs in the balance. Every lap carries the weight of an entire season.',
     episode: 'EP306',
     pageRange: 'pp. 22–45',
     timeOfDay: 'Day to night',
-    mood: 'Epic, decisive, bittersweet',
-    notes: 'Day-to-night transition is critical. VFX sky replacement for continuity.',
+  },
+
+  // === EP301 — Season opener ===
+  'INT. APEX GARAGE - PRE-RACE BRIEFING': {
+    description: 'Marco walks his drivers and engineers through the race plan. Strategy boards, telemetry projections, the team trying to project calm confidence.',
+    episode: 'EP301',
+    pageRange: 'pp. 9–11',
+    timeOfDay: 'Day',
+  },
+  'EXT. CIRCUIT - OPENING LAPS': {
+    description: 'Lights out. Twenty cars launch into Turn 1. Ferreira makes an aggressive move on Ashworth that establishes the season-long tension between the two Apex drivers.',
+    episode: 'EP301',
+    pageRange: 'pp. 19–25',
+    timeOfDay: 'Day',
+  },
+  'INT. APEX GARAGE - RACE STRATEGY CALL': {
+    description: 'Elena weighs two pit-stop strategies on the wall display. Marco listens, makes the call. The radio crackles back to Ashworth — and he doesn\'t like it.',
+    episode: 'EP301',
+    pageRange: 'pp. 26–30',
+    timeOfDay: 'Day',
+  },
+  'INT. CASTELLANO MOTORS HQ - VIDEO CALL': {
+    description: 'Frank watches the race remotely from a glass-walled office. A wall of monitors, a private line open to Marco. Suggestions that sound like instructions.',
+    episode: 'EP301',
+    pageRange: 'pp. 36–40',
+    timeOfDay: 'Day',
+  },
+
+  // === EP302 — Zandvoort weekend ===
+  'INT. APEX GARAGE - STRATEGY MEETING': {
+    description: 'Saturday night. Elena, Marco, and the head of race engineering map out Sunday\'s race over takeaway containers and exhausted coffee.',
+    episode: 'EP302',
+    pageRange: 'pp. 8–12',
+    timeOfDay: 'Night',
+  },
+  'EXT. ZANDVOORT CIRCUIT - FREE PRACTICE': {
+    description: 'Cars stream through banked corners as orange-clad fans roar from the dunes. Ferreira posts the fastest lap; the radio celebration is short-lived when telemetry flags a worrying gearbox spike.',
+    episode: 'EP302',
+    pageRange: 'pp. 14–20',
+    timeOfDay: 'Day',
+  },
+  'INT. FERREIRA\'S HOTEL ROOM - NIGHT': {
+    description: 'Luca alone after the call with his father. The hotel room as a confessional — quiet, anonymous, a moment where the public performance drops.',
+    episode: 'EP302',
+    pageRange: 'pp. 22–24',
+    timeOfDay: 'Night',
+  },
+  'EXT. ZANDVOORT CIRCUIT - RACE START': {
+    description: 'The orange wall of sound as the field accelerates off the grid. Ashworth defends from Dragan into Tarzan. Ferreira gets squeezed and drops three positions in one corner.',
+    episode: 'EP302',
+    pageRange: 'pp. 27–33',
+    timeOfDay: 'Day',
+  },
+  'INT. ZANDVOORT MEDIA CENTRE - POST-RACE PRESSER': {
+    description: 'Three drivers behind a long table. Microphones, hostile questions, and Ashworth\'s carefully controlled answers that say everything except what he means.',
+    episode: 'EP302',
+    pageRange: 'pp. 41–44',
+    timeOfDay: 'Day',
+  },
+
+  // === EP303 — Crisis race ===
+  'INT. APEX GARAGE - TIRE DEGRADATION ALARMS': {
+    description: 'Mid-race. The pit wall sees both Apex cars dropping seconds per lap. Elena triages the data while Marco decides whether to gamble or hold the line.',
+    episode: 'EP303',
+    pageRange: 'pp. 17–22',
+    timeOfDay: 'Day',
+  },
+  'EXT. PIT LANE - SAFETY CAR': {
+    description: 'Yellow flags everywhere. The Apex pit crew sprints to position as both cars dive in at once. The double-stack is a controlled disaster — one set of tyres ready, one not.',
+    episode: 'EP303',
+    pageRange: 'pp. 23–27',
+    timeOfDay: 'Day',
+  },
+  'INT. CASTELLANO\'S OFFICE - EMERGENCY CALL': {
+    description: 'Frank in his New York office at 2am, listening to Marco explain why they just lost the race. He doesn\'t raise his voice. That makes it worse.',
+    episode: 'EP303',
+    pageRange: 'pp. 40–43',
+    timeOfDay: 'Night',
+  },
+  'EXT. CIRCUIT - PODIUM CEREMONY - NIGHT': {
+    description: 'Dragan on top of the podium, champagne arcing into the floodlit air. Ferreira on the second step, jaw clenched. Ashworth absent.',
+    episode: 'EP303',
+    pageRange: 'pp. 44–46',
+    timeOfDay: 'Night',
+  },
+
+  // === EP304 — Monaco politics ===
+  'EXT. MONACO HARBOUR - DAWN': {
+    description: 'Superyachts in pale light. The pre-race-weekend stillness before the circus arrives. Marco walks alone along the harbour, a moment of perspective before the chaos.',
+    episode: 'EP304',
+    pageRange: 'pp. 1–3',
+    timeOfDay: 'Dawn',
+  },
+  'EXT. MONACO STREET CIRCUIT - QUALIFYING': {
+    description: 'Cars threading the barriers at impossible speed. Ferreira\'s pole lap — a perfect sequence of corners visible from every overlook in the principality.',
+    episode: 'EP304',
+    pageRange: 'pp. 15–22',
+    timeOfDay: 'Day',
+  },
+  'INT. APEX GARAGE - MID-RACE TENSION': {
+    description: 'The garage in deafening silence as the team listens to Ferreira on radio. Three corners of the circuit visible on monitors. Marco\'s hand hovers over the radio key.',
+    episode: 'EP304',
+    pageRange: 'pp. 25–31',
+    timeOfDay: 'Day',
+  },
+  'EXT. CASINO SQUARE - NIGHT': {
+    description: 'Post-race. Drivers and sponsors moving between bars and casinos. Ferreira slips away from the crowd. Frank Castellano is waiting where he can\'t avoid him.',
+    episode: 'EP304',
+    pageRange: 'pp. 38–42',
+    timeOfDay: 'Night',
+  },
+  'EXT. MONACO STREET CIRCUIT - SUNSET': {
+    description: 'The circuit emptying as the sun drops behind Mont Charvet. A lone marshal walks the track. Beauty without a single car on it — and Marco watching from an empty grandstand.',
+    episode: 'EP304',
+    pageRange: 'pp. 44–46',
+    timeOfDay: 'Sunset',
+  },
+
+  // === EP305 — Mid-season crash ===
+  'EXT. CIRCUIT - LAP 8 CRASH SEQUENCE': {
+    description: 'A multi-car incident at high speed. Carbon fibre disintegrates in slow motion as cars pinball through the gravel trap. The team radio goes silent.',
+    episode: 'EP305',
+    pageRange: 'pp. 17–23',
+    timeOfDay: 'Day',
+  },
+  'INT. MEDICAL CENTRE - WAITING ROOM': {
+    description: 'The team waits for news. Marco standing, Elena seated, neither speaking. The clock on the wall the loudest sound in the room.',
+    episode: 'EP305',
+    pageRange: 'pp. 24–28',
+    timeOfDay: 'Day',
+  },
+  'INT. APEX GARAGE - CRISIS MEETING': {
+    description: 'The garage transformed from a race-day battle station into a war room. Frank patched in by video. Decisions that will shape the rest of the season.',
+    episode: 'EP305',
+    pageRange: 'pp. 30–36',
+    timeOfDay: 'Day',
+  },
+  'INT. ASHWORTH\'S HOTEL SUITE - NIGHT': {
+    description: 'James in a suite that should feel like luxury but feels like exile. A glass of whisky. A television replaying the incident on loop.',
+    episode: 'EP305',
+    pageRange: 'pp. 40–42',
+    timeOfDay: 'Night',
+  },
+  'EXT. PIT LANE - DAY': {
+    description: 'The morning after. A skeleton crew of mechanics working on the rebuilt car. Silence where the noise should be. Ferreira walks the empty lane.',
+    episode: 'EP305',
+    pageRange: 'pp. 44–46',
+    timeOfDay: 'Day',
+  },
+
+  // === EP306 — Championship finale ===
+  'INT. APEX GARAGE - CHAMPIONSHIP MORNING': {
+    description: 'The garage on the morning of the finale. Quieter than usual. Every gesture deliberate. The day everyone has been working toward for ten months.',
+    episode: 'EP306',
+    pageRange: 'pp. 1–5',
+    timeOfDay: 'Dawn',
+  },
+  'EXT. PIT LANE - FINAL STOP': {
+    description: 'The last pit stop of the season. The crew operates on instinct alone. Tires on, jacks dropped, car released — every millisecond a championship point.',
+    episode: 'EP306',
+    pageRange: 'pp. 35–37',
+    timeOfDay: 'Day to night',
+  },
+  'EXT. PODIUM - VICTORY': {
+    description: 'The champagne plume. The trophy raised. Two drivers on the same podium, only one with the championship. The other forcing a smile that no one will believe.',
+    episode: 'EP306',
+    pageRange: 'pp. 46–48',
+    timeOfDay: 'Night',
+  },
+  'INT. POST-RACE PRESS CONFERENCE': {
+    description: 'The new champion at the centre of a media scrum. Cameras flashing. Frank Castellano in the back of the room — already calculating next season.',
+    episode: 'EP306',
+    pageRange: 'pp. 49–52',
+    timeOfDay: 'Night',
+  },
+  'EXT. ABU DHABI MARINA - CELEBRATION - NIGHT': {
+    description: 'The end-of-season party on the marina. Fireworks over the harbour. The new champion, the team that built it, and the politics that won\'t wait until next year.',
+    episode: 'EP306',
+    pageRange: 'pp. 53–58',
+    timeOfDay: 'Night',
   },
 }
 
@@ -281,7 +481,6 @@ const LOCATIONS: Record<string, NarrativeLocationMeta> = {
     description: 'The narrow corridor of controlled chaos where pit stops happen in under two seconds. A place of mechanical precision and human error, separated from the track by a low wall and a world of consequences.',
     setting: 'exterior',
     episodes: ['EP301', 'EP302', 'EP303', 'EP305', 'EP306'],
-    notes: 'Practical pit equipment rented from working F1 teams. Safety crew on standby.',
   },
   'Apex Garage': {
     description: 'Apex Racing\'s mobile headquarters — a pristine, white-walled workspace filled with carbon fiber, screens, and the low hum of data analysis. Each race weekend it transforms into a pressure cooker.',
@@ -307,7 +506,11 @@ const LOCATIONS: Record<string, NarrativeLocationMeta> = {
     description: 'The jewel in the calendar — narrow streets, harbor views, and the constant threat of the barriers. Where the world\'s wealthiest watch from their yachts and drivers earn their reputation.',
     setting: 'exterior',
     episodes: ['EP304'],
-    notes: 'Limited shooting days. Plate photography completed; VFX extension for crowd and yacht basin.',
+  },
+  'Circuit': {
+    description: 'The racing surface itself — asphalt, kerbs, run-off zones. Generic "on-track" coverage that isn\'t tied to a specific named circuit. Camera dailies often land here when location detail can\'t be inferred from the footage alone.',
+    setting: 'exterior',
+    episodes: ['EP301', 'EP302', 'EP303', 'EP304', 'EP305', 'EP306'],
   },
 }
 
@@ -347,7 +550,6 @@ const PRODUCTION_SCENES: Record<string, ProductionSceneMeta> = {
     shootDate: '2026-03-04',
     unit: '2nd unit',
     description: 'Plate photography at Silverstone for the wheel-to-wheel sequence.',
-    notes: 'No drivers in car for plate run. Tracking markers in place.',
   },
   'EP306-S22-D18': {
     narrativeScene: 'EXT. ABU DHABI MARINA CIRCUIT - CHAMPIONSHIP DECIDER - SUNSET',
@@ -496,7 +698,6 @@ const CG_SEQUENCES: Record<string, CGSequenceMeta> = {
     vendor: 'DNEG',
     description: 'Day-to-night sky replacement and stadium lighting integration.',
     status: 'previs',
-    notes: 'Critical for continuity through the championship-decider montage.',
   },
 }
 
@@ -674,6 +875,38 @@ export function getEditShot(key: string): EditShotMeta | undefined {
 }
 
 // Bulk listings — useful for browse routes.
+
+export function listNarrativeScenes(): Array<[string, NarrativeSceneMeta]> {
+  return Object.entries(SCENES)
+}
+
+export function listNarrativeCharacters(): Array<[string, NarrativeCharacterMeta]> {
+  return Object.entries(CHARACTERS)
+}
+
+export function listNarrativeLocations(): Array<[string, NarrativeLocationMeta]> {
+  return Object.entries(LOCATIONS)
+}
+
+export function getNarrativeScene(name: string): NarrativeSceneMeta | undefined {
+  return SCENES[name]
+}
+
+export function getNarrativeCharacter(name: string): NarrativeCharacterMeta | undefined {
+  return CHARACTERS[name]
+}
+
+export function getNarrativeLocation(name: string): NarrativeLocationMeta | undefined {
+  return LOCATIONS[name]
+}
+
+/** Display labels for a character's narrative role. */
+export const CHARACTER_ROLE_LABEL: Record<NarrativeCharacterMeta['role'], string> = {
+  lead: 'Lead',
+  supporting: 'Supporting',
+  recurring: 'Recurring',
+  guest: 'Guest',
+}
 
 export function listProductionScenes(): Array<[string, ProductionSceneMeta]> {
   return Object.entries(PRODUCTION_SCENES)

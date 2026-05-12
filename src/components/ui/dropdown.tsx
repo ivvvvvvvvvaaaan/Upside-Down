@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { Check } from 'lucide-react'
 import { Button } from './button'
 import { Popover, PopoverContent, PopoverTrigger } from './popover'
 import { cn } from '@/lib/utils'
@@ -52,9 +53,20 @@ export interface DropdownMenuItemProps {
   onClick: () => void
   destructive?: boolean
   disabled?: boolean
+  /**
+   * Renders a check mark for selected items and reserves the same slot for
+   * unselected items so labels align across a menu. Use for radio-style menus
+   * (group-by, episode filter, etc.) where every option indicates checked state.
+   */
+  selected?: boolean
 }
 
-export function DropdownMenuItem({ icon, label, onClick, destructive, disabled }: DropdownMenuItemProps) {
+export function DropdownMenuItem({ icon, label, onClick, destructive, disabled, selected }: DropdownMenuItemProps) {
+  // When `selected` is explicitly set on any item, reserve the icon slot for
+  // all items so their labels line up. The visible check appears only on the
+  // selected one; unselected items render an invisible placeholder of the
+  // same size.
+  const reserveIconSlot = selected !== undefined || icon !== undefined
   return (
     <button
       onClick={onClick}
@@ -65,7 +77,11 @@ export function DropdownMenuItem({ icon, label, onClick, destructive, disabled }
         disabled && 'opacity-40 pointer-events-none',
       )}
     >
-      {icon && <span className="w-4 h-4 flex items-center justify-center flex-shrink-0">{icon}</span>}
+      {reserveIconSlot && (
+        <span className="w-4 h-4 flex items-center justify-center flex-shrink-0">
+          {selected ? <Check className="w-4 h-4" /> : icon}
+        </span>
+      )}
       <span>{label}</span>
     </button>
   )
@@ -129,8 +145,8 @@ export function Dropdown({
                 ? 'bg-transparent'
                 : (
                   isOpen
-                    ? 'bg-surface-flat dark:bg-white/[0.04] ring-2 ring-inset ring-border-system-focus'
-                    : 'bg-surface-flat dark:bg-white/[0.04] ring-1 ring-inset ring-border-dim'
+                    ? 'bg-surface-flat ring-2 ring-inset ring-border-system-focus'
+                    : 'bg-surface-flat ring-1 ring-inset ring-border-dim'
                 ),
               ghost
                 ? (size === 'compact' ? 'h-8 px-3 text-label-1-bold' : 'h-10 px-3 text-body-1-bold')

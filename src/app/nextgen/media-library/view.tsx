@@ -12,10 +12,6 @@ export function AllCollectionsView({ collections }: AllCollectionsViewProps) {
       description={`${collections.length} collection${collections.length !== 1 ? 's' : ''}`}
       detailBackLabel="Back to All Collections"
       collections={collections}
-      filterOptions={[
-        { id: 'type', label: 'Type' },
-        { id: 'modified', label: 'Modified' },
-      ]}
     />
   )
 }

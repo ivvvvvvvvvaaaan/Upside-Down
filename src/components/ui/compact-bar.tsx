@@ -10,7 +10,6 @@ import { SortDropdown } from './sort-dropdown'
 import { AppearanceDropdown } from './appearance-dropdown'
 import type { SortCriterion } from './sort-dropdown'
 import type { LayoutType, CardSize } from './appearance-dropdown'
-import type { FilterOption } from './hawkins-search'
 
 /**
  * CompactBar Component
@@ -32,8 +31,6 @@ export interface CompactBarProps {
   searchQuery: string
   /** Callback when search query changes */
   onSearchChange: (value: string) => void
-  /** Filter options for search */
-  filterOptions: FilterOption[]
   /** Sort field options */
   sortFields: { value: string; label: string }[]
   /** Current sort criteria */
@@ -63,7 +60,6 @@ export function CompactBar({
   countLabel,
   searchQuery,
   onSearchChange,
-  filterOptions,
   sortFields,
   sortCriteria,
   onSortChange,
@@ -92,8 +88,6 @@ export function CompactBar({
             <HawkinsSearch
               value={searchQuery}
               onValueChange={onSearchChange}
-              filters={filterOptions}
-              showSavedFilters={false}
               autoFocus
             />
             <Button

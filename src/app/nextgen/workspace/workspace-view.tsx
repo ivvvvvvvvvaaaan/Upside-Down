@@ -398,8 +398,6 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     { value: 'kind', label: 'Kind' },
   ]
 
-  const filterOptions: { id: string; label: string }[] = []
-
   // Unified grid items for the folder-root workspace model.
   const currentGridItems: WorkspaceFileNode[] = useMemo(() => {
     const items = currentWorkspaceFolder
@@ -760,7 +758,6 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                     <HawkinsSearch
                       value={searchQuery}
                       onValueChange={setSearchQuery}
-                      filters={filterOptions}
                       collapsible
                     />
                     <SortDropdown
@@ -805,8 +802,6 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                     <HawkinsSearch
                       value={searchQuery}
                       onValueChange={setSearchQuery}
-                      filters={filterOptions}
-                      expandable
                     />
                     <SortDropdown
                       fields={sortFields}
