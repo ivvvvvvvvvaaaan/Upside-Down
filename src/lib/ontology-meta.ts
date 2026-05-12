@@ -683,6 +683,20 @@ export function listProductionShots(): Array<[string, ProductionShotMeta]> {
   return Object.entries(PRODUCTION_SHOTS)
 }
 
+/**
+ * Forward-reference: CG Shots that REPLACE the given Production Shot.
+ * Drives the "Replaced by" relationship on Production Shot detail pages —
+ * a CG Shot stands in for the production shot in the final cut, and the
+ * Production Shot should expose that link as much as the CG Shot does upward.
+ */
+export function getCGShotsReplacing(
+  productionShotKey: string,
+): Array<[string, CGShotMeta]> {
+  return Object.entries(CG_SHOTS).filter(
+    ([, meta]) => meta.replacesProductionShot === productionShotKey,
+  )
+}
+
 export function listCGSequences(): Array<[string, CGSequenceMeta]> {
   return Object.entries(CG_SEQUENCES)
 }

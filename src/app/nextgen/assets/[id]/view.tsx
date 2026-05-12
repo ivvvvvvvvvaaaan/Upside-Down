@@ -21,7 +21,7 @@ import { getCutStageLabel } from '@/lib/cuts'
 import { Dropdown, DropdownMenuItem } from '@/components/ui'
 import type { Asset, DomainId } from '@/lib/data'
 import { getContextAssetGroups } from '@/lib/context-relationships'
-import { getEditSequence, getCGSequence } from '@/lib/ontology-meta'
+import { getEditSequence, getCGSequence, getCGShotsReplacing } from '@/lib/ontology-meta'
 
 const DOMAIN_NAMES: Record<DomainId, string> = {
   'art-design': 'Art & Design',
@@ -258,6 +258,17 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
         kind: 'Production Shot',
         href: `/nextgen/assets/${encodeURIComponent(asset.aiMeta.productionShot)}`,
       })
+    }
+    // Forward-reference: Production Shot → CG Shots that replace it.
+    if (asset.kind === 'production-shot') {
+      for (const [key, meta] of getCGShotsReplacing(asset.id)) {
+        parents.push({
+          verb: 'Replaced by',
+          label: meta.vendor ? `${key} (${meta.vendor})` : key,
+          kind: 'CG Shot',
+          href: `/nextgen/assets/${encodeURIComponent(key)}`,
+        })
+      }
     }
     return parents
   }, [asset])
