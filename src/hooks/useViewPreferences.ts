@@ -2,6 +2,12 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import type { LayoutType, CardSize } from '@/components/ui/appearance-dropdown'
 
 const STORAGE_KEY = 'collection-view-preferences'
+const VERSION_KEY = 'collection-view-preferences-version'
+
+// Bump when DEFAULT_PREFERENCES change semantically (e.g., a default field
+// flips from on to off). Stale localStorage gets reset on next load so users
+// pick up the new defaults instead of silently keeping the old ones.
+const PREFERENCES_VERSION = 2
 
 export type CollectionViewType = 'all' | 'character' | 'location' | 'scene'
 
@@ -52,6 +58,16 @@ const VALID_CARD_SIZES: CardSize[] = ['sm', 'md', 'lg']
 function getStoredPreferences(): ViewPreferences {
   if (typeof window === 'undefined') return DEFAULT_PREFERENCES
   try {
+    // Migrate stale localStorage: if the stored version doesn't match the
+    // current PREFERENCES_VERSION, drop the saved prefs and start fresh from
+    // DEFAULT_PREFERENCES so users pick up new default values.
+    const storedVersion = localStorage.getItem(VERSION_KEY)
+    if (storedVersion !== String(PREFERENCES_VERSION)) {
+      localStorage.removeItem(STORAGE_KEY)
+      localStorage.setItem(VERSION_KEY, String(PREFERENCES_VERSION))
+      return DEFAULT_PREFERENCES
+    }
+
     const stored = localStorage.getItem(STORAGE_KEY)
     if (!stored) return DEFAULT_PREFERENCES
 
