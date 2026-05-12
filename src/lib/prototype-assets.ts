@@ -112,39 +112,128 @@ function getConceptAssetCollectionsForCuts(): Collection[] {
   }))
 }
 
-/** Public — return all Concept-Asset Collections (one per Edit Sequence). */
+/**
+ * Concept-Asset Collections for Production Shots — same pattern as cuts, but
+ * the constituent file IDs are derived dynamically. The collection holds the
+ * IDs of every Media Asset (workspace file) whose aiMeta.productionShot points
+ * at this Concept, plus the hand-seeded fake Media Assets if any.
+ */
+function getConceptAssetCollectionsForProductionShots(): Collection[] {
+  const allAssets = [
+    ...getPromotedWorkspaceAssets(),
+    ...getCompositeConceptComponents(),
+  ]
+  return listProductionShots().map(([key]) => {
+    const constituentIds = allAssets
+      .filter((a) => a.aiMeta?.productionShot === key && (!a.kind || a.kind === 'file'))
+      .map((a) => a.id)
+    return {
+      id: `concept-folder-${key}`,
+      name: key,
+      kind: 'concept-asset',
+      conceptKey: key,
+      assetCount: constituentIds.length,
+      assetIds: constituentIds,
+    } satisfies Collection
+  })
+}
+
+/**
+ * Concept-Asset Collections for CG Shots — Media Assets tagged with cgShot.
+ */
+function getConceptAssetCollectionsForCGShots(): Collection[] {
+  const allAssets = getPromotedWorkspaceAssets()
+  return listCGShots().map(([key]) => {
+    const constituentIds = allAssets
+      .filter((a) => a.aiMeta?.cgShot === key && (!a.kind || a.kind === 'file'))
+      .map((a) => a.id)
+    return {
+      id: `concept-folder-${key}`,
+      name: key,
+      kind: 'concept-asset',
+      conceptKey: key,
+      assetCount: constituentIds.length,
+      assetIds: constituentIds,
+    } satisfies Collection
+  })
+}
+
+/**
+ * Concept-Asset Collections for CG Sequences — child CG Shots (the structural
+ * children, not the underlying file constituents which live one level down).
+ */
+function getConceptAssetCollectionsForCGSequences(): Collection[] {
+  return listCGSequences().map(([key]) => {
+    const childShotIds = listCGShots()
+      .filter(([, meta]) => meta.cgSequence === key)
+      .map(([childKey]) => childKey)
+    return {
+      id: `concept-folder-${key}`,
+      name: key,
+      kind: 'concept-asset',
+      conceptKey: key,
+      assetCount: childShotIds.length,
+      assetIds: childShotIds,
+    } satisfies Collection
+  })
+}
+
+/** Public — return all Concept-Asset Collections across every Composite Concept type. */
 export function listConceptAssetCollections(): Collection[] {
-  return getConceptAssetCollectionsForCuts()
+  return [
+    ...getConceptAssetCollectionsForCuts(),
+    ...getConceptAssetCollectionsForProductionShots(),
+    ...getConceptAssetCollectionsForCGShots(),
+    ...getConceptAssetCollectionsForCGSequences(),
+  ]
 }
 
 /** Public — look up the Concept-Asset Collection bound to a given Concept. */
 export function getConceptAssetCollection(conceptKey: string): Collection | undefined {
-  return getConceptAssetCollectionsForCuts().find((c) => c.conceptKey === conceptKey)
+  return listConceptAssetCollections().find((c) => c.conceptKey === conceptKey)
+}
+
+/**
+ * Shared base fields for any Composite Concept projected as an Asset.
+ * Production Shots, CG Shots, and CG Sequences all wrap this with their own
+ * kind-specific metadata; the common shape (id/name/type/kind/department/
+ * episode/thumbnail) lives here once.
+ */
+type ConceptDomain = 'editorial' | 'vfx'
+
+function buildConceptAssetBase(params: {
+  kind: NonNullable<Asset['kind']>
+  id: string
+  type: Asset['type']
+  department: ConceptDomain
+  episode?: string
+}): Asset {
+  return {
+    id: params.id,
+    name: params.id,
+    type: params.type,
+    kind: params.kind,
+    department: params.department,
+    episode: params.episode,
+    thumbnail: pickForDomain(params.department, params.id)[0],
+  }
 }
 
 /**
  * Project a Production Shot Concept into an Asset record so it flows through
- * the canonical asset-detail pipeline alongside cuts and regular files. Same
- * pattern as `seedCutToAsset` for Edit Sequence Concepts — the Asset is a view
- * over the Concept + its Concept-Asset Collection.
- *
- * The projected Asset carries:
- * - `kind: 'production-shot'` discriminator
- * - `type: 'shot'` so AssetDetailPanel renders shot-style metadata (Scene/Take/Camera)
- * - `aiMeta.scene` set to the parent Narrative Scene so it appears in scene
- *   smart-collection grids alongside the loose dailies tagged with that scene
- * - A deterministic thumbnail from the editorial image pool
+ * the canonical asset-detail pipeline. Carries shotMeta + scene aiMeta so it
+ * appears in scene smart-collection grids alongside the loose dailies.
  */
 export function seedProductionShotToAsset(key: string, meta: ProductionShotMeta): Asset {
   const productionScene = getProductionScene(meta.productionScene)
   return {
-    id: key,
-    name: key,
-    type: 'shot',
-    kind: 'production-shot',
-    department: 'editorial',
-    episode: meta.episode,
-    thumbnail: pickForDomain('editorial', key)[0],
+    ...buildConceptAssetBase({
+      kind: 'production-shot',
+      id: key,
+      type: 'shot',
+      department: 'editorial',
+      episode: meta.episode,
+    }),
     shotMeta: {
       scene: meta.narrativeScene,
       take: String(meta.take),
@@ -164,22 +253,19 @@ export function getProductionShotAssets(): Asset[] {
 }
 
 /**
- * Project a CG Shot Concept into an Asset record. Same pattern as
- * `seedProductionShotToAsset` — the Asset is a view over the CG Shot Concept.
- *
- * CG Shots carry a `version` (iteration number) and an optional
- * `replacesProductionShot` relationship — surfaced as `versionGroupId` and a
- * stub aiMeta back-ref so the page can show "Replaces Production Shot: …".
+ * Project a CG Shot Concept into an Asset record. Carries version + isFinal
+ * (from status) + aiMeta back-refs to its parent CG Sequence and the Production
+ * Shot it replaces.
  */
 export function seedCGShotToAsset(key: string, meta: CGShotMeta): Asset {
   return {
-    id: key,
-    name: key,
-    type: 'video',
-    kind: 'cg-shot',
-    department: 'vfx',
-    episode: meta.episode,
-    thumbnail: pickForDomain('vfx', key)[0],
+    ...buildConceptAssetBase({
+      kind: 'cg-shot',
+      id: key,
+      type: 'video',
+      department: 'vfx',
+      episode: meta.episode,
+    }),
     version: meta.version,
     versionGroupId: `cg:${meta.cgSequence}:${key.split('_').slice(-1)[0]}`,
     isFinal: meta.status === 'final',
@@ -204,13 +290,13 @@ export function getCGShotAssets(): Asset[] {
  */
 export function seedCGSequenceToAsset(key: string, meta: CGSequenceMeta): Asset {
   return {
-    id: key,
-    name: key,
-    type: 'video',
-    kind: 'cg-sequence',
-    department: 'vfx',
-    episode: meta.episode,
-    thumbnail: pickForDomain('vfx', key)[0],
+    ...buildConceptAssetBase({
+      kind: 'cg-sequence',
+      id: key,
+      type: 'video',
+      department: 'vfx',
+      episode: meta.episode,
+    }),
     isFinal: meta.status === 'final',
     aiMeta: {
       scene: meta.narrativeScene,

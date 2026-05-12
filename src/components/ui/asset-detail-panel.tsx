@@ -23,7 +23,7 @@ import { useUserCollections } from '@/hooks/useUserCollections'
 import { PERSONAS } from '@/lib/personas'
 import { TEAMS } from '@/lib/teams'
 import { slugify } from '@/lib/smart-collection-filters'
-import { getCGShot, getCGSequence, getProductionShot } from '@/lib/ontology-meta'
+import { getCGShot, getCGSequence, getProductionShot, getProductionScene } from '@/lib/ontology-meta'
 import { OntologySection } from './ontology-section'
 import type { ContainerItem } from './ontology-section'
 import type { RelatedAssetGroup } from '@/lib/context-relationships'
@@ -814,14 +814,19 @@ export function AssetDetailPanelContent({
                   {asset.shotMeta.camera && <MetaRow label="Camera" value={asset.shotMeta.camera} />}
                 </>
               )}
-              {/* Production Shot Concept extras — lens/circle-take from the ontology meta */}
+              {/* Production Shot Concept extras — lens, circle take, plus the
+                  linked Production Scene's shoot day metadata. */}
               {asset.kind === 'production-shot' && (() => {
                 const meta = getProductionShot(asset.id)
                 if (!meta) return null
+                const scene = getProductionScene(meta.productionScene)
                 return (
                   <>
                     {meta.lens && <MetaRow label="Lens" value={meta.lens} />}
                     {meta.circle && <MetaRow label="Circle take" value="Yes" />}
+                    {scene?.shootDate && <MetaRow label="Shot on" value={new Date(scene.shootDate).toLocaleDateString()} />}
+                    {scene?.unit && <MetaRow label="Unit" value={scene.unit} />}
+                    {scene?.shootDay != null && <MetaRow label="Shoot day" value={`Day ${scene.shootDay}`} />}
                   </>
                 )
               })()}

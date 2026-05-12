@@ -752,9 +752,9 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                             <div className="space-y-6">
                               {kindGroupedAssets.map((group) => (
                                 <section key={group.label} className="space-y-3">
-                                  <h3 className="text-heading-4 font-bold text-foreground">
+                                  <h3 className="text-body-0-regular text-foreground-subtle">
                                     {group.label}
-                                    <span className="text-body-1-regular text-foreground-dim ml-2">{group.items.length}</span>
+                                    <span className="text-foreground-subtle ml-2">{group.items.length}</span>
                                   </h3>
                                   <CardGrid columns={getGridColumns(cardSize)} gap="4" onContextMenu={handleGridContextMenu}>
                                     {group.items.map(renderAssetCard)}

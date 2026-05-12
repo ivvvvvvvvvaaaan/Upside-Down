@@ -1,8 +1,44 @@
 import type { DomainId } from '@/components/department/types'
-import type { Asset, AssetType, AssetTag } from '@/lib/data'
+import type { Asset, AssetType, AssetTag, MediaAssetType } from '@/lib/data'
 import type { UnifiedFileNode } from '@/lib/workspace-data'
 import { getAITagsForFile, toAIMeta } from '@/lib/ai-tags'
 import type { AITagResult } from '@/lib/ai-tags'
+
+/**
+ * Bridge between the looser typeTag display string and the controlled
+ * MediaAssetType vocabulary. Lets existing AI tag entries auto-classify
+ * without an explicit mediaAssetType — the typeTag they already carry
+ * (e.g., "Concept Art", "Storyboard", "VFX Plate") maps cleanly to a
+ * spec-vocab work product. Entries that DO set mediaAssetType explicitly
+ * always win — this is the fallback.
+ */
+const TYPE_TAG_TO_MEDIA_ASSET_TYPE: Record<string, MediaAssetType> = {
+  'Concept Art': 'concept-art',
+  'Storyboard': 'storyboard',
+  'Reference': 'reference-image',
+  'Reference Photo': 'reference-image',
+  'Production Photo': 'production-photo',
+  'Lookbook': 'lookbook',
+  'Score': 'score',
+  'Production Audio': 'audio-clip',
+  'SFX': 'audio-clip',
+  'Sound Effect': 'audio-clip',
+  'Foley': 'foley',
+  'ADR': 'adr',
+  'Daily': 'dailies-proxy',
+  'Dailies': 'dailies-proxy',
+  'Camera Select': 'camera-clip',
+  'VFX Comp': 'vfx-comp',
+  'VFX Preview': 'vfx-comp',
+  'VFX Plate': 'vfx-plate',
+  'Timeline': 'project-file',
+  'Reference Cut': 'reel',
+}
+
+function inferMediaAssetTypeFromTag(typeTag: string | undefined): MediaAssetType | undefined {
+  if (!typeTag) return undefined
+  return TYPE_TAG_TO_MEDIA_ASSET_TYPE[typeTag]
+}
 
 export interface AssetInstance {
   id: string
@@ -258,10 +294,14 @@ export function promotedInstanceToAsset(instance: AssetInstance): Asset {
   }
 
   // Populate AI metadata + mediaAssetType (work-product classification from AI).
+  // Prefer explicit mediaAssetType; fall back to inferring from typeTag so
+  // existing AI tag entries without mediaAssetType still classify correctly.
   if (instance.aiTags) {
     base.aiMeta = toAIMeta(instance.aiTags)
-    if (instance.aiTags.mediaAssetType) {
-      base.mediaAssetType = instance.aiTags.mediaAssetType
+    const explicit = instance.aiTags.mediaAssetType
+    const inferred = inferMediaAssetTypeFromTag(instance.aiTags.typeTag)
+    if (explicit ?? inferred) {
+      base.mediaAssetType = explicit ?? inferred
     }
   }
 
