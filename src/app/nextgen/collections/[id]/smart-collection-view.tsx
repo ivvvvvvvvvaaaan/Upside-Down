@@ -734,6 +734,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                               shared={asset.department != null && activePersona?.domainId != null && asset.department !== activePersona.domainId}
                               sensitive={isSensitiveAsset(asset.id)}
                               allSelectedIds={selectedAssetIds}
+                              metadataFields={metadataFields}
                             />
                           </div>
                         )
