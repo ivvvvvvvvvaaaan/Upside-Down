@@ -1,6 +1,6 @@
 'use client'
 
-import { cn, getInitials, pluralize } from '@/lib/utils'
+import { cn, getInitials, pickAvatarGradient, pluralize } from '@/lib/utils'
 import { Sun, Moon, CloudSun } from 'lucide-react'
 import { Tag } from './tag'
 import { Tooltip } from './tooltip'
@@ -84,7 +84,10 @@ function CharacterMiniCard({ character }: { character: SceneCharacter }) {
   return (
     <Tooltip label={character.name}>
       <div className="flex flex-col gap-1 w-9 flex-shrink-0">
-        <div className="relative h-12 rounded overflow-hidden bg-surface-selected-subtle">
+        <div className={cn(
+          'relative h-12 rounded overflow-hidden bg-surface-selected-subtle',
+          !character.avatarSrc && pickAvatarGradient(character.name),
+        )}>
           {character.avatarSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={character.avatarSrc} alt={character.name} className="w-full h-full object-cover" />

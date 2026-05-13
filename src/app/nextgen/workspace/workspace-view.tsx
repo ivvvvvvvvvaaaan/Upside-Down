@@ -411,10 +411,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     })
   }, [currentWorkspaceFolder, workspaceRootNodes, canAccess, activePersona, getAclResourceId])
 
-  const filteredFileCount = useMemo(
-    () => countAccessibleFiles(currentGridItems, canAccess),
-    [currentGridItems, canAccess],
-  )
+  const currentItemCount = currentGridItems.length
 
   const buildSelectionEntry = useCallback((node: WorkspaceFileNode): WorkspaceSelectionEntry => {
     const nodeDomainId = findDomainIdForNode(node, getFileTreeDomainFiles)
@@ -575,7 +572,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     if (!isCurrentFolderOwner) {
       const grantor = direct.length > 0 ? PERSONAS.find(p => p.id === direct[0].grantedByUserId) : undefined
       const sharedBy = grantor?.name ?? getDomainOwnerTeam(effectiveNodeDomainId ?? '')?.name ?? 'someone'
-      const accessLevel = canEditResource(nodeId) ? 'Manager' : 'View only'
+      const accessLevel = canEditResource(nodeId) ? 'Full access' : 'View only'
       return { kind: 'recipient', subtitle: `Shared by ${sharedBy} · ${accessLevel}` }
     }
 
@@ -837,7 +834,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                     onSelectAll={() => selectAll(currentGridSelectionEntities)}
                     onClearSelection={clearSelection}
                     label={landingFolderId
-                      ? `${filteredFileCount} item${filteredFileCount !== 1 ? 's' : ''}`
+                      ? `${currentItemCount} item${currentItemCount !== 1 ? 's' : ''}`
                       : `${workspaceRootNodes.length} workspace${workspaceRootNodes.length !== 1 ? 's' : ''}`}
                   />
                   {selectedIds.size > 0 ? (

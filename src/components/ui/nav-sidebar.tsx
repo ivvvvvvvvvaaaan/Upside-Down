@@ -39,7 +39,6 @@ import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import { collectAccessibleWorkspaceRoots, collectSharedFolderIds } from '@/lib/workspace-roots'
 import { cn } from '@/lib/utils'
 import { useToast } from './toast'
-import { Tag } from './tag'
 import type { NavConfig } from '@/types/navigation'
 
 /**
@@ -145,8 +144,6 @@ interface NavLinkProps {
   href: string
   label: string
   badge?: number
-  /** 'unread' = indigo fill (inbox/shared), 'count' = border + dim text (collections) */
-  badgeStyle?: 'unread' | 'count'
   icon?: React.ReactNode
   /** When true, also highlight for subpaths (e.g. /workspace/art-design matches /workspace/art-design/subfolder) */
   matchSubpaths?: boolean
@@ -158,7 +155,7 @@ interface CollapsibleSectionProps {
   children: React.ReactNode
 }
 
-function NavLink({ href, label, badge, badgeStyle = 'count', icon, matchSubpaths = false }: NavLinkProps) {
+function NavLink({ href, label, badge, icon, matchSubpaths = false }: NavLinkProps) {
   const pathname = usePathname()
   const mobile = useNavMobile()
   const isActive = pathname === href || (matchSubpaths && pathname.startsWith(href + '/'))
@@ -167,25 +164,19 @@ function NavLink({ href, label, badge, badgeStyle = 'count', icon, matchSubpaths
     <Link
       href={href}
       className={cn(
-        'flex items-center justify-between px-3 rounded transition-colors min-w-0',
+        'flex items-center gap-2 px-3 rounded transition-colors min-w-0',
         mobile ? 'py-3 text-body-1-bold' : 'py-2 text-body-0-bold',
         isActive
           ? 'bg-indigo-500/20 text-foreground'
           : 'text-foreground-subtle hover:bg-surface-2 hover:text-foreground'
       )}
     >
-      <span className="flex items-center gap-2 min-w-0 truncate">
+      <span className="flex flex-1 items-center gap-2 min-w-0 truncate">
         {icon}
         <span className="truncate">{label}</span>
       </span>
       {badge !== undefined && badge > 0 && (
-        <span className="flex items-center gap-1.5">
-          {badgeStyle === 'unread' ? (
-            <Tag size="compact" type="announcement">{badge}</Tag>
-          ) : (
-            <Tag size="compact" type="neutral" variant="border" className="text-foreground-dim">{badge}</Tag>
-          )}
-        </span>
+        <span className="text-label-1-regular text-foreground-dim tabular-nums flex-shrink-0">{badge}</span>
       )}
     </Link>
   )
@@ -198,8 +189,6 @@ interface TreeNavLinkProps {
   /** Icon shown when the node is expanded (replaces icon) */
   iconExpanded?: React.ReactNode
   badge?: number
-  /** 'unread' = indigo fill (inbox/shared), 'count' = border + dim text (collections) */
-  badgeStyle?: 'unread' | 'count'
   children?: React.ReactNode
   defaultExpanded?: boolean
   /** Reserve chevron space even when there are no children, for alignment */
@@ -224,7 +213,6 @@ function TreeNavLink({
   icon,
   iconExpanded,
   badge,
-  badgeStyle = 'count',
   children,
   defaultExpanded = true,
   indent = false,
@@ -268,24 +256,20 @@ function TreeNavLink({
   const hasLeadingArea = hasLeadingIcon || hasChevron || reserveChevronSpace
 
   const linkClassName = cn(
-    'flex-1 flex items-center justify-between pr-3 min-w-0',
+    'flex-1 flex items-center gap-2 pr-3 min-w-0',
     mobile ? 'py-3' : 'py-2',
     hasLeadingArea ? 'pl-1' : 'pl-3',
   )
 
   const linkContent = (
     <>
-      <span className="flex items-center gap-2 min-w-0 truncate">
+      <span className="flex flex-1 items-center gap-2 min-w-0 truncate">
         <span className="truncate">{label}</span>
       </span>
-      <span className="flex items-center gap-1">
+      <span className="flex items-center gap-1.5 flex-shrink-0">
         {trailingIcon}
         {badge !== undefined && badge > 0 && (
-          badgeStyle === 'unread' ? (
-            <Tag size="compact" type="announcement">{badge}</Tag>
-          ) : (
-            <Tag size="compact" type="neutral" variant="border" className="text-foreground-dim">{badge}</Tag>
-          )
+          <span className="text-label-1-regular text-foreground-dim tabular-nums">{badge}</span>
         )}
       </span>
     </>
@@ -502,7 +486,9 @@ function FolderNavTree({ nodes, basePath, sharedFolderIds, onAssetDropToFolder, 
         const FolderIcon = isShared ? FolderSymlink : Folder
         const folderIcon = <FolderIcon className="w-4 h-4 flex-shrink-0" />
         const folderOpenIcon = <FolderOpen className="w-4 h-4 flex-shrink-0" />
-        const subfolders = (folder.children ?? []).filter((n) => n.type === 'folder')
+        const children = folder.children ?? []
+        const subfolders = children.filter((n) => n.type === 'folder')
+        const itemCount = children.length
         const folderDrop = onAssetDropToFolder
           ? (assetIds: string[]) => onAssetDropToFolder(folder.id, folder.name, assetIds)
           : undefined
@@ -511,13 +497,13 @@ function FolderNavTree({ nodes, basePath, sharedFolderIds, onAssetDropToFolder, 
           : undefined
         if (subfolders.length > 0) {
           return (
-            <TreeNavLink key={folder.id} href={href} label={folder.name} icon={folderIcon} iconExpanded={folderOpenIcon} defaultExpanded={false} onAssetDrop={folderDrop} onFolderDrop={folderMoveDrop}>
-              <FolderNavTree nodes={folder.children ?? []} basePath={href} sharedFolderIds={sharedFolderIds} onAssetDropToFolder={onAssetDropToFolder} onFolderDropToFolder={onFolderDropToFolder} />
+            <TreeNavLink key={folder.id} href={href} label={folder.name} icon={folderIcon} iconExpanded={folderOpenIcon} badge={itemCount} defaultExpanded={false} onAssetDrop={folderDrop} onFolderDrop={folderMoveDrop}>
+              <FolderNavTree nodes={children} basePath={href} sharedFolderIds={sharedFolderIds} onAssetDropToFolder={onAssetDropToFolder} onFolderDropToFolder={onFolderDropToFolder} />
             </TreeNavLink>
           )
         }
         return (
-          <TreeNavLink key={folder.id} href={href} label={folder.name} icon={folderIcon} iconExpanded={folderOpenIcon} onAssetDrop={folderDrop} onFolderDrop={folderMoveDrop} />
+          <TreeNavLink key={folder.id} href={href} label={folder.name} icon={folderIcon} iconExpanded={folderOpenIcon} badge={itemCount} onAssetDrop={folderDrop} onFolderDrop={folderMoveDrop} />
         )
       })}
     </>
@@ -600,7 +586,6 @@ function SharedNavSection() {
       label="Shares"
       icon={<Send className="w-4 h-4 flex-shrink-0" />}
       badge={badge > 0 ? badge : undefined}
-      badgeStyle="unread"
     />
   )
 }
@@ -615,7 +600,6 @@ function InboxNavLink() {
       label="Inbox"
       icon={<Inbox className="w-4 h-4 flex-shrink-0" />}
       badge={unreadInboxCount}
-      badgeStyle="unread"
     />
   )
 }

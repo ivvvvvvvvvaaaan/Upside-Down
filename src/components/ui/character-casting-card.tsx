@@ -1,6 +1,6 @@
 'use client'
 
-import { cn, getInitials, pluralize } from '@/lib/utils'
+import { cn, getInitials, pickAvatarGradient, pluralize } from '@/lib/utils'
 import { Tag } from './tag'
 import { CHARACTER_ROLE_LABEL } from '@/lib/ontology-meta'
 import type { NarrativeCharacterMeta } from '@/lib/ontology-meta'
@@ -79,7 +79,8 @@ export function CharacterCastingCard({
     >
       <div
         className={cn(
-          'relative overflow-hidden rounded bg-surface-selected-subtle flex-shrink-0',
+          'relative overflow-hidden rounded flex-shrink-0 bg-surface-selected-subtle',
+          !avatarSrc && pickAvatarGradient(name),
           config.avatar,
           // Selection rings around the portrait. Multi-selected items get a
           // tight indigo ring against the edge; primary adds a small halo

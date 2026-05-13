@@ -70,7 +70,7 @@ function Modal({
       />
       <Card
         variant="outlined"
-        className={cn('relative mx-4 shadow-high max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] flex flex-col border-border-elevation', !width && sizes[size])}
+        className={cn('relative mx-4 rounded-md shadow-high max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] flex flex-col border-border-elevation', !width && sizes[size])}
         style={width ? { width: `${width}px` } : undefined}
       >
         {children}

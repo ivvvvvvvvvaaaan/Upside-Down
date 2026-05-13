@@ -430,7 +430,7 @@ export function AssetCard({
             <>
               {showField('scene') && asset.shotMeta.scene && (
                 <Tooltip label={asset.shotMeta.scene}>
-                  <Tag variant="glass" className="max-w-[14rem] truncate">{formatSceneSlug(asset.shotMeta.scene)}</Tag>
+                  <Tag variant="glass">{formatSceneSlug(asset.shotMeta.scene)}</Tag>
                 </Tooltip>
               )}
               {showField('take') && asset.shotMeta.take && <Tag variant="glass">Take: {asset.shotMeta.take}</Tag>}

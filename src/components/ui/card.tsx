@@ -72,7 +72,7 @@ function CardFooter({
       className={cn(
         'px-6 py-4 flex-shrink-0',
         'flex justify-end gap-2',
-        'bg-surface-highlight rounded-b',
+        'bg-surface-highlight rounded-b-[inherit]',
         className
       )}
       {...props}

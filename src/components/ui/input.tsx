@@ -63,7 +63,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             className={cn(
-              'w-full h-10 rounded text-body-0-regular',
+              'w-full h-10 rounded-md text-body-0-regular',
               'bg-surface-flat dark:bg-white/[0.04] ring-1 ring-inset ring-border-dim',
               'text-foreground placeholder:text-foreground-dim',
               'transition-colors',

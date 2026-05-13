@@ -797,7 +797,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
               {group.label}
               <span className="text-foreground-subtle ml-2">{group.items.length}</span>
             </h3>
-            <div className="flex flex-wrap gap-6">
+            <div className="flex flex-wrap gap-3">
               {group.items.map((child) => (
                 <CharacterCastingCard
                   key={child.collection.id}

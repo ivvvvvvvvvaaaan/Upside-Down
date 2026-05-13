@@ -139,7 +139,7 @@ export function SharedFolderView({ folderId }: SharedFolderViewProps) {
                 <PageHeader
                   title={folderName}
                   description={(() => {
-                    const accessLevel = canEdit(folderId) ? 'Manager' : 'View only'
+                    const accessLevel = canEdit(folderId) ? 'Full access' : 'View only'
                     return sharedBy ? `Shared by ${sharedBy} · ${accessLevel}` : accessLevel
                   })()}
                   hideTitleOnMobile

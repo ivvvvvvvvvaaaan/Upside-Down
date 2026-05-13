@@ -4,7 +4,7 @@ import { Clapperboard, MapPin } from 'lucide-react'
 import { Tag } from './tag'
 import { getOntologyMeta, CHARACTER_ROLE_LABEL } from '@/lib/ontology-meta'
 import { getCollectionImagesByName } from '@/lib/data-client'
-import { getInitials } from '@/lib/utils'
+import { cn, getInitials, pickAvatarGradient } from '@/lib/utils'
 import { getTimeOfDayIcon } from './scene-script-card'
 import type {
   NarrativeCharacterMeta,
@@ -44,7 +44,10 @@ function CharacterAvatar({ src, name }: { src?: string; name: string }) {
   // Tall portrait (3:4) matches the casting-list / scene-card character cards
   // so the character read is consistent across surfaces.
   return (
-    <div className="relative w-full h-48 md:h-56 rounded overflow-hidden bg-surface-selected-subtle">
+    <div className={cn(
+      'relative w-full h-48 md:h-56 rounded overflow-hidden bg-surface-selected-subtle',
+      !src && pickAvatarGradient(name),
+    )}>
       {src ? (
         <img src={src} alt={name} className="w-full h-full object-cover" />
       ) : (

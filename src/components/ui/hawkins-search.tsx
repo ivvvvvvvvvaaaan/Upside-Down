@@ -40,7 +40,7 @@ const HawkinsSearch = forwardRef<HTMLInputElement, HawkinsSearchProps>(
     const searchBar = (
       <div
         className={cn(
-          'flex items-center gap-2 h-10 px-2 rounded border border-border-subtle dark:border-border-inverse-subtle',
+          'flex items-center gap-2 h-10 px-2 rounded-md border border-border-subtle dark:border-border-inverse-subtle',
           'focus-within:ring-2 focus-within:ring-border-system-focus focus-within:ring-offset-2 focus-within:ring-offset-background',
           'flex-1',
           collapsible && 'hidden md:flex',
@@ -82,7 +82,7 @@ const HawkinsSearch = forwardRef<HTMLInputElement, HawkinsSearchProps>(
           <div className="md:hidden absolute inset-0 z-10 flex items-center gap-2 bg-surface-flat">
             <div
               className={cn(
-                'flex items-center gap-2 h-10 px-2 rounded border border-border-subtle dark:border-border-inverse-subtle',
+                'flex items-center gap-2 h-10 px-2 rounded-md border border-border-subtle dark:border-border-inverse-subtle',
                 'focus-within:ring-2 focus-within:ring-border-system-focus focus-within:ring-offset-2 focus-within:ring-offset-background',
                 'flex-1',
                 className,

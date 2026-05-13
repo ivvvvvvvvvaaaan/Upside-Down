@@ -28,6 +28,8 @@ export type PrincipalRef =
 
 export type AccessProfileId =
   | 'viewer'
+  | 'uploader'
+  | 'downloader'
   | 'editor'
   | 'manager'
   | 'link-viewer'
@@ -110,8 +112,10 @@ export const RELEASE_DOMAINS: ReleaseDomain[] = buildReleaseDomains()
 const SEED_LABELS = buildLabels()
 
 export const TEMPLATE_RANK: Record<AccessProfileId, number> = {
-  manager: 4,
-  editor: 3,
+  manager: 6,
+  editor: 5,
+  downloader: 4,
+  uploader: 3,
   viewer: 2,
   'link-viewer': 1,
 }

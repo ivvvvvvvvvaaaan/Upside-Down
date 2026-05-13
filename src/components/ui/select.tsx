@@ -146,7 +146,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
             value={value}
             disabled={disabled}
             className={cn(
-              'w-full rounded appearance-none',
+              'w-full rounded-md appearance-none',
               size === 'compact' ? 'text-label-0-regular' : 'text-body-0-regular',
               borderless
                 ? 'bg-transparent border-transparent hover:bg-surface-highlight'
@@ -190,7 +190,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
               <button
                 type="button"
                 onClick={handleClear}
-                className="absolute right-8 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-surface-highlight transition-colors mr-1"
+                className="absolute right-8 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-surface-highlight transition-colors mr-1"
                 aria-label="Clear selection"
               >
                 <X className="w-4 h-4 text-foreground-dim" />

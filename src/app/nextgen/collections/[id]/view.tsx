@@ -103,8 +103,11 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     return PERSONAS.find(p => p.id === share.grantedByUserId)?.name ?? share.grantedByUserId
   }, [collectionId, isOwner, isAdmin, sharesReceivedByMe, allProjectShares])
 
-  // Subtitle: "Shared by X" for received, "Shared with N people" / "Private" for owned
+  // Subtitle: "Shared by X" for received, "Shared with N people" / "Private" for owned.
+  // Gated on `hydrated` so SSR and the first client render both produce `undefined`,
+  // avoiding a hydration mismatch when localStorage-backed persona/access state arrives.
   const subtitle = useMemo(() => {
+    if (!hydrated) return undefined
     if (sharedBy) return `Shared by ${sharedBy}`
     if (!isOwner || !collection) return undefined
     const grants = getResourceGrants(collectionId)
@@ -116,7 +119,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     if (directGrants.length > 0) parts.push(`Shared with ${directGrants.length} ${directGrants.length === 1 ? 'person' : 'people'}`)
     if (linkGrants.length > 0) parts.push('Link sharing on')
     return parts.join(' · ')
-  }, [sharedBy, isOwner, collection, collectionId, getResourceGrants])
+  }, [hydrated, sharedBy, isOwner, collection, collectionId, getResourceGrants])
 
   // Sync collection name to top-level breadcrumb
   const displayName = hasCollectionAccess ? collection?.name : undefined

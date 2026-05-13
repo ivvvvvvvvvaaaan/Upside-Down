@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { X, Search, Info, Link2, ShieldOff } from 'lucide-react'
 import { Tooltip } from './tooltip'
 import { Input } from './input'
@@ -14,6 +14,7 @@ import { GrantBadge } from './grant-badge'
 import { Modal } from './modal'
 import { Tabs, TabsList, Tab } from './tabs'
 import { Card } from './card'
+import { Popover, PopoverAnchor, PopoverContent } from './popover'
 import { useAccess, useFileTree, usePersona } from '@/hooks'
 import type { Block, Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
 import { useToast } from './toast'
@@ -56,22 +57,34 @@ interface AccessPanelProps {
   onPendingChange?: (pending: boolean, handlers: { confirm: () => void; cancel: () => void }) => void
 }
 
-function roleOptionsForResource(roleGroups: RoleGroup[], resourceType?: Grant['resource']['type']) {
-  const options = roleGroupOptions(roleGroups)
-  if (resourceType !== 'folder') return options
-
-  return options
-    .filter((option) => option.value === 'manager' || option.value === 'viewer')
-    .map((option) => option.value === 'viewer'
-      ? { ...option, label: 'View only', description: 'Open and preview content' }
-      : option)
+function roleOptionsForResource(roleGroups: RoleGroup[], _resourceType?: Grant['resource']['type']) {
+  return roleGroupOptions(roleGroups)
 }
 
-function roleLabelForResource(roleGroups: RoleGroup[], profileId: AccessProfileId, resourceType?: Grant['resource']['type']) {
-  if (resourceType === 'folder' && profileId === 'viewer') return 'View only'
+function roleLabelForResource(roleGroups: RoleGroup[], profileId: AccessProfileId, _resourceType?: Grant['resource']['type']) {
   return getRoleGroup(roleGroups, profileId)?.name ?? profileId
 }
 
+const SHARE_MODE_OPTIONS: { value: ShareMode; label: string; description: string }[] = [
+  { value: 'snapshot', label: 'Snapshot',    description: 'Current items only' },
+  { value: 'live',     label: 'Auto-update', description: 'Includes future additions' },
+]
+
+/**
+ * Picks how a collection share stays scoped over time: a frozen snapshot
+ * or a live link that auto-includes new additions. Rendered as a sibling
+ * dropdown to the role select so each decision has its own visible trigger.
+ */
+function ShareModeSelect({ mode, onChange }: { mode: ShareMode; onChange: (mode: ShareMode) => void }) {
+  return (
+    <MenuSelect
+      size="compact"
+      value={mode}
+      options={SHARE_MODE_OPTIONS}
+      onChange={(value) => onChange(value as ShareMode)}
+    />
+  )
+}
 
 function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onRemove, onBlock, onUpdateProfile, onUpdateShareMode, onReshareSnapshot, onSetMemberOverride, name, subtitle, members, domainId, versionLabel }: {
   grant: Grant
@@ -124,9 +137,10 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {!hideGroupRoleLabel && (canEdit && onUpdateProfile ? (() => {
             const roleName = roleLabelForResource(roleGroups, grant.templateId ?? 'viewer', grant.resource.type)
+            // Share mode is surfaced in its own dropdown next to this one, so
+            // don't double-count it in the role label's "+N" extras suffix.
             let extras = 0
             if (grant.resource.type !== 'folder') {
-              if (grant.shareMode === 'live') extras++
               if (grant.allowDownload) extras++
               if (grant.allowComment) extras++
             }
@@ -134,26 +148,20 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
             const label = extras > 0 ? `${roleName} +${extras}` : roleName
             const showGrantOptions = grant.resource.type === 'collection' && grant.shareMode !== undefined
             return (
-            <RoleSelect
-              options={roleOptionsForResource(roleGroups, grant.resource.type)}
-              value={grant.templateId ?? 'viewer'}
-              onChange={(value) => onUpdateProfile(grant.id, value as AccessProfileId)}
-              triggerLabel={label}
-              footer={showGrantOptions ? (
-                <div className="space-y-2">
-                  {grant.shareMode !== undefined && (
-                    <label className="flex items-center justify-between text-body-0-regular text-foreground-dim cursor-pointer">
-                      Include new
-                      <Toggle
-                        checked={grant.shareMode === 'live'}
-                        onChange={() => { if (onUpdateShareMode) onUpdateShareMode(grant.id, grant.shareMode === 'live' ? 'snapshot' : 'live') }}
-                        aria-label="Include new"
-                      />
-                    </label>
-                  )}
-                </div>
-              ) : undefined}
-            />
+            <>
+              <RoleSelect
+                options={roleOptionsForResource(roleGroups, grant.resource.type)}
+                value={grant.templateId ?? 'viewer'}
+                onChange={(value) => onUpdateProfile(grant.id, value as AccessProfileId)}
+                triggerLabel={label}
+              />
+              {showGrantOptions && grant.shareMode !== undefined && onUpdateShareMode && (
+                <ShareModeSelect
+                  mode={grant.shareMode}
+                  onChange={(mode) => onUpdateShareMode(grant.id, mode)}
+                />
+              )}
+            </>
             )
           })() : (
             <GrantBadge grant={grant} roleGroups={roleGroups} />
@@ -175,7 +183,7 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
         if (grant.resource.type !== 'folder') {
           if (grant.allowDownload) lines.push({ label: 'Download', value: 'Yes' })
           if (grant.allowComment) lines.push({ label: 'Comment', value: 'Yes' })
-          if (grant.shareMode) lines.push({ label: 'New assets', value: grant.shareMode === 'live' ? 'Included' : 'Snapshot' })
+          if (grant.shareMode) lines.push({ label: 'Sharing mode', value: grant.shareMode === 'live' ? 'Auto-update' : 'Snapshot' })
         }
         if (grant.lockedToVersion != null) lines.push({ label: 'Version', value: `Locked to v${grant.lockedToVersion}` })
         const showReshare = canEdit && grant.resource.type === 'collection' && grant.shareMode === 'snapshot' && onReshareSnapshot
@@ -457,7 +465,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const [flaggedReleaseRecipients, setFlaggedReleaseRecipients] = useState<{ name: string; reason: string }[]>([])
   const handleConfirmPendingRef = useRef(() => {})
   const handleCancelPendingRef = useRef(() => {})
-  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const grants = getResourceGrants(resourceId)
   const canAddGrants = Boolean(resourceRef) && canShare(resourceRef)
@@ -557,17 +564,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const canSeeFullAccessList = canAddGrants || canManageAllGrants
 
 
-  // Close dropdown on click outside
-  useEffect(() => {
-    if (!showDropdown) return
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowDropdown(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [showDropdown])
 
   const results = useMemo(() => {
     const existingUserIds = new Set(
@@ -915,20 +911,36 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
   /* ---- Shared sub-sections ---- */
 
+  const isDropdownOpen = showDropdown && query.trim().length > 0
   const searchSection = !readOnly && resourceRef && canAddGrants && addRoleOptions.length > 0 && (
     <div className="flex items-start gap-2">
-      <div ref={dropdownRef} className="relative flex-1">
-        <Input
-          type="text"
-          value={query}
-          onChange={e => { setQuery(e.target.value); setShowDropdown(true) }}
-          onFocus={() => { if (query.trim()) setShowDropdown(true) }}
-          placeholder="Add people or teams..."
-          icon={<Search className="w-4 h-4" />}
-          iconPosition="left"
-        />
-        {showDropdown && query.trim() && (
-          <div className="absolute left-0 right-0 top-full mt-1 bg-surface-1 border border-border-dim rounded shadow-lg z-50 max-h-[240px] overflow-y-auto">
+      <div className="flex-1">
+        <Popover open={isDropdownOpen} onOpenChange={setShowDropdown}>
+          <PopoverAnchor asChild>
+            <div>
+              <Input
+                type="text"
+                value={query}
+                onChange={e => { setQuery(e.target.value); setShowDropdown(true) }}
+                onFocus={() => { if (query.trim()) setShowDropdown(true) }}
+                placeholder="Add people or teams..."
+                icon={<Search className="w-4 h-4" />}
+                iconPosition="left"
+              />
+            </div>
+          </PopoverAnchor>
+          <PopoverContent
+            align="start"
+            sideOffset={4}
+            // Keep keyboard focus in the input so the user can keep typing.
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            // Don't close when clicking back into the input.
+            onInteractOutside={(e) => {
+              const target = e.target as HTMLElement
+              if (target.closest('input')) e.preventDefault()
+            }}
+            className="w-[var(--radix-popover-trigger-width)] max-h-[240px] overflow-y-auto bg-surface-1 border border-border-dim p-0 shadow-lg"
+          >
             {results.map((result) => (
               <button
                 key={result.key}
@@ -949,8 +961,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
             {!hasResults && (
               <div className="px-3 py-2 text-body-0-regular text-foreground-dim">No matches</div>
             )}
-          </div>
-        )}
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   )
@@ -1121,19 +1133,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               <span className="text-body-0-regular text-foreground truncate">{pending.name}</span>
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
-              {isCollectionResource && pending.kind !== 'domain' && (
-                <label className="flex items-center gap-1.5 mr-2 text-label-0-regular text-foreground-dim cursor-pointer">
-                  <Toggle
-                    checked={pending.shareMode === 'live'}
-                    onChange={(v) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, shareMode: v ? 'live' : 'snapshot' } : p))}
-                    aria-label="Include new"
-                  />
-                  <span>Include new</span>
-                  <Tooltip label="Show new assets as they're added">
-                    <Info className="w-3 h-3 text-foreground-dim" />
-                  </Tooltip>
-                </label>
-              )}
               <RoleSelect
                 options={pending.kind === 'domain'
                   ? addRoleOptions.filter(o => o.value === 'viewer')
@@ -1141,6 +1140,12 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                 value={pending.role}
                 onChange={(value) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, role: value as AccessProfileId } : p))}
               />
+              {isCollectionResource && pending.kind !== 'domain' && (
+                <ShareModeSelect
+                  mode={pending.shareMode}
+                  onChange={(mode) => setPendingGrants(prev => prev.map(p => p.id === pending.id ? { ...p, shareMode: mode } : p))}
+                />
+              )}
               <Button variant="icon" compact onClick={() => handleRemovePending(pending.id)}>
                 <X className="w-3 h-3" />
               </Button>

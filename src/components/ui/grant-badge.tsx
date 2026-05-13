@@ -20,7 +20,7 @@ function getGrantExtras(grant: Grant): string[] {
 
   if (grant.allowDownload) extras.push('Download')
   if (grant.allowComment) extras.push('Comment')
-  if (grant.shareMode === 'live') extras.push('Include new assets')
+  if (grant.shareMode === 'live') extras.push('Auto-update')
   if (grant.lockedToVersion != null) extras.push(`Locked to v${grant.lockedToVersion}`)
   return extras
 }

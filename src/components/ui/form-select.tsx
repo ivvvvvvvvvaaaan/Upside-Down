@@ -81,7 +81,7 @@ export function FormSelect({
           type="button"
           disabled={disabled}
           className={cn(
-            'flex items-center justify-between gap-3 rounded w-full',
+            'flex items-center justify-between gap-3 rounded-md w-full',
             sizeClasses[size],
             'px-3',
             'bg-surface-flat dark:bg-white/[0.04] ring-1 ring-inset ring-border-dim',

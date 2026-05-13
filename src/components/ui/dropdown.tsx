@@ -139,14 +139,17 @@ export function Dropdown({
             type="button"
             disabled={disabled}
             className={cn(
-              'inline-flex items-center justify-between gap-1.5 rounded transition-colors',
+              'inline-flex items-center justify-between gap-1.5 rounded-md transition-colors',
               'text-foreground disabled:opacity-50',
               ghost
-                ? 'bg-transparent'
+                ? cn(
+                  'bg-transparent hover:bg-surface-highlight dark:hover:bg-white/10',
+                  isOpen && 'bg-surface-highlight dark:bg-white/10',
+                )
                 : (
                   isOpen
-                    ? 'bg-surface-flat ring-2 ring-inset ring-border-system-focus'
-                    : 'bg-surface-flat ring-1 ring-inset ring-border-dim'
+                    ? 'bg-surface-highlight dark:bg-white/10 ring-2 ring-inset ring-border-system-focus'
+                    : 'bg-transparent ring-1 ring-inset ring-border-subtle dark:ring-border-inverse-subtle hover:bg-surface-highlight dark:hover:bg-white/10'
                 ),
               ghost
                 ? (size === 'compact' ? 'h-8 px-3 text-label-1-bold' : 'h-10 px-3 text-body-1-bold')
