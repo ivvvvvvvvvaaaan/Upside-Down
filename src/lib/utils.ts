@@ -79,3 +79,17 @@ export function getInitials(name: string, maxLength = 2): string {
 export function pluralize(count: number, singular: string, plural?: string): string {
   return `${count} ${count === 1 ? singular : (plural ?? `${singular}s`)}`
 }
+
+const TIME_OF_DAY_SUFFIX = /\s+-\s+(day|night|sunset|sunrise|dawn|dusk|golden hour|magic hour|morning|evening|afternoon|continuous)$/i
+
+/**
+ * Compact form of a scene slugline for tag-sized display. Strips the
+ * INT./EXT./INT/EXT. prefix and trailing time-of-day descriptor — both are
+ * either implied (the slugline-as-tag) or duplicated elsewhere on the card.
+ */
+export function formatSceneSlug(slug: string): string {
+  return slug
+    .replace(/^(INT\/EXT\.|INT\.|EXT\.)\s+/i, '')
+    .replace(TIME_OF_DAY_SUFFIX, '')
+    .trim()
+}
