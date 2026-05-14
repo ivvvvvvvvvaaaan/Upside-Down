@@ -481,7 +481,10 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     event: React.MouseEvent,
   ) => {
     clearAssetSelection()
-    handleCollectionSelectionClick(childCollection, event, childData.map((entry) => entry.collection))
+    // Use the *visual* order of cards for range selection so shift-click
+    // selects the contiguous run of cards the user sees on screen, not the
+    // arbitrary `childData` insertion order.
+    handleCollectionSelectionClick(childCollection, event, visualChildOrder)
   }
   const handlePanelAssetSwitch = (nextAsset: typeof filteredAssets[number]) => {
     clearCollectionSelection()
@@ -700,6 +703,20 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
       </div>
     )
   }
+
+  // Flattened collection list in the same order the cards are rendered, so
+  // shift-click range selection follows what the user sees. Tracks the
+  // dispatch in `renderChildren` (location → scene grouped/flat → casting →
+  // default).
+  const visualChildOrder = useMemo(() => {
+    if (collection?.icon === 'location') return childData.map((e) => e.collection)
+    if (collection?.icon === 'scene') {
+      if (sceneGroupedChildren) return sceneGroupedChildren.flatMap((g) => g.items.map((i) => i.collection))
+      return filteredChildData.map((e) => e.collection)
+    }
+    if (castingGroups) return castingGroups.flatMap((g) => g.items.map((i) => i.collection))
+    return childData.map((e) => e.collection)
+  }, [collection?.icon, sceneGroupedChildren, filteredChildData, castingGroups, childData])
 
   // ── Render helpers — broken out to keep the JSX tree readable. Each owns
   // one branch of the children/assets dispatch and closes over component state.

@@ -494,12 +494,17 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     clearSelection()
   }, [workspaceLocationKey, clearSelection])
 
-  const handleNodeClick = useCallback((fileNode: FileNode) => {
+  const handleNodeClick = useCallback((fileNode: FileNode, event?: React.MouseEvent) => {
     const entry = selectionEntryByNodeId.get(fileNode.id)
-    if (entry) {
+    if (!entry) return
+    // Shift/cmd/ctrl modifiers go through the selection hook's range + toggle
+    // logic, scoped to whatever is currently visible at this level.
+    if (event && (event.shiftKey || event.metaKey || event.ctrlKey)) {
+      handleSelectionClick(entry.entity, event, currentGridSelectionEntities)
+    } else {
       selectOnly(entry.entity)
     }
-  }, [selectionEntryByNodeId, selectOnly])
+  }, [selectionEntryByNodeId, selectOnly, handleSelectionClick, currentGridSelectionEntities])
 
 
   const handleFolderDrilldown = useCallback((folder: WorkspaceFileNode) => {
@@ -566,24 +571,38 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
     const direct = getResourceGrants(nodeId)
     const inherited = getInheritedGrants(nodeId)
     const allGrants = [...direct, ...inherited.map(({ grant }) => grant)]
-    if (allGrants.length === 0) return null
 
-    // Recipient: show who shared it and the access level
+    // Recipient: show who shared it and the access level.
     if (!isCurrentFolderOwner) {
+      if (allGrants.length === 0) return null
       const grantor = direct.length > 0 ? PERSONAS.find(p => p.id === direct[0].grantedByUserId) : undefined
       const sharedBy = grantor?.name ?? getDomainOwnerTeam(effectiveNodeDomainId ?? '')?.name ?? 'someone'
       const accessLevel = canEditResource(nodeId) ? 'Full access' : 'View only'
       return { kind: 'recipient', subtitle: `Shared by ${sharedBy} · ${accessLevel}` }
     }
 
-    // Owner: show how many people it's shared with
-    const sharedGrants = allGrants.filter((g) => {
+    // Owner perspective. If this folder is a team's root, treat that team's
+    // grant as implicit (it's the workspace's owner team) and only count
+    // additional grants in the "+N shared" tail.
+    const ownerTeam = TEAMS.find(t => t.rootFolderId === nodeId)
+    const nonOwnerGrants = allGrants.filter(g => {
       const p = g.principal
-      return p.type !== 'team' || !TEAMS.find((t) => t.id === p.teamId)?.rootFolderId
+      if (ownerTeam && p.type === 'team' && p.teamId === ownerTeam.id) return false
+      return true
     })
-    if (sharedGrants.length === 0) return null
-    return { kind: 'owner', subtitle: `Shared with ${sharedGrants.length} ${sharedGrants.length === 1 ? 'person' : 'people'}` }
-  }, [currentLocationNode, getAclResourceId, getResourceGrants, getInheritedGrants, isCurrentFolderOwner, effectiveNodeDomainId])
+
+    if (ownerTeam) {
+      const subtitle = nonOwnerGrants.length > 0
+        ? `${ownerTeam.name} workspace · +${nonOwnerGrants.length} shared`
+        : `${ownerTeam.name} workspace`
+      return { kind: 'owner', subtitle }
+    }
+
+    if (nonOwnerGrants.length === 0) {
+      return { kind: 'owner', subtitle: 'Private' }
+    }
+    return { kind: 'owner', subtitle: `Shared with ${nonOwnerGrants.length} ${nonOwnerGrants.length === 1 ? 'person' : 'people'}` }
+  }, [currentLocationNode, getAclResourceId, getResourceGrants, getInheritedGrants, isCurrentFolderOwner, effectiveNodeDomainId, canEditResource])
 
   const shareBanner = useMemo(() => {
     if (!currentLocationNode || isCurrentFolderOwner) return null

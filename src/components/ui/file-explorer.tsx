@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { cn, formatDate, formatFileSize } from '@/lib/utils'
-import { Folder, File, Image as ImageIcon, FileVideo, FileText, ChevronRight, List, Columns } from 'lucide-react'
+import { Folder, FolderOpen, File, Image as ImageIcon, FileVideo, FileText, ChevronDown, ChevronRight, List, Columns } from 'lucide-react'
 /**
  * File Explorer Component
  *
@@ -47,8 +47,8 @@ export interface FileExplorerProps {
   onViewModeChange?: (mode: FileViewMode) => void
   selectedIds?: Set<string>
   primaryId?: string | null
-  onFileClick?: (file: FileNode) => void
-  onFolderClick?: (folder: FileNode) => void
+  onFileClick?: (file: FileNode, event?: React.MouseEvent) => void
+  onFolderClick?: (folder: FileNode, event?: React.MouseEvent) => void
   /** Show view mode toggle */
   showViewToggle?: boolean
   /** Right-click handler for file/folder rows */
@@ -67,9 +67,10 @@ function findNodePath(nodes: FileNode[], targetId: string, ancestors: FileNode[]
   return null
 }
 
-function getFileIcon(node: FileNode, sizeClass: string = 'w-4 h-4') {
+function getFileIcon(node: FileNode, sizeClass: string = 'w-4 h-4', isOpen = false) {
   if (node.type === 'folder') {
-    return <Folder className={cn(sizeClass, 'text-foreground-dim')} />
+    const Icon = isOpen ? FolderOpen : Folder
+    return <Icon className={cn(sizeClass, 'text-foreground-dim')} />
   }
 
   const ext = node.extension?.toLowerCase()
@@ -90,8 +91,8 @@ interface FileRowProps {
   depth: number
   selectedIds?: Set<string>
   primaryId?: string | null
-  onFileClick?: (file: FileNode) => void
-  onFolderClick?: (folder: FileNode) => void
+  onFileClick?: (file: FileNode, event: React.MouseEvent) => void
+  onFolderClick?: (folder: FileNode, event: React.MouseEvent) => void
   onContextMenu?: (event: React.MouseEvent, node: FileNode) => void
 }
 
@@ -100,12 +101,15 @@ function FileRow({ node, depth, selectedIds, primaryId, onFileClick, onFolderCli
   const isSelected = selectedIds?.has(node.id) ?? false
   const isPrimary = primaryId === node.id
 
-  const handleClick = () => {
+  const handleClick = (event: React.MouseEvent) => {
+    // Skip the inline tree-expand on modifier-clicks so shift-select doesn't
+    // also toggle the folder open as a side effect.
+    const isModified = event.shiftKey || event.metaKey || event.ctrlKey
     if (node.type === 'folder') {
-      setExpanded(!expanded)
-      onFolderClick?.(node)
+      if (!isModified) setExpanded(!expanded)
+      onFolderClick?.(node, event)
     } else {
-      onFileClick?.(node)
+      onFileClick?.(node, event)
     }
   }
 
@@ -124,28 +128,23 @@ function FileRow({ node, depth, selectedIds, primaryId, onFileClick, onFolderCli
         className={cn(
           'flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors',
           'border-b border-border-dim last:border-b-0',
-          isPrimary
-            ? 'bg-surface-selected-subtle ring-1 ring-inset ring-border-selected'
-            : isSelected
-              ? 'bg-surface-2'
-              : 'hover:bg-surface-2'
+          isSelected || isPrimary
+            ? 'bg-surface-selected hover:bg-surface-selected-hover'
+            : 'hover:bg-surface-2'
         )}
         style={{ paddingLeft: `${12 + depth * 20}px` }}
       >
-        {/* Expand chevron for folders */}
-        <div className="w-4 flex-shrink-0">
+        {/* Expand chevron for folders — same swap pattern as the nav tree. */}
+        <div className="w-3.5 flex-shrink-0">
           {node.type === 'folder' && node.children && node.children.length > 0 && (
-            <ChevronRight
-              className={cn(
-                'w-4 h-4 text-foreground-dim transition-transform',
-                expanded && 'rotate-90'
-              )}
-            />
+            expanded
+              ? <ChevronDown className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
+              : <ChevronRight className="w-3.5 h-3.5 text-foreground-dim flex-shrink-0" />
           )}
         </div>
 
-        {/* Icon */}
-        {getFileIcon(node)}
+        {/* Icon — folders flip to FolderOpen when expanded inline or focused. */}
+        {getFileIcon(node, 'w-4 h-4', expanded || isPrimary)}
 
         {/* Name */}
         <span className="flex-1 text-body-0-regular text-foreground truncate">
@@ -226,15 +225,15 @@ function IconsView({
   files: FileNode[]
   selectedIds?: Set<string>
   primaryId?: string | null
-  onFileClick?: (file: FileNode) => void
-  onFolderClick?: (folder: FileNode) => void
+  onFileClick?: (file: FileNode, event: React.MouseEvent) => void
+  onFolderClick?: (folder: FileNode, event: React.MouseEvent) => void
   onContextMenu?: (event: React.MouseEvent, node: FileNode) => void
 }) {
-  const handleClick = (node: FileNode) => {
+  const handleClick = (node: FileNode, event: React.MouseEvent) => {
     if (node.type === 'folder') {
-      onFolderClick?.(node)
+      onFolderClick?.(node, event)
     } else {
-      onFileClick?.(node)
+      onFileClick?.(node, event)
     }
   }
 
@@ -246,23 +245,17 @@ function IconsView({
         return (
           <div
             key={node.id}
-            onClick={() => handleClick(node)}
+            onClick={(e) => handleClick(node, e)}
             onContextMenu={onContextMenu ? (e) => { e.preventDefault(); onContextMenu(e, node) } : undefined}
             className={cn(
               'flex flex-col items-center gap-2 p-3 rounded cursor-pointer transition-colors',
-              isPrimary
-                ? 'bg-surface-selected-subtle ring-1 ring-inset ring-border-selected'
-                : isSelected
-                  ? 'bg-surface-2'
-                  : 'hover:bg-surface-2',
+              isSelected || isPrimary
+                ? 'bg-surface-selected hover:bg-surface-selected-hover'
+                : 'hover:bg-surface-2',
             )}
           >
             <div className="w-12 h-12 flex items-center justify-center">
-              {node.type === 'folder' ? (
-                <Folder className="w-10 h-10 text-foreground-dim" />
-              ) : (
-                getFileIcon(node, 'w-10 h-10')
-              )}
+              {getFileIcon(node, 'w-10 h-10', node.type === 'folder' && isPrimary)}
             </div>
             <span className="text-body-0-regular text-foreground text-center truncate w-full">
               {node.name}
@@ -499,12 +492,11 @@ export function FileExplorer({
       {viewMode === 'list' && (
         <div className="overflow-hidden">
           {/* Header */}
-          <div className="flex items-center gap-3 px-3 py-2 bg-surface-2 border-b border-border-dim">
-            <div className="w-4 flex-shrink-0" />
-            <div className="w-4 flex-shrink-0" />
-            <span className="flex-1 text-label-0-bold text-foreground-dim uppercase">Name</span>
-            <span className="w-20 text-right text-label-0-bold text-foreground-dim uppercase">Size</span>
-            <span className="w-28 text-right text-label-0-bold text-foreground-dim uppercase">Modified</span>
+          <div className="flex items-center gap-3 px-3 py-2 border-b border-border-dim">
+            <div className="w-3.5 flex-shrink-0" />
+            <span className="flex-1 text-body-0-regular text-foreground-dim">Name</span>
+            <span className="w-20 text-right text-body-0-regular text-foreground-dim">Size</span>
+            <span className="w-28 text-right text-body-0-regular text-foreground-dim">Modified</span>
           </div>
 
           {/* File list */}

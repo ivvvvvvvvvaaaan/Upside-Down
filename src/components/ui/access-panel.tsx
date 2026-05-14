@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { X, Search, Info, Link2, ShieldOff } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Tooltip } from './tooltip'
 import { Input } from './input'
+import { Textarea } from './textarea'
 import { Button } from './button'
-import { RoleSelect } from './role-select'
+import { ROLE_DESCRIPTIONS, RoleSelect } from './role-select'
 import { MenuSelect } from './menu-select'
 import { Avatar } from './avatar'
 import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
@@ -53,12 +55,29 @@ interface AccessPanelProps {
   inheritedGrants?: { grant: Grant; fromResourceName: string }[]
   /** Called when dirty state changes — lets parent render Save/Cancel */
   onDirtyChange?: (dirty: boolean, handlers: { save: () => void; cancel: () => void }) => void
-  /** Called when pending state changes — lets parent render Add/Cancel in footer */
-  onPendingChange?: (pending: boolean, handlers: { confirm: () => void; cancel: () => void }) => void
+  /** Called when pending state changes — lets parent render confirm/cancel in footer */
+  onPendingChange?: (
+    pending: boolean,
+    handlers: { confirm: () => void; cancel: () => void; confirmLabel?: string; cancelLabel?: string },
+  ) => void
+  /** Lets the parent swap its modal/panel header — used when the panel takes
+   *  over the chrome for a sub-flow (e.g. the two-step Grant access add). */
+  onHeaderChange?: (override: { title: string; onBack: () => void } | null) => void
 }
 
-function roleOptionsForResource(roleGroups: RoleGroup[], _resourceType?: Grant['resource']['type']) {
-  return roleGroupOptions(roleGroups)
+function roleOptionsForResource(roleGroups: RoleGroup[], resourceType?: Grant['resource']['type']) {
+  const options = roleGroupOptions(roleGroups)
+  // Folders intentionally surface only the two endpoints — Full Access for
+  // editors and View only for viewers.
+  if (resourceType === 'folder') {
+    return options.filter((option) => option.value === 'manager' || option.value === 'viewer')
+  }
+  // Asset shares drop Edit and Upload — they're container-level concepts
+  // that don't apply to a single asset.
+  if (resourceType === 'asset' || resourceType === 'cut') {
+    return options.filter((option) => option.value === 'manager' || option.value === 'downloader' || option.value === 'viewer')
+  }
+  return options
 }
 
 function roleLabelForResource(roleGroups: RoleGroup[], profileId: AccessProfileId, _resourceType?: Grant['resource']['type']) {
@@ -83,6 +102,41 @@ function ShareModeSelect({ mode, onChange }: { mode: ShareMode; onChange: (mode:
       options={SHARE_MODE_OPTIONS}
       onChange={(value) => onChange(value as ShareMode)}
     />
+  )
+}
+
+/** Visual radio row used in the two-step Add Access flow. */
+function PermissionRadio({
+  selected,
+  title,
+  description,
+  onClick,
+}: { selected: boolean; title: string; description?: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'w-full flex items-start gap-3 p-3 rounded-md text-left transition-colors',
+        selected ? 'bg-primary/5' : 'hover:bg-surface-highlight',
+      )}
+    >
+      <div className={cn(
+        'mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors',
+        selected ? 'border-primary' : 'border-border-subtle',
+      )}>
+        <div className={cn(
+          'w-2 h-2 rounded-full bg-primary transition-transform',
+          selected ? 'scale-100' : 'scale-0',
+        )} />
+      </div>
+      <div className="flex flex-col">
+        <span className="text-body-1-bold text-foreground">{title}</span>
+        {description && (
+          <span className="text-label-1-regular text-foreground-dim">{description}</span>
+        )}
+      </div>
+    </button>
   )
 }
 
@@ -421,7 +475,7 @@ function GuestLinksSection({
   return null
 }
 
-export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOnly = false, inheritedGrants, onDirtyChange, onPendingChange }: AccessPanelProps) {
+export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOnly = false, inheritedGrants, onDirtyChange, onPendingChange, onHeaderChange }: AccessPanelProps) {
   const isBatch = Boolean(batchResourceRefs && batchResourceRefs.length > 1)
   const {
     getResourceGrants,
@@ -460,11 +514,29 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const [showDropdown, setShowDropdown] = useState(false)
   type PendingGrant = { id: string; principal: PrincipalRef; name: string; kind: 'user' | 'team' | 'domain'; role: AccessProfileId; shareMode: ShareMode; expires: boolean; expiresInDays: number; note: string }
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
+  // Two-step add flow: when a principal is picked from the search dropdown,
+  // the panel switches into "add" mode (step 2) where the user picks one
+  // permission (and sharing mode) that applies to every staged recipient,
+  // then commits with Share. Editing existing grants still happens inline
+  // via the dropdowns on each row.
+  type AddingPrincipal = { principal: PrincipalRef; name: string; kind: 'user' | 'team' | 'domain'; key: string }
+  const [addingPrincipals, setAddingPrincipals] = useState<AddingPrincipal[]>([])
+  const [addingRole, setAddingRole] = useState<AccessProfileId>('downloader')
+  const [addingShareMode, setAddingShareMode] = useState<ShareMode>('snapshot')
+  const [addingNote, setAddingNote] = useState('')
+  const addingActive = addingPrincipals.length > 0
   const [shareNote, setShareNote] = useState('')
   const [showReleaseWarning, setShowReleaseWarning] = useState(false)
   const [flaggedReleaseRecipients, setFlaggedReleaseRecipients] = useState<{ name: string; reason: string }[]>([])
   const handleConfirmPendingRef = useRef(() => {})
   const handleCancelPendingRef = useRef(() => {})
+  const commitAddRef = useRef(() => {})
+  const addInputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (addingPrincipals.length > 0) {
+      requestAnimationFrame(() => addInputRef.current?.focus())
+    }
+  }, [addingPrincipals.length])
 
   const grants = getResourceGrants(resourceId)
   const canAddGrants = Boolean(resourceRef) && canShare(resourceRef)
@@ -590,13 +662,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
   const handleSelectPrincipal = (principal: PrincipalRef, name: string, kind: 'user' | 'team' | 'domain') => {
     if (principal.type === 'user' && principal.userId === activePersona?.id) return
-    // Don't add duplicates
-    const key = principal.type === 'user'
-      ? principal.userId
-      : principal.type === 'team'
-        ? principal.teamId
-        : principal.domainId
-    if (pendingGrants.some(p => p.id === key)) return
 
     // Smart defaults based on recipient type
     let defaultRole: AccessProfileId = addAsRole
@@ -613,20 +678,69 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       }
     }
 
-    setPendingGrants(prev => [...prev, {
-      id: key,
-      principal,
-      name,
-      kind,
-      role: defaultRole,
-      shareMode: defaultShareMode,
-      expires,
-      expiresInDays,
-      note: '',
-    }])
+    // Domain (release) shares keep the original pending-row flow — they have
+    // their own confirmation gating (release warnings, etc.) and a separate
+    // "Send" footer that batches all picked domains.
+    if (kind === 'domain') {
+      const key = (principal as { domainId: string }).domainId
+      if (pendingGrants.some(p => p.id === key)) return
+      setPendingGrants(prev => [...prev, {
+        id: key,
+        principal,
+        name,
+        kind,
+        role: defaultRole,
+        shareMode: defaultShareMode,
+        expires,
+        expiresInDays,
+        note: '',
+      }])
+      onPendingChange?.(true, { confirm: () => handleConfirmPendingRef.current(), cancel: () => handleCancelPendingRef.current() })
+      return
+    }
+
+    // People / teams use the two-step "Grant access" flow. The first pick
+    // enters step 2; subsequent picks while in step 2 append more chips so
+    // one permission can be granted to many recipients at once.
+    const key = principal.type === 'user'
+      ? principal.userId
+      : (principal as { teamId: string }).teamId
+    if (addingPrincipals.some(p => p.key === key)) return
+    const isFirstAdd = addingPrincipals.length === 0
+    setAddingPrincipals(prev => [...prev, { principal, name, kind, key }])
+    if (isFirstAdd) {
+      setAddingRole(defaultRole)
+      setAddingShareMode(defaultShareMode)
+      onPendingChange?.(true, {
+        confirm: () => commitAddRef.current(),
+        cancel: () => cancelAdd(),
+        confirmLabel: 'Share',
+      })
+      onHeaderChange?.({ title: 'Grant access', onBack: () => cancelAdd() })
+    }
     setQuery('')
     setShowDropdown(false)
-    onPendingChange?.(true, { confirm: () => handleConfirmPendingRef.current(), cancel: () => handleCancelPendingRef.current() })
+  }
+
+  const cancelAdd = () => {
+    setAddingPrincipals([])
+    setAddingNote('')
+    setQuery('')
+    setShowDropdown(false)
+    onPendingChange?.(false, { confirm: () => {}, cancel: () => {} })
+    onHeaderChange?.(null)
+  }
+
+  const removeAddingPrincipal = (key: string) => {
+    setAddingPrincipals(prev => {
+      const next = prev.filter(p => p.key !== key)
+      // Removing the last chip exits step 2 entirely.
+      if (next.length === 0) {
+        onPendingChange?.(false, { confirm: () => {}, cancel: () => {} })
+        onHeaderChange?.(null)
+      }
+      return next
+    })
   }
 
   const commitPendingGrants = () => {
@@ -679,6 +793,52 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     }
   }
 
+  const commitAdd = () => {
+    if (addingPrincipals.length === 0) return
+    const rawTargets = isBatch && batchResourceRefs ? batchResourceRefs : (resourceRef ? [resourceRef] : [])
+    if (rawTargets.length === 0) return
+
+    for (const adding of addingPrincipals) {
+      for (const rawTarget of rawTargets) {
+        let target = rawTarget
+        if (rawTarget.type === 'smart-collection') {
+          const smartColl = getSmartCollection(rawTarget.id)
+          if (smartColl) {
+            const assets = filterAssets(scopedAssets, smartColl.id)
+            const assetIds = assets.map(a => a.id)
+            const curated = createCollection(smartColl.name, assetIds, {
+              sourceSmartCollectionId: smartColl.id,
+            })
+            target = { id: curated.id, type: 'collection' }
+          }
+        }
+
+        const targetGrants = getResourceGrants(target.id)
+        if (adding.principal.type === 'user' && targetGrants.some(g => g.principal.type === 'user' && g.principal.userId === (adding.principal as { userId: string }).userId)) continue
+        if (adding.principal.type === 'team' && targetGrants.some(g => g.principal.type === 'team' && g.principal.teamId === (adding.principal as { teamId: string }).teamId)) continue
+
+        const isCollection = target.type === 'collection'
+        const collection = isCollection ? getCollection(target.id) : undefined
+        const snapshotAssetIds = addingShareMode === 'snapshot' && collection
+          ? resolveCollectionAssetIds(collection)
+          : undefined
+        createGrant(target, adding.principal, addingRole, {
+          expiresInDays: expires ? expiresInDays : undefined,
+          shareMode: isCollection ? addingShareMode : undefined,
+          snapshotAssetIds,
+          note: addingNote.trim() || undefined,
+        })
+      }
+    }
+    const names = addingPrincipals.map(p => p.name)
+    showToast(names.length === 1 ? `Shared with ${names[0]}` : `Shared with ${names.length} people`)
+    setAddingPrincipals([])
+    setAddingNote('')
+    setQuery('')
+    onPendingChange?.(false, { confirm: () => {}, cancel: () => {} })
+    onHeaderChange?.(null)
+  }
+
   const handleConfirmPending = () => {
     if (pendingGrants.length === 0) return
 
@@ -724,6 +884,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
   handleConfirmPendingRef.current = handleConfirmPending
   handleCancelPendingRef.current = handleCancelPending
+  commitAddRef.current = commitAdd
 
   const handleRevokeGrant = (grantId: string) => {
     // Capture the grant info before revoking so we can show feedback
@@ -1153,12 +1314,11 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           </div>
         ))}
       </div>
-      <textarea
+      <Textarea
         value={shareNote}
         onChange={(e) => setShareNote(e.target.value)}
         placeholder="Add a note (optional)"
         rows={2}
-        className="w-full px-3 py-2 bg-surface-low border border-border-dim rounded text-body-0-regular text-foreground placeholder:text-foreground-dim focus:outline-none focus:border-border-subtle transition-colors resize-none"
       />
     </div>
   )
@@ -1276,6 +1436,119 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       </div>
     )
   })()
+
+  // Step 2 of the add flow — once at least one person/team has been picked
+  // from the search dropdown, the panel switches into an explicit-permission
+  // picker. The chip-input below accepts more recipients so a single
+  // permission can be granted to many at once.
+  if (addingActive) {
+    const isTeamRecipient = addingPrincipals.some(p => p.kind === 'team')
+    return (
+      <div className="space-y-5">
+        {/* Multi-chip recipient input. Reuses the same search results
+            Popover anchored to the box, with PopoverAnchor wrapping the
+            whole chip area so the dropdown lines up with its width. */}
+        <Popover open={isDropdownOpen} onOpenChange={setShowDropdown}>
+          <PopoverAnchor asChild>
+            <div className="flex flex-wrap items-center gap-1.5 px-2 py-1.5 rounded-md bg-surface-flat dark:bg-white/[0.04] ring-1 ring-inset ring-border-dim focus-within:ring-2 focus-within:ring-border-system-focus transition-colors min-h-[40px]">
+              {addingPrincipals.map(adding => (
+                <div key={adding.key} className="inline-flex items-center gap-1.5 px-1.5 py-1 rounded-md bg-surface-highlight">
+                  {adding.kind === 'user' ? <Avatar name={adding.name} size="sm" /> : <DepartmentAvatar size="sm" />}
+                  <span className="text-body-0-regular text-foreground">{adding.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeAddingPrincipal(adding.key)}
+                    className="flex items-center justify-center w-4 h-4 rounded hover:bg-surface-3 text-foreground-dim"
+                    aria-label={`Remove ${adding.name}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              <input
+                ref={addInputRef}
+                type="text"
+                value={query}
+                onChange={(e) => { setQuery(e.target.value); setShowDropdown(true) }}
+                onFocus={() => { if (query.trim()) setShowDropdown(true) }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Backspace' && query === '' && addingPrincipals.length > 0) {
+                    removeAddingPrincipal(addingPrincipals[addingPrincipals.length - 1].key)
+                  }
+                }}
+                placeholder={addingPrincipals.length > 0 ? 'Add another…' : 'Add people or teams…'}
+                className="flex-1 min-w-[8rem] h-7 bg-transparent text-body-0-regular text-foreground placeholder:text-foreground-dim focus:outline-none"
+              />
+            </div>
+          </PopoverAnchor>
+          <PopoverContent
+            align="start"
+            sideOffset={4}
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            onInteractOutside={(e) => {
+              const target = e.target as HTMLElement
+              if (target.closest('input')) e.preventDefault()
+            }}
+            className="w-[var(--radix-popover-trigger-width)] max-h-[240px] overflow-y-auto bg-surface-1 border border-border-dim p-0 shadow-lg"
+          >
+            {results.map((result) => (
+              <button
+                key={result.key}
+                onClick={() => handleSelectPrincipal(result.principal, result.name, result.kind)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors"
+              >
+                {result.kind === 'user' ? <Avatar name={result.name} size="sm" /> : <DepartmentAvatar size="sm" />}
+                <div className="min-w-0">
+                  <span className="text-body-0-regular text-foreground truncate block">{result.name}</span>
+                  <span className="text-body-0-regular text-foreground-dim truncate block">{result.subtitle}</span>
+                </div>
+              </button>
+            ))}
+            {!hasResults && (
+              <div className="px-3 py-2 text-body-0-regular text-foreground-dim">No matches</div>
+            )}
+          </PopoverContent>
+        </Popover>
+
+        <p className="text-body-0-regular text-foreground-dim">
+          {isTeamRecipient ? 'Team members' : 'They'} will get a notification that they&apos;ve received access
+        </p>
+
+        <div className="space-y-1">
+          {addRoleOptions.map(option => (
+            <PermissionRadio
+              key={option.value}
+              selected={addingRole === option.value}
+              title={option.label}
+              description={ROLE_DESCRIPTIONS[option.value]}
+              onClick={() => setAddingRole(option.value as AccessProfileId)}
+            />
+          ))}
+        </div>
+
+        {isCollectionResource && (
+          <label className="flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer hover:bg-surface-highlight">
+            <div className="flex-1 min-w-0">
+              <p className="text-body-1-bold text-foreground">Auto-update</p>
+              <p className="text-label-1-regular text-foreground-dim">Include new items as they&apos;re added to the collection</p>
+            </div>
+            <Toggle
+              checked={addingShareMode === 'live'}
+              onChange={(checked) => setAddingShareMode(checked ? 'live' : 'snapshot')}
+              aria-label="Auto-update"
+            />
+          </label>
+        )}
+
+        <Textarea
+          value={addingNote}
+          onChange={(e) => setAddingNote(e.target.value)}
+          placeholder="Add a note (optional)"
+          rows={2}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
