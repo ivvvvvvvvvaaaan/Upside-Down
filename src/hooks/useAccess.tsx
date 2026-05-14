@@ -24,6 +24,7 @@ import {
   RELEASE_DOMAINS,
   getResourceLabel,
   profileLabel,
+  isGrantProfileAllowedForResource,
 } from '@/lib/grants'
 import type {
   Block,
@@ -113,14 +114,13 @@ interface AccessContextValue {
   getCollectionAssetCount: (id: string) => { total: number; accessible: number }
   getCollectionShareCeiling: (collectionId: string, intendedProfile: AccessProfileId) => { total: number; atLevel: number; capped: number; cappedAssetIds: string[] }
   getCurrentUserGrant: (resourceId: string) => Grant | undefined
-  createGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId, options?: { permissions?: Permission[]; shareMode?: ShareMode; snapshotAssetIds?: string[]; allowDownload?: boolean; allowComment?: boolean; expiresInDays?: number; expiresAt?: string; versionNote?: string; note?: string }) => void
+  createGrant: (resource: ResourceRef, principal: PrincipalRef, profileId: AccessProfileId, options?: { permissions?: Permission[]; shareMode?: ShareMode; snapshotAssetIds?: string[]; allowDownload?: boolean; allowComment?: boolean; expiresInDays?: number; expiresAt?: string; note?: string }) => void
   getGrantableProfiles: (resource: ResourceRef) => AccessProfileId[]
   revokeGrant: (grantId: string) => void
   revokeUserAccess: (userId: string) => void
   canManageGrant: (grant: Grant) => boolean
   grants: Grant[]
   updateGrantProfile: (grantId: string, profileId: AccessProfileId) => void
-  updateGrantShareMode: (grantId: string, mode: ShareMode) => void
   // Role group management
   roleGroups: RoleGroup[]
   updateRoleGroup: (id: string, permissions: Permission[]) => void
@@ -165,9 +165,6 @@ interface AccessContextValue {
   // Review links — authenticated direct links with expiration
   createReviewLink: (resource: ResourceRef, principal: PrincipalRef, expiresInDays?: number) => string | undefined
   getGrantByReviewLinkId: (linkId: string) => Grant | undefined
-
-  // Version history for turnover tracking
-  getVersionHistory: (resourceId: string, principalKey?: string) => { version: number; note: string; date: string; grantId: string }[]
 
   // Restore grants for a resource to a previous snapshot (for cancel flows)
   restoreResourceGrants: (resourceId: string, snapshot: Grant[]) => void
@@ -215,26 +212,6 @@ function getPrincipalKey(principal: PrincipalRef): string {
   if (principal.type === 'team') return `team:${principal.teamId}`
   return `domain:${principal.domainId}`
 }
-
-function buildSnapshotVersionNote(previousAssetIds?: string[], nextAssetIds?: string[]): string | undefined {
-  const previous = new Set(previousAssetIds ?? [])
-  const next = new Set(nextAssetIds ?? [])
-
-  const added = Array.from(next).filter((assetId) => !previous.has(assetId)).length
-  const removed = Array.from(previous).filter((assetId) => !next.has(assetId)).length
-
-  if (added === 0 && removed === 0) {
-    return previous.size > 0 || next.size > 0
-      ? 'Snapshot refreshed with no asset changes'
-      : undefined
-  }
-
-  const parts: string[] = []
-  if (added > 0) parts.push(`+${added} asset${added === 1 ? '' : 's'}`)
-  if (removed > 0) parts.push(`-${removed} asset${removed === 1 ? '' : 's'}`)
-  return parts.join(', ')
-}
-
 
 import { SEED_VERSION } from '@/lib/constants'
 
@@ -563,7 +540,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     profileId: AccessProfileId,
     currentGrants: Grant[] = grants,
   ): boolean => {
-    if (profileId === 'link-viewer') return false
+    if (!isGrantProfileAllowedForResource(resource, profileId)) return false
 
     if (!activePersona) return true
     if (!userId) return false
@@ -880,7 +857,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       allowComment?: boolean
       expiresInDays?: number
       expiresAt?: string
-      versionNote?: string
       note?: string
     },
   ) => {
@@ -888,7 +864,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
     setGrants((prev) => {
       if (!canShareFn(resource, prev)) return prev
-      if (profileId === 'link-viewer') return prev
+      if (!isGrantProfileAllowedForResource(resource, profileId)) return prev
 
       const supportsShareExtras = resource.type !== 'folder'
       const shareModeOption = supportsShareExtras ? options?.shareMode : undefined
@@ -905,21 +881,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       )
       const latestExistingGrant = matchingActiveGrants.reduce<Grant | undefined>((latest, current) => {
         if (!latest) return current
-        const latestVersion = latest.version ?? 0
-        const currentVersion = current.version ?? 0
-        if (currentVersion !== latestVersion) {
-          return currentVersion > latestVersion ? current : latest
-        }
         return current.grantedAt > latest.grantedAt ? current : latest
       }, undefined)
 
-      const isVersionedSnapshot = resource.type === 'collection' && shareModeOption === 'snapshot'
-      const finalAllowDownload = supportsShareExtras && !isVersionedSnapshot
-        ? allowDownloadOption ?? latestExistingGrant?.allowDownload
-        : allowDownloadOption
-      const finalAllowComment = supportsShareExtras && !isVersionedSnapshot
-        ? allowCommentOption ?? latestExistingGrant?.allowComment
-        : allowCommentOption
+      const finalAllowDownload = supportsShareExtras ? allowDownloadOption ?? latestExistingGrant?.allowDownload : undefined
+      const finalAllowComment = supportsShareExtras ? allowCommentOption ?? latestExistingGrant?.allowComment : undefined
       const requestedPermissions = new Set(grantPermissions)
       if (finalAllowDownload) requestedPermissions.add('download')
       if (finalAllowComment) requestedPermissions.add('comment')
@@ -931,61 +897,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         : []
       if (activePersona && !Array.from(requestedPermissions).every((permission) => currentPermissions.includes(permission))) {
         return prev
-      }
-
-      // Snapshot collection re-shares create a new version and revoke the prior
-      // active grant so access resolves to the latest frozen asset list.
-      if (isVersionedSnapshot) {
-        const now = new Date()
-        const expiresAt = options?.expiresAt ?? (
-          options?.expiresInDays
-            ? new Date(now.getTime() + options.expiresInDays * 86400000).toISOString().slice(0, 10)
-            : undefined
-        )
-        const version = (latestExistingGrant?.version ?? 0) + 1
-        const versionNote = options?.versionNote ?? buildSnapshotVersionNote(
-          latestExistingGrant?.snapshotAssetIds,
-          snapshotAssetIdsOption,
-        )
-
-        const next = prev.map((grant) => (
-          matchingActiveGrants.some((activeGrant) => activeGrant.id === grant.id)
-            ? { ...grant, revokedAt: now.toISOString() }
-            : grant
-        ))
-
-        const newGrant: Grant = {
-          id: `grant-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          resource,
-          principal,
-          templateId: options?.permissions ? undefined : profileId,
-          permissions: grantPermissions,
-          grantedByUserId: grantorUserId,
-          grantedAt: now.toISOString().slice(0, 10),
-          expiresAt,
-          shareMode: shareModeOption,
-          snapshotAssetIds: snapshotAssetIdsOption,
-          allowDownload: allowDownloadOption,
-          allowComment: allowCommentOption,
-          version,
-          versionNote,
-          previousVersionId: latestExistingGrant?.id,
-          note: options?.note,
-        }
-
-        const auditTarget = resolveAuditTarget(principal)
-        logAuditEvent({
-          type: 'grant',
-          actorId: grantorUserId,
-          actorName: activePersona?.name ?? 'System',
-          targetUserId: auditTarget.userId,
-          targetUserName: auditTarget.name,
-          resourceId: resource.id,
-          resourceLabel: getResourceLabel(resource.id),
-          details: `Re-shared snapshot v${version} with ${auditTarget.name} on ${getResourceLabel(resource.id)}`,
-        })
-
-        return [...next, newGrant]
       }
 
       if (latestExistingGrant) {
@@ -1143,15 +1054,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     })
   }, [roleGroups, canManageGrantForState, canGrantProfileForResourceFn, setGrants])
 
-  const updateGrantShareMode = useCallback((grantId: string, mode: ShareMode) => {
-    setGrants(prev => {
-      const grant = prev.find((candidate) => candidate.id === grantId)
-      if (!grant || !canManageGrantForState(grant, prev)) return prev
-      if (grant.resource.type !== 'collection') return prev
-      return prev.map(g => g.id === grantId ? { ...g, shareMode: mode } : g)
-    })
-  }, [canManageGrantForState, setGrants])
-
   const restoreResourceGrants = useCallback((resourceId: string, snapshot: Grant[]) => {
     setGrants(prev => {
       const otherGrants = prev.filter(g => g.resource.id !== resourceId)
@@ -1227,28 +1129,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       }
     })
   }, [activeGrants, preparedAccessEngineContext, resourceRefForId])
-
-  const getVersionHistory = useCallback((resourceId: string, principalKey?: string): { version: number; note: string; date: string; grantId: string }[] => {
-    return grants
-      .filter(g => g.resource.id === resourceId && g.version !== undefined)
-      .filter(g => {
-        if (!principalKey) return true
-        const p = g.principal
-        const key = p.type === 'user'
-          ? `user:${p.userId}`
-          : p.type === 'team'
-            ? `team:${p.teamId}`
-            : `domain:${p.domainId}`
-        return key === principalKey
-      })
-      .map(g => ({
-        version: g.version!,
-        note: g.versionNote ?? '',
-        date: g.grantedAt,
-        grantId: g.id,
-      }))
-      .sort((a, b) => b.version - a.version)
-  }, [grants])
 
   // --- Per-user access summary (Phase 3) ---
   const getUserAccessSummary = useCallback((targetUserId: string): UserAccessSummary => {
@@ -1386,7 +1266,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     canManageGrant,
     grants,
     updateGrantProfile,
-    updateGrantShareMode,
     roleGroups,
     updateRoleGroup,
     renameRoleGroup,
@@ -1395,7 +1274,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     resetRoleGroups,
     getInheritedGrants,
     getCollectionRippleGrants,
-    getVersionHistory,
     canShare: canShareFn,
     canEditAcl: canEditAclFn,
     canDownload: canDownloadFn,
@@ -1452,7 +1330,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     canManageGrant,
     grants,
     updateGrantProfile,
-    updateGrantShareMode,
     roleGroups,
     updateRoleGroup,
     renameRoleGroup,
@@ -1461,7 +1338,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     resetRoleGroups,
     getInheritedGrants,
     getCollectionRippleGrants,
-    getVersionHistory,
     canShareFn,
     canEditAclFn,
     canDownloadFn,

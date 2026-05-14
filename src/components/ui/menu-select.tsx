@@ -13,7 +13,7 @@ import { Dropdown } from './dropdown'
  * - With subtitle: label + description per option
  *
  * Two sizes:
- * - compact: 10px trigger text, tight padding (inline in lists/rows)
+ * - compact: 12px trigger text, tight padding (inline in lists/rows)
  * - standard: 13px trigger text, normal padding (form fields)
  *
  * Usage:
@@ -68,7 +68,7 @@ export function MenuSelect({
   const selectedLabel = triggerLabel ?? options.find(o => o.value === value)?.label ?? value
   const hasDescriptions = options.some(o => o.description)
   const triggerClasses = cn(
-    size === 'compact' ? 'text-label-0-regular min-w-28' : 'text-body-0-regular min-w-36',
+    size === 'compact' ? 'text-label-1-regular min-w-28' : 'text-body-0-regular min-w-36',
     className,
   )
 
@@ -76,7 +76,7 @@ export function MenuSelect({
     return (
       <span className={cn(
         'inline-flex items-center justify-between gap-1.5 rounded-md bg-transparent ring-1 ring-inset ring-border-subtle dark:ring-border-inverse-subtle text-foreground-dim opacity-50',
-        size === 'compact' ? 'h-8 px-3 text-label-0-regular min-w-28' : 'h-10 px-3 text-body-0-regular min-w-36',
+        size === 'compact' ? 'h-8 px-3 text-label-1-regular min-w-28' : 'h-10 px-3 text-body-0-regular min-w-36',
         className,
       )}>
         <span className="truncate">{selectedLabel}</span>
@@ -108,7 +108,8 @@ export function MenuSelect({
               <button
                 onClick={() => { onChange(option.value); setOpen(false) }}
                 className={cn(
-                  'flex w-full items-start gap-2 px-3 py-2.5 text-left text-body-0-regular transition-colors',
+                  'flex w-full items-start gap-2 px-3 py-2.5 text-left transition-colors',
+                  size === 'compact' ? 'text-label-1-regular' : 'text-body-0-regular',
                   'hover:bg-surface-highlight',
                   isSelected && 'bg-surface-highlight',
                 )}

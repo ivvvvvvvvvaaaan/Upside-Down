@@ -1176,7 +1176,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
               grant,
               fromResourceName,
             }))}
-            title={accessModalNode.type === 'folder' ? `${accessModalNode.name} folder` : accessModalNode.name}
+            title={accessModalNode.name}
           />
         )
       })()}

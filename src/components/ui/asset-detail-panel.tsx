@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
+import { useMemo, useState, useCallback, useRef, useEffect, type ReactNode } from 'react'
 import { X, Plus, EyeOff, ChevronDown } from 'lucide-react'
 import { cn, formatDate } from '@/lib/utils'
 import { ActivityFeed } from './activity-feed'
@@ -30,6 +30,7 @@ import type { RelatedAssetGroup } from '@/lib/context-relationships'
 
 import { Modal } from './modal'
 import { PrincipalAvatar } from './principal-avatar'
+import { CollectionAccessSourceRow, FolderAccessSourceRow, getAccessSourcePeopleLabel } from './collection-access-source-row'
 import type { AssetTag } from '@/lib/data'
 import {
   normalizeUserTagLabel,
@@ -89,8 +90,73 @@ function resolvePrincipalName(principal: Grant['principal']): string {
 
 function CapabilityLabels({ grant, roleGroups }: { grant: Grant; roleGroups: RoleGroup[] }) {
   return (
-    <div className="flex-shrink-0">
+    <div className="inline-flex h-5 items-center flex-shrink-0 whitespace-nowrap">
       <GrantBadge grant={grant} roleGroups={roleGroups} />
+    </div>
+  )
+}
+
+function formatSharedAt(grantedAt?: string): string | undefined {
+  if (!grantedAt) return undefined
+  const date = new Date(grantedAt)
+  if (Number.isNaN(date.getTime())) return undefined
+  const hasTime = /[T ]\d{2}:\d{2}/.test(grantedAt)
+  if (!hasTime) return formatDate(grantedAt)
+
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+function AccessGrantRow({
+  grant,
+  roleGroups,
+  name,
+  metadata,
+  action,
+}: {
+  grant: Grant
+  roleGroups: RoleGroup[]
+  name: string
+  metadata?: string
+  action?: ReactNode
+}) {
+  const sharedAt = formatSharedAt(grant.grantedAt)
+  const sharedBy = PERSONAS.find(p => p.id === grant.grantedByUserId)
+  const nameNode = sharedAt ? (
+    <Tooltip
+      label={`Shared on ${sharedAt}`}
+      description={sharedBy ? `by ${sharedBy.name}` : undefined}
+      position="top"
+      className="min-w-0"
+    >
+      <span className="text-body-0-regular text-foreground truncate block">{name}</span>
+    </Tooltip>
+  ) : (
+    <span className="text-body-0-regular text-foreground truncate block">{name}</span>
+  )
+
+  return (
+    <div className="py-0.5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <PrincipalAvatar principal={grant.principal} />
+          {nameNode}
+        </div>
+        <div className="flex h-5 items-center justify-end gap-2 flex-shrink-0">
+          <CapabilityLabels grant={grant} roleGroups={roleGroups} />
+          {action}
+        </div>
+      </div>
+      {metadata && (
+        <span className="pl-7 text-body-0-regular text-foreground-dim block">
+          {metadata}
+        </span>
+      )}
     </div>
   )
 }
@@ -103,28 +169,23 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
   currentCollectionId?: string
 }) {
   const { getResourceGrants, roleGroups, revokeGrant, getResourceGuestLinks, revokeGuestLink } = useAccess()
-  const { collections, getCollection, removeAssetFromCollection } = useUserCollections()
+  const { collections } = useUserCollections()
   const { activePersona } = usePersona()
   const { resolveCollectionAssetIds } = useFileTree()
   const [modalOpen, setModalOpen] = useState(false)
 
-  // Separate inherited grants into structural team access vs folder shares
-  const { domainEntries, folderShareEntries } = useMemo(() => {
-    const domain: { grant: Grant; name: string; source: string }[] = []
-    const folderShares: { grant: Grant; name: string; source: string }[] = []
+  const folderAccessSources = useMemo(() => {
+    const sources = new Map<string, { id: string; name: string; grants: Grant[] }>()
     for (const { grant, fromResourceName } of inheritedGrants) {
-      const name = resolvePrincipalName(grant.principal)
-      const entry = { grant, name, source: fromResourceName }
-      // Team with a root folder = structural domain access
-      const isStructuralTeam = grant.principal.type === 'team'
-        && TEAMS.some(t => t.id === (grant.principal as { teamId: string }).teamId && t.rootFolderId)
-      if (isStructuralTeam) {
-        domain.push(entry)
+      if (!isGrantActive(grant)) continue
+      const existing = sources.get(grant.resource.id)
+      if (existing) {
+        existing.grants.push(grant)
       } else {
-        folderShares.push(entry)
+        sources.set(grant.resource.id, { id: grant.resource.id, name: fromResourceName, grants: [grant] })
       }
     }
-    return { domainEntries: domain, folderShareEntries: folderShares }
+    return Array.from(sources.values())
   }, [inheritedGrants])
 
   // Direct grants on this asset
@@ -148,42 +209,21 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
     return results
   }, [collections, assetId, getResourceGrants, resolveCollectionAssetIds])
 
-  const hasAnything = domainEntries.length > 0 || folderShareEntries.length > 0 || directGrants.length > 0 || sharedCollections.length > 0
+  const hasAnything = folderAccessSources.length > 0 || directGrants.length > 0 || sharedCollections.length > 0
 
   return (
     <section className="space-y-3">
-      {/* Department access */}
-      {domainEntries.length > 0 && (
+      {folderAccessSources.length > 0 && (
         <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-body-0-regular text-foreground-dim">Group</span>
-          </div>
-          {domainEntries.map(({ grant, name }) => (
-            <div key={grant.id} className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <PrincipalAvatar principal={grant.principal} />
-                <span className="text-body-0-regular text-foreground truncate">{name}</span>
-              </div>
-              <CapabilityLabels grant={grant} roleGroups={roleGroups} />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Folder shares — individual users/teams shared on parent folders */}
-      {folderShareEntries.length > 0 && (
-        <div className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-body-0-regular text-foreground-dim">From folder</span>
-          </div>
-          {folderShareEntries.map(({ grant, name }) => (
-            <div key={grant.id} className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <PrincipalAvatar principal={grant.principal} />
-                <span className="text-body-0-regular text-foreground truncate">{name}</span>
-              </div>
-              <CapabilityLabels grant={grant} roleGroups={roleGroups} />
-            </div>
+          <span className="text-body-0-regular text-foreground-dim">Folder</span>
+          {folderAccessSources.map((source) => (
+            <FolderAccessSourceRow
+              key={source.id}
+              name={source.name}
+              grants={source.grants}
+              roleGroups={roleGroups}
+              roleDisplay="text"
+            />
           ))}
         </div>
       )}
@@ -195,39 +235,23 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
         const sharedByName = sharedByPersona
           ? (sharedByPersona.id === activePersona?.id ? 'you' : sharedByPersona.name)
           : null
+        const collectionMetadata = sharedByName
+          ? `Shared by ${sharedByName}${sharedByGrant?.grantedAt ? ` on ${formatDate(sharedByGrant.grantedAt)}` : ''}`
+          : undefined
         return (
         <div key={collection.id} className="bg-surface-low rounded-lg px-3 py-2.5 hover:bg-surface-mid transition-colors space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-body-0-regular text-foreground">
-              {collection.id === currentCollectionId
-                ? <span className="text-foreground-dim">This collection</span>
-                : <span className="text-foreground-dim">{collection.name}</span>
-              }
-            </span>
-            {collection.id !== currentCollectionId && getCollection(collection.id) && (
-              <button
-                onClick={() => removeAssetFromCollection(collection.id, assetId)}
-                className="text-body-0-regular text-foreground-system-error hover:opacity-80 transition-colors"
-              >
-                Revoke
-              </button>
-            )}
-          </div>
-          {grants.map(grant => {
-            const name = resolvePrincipalName(grant.principal)
-            return (
-              <div key={grant.id} className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <PrincipalAvatar principal={grant.principal} />
-                  <span className="text-body-0-regular text-foreground truncate">{name}</span>
-                </div>
-                <CapabilityLabels grant={grant} roleGroups={roleGroups} />
-              </div>
-            )
-          })}
-          {sharedByName && (
-            <span className="text-label-0-regular text-foreground-dim">
-              Shared by {sharedByName}{sharedByGrant?.grantedAt ? ` on ${formatDate(sharedByGrant.grantedAt)}` : ''}
+          <span className="text-body-0-regular text-foreground-dim truncate block">
+            {collection.id === currentCollectionId ? 'This collection' : 'Collection'}
+          </span>
+          <CollectionAccessSourceRow
+            name={collection.name}
+            grants={grants}
+            roleGroups={roleGroups}
+            roleDisplay="text"
+          />
+          {collectionMetadata && (
+            <span className="text-body-0-regular text-foreground-dim block">
+              {collectionMetadata}
             </span>
           )}
         </div>
@@ -240,30 +264,21 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
           <span className="text-body-0-regular text-foreground-dim">Released</span>
           {directGrants.filter(g => g.principal.type === 'domain').map(grant => {
             const name = resolvePrincipalName(grant.principal)
-            const grantSharedBy = PERSONAS.find(p => p.id === grant.grantedByUserId)?.name
             return (
-              <div key={grant.id} className="space-y-0.5">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <PrincipalAvatar principal={grant.principal} />
-                    <span className="text-body-0-regular text-foreground truncate">{name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <CapabilityLabels grant={grant} roleGroups={roleGroups} />
+              <AccessGrantRow
+                key={grant.id}
+                grant={grant}
+                roleGroups={roleGroups}
+                name={name}
+                action={(
                   <button
                     onClick={() => revokeGrant(grant.id)}
-                    className="text-body-0-regular text-foreground-system-error hover:opacity-80 transition-colors"
+                    className="inline-flex h-5 items-center text-body-0-regular text-foreground-system-error hover:opacity-80 transition-colors"
                   >
-                    Revoke
+                    Remove
                   </button>
-                </div>
-              </div>
-              {grantSharedBy && (
-                <span className="text-label-0-regular text-foreground-subtle pl-8">
-                  by {grantSharedBy}{grant.grantedAt ? ` on ${grant.grantedAt}` : ''}
-                </span>
-              )}
-              </div>
+                )}
+              />
             )
           })}
         </div>
@@ -275,30 +290,21 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
           <span className="text-body-0-regular text-foreground-dim">Shared directly</span>
           {directGrants.filter(g => g.principal.type !== 'domain').map(grant => {
             const name = resolvePrincipalName(grant.principal)
-            const grantSharedBy = PERSONAS.find(p => p.id === grant.grantedByUserId)?.name
             return (
-              <div key={grant.id} className="space-y-0.5">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <PrincipalAvatar principal={grant.principal} />
-                    <span className="text-body-0-regular text-foreground truncate">{name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <CapabilityLabels grant={grant} roleGroups={roleGroups} />
+              <AccessGrantRow
+                key={grant.id}
+                grant={grant}
+                roleGroups={roleGroups}
+                name={name}
+                action={(
                   <button
                     onClick={() => revokeGrant(grant.id)}
-                    className="text-body-0-regular text-foreground-system-error hover:opacity-80 transition-colors"
+                    className="inline-flex h-5 items-center text-body-0-regular text-foreground-system-error hover:opacity-80 transition-colors"
                   >
-                    Revoke
+                    Remove
                   </button>
-                </div>
-              </div>
-              {grantSharedBy && (
-                <span className="text-label-0-regular text-foreground-subtle pl-8">
-                  by {grantSharedBy}{grant.grantedAt ? ` on ${grant.grantedAt}` : ''}
-                </span>
-              )}
-              </div>
+                )}
+              />
             )
           })}
         </div>
@@ -321,7 +327,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
                   onClick={() => revokeGuestLink(link.id)}
                   className="text-body-0-regular text-foreground-system-error hover:opacity-80 transition-colors flex-shrink-0"
                 >
-                  Revoke
+                  Remove
                 </button>
               </div>
             ))}

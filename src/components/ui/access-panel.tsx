@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef, type ReactNode } from 'react'
 import { X, Search, Info, Link2, ShieldOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Tooltip } from './tooltip'
 import { Input } from './input'
 import { Textarea } from './textarea'
 import { Button } from './button'
@@ -12,39 +11,36 @@ import { MenuSelect } from './menu-select'
 import { Avatar } from './avatar'
 import { DepartmentAvatar, ReleaseDomainAvatar } from './department-avatar'
 import { Toggle } from './switch'
-import { GrantBadge } from './grant-badge'
 import { Modal } from './modal'
 import { Tabs, TabsList, Tab } from './tabs'
 import { Card } from './card'
 import { Popover, PopoverAnchor, PopoverContent } from './popover'
+import {
+  CollectionAccessSourceRow,
+  FolderAccessSourceRow,
+  getAccessSourcePeopleLabel,
+} from './collection-access-source-row'
 import { useAccess, useFileTree, usePersona } from '@/hooks'
 import type { Block, Grant, AccessProfileId, ResourceRef, PrincipalRef } from '@/hooks/useAccess'
 import { useToast } from './toast'
-import { getRoleGroup, roleGroupOptions } from '@/lib/grants'
+import {
+  isGrantActive,
+  profileLabel,
+  RELEASE_DOMAINS,
+  roleLabelForResource,
+  roleOptionsForResource,
+} from '@/lib/grants'
 import type { RoleGroup, ShareMode } from '@/lib/grants'
 import { buildAccessDisplayEntries } from './access-display'
 import type { AccessDisplayEntry } from './access-display'
 import { buildShareSearchResults } from '@/lib/share-search'
 import type { GuestLinkSeed } from '@/lib/scenario'
 import { getAssetIdVariants } from '@/lib/data'
-import { isGrantActive } from '@/lib/grants'
 import { useUserCollections } from '@/hooks/useUserCollections'
 import { useSmartCollections } from '@/hooks'
 import { TEAMS } from '@/lib/teams'
 import { PERSONAS } from '@/lib/personas'
-import { profileLabel, RELEASE_DOMAINS } from '@/lib/grants'
 import type { DomainId } from '@/components/department/types'
-
-function buildVersionLabel(grant: Grant): string | undefined {
-  const parts: string[] = []
-  if (grant.version) {
-    parts.push(`v${grant.version}${grant.versionNote ? ` \u2014 ${grant.versionNote}` : ''}`)
-  }
-  if (grant.lockedToVersion != null) {
-    parts.push(`Locked to v${grant.lockedToVersion}`)
-  }
-  return parts.length > 0 ? parts.join(' · ') : undefined
-}
 
 interface AccessPanelProps {
   resourceId: string
@@ -62,26 +58,7 @@ interface AccessPanelProps {
   ) => void
   /** Lets the parent swap its modal/panel header — used when the panel takes
    *  over the chrome for a sub-flow (e.g. the two-step Grant access add). */
-  onHeaderChange?: (override: { title: string; onBack: () => void } | null) => void
-}
-
-function roleOptionsForResource(roleGroups: RoleGroup[], resourceType?: Grant['resource']['type']) {
-  const options = roleGroupOptions(roleGroups)
-  // Folders intentionally surface only the two endpoints — Full Access for
-  // editors and View only for viewers.
-  if (resourceType === 'folder') {
-    return options.filter((option) => option.value === 'manager' || option.value === 'viewer')
-  }
-  // Asset shares drop Edit and Upload — they're container-level concepts
-  // that don't apply to a single asset.
-  if (resourceType === 'asset' || resourceType === 'cut') {
-    return options.filter((option) => option.value === 'manager' || option.value === 'downloader' || option.value === 'viewer')
-  }
-  return options
-}
-
-function roleLabelForResource(roleGroups: RoleGroup[], profileId: AccessProfileId, _resourceType?: Grant['resource']['type']) {
-  return getRoleGroup(roleGroups, profileId)?.name ?? profileId
+  onHeaderChange?: (override: { title: string; subtitle?: string; onBack: () => void } | null) => void
 }
 
 const SHARE_MODE_OPTIONS: { value: ShareMode; label: string; description: string }[] = [
@@ -103,6 +80,27 @@ function ShareModeSelect({ mode, onChange }: { mode: ShareMode; onChange: (mode:
       onChange={(value) => onChange(value as ShareMode)}
     />
   )
+}
+
+function ShareModeState({ mode }: { mode: ShareMode }) {
+  if (mode === 'snapshot') return null
+
+  return (
+    <span className="text-body-0-regular text-foreground-dim">
+      Auto-update
+    </span>
+  )
+}
+
+function getGrantRoleTriggerLabel(grant: Grant, roleGroups: RoleGroup[]) {
+  const roleName = grant.templateId ? roleLabelForResource(roleGroups, grant.templateId) : 'Custom'
+  let extras = 0
+  if (grant.resource.type !== 'folder') {
+    if (grant.allowDownload) extras++
+    if (grant.allowComment) extras++
+  }
+  if (grant.lockedToVersion != null) extras++
+  return extras > 0 ? `${roleName} +${extras}` : roleName
 }
 
 /** Visual radio row used in the two-step Add Access flow. */
@@ -140,7 +138,7 @@ function PermissionRadio({
   )
 }
 
-function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onRemove, onBlock, onUpdateProfile, onUpdateShareMode, onReshareSnapshot, onSetMemberOverride, name, subtitle, members, domainId, versionLabel }: {
+function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onRemove, onBlock, onUpdateProfile, onSetMemberOverride, name, subtitle, members, domainId }: {
   grant: Grant
   readOnly: boolean
   roleGroups: RoleGroup[]
@@ -149,14 +147,11 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
   onRemove?: (grantId: string) => void
   onBlock?: (grantId: string) => void
   onUpdateProfile?: (grantId: string, profileId: AccessProfileId) => void
-  onUpdateShareMode?: (grantId: string, mode: ShareMode) => void
-  onReshareSnapshot?: (grant: Grant) => void
   onSetMemberOverride?: (memberUserId: string, profileId: AccessProfileId, existingGrantId?: string) => void
   name: string
-  subtitle?: string
+  subtitle?: ReactNode
   members?: AccessDisplayEntry['members']
   domainId?: DomainId
-  versionLabel?: string
 }) {
   const principal = grant.principal
   const canEdit = !readOnly
@@ -190,35 +185,33 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {!hideGroupRoleLabel && (canEdit && onUpdateProfile ? (() => {
-            const roleName = roleLabelForResource(roleGroups, grant.templateId ?? 'viewer', grant.resource.type)
-            // Share mode is surfaced in its own dropdown next to this one, so
-            // don't double-count it in the role label's "+N" extras suffix.
-            let extras = 0
-            if (grant.resource.type !== 'folder') {
-              if (grant.allowDownload) extras++
-              if (grant.allowComment) extras++
-            }
-            if (grant.lockedToVersion != null) extras++
-            const label = extras > 0 ? `${roleName} +${extras}` : roleName
-            const showGrantOptions = grant.resource.type === 'collection' && grant.shareMode !== undefined
+            const showShareModeState = grant.resource.type === 'collection' && grant.shareMode !== undefined
             return (
             <>
+              {showShareModeState && grant.shareMode !== undefined && (
+                <ShareModeState mode={grant.shareMode} />
+              )}
               <RoleSelect
                 options={roleOptionsForResource(roleGroups, grant.resource.type)}
                 value={grant.templateId ?? 'viewer'}
                 onChange={(value) => onUpdateProfile(grant.id, value as AccessProfileId)}
-                triggerLabel={label}
+                triggerLabel={getGrantRoleTriggerLabel(grant, roleGroups)}
               />
-              {showGrantOptions && grant.shareMode !== undefined && onUpdateShareMode && (
-                <ShareModeSelect
-                  mode={grant.shareMode}
-                  onChange={(mode) => onUpdateShareMode(grant.id, mode)}
-                />
-              )}
             </>
             )
           })() : (
-            <GrantBadge grant={grant} roleGroups={roleGroups} />
+            <>
+              {grant.resource.type === 'collection' && grant.shareMode !== undefined && (
+                <ShareModeState mode={grant.shareMode} />
+              )}
+              <RoleSelect
+                options={roleOptionsForResource(roleGroups, grant.resource.type)}
+                value={grant.templateId ?? 'viewer'}
+                onChange={() => {}}
+                triggerLabel={getGrantRoleTriggerLabel(grant, roleGroups)}
+                disabled
+              />
+            </>
           ))}
           {canEdit && onRemove && (
             <Button variant="secondary" compact onClick={() => onRemove(grant.id)}>
@@ -237,11 +230,9 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
         if (grant.resource.type !== 'folder') {
           if (grant.allowDownload) lines.push({ label: 'Download', value: 'Yes' })
           if (grant.allowComment) lines.push({ label: 'Comment', value: 'Yes' })
-          if (grant.shareMode) lines.push({ label: 'Sharing mode', value: grant.shareMode === 'live' ? 'Auto-update' : 'Snapshot' })
         }
         if (grant.lockedToVersion != null) lines.push({ label: 'Version', value: `Locked to v${grant.lockedToVersion}` })
-        const showReshare = canEdit && grant.resource.type === 'collection' && grant.shareMode === 'snapshot' && onReshareSnapshot
-        if (lines.length === 0 && !versionLabel) return null
+        if (lines.length === 0) return null
         return (
           <div className="pl-8 space-y-0.5">
             {lines.map((line) => (
@@ -250,22 +241,6 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
                 <span className="text-foreground-subtle text-right truncate">{line.value}</span>
               </div>
             ))}
-            {versionLabel && (
-              <div className="flex justify-between text-label-0-regular gap-4">
-                <span className="text-foreground-dim whitespace-nowrap">Version</span>
-                <span className="flex items-center gap-2 min-w-0">
-                  <span className="text-foreground-subtle truncate">{versionLabel}</span>
-                  {showReshare && (
-                    <button
-                      onClick={() => onReshareSnapshot!(grant)}
-                      className="text-foreground-dim hover:text-foreground transition-colors whitespace-nowrap"
-                    >
-                      Re-share
-                    </button>
-                  )}
-                </span>
-              </div>
-            )}
           </div>
         )
       })()}
@@ -299,7 +274,7 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
                       ...(member.grantId ? [{ value: '__inherit__', label: 'Use group access', description: 'Remove local override', separated: true }] : []),
                     ]}
                     value={member.roleValue ?? grant.templateId ?? 'viewer'}
-                    triggerLabel={roleLabelForResource(roleGroups, member.roleValue ?? grant.templateId ?? 'viewer', grant.resource.type)}
+                    triggerLabel={roleLabelForResource(roleGroups, member.roleValue ?? grant.templateId ?? 'viewer')}
                     onChange={(value) => {
                       if (value === '__inherit__') {
                         if (member.grantId && onRemove) onRemove(member.grantId)
@@ -482,7 +457,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     createGrant,
     revokeGrant,
     updateGrantProfile,
-    updateGrantShareMode,
     roleGroups,
     canShare,
     canEditAcl,
@@ -521,9 +495,10 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   // via the dropdowns on each row.
   type AddingPrincipal = { principal: PrincipalRef; name: string; kind: 'user' | 'team' | 'domain'; key: string }
   const [addingPrincipals, setAddingPrincipals] = useState<AddingPrincipal[]>([])
-  const [addingRole, setAddingRole] = useState<AccessProfileId>('downloader')
+  const [addingRole, setAddingRole] = useState<AccessProfileId | null>(null)
   const [addingShareMode, setAddingShareMode] = useState<ShareMode>('snapshot')
   const [addingNote, setAddingNote] = useState('')
+  const [addingRoleWarning, setAddingRoleWarning] = useState(false)
   const addingActive = addingPrincipals.length > 0
   const [shareNote, setShareNote] = useState('')
   const [showReleaseWarning, setShowReleaseWarning] = useState(false)
@@ -544,8 +519,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
   // Dirty tracking — snapshot grants on first change, restore on cancel
   const [dirty, setDirty] = useState(false)
-  const grantsSnapshotRef = useRef<Grant[] | null>(null)
-  const guestLinksSnapshotRef = useRef<GuestLinkSeed[] | null>(null)
+  const grantsSnapshotRef = useRef<Map<string, Grant[]> | null>(null)
+  const guestLinksSnapshotRef = useRef<Map<string, GuestLinkSeed[]> | null>(null)
 
   const handleSave = () => {
     grantsSnapshotRef.current = null
@@ -556,10 +531,14 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
   const handleCancel = () => {
     if (grantsSnapshotRef.current) {
-      restoreResourceGrants(resourceId, grantsSnapshotRef.current)
+      grantsSnapshotRef.current.forEach((snapshot, id) => {
+        restoreResourceGrants(id, snapshot)
+      })
     }
     if (guestLinksSnapshotRef.current) {
-      restoreResourceGuestLinks(resourceId, guestLinksSnapshotRef.current)
+      guestLinksSnapshotRef.current.forEach((snapshot, id) => {
+        restoreResourceGuestLinks(id, snapshot)
+      })
     }
     grantsSnapshotRef.current = null
     guestLinksSnapshotRef.current = null
@@ -567,25 +546,49 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     onDirtyChange?.(false, { save: handleSave, cancel: handleCancel })
   }
 
-  const markDirty = () => {
+  const markDirty = (targets?: ResourceRef[]) => {
+    const ids = new Set<string>([resourceId])
+    batchResourceRefs?.forEach((target) => ids.add(target.id))
+    targets?.forEach((target) => ids.add(target.id))
+
+    if (!grantsSnapshotRef.current) grantsSnapshotRef.current = new Map()
+    if (!guestLinksSnapshotRef.current) guestLinksSnapshotRef.current = new Map()
+
+    ids.forEach((id) => {
+      if (!grantsSnapshotRef.current!.has(id)) {
+        grantsSnapshotRef.current!.set(id, getResourceGrants(id).map(g => ({ ...g })))
+      }
+      if (!guestLinksSnapshotRef.current!.has(id)) {
+        guestLinksSnapshotRef.current!.set(id, getResourceGuestLinks(id).map((link) => ({ ...link })))
+      }
+    })
+
     if (!dirty) {
-      grantsSnapshotRef.current = grants.map(g => ({ ...g }))
-      guestLinksSnapshotRef.current = getResourceGuestLinks(resourceId).map((link) => ({ ...link }))
       setDirty(true)
       onDirtyChange?.(true, { save: handleSave, cancel: handleCancel })
     }
   }
 
   // Role + share mode + expiration
-  const addAsRole: AccessProfileId = 'viewer'
   const shareMode: ShareMode = 'snapshot'
   const expires = false
   const expiresInDays = 7
   const { getCollection, collections, createCollection } = useUserCollections()
   const { getCollection: getSmartCollection, filterAssets, scopedAssets } = useSmartCollections()
   const isCollectionResource = resourceRef?.type === 'collection'
-  const isFolderResource = resourceRef?.type === 'folder'
   const isAssetResource = resourceRef?.type === 'asset' || resourceRef?.type === 'cut'
+  const resolveShareTarget = (rawTarget: ResourceRef): ResourceRef => {
+    if (rawTarget.type !== 'smart-collection') return rawTarget
+
+    const smartColl = getSmartCollection(rawTarget.id)
+    if (!smartColl) return rawTarget
+
+    const assets = filterAssets(scopedAssets, smartColl.id)
+    const curated = createCollection(smartColl.name, assets.map(asset => asset.id), {
+      sourceSmartCollectionId: smartColl.id,
+    })
+    return { id: curated.id, type: 'collection' }
+  }
 
   // Collection-mediated access for assets — "Shared via" section
   // Exclude grants whose principals already appear in inherited/domain grants
@@ -664,16 +667,14 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     if (principal.type === 'user' && principal.userId === activePersona?.id) return
 
     // Smart defaults based on recipient type
-    let defaultRole: AccessProfileId = addAsRole
+    const defaultRole: AccessProfileId = 'viewer'
     let defaultShareMode: ShareMode = shareMode
 
     if (kind === 'domain') {
-      defaultRole = 'viewer'
       defaultShareMode = 'live'
     } else if (principal.type === 'user') {
       const persona = PERSONAS.find(p => p.id === principal.userId)
       if (persona?.role === 'vendor') {
-        defaultRole = isFolderResource ? 'manager' : 'viewer'
         defaultShareMode = 'snapshot'
       }
     }
@@ -709,12 +710,13 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     const isFirstAdd = addingPrincipals.length === 0
     setAddingPrincipals(prev => [...prev, { principal, name, kind, key }])
     if (isFirstAdd) {
-      setAddingRole(defaultRole)
+      setAddingRole(null)
+      setAddingRoleWarning(false)
       setAddingShareMode(defaultShareMode)
       onPendingChange?.(true, {
         confirm: () => commitAddRef.current(),
         cancel: () => cancelAdd(),
-        confirmLabel: 'Share',
+        confirmLabel: 'Add',
       })
       onHeaderChange?.({ title: 'Grant access', onBack: () => cancelAdd() })
     }
@@ -724,6 +726,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
   const cancelAdd = () => {
     setAddingPrincipals([])
+    setAddingRole(null)
+    setAddingRoleWarning(false)
     setAddingNote('')
     setQuery('')
     setShowDropdown(false)
@@ -736,6 +740,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       const next = prev.filter(p => p.key !== key)
       // Removing the last chip exits step 2 entirely.
       if (next.length === 0) {
+        setAddingRole(null)
+        setAddingRoleWarning(false)
         onPendingChange?.(false, { confirm: () => {}, cancel: () => {} })
         onHeaderChange?.(null)
       }
@@ -746,24 +752,11 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const commitPendingGrants = () => {
     const rawTargets = isBatch && batchResourceRefs ? batchResourceRefs : (resourceRef ? [resourceRef] : [])
     if (rawTargets.length === 0) return
+    const targets = rawTargets.map(resolveShareTarget)
+    markDirty(targets)
 
     for (const pending of pendingGrants) {
-      for (const rawTarget of rawTargets) {
-        let target = rawTarget
-
-        // Smart collections get snapshotted into curated collections
-        if (rawTarget.type === 'smart-collection') {
-          const smartColl = getSmartCollection(rawTarget.id)
-          if (smartColl) {
-            const assets = filterAssets(scopedAssets, smartColl.id)
-            const assetIds = assets.map(a => a.id)
-            const curated = createCollection(smartColl.name, assetIds, {
-              sourceSmartCollectionId: smartColl.id,
-            })
-            target = { id: curated.id, type: 'collection' }
-          }
-        }
-
+      for (const target of targets) {
         const targetGrants = getResourceGrants(target.id)
         if (pending.principal.type === 'user' && targetGrants.some(g => g.principal.type === 'user' && g.principal.userId === (pending.principal as { userId: string }).userId)) continue
         if (pending.principal.type === 'team' && targetGrants.some(g => g.principal.type === 'team' && g.principal.teamId === (pending.principal as { teamId: string }).teamId)) continue
@@ -782,37 +775,24 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         })
       }
     }
-    const names = pendingGrants.map(p => p.name)
     setPendingGrants([])
     setShareNote('')
     onPendingChange?.(false, { confirm: () => {}, cancel: () => {} })
-    if (names.length === 1) {
-      showToast(`Shared with ${names[0]}`)
-    } else if (names.length > 1) {
-      showToast(`Shared with ${names.length} people`)
-    }
   }
 
   const commitAdd = () => {
     if (addingPrincipals.length === 0) return
+    if (!addingRole) {
+      setAddingRoleWarning(true)
+      return
+    }
     const rawTargets = isBatch && batchResourceRefs ? batchResourceRefs : (resourceRef ? [resourceRef] : [])
     if (rawTargets.length === 0) return
+    const targets = rawTargets.map(resolveShareTarget)
+    markDirty(targets)
 
     for (const adding of addingPrincipals) {
-      for (const rawTarget of rawTargets) {
-        let target = rawTarget
-        if (rawTarget.type === 'smart-collection') {
-          const smartColl = getSmartCollection(rawTarget.id)
-          if (smartColl) {
-            const assets = filterAssets(scopedAssets, smartColl.id)
-            const assetIds = assets.map(a => a.id)
-            const curated = createCollection(smartColl.name, assetIds, {
-              sourceSmartCollectionId: smartColl.id,
-            })
-            target = { id: curated.id, type: 'collection' }
-          }
-        }
-
+      for (const target of targets) {
         const targetGrants = getResourceGrants(target.id)
         if (adding.principal.type === 'user' && targetGrants.some(g => g.principal.type === 'user' && g.principal.userId === (adding.principal as { userId: string }).userId)) continue
         if (adding.principal.type === 'team' && targetGrants.some(g => g.principal.type === 'team' && g.principal.teamId === (adding.principal as { teamId: string }).teamId)) continue
@@ -830,9 +810,9 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         })
       }
     }
-    const names = addingPrincipals.map(p => p.name)
-    showToast(names.length === 1 ? `Shared with ${names[0]}` : `Shared with ${names.length} people`)
     setAddingPrincipals([])
+    setAddingRole(null)
+    setAddingRoleWarning(false)
     setAddingNote('')
     setQuery('')
     onPendingChange?.(false, { confirm: () => {}, cancel: () => {} })
@@ -948,27 +928,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     createGrant(resourceRef, { type: 'user', userId: memberUserId }, profileId)
   }
 
-  const handleUpdateShareMode = (grantId: string, mode: ShareMode) => {
-    markDirty()
-    updateGrantShareMode(grantId, mode)
-  }
-
-  const handleReshareSnapshot = (grant: Grant) => {
-    if (grant.resource.type !== 'collection' || grant.shareMode !== 'snapshot') return
-
-    const collection = getCollection(grant.resource.id)
-    if (!collection) return
-
-    markDirty()
-    createGrant(grant.resource, grant.principal, grant.templateId ?? 'viewer', {
-      permissions: grant.templateId ? undefined : grant.permissions,
-      shareMode: 'snapshot',
-      snapshotAssetIds: resolveCollectionAssetIds(collection),
-      expiresAt: grant.expiresAt,
-    })
-    showToast(`Re-shared "${collection.name}" as a new snapshot version.`)
-  }
-
   const handleBlockUser = (grantId: string) => {
     const grant = grants.find(g => g.id === grantId)
     if (!grant || grant.principal.type !== 'user') return
@@ -998,63 +957,18 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
       sourceName: undefined as string | undefined,
     }))
 
-    const inheritedRaw = (inheritedGrants ?? []).map(({ grant, fromResourceName }) => ({
-      key: `inherited-${grant.id}-${fromResourceName}`,
-      grant,
-      readOnly: true,
-      sourceName: fromResourceName,
-    }))
-
     return buildAccessDisplayEntries(
-      [...directRaw, ...inheritedRaw],
+      directRaw,
       roleGroups,
       activePersona?.id,
     )
-  }, [grants, canManageGrant, inheritedGrants, roleGroups, activePersona?.id])
+  }, [grants, canManageGrant, roleGroups, activePersona?.id])
 
   const directEntries = useMemo(() => allEntries.filter(e => !e.sourceName), [allEntries])
-  const inheritedEntries = useMemo(() => allEntries.filter(e => !!e.sourceName), [allEntries])
-
-  const inheritedTeamMemberIds = useMemo(() => {
-    const memberIds = new Set<string>()
-    for (const entry of inheritedEntries) {
-      if (entry.grant.principal.type !== 'team') continue
-      entry.members?.forEach((member) => memberIds.add(member.id))
-    }
-    return memberIds
-  }, [inheritedEntries])
-
-  const localUserOverrides = useMemo(() => {
-    const overrides = new Map<string, Grant>()
-    for (const grant of grants) {
-      if (!isGrantActive(grant) || grant.principal.type !== 'user') continue
-      overrides.set(grant.principal.userId, grant)
-    }
-    return overrides
-  }, [grants])
-
-  const applyLocalMemberOverrides = (entry: AccessDisplayEntry): AccessDisplayEntry => ({
-    ...entry,
-    members: entry.members?.map((member) => {
-      const override = localUserOverrides.get(member.id)
-      if (!override) return member
-      return {
-        ...member,
-        grantId: override.id,
-        roleValue: override.templateId,
-        roleLabel: override.templateId
-          ? roleLabelForResource(roleGroups, override.templateId, resourceRef?.type)
-          : undefined,
-      }
-    }),
-  })
 
   const userEntries = useMemo(() =>
-    directEntries.filter((entry) => {
-      if (entry.grant.principal.type !== 'user') return false
-      return !inheritedTeamMemberIds.has(entry.grant.principal.userId)
-    }),
-    [directEntries, inheritedTeamMemberIds],
+    directEntries.filter((entry) => entry.grant.principal.type === 'user'),
+    [directEntries],
   )
   const teamEntries = useMemo(() =>
     directEntries.filter(e => e.grant.principal.type === 'team'),
@@ -1128,12 +1042,12 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     </div>
   )
 
-  const haveAccessHeader = (userEntries.length > 0 || teamEntries.length > 0 || sharedViaCollections.length > 0) && (
+  const haveAccessHeader = (userEntries.length > 0 || teamEntries.length > 0) && (
     <h3 className="text-body-0-bold text-foreground-dim">Have access</h3>
   )
 
   const userEntriesSection = userEntries.length > 0 && (
-    <div className="space-y-0">
+    <div className="space-y-2">
         {userEntries.map((entry) => (
           <GrantRow
             key={entry.key}
@@ -1147,9 +1061,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
             onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
             onBlock={!entry.sourceName && !entry.readOnly && isAdmin && entry.grant.principal.type === 'user' ? handleBlockUser : undefined}
             onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
-            onUpdateShareMode={!entry.readOnly ? handleUpdateShareMode : undefined}
-            onReshareSnapshot={!entry.sourceName && !entry.readOnly ? handleReshareSnapshot : undefined}
-            versionLabel={buildVersionLabel(entry.grant)}
           />
         ))}
     </div>
@@ -1189,7 +1100,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   )
 
   const teamEntriesSection = teamEntries.length > 0 && (
-    <div className="space-y-0">
+    <div className="space-y-2">
       {teamEntries.map((entry) => (
         <GrantRow
           key={entry.key}
@@ -1204,79 +1115,58 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           domainId={entry.domainId}
           onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
           onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
-          onUpdateShareMode={!entry.readOnly ? handleUpdateShareMode : undefined}
-          onReshareSnapshot={!entry.sourceName && !entry.readOnly ? handleReshareSnapshot : undefined}
-          versionLabel={buildVersionLabel(entry.grant)}
         />
       ))}
     </div>
   )
 
-  const inheritedEntriesSection = inheritedEntries.length > 0 && (
-    <div className="space-y-0">
-      <h3 className="text-body-0-bold text-foreground-dim pb-2">Access from parent folders</h3>
-      {inheritedEntries.map((entry) => {
-        const entryWithOverrides = applyLocalMemberOverrides(entry)
-        return (
-          <GrantRow
-            key={entry.key}
-            grant={entryWithOverrides.grant}
-            readOnly
-            roleGroups={roleGroups}
-            expanded={expandedGroups.has(entry.grant.id)}
-            onToggleExpanded={() => toggleGroupExpanded(entry.grant.id)}
-            name={entryWithOverrides.name}
-            subtitle={entryWithOverrides.subtitle}
-            members={entryWithOverrides.members}
-            domainId={entryWithOverrides.domainId}
-            onRemove={!readOnly && canManageAllGrants ? handleRevokeGrant : undefined}
-            onSetMemberOverride={!readOnly && canManageAllGrants ? handleSetMemberOverride : undefined}
-            versionLabel={buildVersionLabel(entry.grant)}
-          />
-        )
-      })}
+  const inheritedFolderSources = useMemo(() => {
+    const sources = new Map<string, { id: string; name: string; grants: Grant[] }>()
+    for (const { grant, fromResourceName } of inheritedGrants ?? []) {
+      if (!isGrantActive(grant)) continue
+      const id = grant.resource.id
+      const existing = sources.get(id)
+      if (existing) {
+        existing.grants.push(grant)
+      } else {
+        sources.set(id, { id, name: fromResourceName, grants: [grant] })
+      }
+    }
+    return Array.from(sources.values())
+  }, [inheritedGrants])
+
+  const inheritedEntriesSection = inheritedFolderSources.length > 0 && (
+    <div>
+      <div className="pb-2">
+        <h3 className="text-body-0-bold text-foreground-dim">Access from parent folders</h3>
+      </div>
+      {inheritedFolderSources.map((source) => (
+        <FolderAccessSourceRow
+          key={source.id}
+          name={source.name}
+          grants={source.grants}
+          roleGroups={roleGroups}
+        />
+      ))}
     </div>
   )
 
-  const sharedViaCollectionsSection = sharedViaCollections.map(({ collection, grants: collGrants }) => {
-    const collRef: ResourceRef = { id: collection.id, type: 'collection' }
-    const canManageCollection = canEditAcl(collRef)
-    const canShareCollection = canShare(collRef)
-    return (
-      <div key={collection.id} className="space-y-1">
-        <h3 className="text-body-0-bold text-foreground-dim">Via <a href={`/nextgen/collections/${collection.id}`} className="hover:text-foreground transition-colors underline">{collection.name}</a></h3>
-        <div className="space-y-0">
-          {collGrants.map(grant => {
-            const principal = grant.principal
-            const name = principal.type === 'user'
-              ? PERSONAS.find(p => p.id === principal.userId)?.name ?? principal.userId
-              : principal.type === 'team'
-                ? TEAMS.find(t => t.id === principal.teamId)?.name ?? principal.teamId
-                : (() => { const d = RELEASE_DOMAINS.find(d => d.id === principal.domainId); return d ? `${d.name} (${d.group})` : principal.domainId })()
-            const domId = principal.type === 'team'
-              ? TEAMS.find(t => t.id === principal.teamId)?.domainId
-              : principal.type === 'user'
-                ? PERSONAS.find(p => p.id === principal.userId)?.domainId
-                : undefined
-            const canRevoke = canManageCollection || (canShareCollection && activePersona && grant.grantedByUserId === activePersona.id)
-            return (
-              <GrantRow
-                key={grant.id}
-                grant={grant}
-                readOnly={!canRevoke}
-                roleGroups={roleGroups}
-                name={name}
-                domainId={domId}
-                onRemove={canRevoke ? (id) => { markDirty(); revokeGrant(id) } : undefined}
-                onUpdateProfile={canRevoke ? (id, pid) => { markDirty(); updateGrantProfile(id, pid) } : undefined}
-                onReshareSnapshot={canRevoke ? handleReshareSnapshot : undefined}
-              />
-            )
-          })}
-        </div>
+  const sharedViaCollectionsSection = sharedViaCollections.length > 0 && (
+    <div>
+      <div className="pb-2">
+        <h3 className="text-body-0-bold text-foreground-dim">Access from collections</h3>
       </div>
-    )
-  })
+      {sharedViaCollections.map(({ collection, grants: collGrants }) => (
+        <CollectionAccessSourceRow
+          key={collection.id}
+          name={collection.name}
+          grants={collGrants}
+          roleGroups={roleGroups}
+          metadata={getAccessSourcePeopleLabel(collGrants)}
+        />
+      ))}
+    </div>
+  )
 
   const pendingPeople = pendingGrants.filter(p => p.kind !== 'domain')
   const pendingPeopleSection = pendingPeople.length > 0 && (
@@ -1323,7 +1213,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     </div>
   )
 
-  const peopleEmptyState = inheritedEntries.length === 0 && userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && sharedViaCollections.length === 0 && pendingPeopleCount === 0 && (
+  const peopleEmptyState = inheritedFolderSources.length === 0 && userEntries.length === 0 && teamEntries.length === 0 && getResourceGuestLinks(resourceId).length === 0 && sharedViaCollections.length === 0 && pendingPeopleCount === 0 && (
     <p className="text-body-0-regular text-foreground-subtle py-2">Use the search above to share with people or teams.</p>
   )
 
@@ -1521,9 +1411,17 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               selected={addingRole === option.value}
               title={option.label}
               description={ROLE_DESCRIPTIONS[option.value]}
-              onClick={() => setAddingRole(option.value as AccessProfileId)}
+              onClick={() => {
+                setAddingRole(option.value as AccessProfileId)
+                setAddingRoleWarning(false)
+              }}
             />
           ))}
+          {addingRoleWarning && (
+            <p role="alert" className="text-label-1-regular text-foreground-system-error">
+              Choose an access level before sharing
+            </p>
+          )}
         </div>
 
         {isCollectionResource && (
@@ -1582,12 +1480,15 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           {canSeeFullAccessList ? (
             <div className="space-y-4">
               {inheritedEntriesSection}
+              {isAssetResource && sharedViaCollectionsSection}
               {(userEntries.length > 0 || teamEntries.length > 0 || resourceBlocks.length > 0) && (
                 <div>
                   {haveAccessHeader && <div className="pb-2">{haveAccessHeader}</div>}
-                  {userEntriesSection}
-                  {blockedSection}
-                  {teamEntriesSection}
+                  <div className="space-y-2">
+                    {userEntriesSection}
+                    {blockedSection}
+                    {teamEntriesSection}
+                  </div>
                 </div>
               )}
             </div>
@@ -1612,8 +1513,6 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               )
             })()
           )}
-          {/* Collection grants shown only for collection modals, not assets */}
-          {!isAssetResource && canSeeFullAccessList && sharedViaCollectionsSection}
           {canSeeFullAccessList && pendingPeopleSection}
           {canSeeFullAccessList && peopleEmptyState}
           {canSeeFullAccessList && guestLinksSection}

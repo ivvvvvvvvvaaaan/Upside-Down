@@ -73,12 +73,6 @@ export type Grant = {
   allowComment?: boolean
   /** Review link ID — when set, this grant is accessible via /nextgen/review/[linkId] */
   reviewLinkId?: string
-  /** Version number for snapshot re-shares (1, 2, 3...) */
-  version?: number
-  /** Note attached to this version (e.g., "re-turnover: 3 new shots from locked cut 2") */
-  versionNote?: string
-  /** Grant ID of the previous version */
-  previousVersionId?: string
   /** For cut grants: lock recipient to versions up to this number. Null = follow all versions. */
   lockedToVersion?: number
   /** Optional note from the sharer (e.g., "smoke reference still coming, turnover 1 of 3") */
@@ -141,6 +135,89 @@ export function roleGroupOptions(roleGroups: RoleGroup[]) {
   return roleGroups
     .filter((rg) => rg.id !== 'link-viewer')
     .map((rg) => ({ value: rg.id, label: rg.name }))
+}
+
+const FULL_ACCESS_ONLY_PROFILES = ['manager', 'viewer'] as const satisfies readonly AccessProfileId[]
+const ASSET_ACCESS_PROFILES = ['manager', 'downloader', 'viewer'] as const satisfies readonly AccessProfileId[]
+const STANDARD_GRANT_PROFILES = ['manager', 'editor', 'downloader', 'uploader', 'viewer'] as const satisfies readonly AccessProfileId[]
+
+type GrantAccessModel =
+  | 'direct-resource'
+  | 'folder-tree'
+  | 'collection-assets'
+  | 'project-policy'
+
+export type ResourceGrantPrinciple = {
+  accessModel: GrantAccessModel
+  profileIds: readonly AccessProfileId[]
+}
+
+export const RESOURCE_GRANT_PRINCIPLES = {
+  asset: {
+    accessModel: 'direct-resource',
+    profileIds: ASSET_ACCESS_PROFILES,
+  },
+  cut: {
+    accessModel: 'direct-resource',
+    profileIds: ASSET_ACCESS_PROFILES,
+  },
+  folder: {
+    accessModel: 'folder-tree',
+    profileIds: FULL_ACCESS_ONLY_PROFILES,
+  },
+  collection: {
+    accessModel: 'collection-assets',
+    profileIds: ASSET_ACCESS_PROFILES,
+  },
+  'smart-collection': {
+    accessModel: 'collection-assets',
+    profileIds: ASSET_ACCESS_PROFILES,
+  },
+  'review-set': {
+    accessModel: 'direct-resource',
+    profileIds: ASSET_ACCESS_PROFILES,
+  },
+  project: {
+    accessModel: 'project-policy',
+    profileIds: STANDARD_GRANT_PROFILES,
+  },
+} satisfies Record<ResourceType, ResourceGrantPrinciple>
+
+export function getResourceGrantPrinciple(resourceType?: ResourceType): ResourceGrantPrinciple {
+  return resourceType ? RESOURCE_GRANT_PRINCIPLES[resourceType] : {
+    accessModel: 'direct-resource',
+    profileIds: STANDARD_GRANT_PROFILES,
+  }
+}
+
+export function grantProfilesForResourceType(resourceType?: ResourceType): AccessProfileId[] {
+  return [...getResourceGrantPrinciple(resourceType).profileIds]
+}
+
+export function isGrantProfileAllowedForResourceType(
+  resourceType: ResourceType | undefined,
+  profileId: AccessProfileId,
+): boolean {
+  return getResourceGrantPrinciple(resourceType).profileIds.includes(profileId)
+}
+
+export function isGrantProfileAllowedForResource(
+  resource: Pick<ResourceRef, 'type'>,
+  profileId: AccessProfileId,
+): boolean {
+  return isGrantProfileAllowedForResourceType(resource.type, profileId)
+}
+
+export function roleOptionsForResource(roleGroups: RoleGroup[], resourceType?: ResourceType) {
+  const allowedProfiles = new Set(grantProfilesForResourceType(resourceType))
+  return roleGroupOptions(roleGroups).filter((option) => allowedProfiles.has(option.value))
+}
+
+export function roleLabelForResource(
+  roleGroups: RoleGroup[],
+  profileId: AccessProfileId,
+): string {
+  return getRoleGroup(roleGroups, profileId)?.name ?? profileId
 }
 
 export function profileLabel(

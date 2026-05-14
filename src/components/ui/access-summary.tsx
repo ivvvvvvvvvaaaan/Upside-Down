@@ -8,7 +8,9 @@ import { AccessModal } from './access-modal'
 import { GrantBadge } from './grant-badge'
 import { useAccess, usePersona } from '@/hooks'
 import type { ResourceRef, Grant } from '@/lib/grants'
+import { isGrantActive } from '@/lib/grants'
 import { buildAccessDisplayEntries } from './access-display'
+import { FolderAccessSourceRow } from './collection-access-source-row'
 
 interface AccessSummaryProps {
   resourceId: string
@@ -29,6 +31,21 @@ export function AccessSummary({
   const { getResourceGrants, roleGroups, canShare } = useAccess()
 
   const grants = getResourceGrants(resourceId)
+  const inheritedFolderSources = new Map<string, { id: string; name: string; grants: Grant[] }>()
+
+  for (const { grant, fromResourceName } of inheritedGrants ?? []) {
+    if (!isGrantActive(grant)) continue
+    const existing = inheritedFolderSources.get(grant.resource.id)
+    if (existing) {
+      existing.grants.push(grant)
+    } else {
+      inheritedFolderSources.set(grant.resource.id, {
+        id: grant.resource.id,
+        name: fromResourceName,
+        grants: [grant],
+      })
+    }
+  }
 
   const openModal = () => {
     setModalTarget({ resourceId, resourceRef, title: resourceName })
@@ -36,28 +53,31 @@ export function AccessSummary({
   }
 
   const effectiveRows = buildAccessDisplayEntries(
-    [
-      ...grants.map((grant) => ({
-        key: `direct-${grant.id}`,
-        grant,
-      })),
-      ...(inheritedGrants ?? []).map(({ grant, fromResourceName }) => ({
-        key: `inherited-${grant.id}-${fromResourceName}`,
-        grant,
-        sourceName: fromResourceName,
-      })),
-    ],
+    grants.map((grant) => ({
+      key: `direct-${grant.id}`,
+      grant,
+    })),
     roleGroups,
     activePersona?.id,
   )
+  const inheritedFolderSourceRows = Array.from(inheritedFolderSources.values())
+  const hasAccess = effectiveRows.length > 0 || inheritedFolderSourceRows.length > 0
 
   return (
     <>
       <section className="space-y-2">
         <div className="space-y-1">
-          {effectiveRows.length === 0 && (
+          {!hasAccess && (
             <p className="text-body-0-regular text-foreground-dim">Not shared</p>
           )}
+          {inheritedFolderSourceRows.map((source) => (
+            <FolderAccessSourceRow
+              key={source.id}
+              name={source.name}
+              grants={source.grants}
+              roleGroups={roleGroups}
+            />
+          ))}
           {effectiveRows.map((row) => (
             <div key={row.key} className="flex items-center justify-between gap-2 py-0.5">
               <div className="flex items-center gap-2 min-w-0">

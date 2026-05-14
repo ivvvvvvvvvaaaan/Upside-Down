@@ -92,12 +92,12 @@ interface ModalHeaderProps {
 function ModalHeader({ title, subtitle, onClose, backButton }: ModalHeaderProps) {
   return (
     <div className="flex items-center justify-between px-6 pt-6 pb-0 flex-shrink-0">
-      <div className="flex items-center gap-2 min-w-0">
+      <div className={cn('flex gap-2 min-w-0', subtitle ? 'items-start' : 'items-center')}>
         {backButton}
         <div className="min-w-0">
           <h2 className="text-body-2-bold text-foreground truncate">{title}</h2>
           {subtitle && (
-            <p className="text-body-0-regular text-foreground-dim mt-1">{subtitle}</p>
+            <p className="text-body-0-regular text-foreground-dim truncate">{subtitle}</p>
           )}
         </div>
       </div>

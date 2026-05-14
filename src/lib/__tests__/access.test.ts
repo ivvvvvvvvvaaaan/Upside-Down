@@ -8,6 +8,9 @@ import {
   buildAllProjectShares,
   getPermissionsForProfile,
   getRoleGroup,
+  grantProfilesForResourceType,
+  isGrantProfileAllowedForResource,
+  roleOptionsForResource,
 } from '@/lib/grants'
 import type { Grant, RoleGroup, Permission } from '@/lib/grants'
 
@@ -71,7 +74,7 @@ describe('capability decomposition', () => {
   it('getRoleGroup returns the correct group', () => {
     const editor = getRoleGroup(DEFAULT_ROLE_GROUPS, 'editor')
     expect(editor).toBeDefined()
-    expect(editor!.name).toBe('Editor')
+    expect(editor!.name).toBe('Edit')
     expect(editor!.permissions).toContain('write')
     expect(editor!.permissions).not.toContain('edit-acl')
   })
@@ -93,5 +96,32 @@ describe('capability decomposition', () => {
     expect(canAssignProfile(editorPermissions, 'viewer', DEFAULT_ROLE_GROUPS)).toBe(true)
     expect(canAssignProfile(editorPermissions, 'editor', DEFAULT_ROLE_GROUPS)).toBe(true)
     expect(canAssignProfile(editorPermissions, 'manager', DEFAULT_ROLE_GROUPS)).toBe(false)
+  })
+})
+
+describe('resource grant principles', () => {
+  it('keeps folder grants to full access or view only', () => {
+    expect(grantProfilesForResourceType('folder')).toEqual(['manager', 'viewer'])
+    expect(roleOptionsForResource(DEFAULT_ROLE_GROUPS, 'folder').map((option) => option.value)).toEqual([
+      'manager',
+      'viewer',
+    ])
+  })
+
+  it('uses asset-style direct access profiles for collections', () => {
+    expect(grantProfilesForResourceType('collection')).toEqual(['manager', 'downloader', 'viewer'])
+    expect(roleOptionsForResource(DEFAULT_ROLE_GROUPS, 'collection').map((option) => option.value)).toEqual([
+      'manager',
+      'downloader',
+      'viewer',
+    ])
+    expect(isGrantProfileAllowedForResource({ type: 'collection' }, 'editor')).toBe(false)
+    expect(isGrantProfileAllowedForResource({ type: 'collection' }, 'uploader')).toBe(false)
+  })
+
+  it('uses direct media profiles for assets and cuts', () => {
+    expect(grantProfilesForResourceType('asset')).toEqual(['manager', 'downloader', 'viewer'])
+    expect(grantProfilesForResourceType('cut')).toEqual(['manager', 'downloader', 'viewer'])
+    expect(isGrantProfileAllowedForResource({ type: 'asset' }, 'uploader')).toBe(false)
   })
 })

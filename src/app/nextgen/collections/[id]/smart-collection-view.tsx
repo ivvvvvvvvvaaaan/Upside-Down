@@ -238,12 +238,18 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     getRelatedCollections,
     updateCollection,
     deleteCollection,
+    filterAssets,
     scopedAssets,
     assetsLoaded,
     assetsLoading,
     ensureAssetsLoaded,
   } = useSmartCollections()
-  const { collections: userCollections } = useUserCollections()
+  const {
+    collections: userCollections,
+    createCollection: createUserCollection,
+    deleteCollection: deleteUserCollection,
+    removeAssetFromCollection,
+  } = useUserCollections()
   const { activePersona, isAdmin } = usePersona()
   const {
     selectedIds: selectedAssetIds,
@@ -264,8 +270,18 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const { isOpen: panelOpen, toggle: togglePanel, close: closePanel } = useMobilePanel(sidePanelOpen, setSidePanelOpen)
   const isMobile = useIsMobile()
   const { setBreadcrumbExtras, clearBreadcrumbExtras } = useBreadcrumbExtras()
-  const { canShare, canEditAcl, getResourceGrants, sharesReceivedByMe, allProjectShares, isSensitiveAsset, createGuestLink } = useAccess()
+  const {
+    canShare,
+    canEditAcl,
+    getResourceGrants,
+    getResourceGuestLinks,
+    sharesReceivedByMe,
+    allProjectShares,
+    isSensitiveAsset,
+    createGuestLink,
+  } = useAccess()
   const [shareModalOpen, setShareModalOpen] = useState(false)
+  const [draftShareTarget, setDraftShareTarget] = useState<{ id: string; name: string } | null>(null)
   const { showToast } = useToast()
   const collectionResourceRef: ResourceRef = { id: collectionId, type: 'smart-collection' }
 
@@ -287,11 +303,10 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
       .filter((userCollection) => userCollection.sourceSmartCollectionId === collection.id)
       .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
   }, [collection, userCollections])
-  const shareTargetCollection = linkedSnapshotCollections.length === 1
-    ? linkedSnapshotCollections[0]
-    : null
-  const shareResourceRef: ResourceRef = shareTargetCollection
-    ? { id: shareTargetCollection.id, type: 'collection' }
+  const shareTargetCollection = linkedSnapshotCollections[0] ?? null
+  const activeShareTargetCollection = draftShareTarget ?? shareTargetCollection
+  const shareResourceRef: ResourceRef = activeShareTargetCollection
+    ? { id: activeShareTargetCollection.id, type: 'collection' }
     : collectionResourceRef
   const showShareButton = Boolean(collection) && canShare(shareResourceRef)
   const isOwner = collection?.createdBy === activePersona?.email
@@ -322,12 +337,37 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     setEditModalOpen(false)
   }, [canEditCurrentCollection, collection, collectionCapabilities, draftFilter, draftName, updateCollection])
 
+  const openShareModal = useCallback(() => {
+    if (!collection) return
+    if (!shareTargetCollection) {
+      const shareTarget = createUserCollection(
+        collection.name,
+        filterAssets(scopedAssets, collection.id).map(asset => asset.id),
+        { sourceSmartCollectionId: collection.id },
+      )
+      setDraftShareTarget({ id: shareTarget.id, name: shareTarget.name })
+    }
+    setShareModalOpen(true)
+  }, [collection, shareTargetCollection, createUserCollection, filterAssets, scopedAssets])
+
+  const closeShareModal = useCallback(() => {
+    if (draftShareTarget) {
+      const hasGrants = getResourceGrants(draftShareTarget.id).some(grant => !grant.revokedAt)
+      const hasGuestLinks = getResourceGuestLinks(draftShareTarget.id).length > 0
+      if (!hasGrants && !hasGuestLinks) {
+        deleteUserCollection(draftShareTarget.id)
+      }
+      setDraftShareTarget(null)
+    }
+    setShareModalOpen(false)
+  }, [draftShareTarget, getResourceGrants, getResourceGuestLinks, deleteUserCollection])
+
   type MenuItem = import('@/components/ui/inline-action-bar').ActionMenuItem
 
   const smartCollectionMenuItems = useMemo((): MenuItem[] => {
     const items: MenuItem[] = []
     if (showShareButton) {
-      items.push({ label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setShareModalOpen(true) })
+      items.push({ label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: openShareModal })
     }
     if (canEditCurrentCollection) {
       items.push({ label: 'Edit', icon: <Pencil className="w-4 h-4" />, onClick: openEditCollectionModal })
@@ -337,7 +377,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
       items.push({ label: 'Delete collection', icon: <Trash2 className="w-4 h-4" />, onClick: () => { if (collection) { deleteCollection(collection.id); router.push('/nextgen') } }, destructive: true })
     }
     return items
-  }, [showShareButton, canEditCurrentCollection, canDeleteCurrentCollection, openEditCollectionModal, collection, deleteCollection, router])
+  }, [showShareButton, canEditCurrentCollection, canDeleteCurrentCollection, openShareModal, openEditCollectionModal, collection, deleteCollection, router])
 
   const subtitle = useMemo(() => {
     // Received from someone else
@@ -457,6 +497,11 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const buildAssetMenuItems = useCallback((asset: Asset): MenuItem[] => {
     const ref = toAssetResourceRef(asset)
     const shareable = canShare(ref)
+    const canRemoveFromSharedCollection = Boolean(
+      shareTargetCollection
+        && shareTargetCollection.assetIds.includes(asset.id)
+        && canEditAcl({ id: shareTargetCollection.id, type: 'collection' }),
+    )
     const items: MenuItem[] = [
       { label: 'Share', icon: <ShareIcon className="w-4 h-4" />, onClick: () => setAssetShareTarget({ ref, title: asset.name }), disabled: !shareable },
       { label: 'Copy link', icon: <Link2 className="w-4 h-4" />, disabled: !shareable, onClick: () => {
@@ -469,8 +514,29 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
       { label: 'Add to Collection', icon: <Plus className="w-4 h-4" />, onClick: () => { selectOnlyAsset(asset); setShowAddToCollectionModal(true) } },
       { label: 'View details', icon: <Info className="w-4 h-4" />, onClick: () => { selectOnlyAsset(asset); setSidePanelOpen(true) } },
     ]
+    if (shareTargetCollection && canRemoveFromSharedCollection) {
+      items.push({
+        label: 'Remove from collection',
+        icon: <Trash2 className="w-4 h-4" />,
+        onClick: () => {
+          removeAssetFromCollection(shareTargetCollection.id, asset.id)
+          showToast(`Removed "${asset.name}" from ${shareTargetCollection.name}.`)
+        },
+        destructive: true,
+      })
+    }
     return items
-  }, [toAssetResourceRef, canShare, createGuestLink, showToast, selectOnlyAsset, setSidePanelOpen])
+  }, [
+    toAssetResourceRef,
+    canShare,
+    shareTargetCollection,
+    canEditAcl,
+    createGuestLink,
+    showToast,
+    selectOnlyAsset,
+    setSidePanelOpen,
+    removeAssetFromCollection,
+  ])
 
   const handleAssetCardClick = (asset: typeof filteredAssets[number], event: React.MouseEvent) => {
     clearCollectionSelection()
@@ -1165,10 +1231,10 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
 
       <AccessModal
         open={shareModalOpen}
-        onClose={() => setShareModalOpen(false)}
+        onClose={closeShareModal}
         resourceId={shareResourceRef.id}
         resourceRef={shareResourceRef}
-        title={shareTargetCollection?.name ?? collection?.name}
+        title={activeShareTargetCollection?.name ?? collection?.name}
       />
       <Modal open={editModalOpen} onOpenChange={setEditModalOpen} size="sm">
         <Modal.Header title="Edit Collection" />

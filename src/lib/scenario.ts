@@ -65,10 +65,6 @@ type ScenarioShare = {
   allowComment?: boolean
   /** Review link ID for direct review access */
   reviewLinkId?: string
-  /** Version number for versioned re-shares (turnovers) */
-  version?: number
-  /** Note describing what changed in this version */
-  versionNote?: string
   /** Optional note from the sharer */
   note?: string
 }
@@ -197,7 +193,7 @@ export const SCENARIO: Scenario = {
   roleGroups: [
     { id: 'manager',     name: 'Full Access',      permissions: ['open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl', 'upload'] },
     { id: 'editor',      name: 'Edit',             permissions: ['open', 'download', 'write', 'comment', 'share', 'upload'] },
-    { id: 'downloader',  name: 'Download & Share', permissions: ['open', 'download', 'comment', 'share'] },
+    { id: 'downloader',  name: 'Review & Share',   permissions: ['open', 'download', 'comment', 'share'] },
     { id: 'uploader',    name: 'Upload',           permissions: ['open', 'upload'] },
     { id: 'viewer',      name: 'View only',        permissions: ['open'] },
     { id: 'link-viewer', name: 'Link Viewer',      permissions: ['open'] },
@@ -579,8 +575,6 @@ export function buildGrants(options?: { skipShares?: boolean }): Grant[] {
     // Jump directly to project-level grants
   } else {
   const sharerGrantsSeen = new Set<string>()
-  // Track grants by resource+principal key for version linking
-  const grantsByResourcePrincipal = new Map<string, string>()
   for (const share of SCENARIO.shares) {
     const resource = {
       id: share.resource.id,
@@ -656,30 +650,6 @@ export function buildGrants(options?: { skipShares?: boolean }): Grant[] {
       if (share.note) {
         grant.note = share.note
       }
-      // Version tracking for turnovers
-      if (share.version !== undefined) {
-        grant.version = share.version
-      }
-      if (share.versionNote) {
-        grant.versionNote = share.versionNote
-      }
-      // Link to previous version grant on same resource+principal
-      const principalKey = principal.type === 'user'
-        ? `user:${principal.userId}`
-        : principal.type === 'team'
-          ? `team:${principal.teamId}`
-          : `domain:${principal.domainId}`
-      const versionKey = `${share.resource.id}:${principalKey}`
-      const previousId = grantsByResourcePrincipal.get(versionKey)
-      if (previousId && share.version && share.version > 1) {
-        grant.previousVersionId = previousId
-        // Revoke the previous version grant
-        const prev = grants.find(g => g.id === previousId)
-        if (prev && !prev.revokedAt) {
-          prev.revokedAt = share.date
-        }
-      }
-      grantsByResourcePrincipal.set(versionKey, grant.id)
       grants.push(grant)
     }
   }

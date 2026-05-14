@@ -147,7 +147,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
             disabled={disabled}
             className={cn(
               'w-full rounded-md appearance-none',
-              size === 'compact' ? 'text-label-0-regular' : 'text-body-0-regular',
+              size === 'compact' ? 'text-label-1-regular' : 'text-body-0-regular',
               borderless
                 ? 'bg-transparent border-transparent hover:bg-surface-highlight'
                 : 'bg-surface-flat dark:bg-white/[0.04] ring-1 ring-inset',
