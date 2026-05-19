@@ -7,11 +7,13 @@ import { getUserTagsForAsset } from '@/lib/user-tags'
  * Empty/undefined rules are ignored (pass-through)
  */
 export function matchesFilter(asset: Asset, filter: AssetFilter): boolean {
-  // Query: free text search on name + AI metadata
+  // Query: free text search on name + AI metadata + episode + mediaAssetType
   if (filter.query && filter.query.trim()) {
     const query = filter.query.toLowerCase().trim()
     const searchParts = [asset.name]
     if (asset.tags) searchParts.push(...asset.tags.map(t => t.label))
+    if (asset.episode) searchParts.push(asset.episode)
+    if (asset.mediaAssetType) searchParts.push(asset.mediaAssetType)
     if (asset.aiMeta) {
       if (asset.aiMeta.characters) searchParts.push(...asset.aiMeta.characters)
       if (asset.aiMeta.keywords) searchParts.push(...asset.aiMeta.keywords)
@@ -38,14 +40,16 @@ export function matchesFilter(asset: Asset, filter: AssetFilter): boolean {
     }
   }
 
-  // Type tags: asset must have at least one matching tag
+  // Type tags: asset must have at least one matching tag. Checks both
+  // asset.mediaAssetType (controlled-vocab kebab-case) and the per-format
+  // free-form typeTag string — search and smart collections both use this.
   if (filter.typeTags && filter.typeTags.length > 0) {
-    const assetTypeTag = getAssetTypeTag(asset)
-    if (!assetTypeTag) {
-      return false
-    }
     const normalizedTags = filter.typeTags.map(t => t.toLowerCase())
-    if (!normalizedTags.includes(assetTypeTag.toLowerCase())) {
+    const candidates: string[] = []
+    if (asset.mediaAssetType) candidates.push(asset.mediaAssetType.toLowerCase())
+    const formatTypeTag = getAssetTypeTag(asset)
+    if (formatTypeTag) candidates.push(formatTypeTag.toLowerCase())
+    if (!candidates.some(c => normalizedTags.includes(c))) {
       return false
     }
   }
@@ -112,21 +116,31 @@ export function matchesFilter(asset: Asset, filter: AssetFilter): boolean {
   }
 
   if (filter.aiLocation) {
-    if (!asset.aiMeta?.location) {
-      return false
-    }
-    if (asset.aiMeta.location.toLowerCase() !== filter.aiLocation.toLowerCase()) {
-      return false
-    }
+    const locations = Array.isArray(filter.aiLocation) ? filter.aiLocation : [filter.aiLocation]
+    if (!asset.aiMeta?.location) return false
+    const loc = asset.aiMeta.location.toLowerCase()
+    if (!locations.some(l => l.toLowerCase() === loc)) return false
   }
 
   if (filter.aiScene) {
-    if (!asset.aiMeta?.scene) {
-      return false
-    }
-    if (asset.aiMeta.scene.toLowerCase() !== filter.aiScene.toLowerCase()) {
-      return false
-    }
+    const scenes = Array.isArray(filter.aiScene) ? filter.aiScene : [filter.aiScene]
+    if (!asset.aiMeta?.scene) return false
+    const sc = asset.aiMeta.scene.toLowerCase()
+    if (!scenes.some(s => s.toLowerCase() === sc)) return false
+  }
+
+  if (filter.episode) {
+    const episodes = Array.isArray(filter.episode) ? filter.episode : [filter.episode]
+    if (!asset.episode || !episodes.some(e => e.toLowerCase() === asset.episode!.toLowerCase())) return false
+  } else if (filter.hasEpisode) {
+    if (!asset.episode) return false
+  }
+
+  if (filter.stage) {
+    const stages = Array.isArray(filter.stage) ? filter.stage : [filter.stage]
+    if (!asset.stage || !stages.includes(asset.stage)) return false
+  } else if (filter.hasStage) {
+    if (!asset.stage) return false
   }
 
   // Shot metadata filters

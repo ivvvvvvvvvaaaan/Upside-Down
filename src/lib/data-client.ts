@@ -106,13 +106,21 @@ export type AssetFilter = {
   isCircleTake?: boolean
   aiConfidenceBelow?: number
   aiCharacters?: string[]
-  aiLocation?: string
-  aiScene?: string
+  aiLocation?: string | string[]
+  aiScene?: string | string[]
   aiHasCharacters?: boolean
   aiHasLocation?: boolean
   aiHasScene?: boolean
   shotTake?: string
   shotCamera?: string
+  /** Episode identifier (matched against asset.episode). */
+  episode?: string | string[]
+  /** Cut stage in the editorial progression (matched against asset.stage). */
+  stage?: CutStage | CutStage[]
+  /** Any asset with episode set — wildcard episode scope. */
+  hasEpisode?: boolean
+  /** Any asset with a cut stage set — wildcard editorial scope. */
+  hasStage?: boolean
 }
 
 export type SmartCollectionGroupBy = 'characters' | 'locations' | 'scenes' | 'takes' | 'cameras'
@@ -199,6 +207,7 @@ export type Asset = {
   modifiedBy?: string
   created_at?: string
   tags?: AssetTag[]
+  sensitive?: boolean
 }
 
 /**

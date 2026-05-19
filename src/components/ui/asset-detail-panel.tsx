@@ -487,7 +487,7 @@ export function AssetDetailPanelContent({
   cuts,
   onVersionSelect,
 }: AssetDetailPanelContentProps) {
-  const { getInheritedGrants, visibleCollections, canEdit, canShare, isSensitiveAsset } = useAccess()
+  const { getInheritedGrants, visibleCollections, canEdit, canShare } = useAccess()
   const { activePersona } = usePersona()
   const { getDomainFiles, assetById } = useFileTree()
   const { getCollection } = useSmartCollections()
@@ -803,7 +803,7 @@ export function AssetDetailPanelContent({
             <section className="space-y-1.5">
               <MetaRow label="File name" value={asset.name} />
               <MetaRow label="Type" value={asset.type} capitalize />
-              {isSensitiveAsset(asset.id) && (
+              {asset.sensitive && (
                 <div className="flex items-center gap-1.5 py-0.5">
                   <EyeOff className="w-3.5 h-3.5 text-foreground-dim" />
                   <Tag size="compact" type="notice" variant="fill">Sensitive</Tag>
@@ -1014,7 +1014,13 @@ export function AssetDetailPanelContent({
 
 export function AssetDetailPanel({ asset, open, ...contentProps }: AssetDetailPanelProps) {
   if (!asset) {
-    return <ResponsivePanel open={false} onClose={contentProps.onClose}><div /></ResponsivePanel>
+    return (
+      <ResponsivePanel open={open} onClose={contentProps.onClose}>
+        <div className="flex items-center justify-center h-full p-6 text-body-0-regular text-foreground-subtle">
+          Select an asset to see details
+        </div>
+      </ResponsivePanel>
+    )
   }
 
   return (

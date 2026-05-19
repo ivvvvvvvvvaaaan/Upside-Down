@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useCallback, useMemo, useRef, useEffect, type ReactNode } from 'react'
 import type { SmartCollection, SmartCollectionGroupBy, AssetFilter, Asset, SmartCollectionIcon } from '@/lib/data'
 import { mergePrototypeAssets } from '@/lib/prototype-assets'
+import { SENSITIVE_ASSET_IDS } from '@/lib/scenario'
 import { matchesFilter, slugify, generateChildCollections } from '@/lib/smart-collection-filters'
 import { listNarrativeScenes, listNarrativeCharacters, listNarrativeLocations } from '@/lib/ontology-meta'
 import { useAccess } from './useAccess'
@@ -48,7 +49,9 @@ function mergeSmartCollectionAssets(apiAssets: Asset[], liveAssets: Asset[]): As
   const byId = new Map<string, Asset>()
   for (const asset of mergePrototypeAssets(apiAssets)) byId.set(asset.id, asset)
   for (const asset of liveAssets) byId.set(asset.id, asset)
-  return Array.from(byId.values())
+  return Array.from(byId.values()).map(asset =>
+    SENSITIVE_ASSET_IDS.has(asset.id) ? { ...asset, sensitive: true } : asset
+  )
 }
 
 export function SmartCollectionsProvider({ children }: { children: ReactNode }) {

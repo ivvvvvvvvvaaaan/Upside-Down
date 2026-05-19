@@ -1,6 +1,6 @@
 import type { Asset, CutStage } from '@/lib/data'
 import { pickForDomain } from '@/lib/images'
-import type { SeedCut } from '@/lib/scenario'
+import { SENSITIVE_ASSET_IDS, type SeedCut } from '@/lib/scenario'
 
 const CUT_STAGE_LABELS: Record<CutStage, string> = {
   'locked-cut': 'Locked Cut',
@@ -70,6 +70,7 @@ export function seedCutToAsset(cut: SeedCut, releaseInfo?: ReleaseTagInfo): Asse
     department: 'editorial',
     created_at: cut.date,
     modifiedBy: cut.createdBy,
+    sensitive: SENSITIVE_ASSET_IDS.has(cut.id),
   }
 }
 

@@ -40,7 +40,6 @@ export function getAssets(): Asset[] {
 
 function getAllAssets(): Asset[] {
   const assets = mergePrototypeAssets(getAssets())
-  // Include cuts so they're resolvable by ID (for collections containing cuts)
   const cutAssets = buildCuts().map(c => seedCutToAsset(c))
   return [...assets, ...cutAssets]
 }

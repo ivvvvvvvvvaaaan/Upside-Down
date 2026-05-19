@@ -23,7 +23,7 @@ export function Chip({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded bg-gray-600 p-1',
+        'inline-flex items-center gap-1 rounded bg-gray-600 pl-2 pr-1 py-1',
         isCompact ? 'text-label-0-bold' : 'text-body-0-bold',
         'text-foreground-inverse dark:bg-gray-400 dark:text-foreground',
         disabled && 'opacity-50',

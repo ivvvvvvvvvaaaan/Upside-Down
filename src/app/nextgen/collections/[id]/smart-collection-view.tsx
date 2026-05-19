@@ -18,7 +18,7 @@ import {
   EmptyState,
   CollectionSidePanel,
   AssetDetailPanel,
-  HawkinsSearch,
+  SearchTriggerButton,
   SortDropdown,
   AppearanceDropdown,
   MobileToolbar,
@@ -277,7 +277,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
     getResourceGuestLinks,
     sharesReceivedByMe,
     allProjectShares,
-    isSensitiveAsset,
     createGuestLink,
   } = useAccess()
   const [shareModalOpen, setShareModalOpen] = useState(false)
@@ -290,13 +289,22 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [draftName, setDraftName] = useState('')
   const [draftFilter, setDraftFilter] = useState<AssetFilter>({})
-  const [searchQuery, setSearchQuery] = useState('')
   const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
     { field: 'name', direction: 'asc' },
   ])
 
   const collection = getCollection(collectionId)
   const collectionCapabilities = collection ? getCollectionCapabilities(collection) : null
+
+  // For character/scene/location smart collections, the entity name is a
+  // parseable chip — pre-pin it when the spotlight overlay opens from here.
+  const searchContextPhrase = useMemo(() => {
+    if (!collection) return undefined
+    if (collection.icon === 'character') return collection.groupBy ? 'characters' : collection.name
+    if (collection.icon === 'scene') return collection.groupBy ? 'scenes' : collection.name
+    if (collection.icon === 'location') return collection.groupBy ? 'locations' : collection.name
+    return undefined
+  }, [collection])
   const linkedSnapshotCollections = useMemo(() => {
     if (!collection) return []
     return userCollections
@@ -734,6 +742,20 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
   const countLabel = isParentWithChildren ? 'collection' : 'asset'
 
 
+  // Flattened collection list in the same order the cards are rendered, so
+  // shift-click range selection follows what the user sees. Tracks the
+  // dispatch in `renderChildren` (location → scene grouped/flat → casting →
+  // default).
+  const visualChildOrder = useMemo(() => {
+    if (collection?.icon === 'location') return childData.map((e) => e.collection)
+    if (collection?.icon === 'scene') {
+      if (sceneGroupedChildren) return sceneGroupedChildren.flatMap((g) => g.items.map((i) => i.collection))
+      return filteredChildData.map((e) => e.collection)
+    }
+    if (castingGroups) return castingGroups.flatMap((g) => g.items.map((i) => i.collection))
+    return childData.map((e) => e.collection)
+  }, [collection?.icon, sceneGroupedChildren, filteredChildData, castingGroups, childData])
+
 
   // No access — redirect to search
   useEffect(() => {
@@ -769,20 +791,6 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
       </div>
     )
   }
-
-  // Flattened collection list in the same order the cards are rendered, so
-  // shift-click range selection follows what the user sees. Tracks the
-  // dispatch in `renderChildren` (location → scene grouped/flat → casting →
-  // default).
-  const visualChildOrder = useMemo(() => {
-    if (collection?.icon === 'location') return childData.map((e) => e.collection)
-    if (collection?.icon === 'scene') {
-      if (sceneGroupedChildren) return sceneGroupedChildren.flatMap((g) => g.items.map((i) => i.collection))
-      return filteredChildData.map((e) => e.collection)
-    }
-    if (castingGroups) return castingGroups.flatMap((g) => g.items.map((i) => i.collection))
-    return childData.map((e) => e.collection)
-  }, [collection?.icon, sceneGroupedChildren, filteredChildData, castingGroups, childData])
 
   // ── Render helpers — broken out to keep the JSX tree readable. Each owns
   // one branch of the children/assets dispatch and closes over component state.
@@ -953,7 +961,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
           }
           showDepartment
           shared={asset.department != null && activePersona?.domainId != null && asset.department !== activePersona.domainId}
-          sensitive={isSensitiveAsset(asset.id)}
+          sensitive={asset.sensitive}
           allSelectedIds={selectedAssetIds}
           metadataFields={metadataFields}
         />
@@ -1004,9 +1012,8 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                   {/* Mobile nav */}
                   <MobileToolbar title={pageTitle} actions={
                     <>
-                      <HawkinsSearch
-                        value={searchQuery}
-                        onValueChange={setSearchQuery}
+                      <SearchTriggerButton
+                        contextPhrase={searchContextPhrase}
                         collapsible
                       />
                       <SortDropdown
@@ -1067,10 +1074,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
                       />
                     )}
                     <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-                      <HawkinsSearch
-                        value={searchQuery}
-                        onValueChange={setSearchQuery}
-                      />
+                      <SearchTriggerButton contextPhrase={searchContextPhrase} />
                       <SortDropdown
                         fields={sortFields}
                         value={sortCriteria}

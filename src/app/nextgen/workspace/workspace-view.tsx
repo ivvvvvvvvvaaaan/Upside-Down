@@ -10,7 +10,7 @@ import {
   EmptyState,
   AppearanceDropdown,
   SortDropdown,
-  HawkinsSearch,
+  SearchTriggerButton,
   Button,
   FileExplorer,
   CollectionCard,
@@ -197,7 +197,7 @@ interface WorkspaceViewProps {
 
 export function WorkspaceView({ folderPath: urlPath, landingFolderId }: WorkspaceViewProps) {
   const router = useRouter()
-  const { canAccess, canShare: canShareResource, canEdit: canEditResource, getInheritedGrants, getResourceGrants, isSensitiveAsset, createGuestLink } = useAccess()
+  const { canAccess, canShare: canShareResource, canEdit: canEditResource, getInheritedGrants, getResourceGrants, createGuestLink } = useAccess()
 
   // Cut folders are composite assets — redirect to library
   const isCutRedirect = landingFolderId?.startsWith('cut-') ?? false
@@ -236,7 +236,6 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
 
   const [accessModalNode, setAccessModalNode] = useState<WorkspaceFileNode | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: WorkspaceFileNode } | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
   const [newFolderModalOpen, setNewFolderModalOpen] = useState(false)
   const [folderPickerTarget, setFolderPickerTarget] = useState<{ nodeId: string; name: string; mode: 'copy' | 'move' } | null>(null)
   const [newFolderParentPath, setNewFolderParentPath] = useState<string[]>([])
@@ -771,11 +770,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                 {/* Mobile nav */}
                 <MobileToolbar title={pageTitle} actions={
                   <>
-                    <HawkinsSearch
-                      value={searchQuery}
-                      onValueChange={setSearchQuery}
-                      collapsible
-                    />
+                    <SearchTriggerButton collapsible />
                     <SortDropdown
                       fields={sortFields}
                       value={sortCriteria}
@@ -815,10 +810,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                     hideTitleOnMobile
                   />
                   <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-                    <HawkinsSearch
-                      value={searchQuery}
-                      onValueChange={setSearchQuery}
-                    />
+                    <SearchTriggerButton />
                     <SortDropdown
                       fields={sortFields}
                       value={sortCriteria}
@@ -1063,7 +1055,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
                                   ))}
                                 </div>
                               }
-                              sensitive={isSensitiveAsset(workspaceAsset.id)}
+                              sensitive={workspaceAsset.sensitive}
                               allSelectedIds={selectedIds}
                             />
                           )

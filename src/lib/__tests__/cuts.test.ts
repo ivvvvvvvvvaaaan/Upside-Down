@@ -37,4 +37,8 @@ describe('cut utilities', () => {
     )).toBeGreaterThan(0)
     expect(getCutStageLabel('emf')).toBe('EMF')
   })
+
+  it('marks sensitive cuts on the asset projection', () => {
+    expect(seedCutToAsset({ ...BASE_CUT, id: 'cut-ep301-lc-1' }).sensitive).toBe(true)
+  })
 })

@@ -20,7 +20,7 @@ import {
   InlineActionBar,
   SortDropdown,
   AppearanceDropdown,
-  HawkinsSearch,
+  SearchTriggerButton,
   PageHeader,
 } from '@/components/ui'
 import { useBreadcrumbExtras } from '@/components/ui/project-breadcrumb'
@@ -51,7 +51,6 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
     canShare,
     canDownload,
     getResourceGrants,
-    isSensitiveAsset,
     createGuestLink,
   } = useAccess()
   const { getCollection, deleteCollection, removeAssetFromCollection } = useUserCollections()
@@ -79,13 +78,8 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
   const collectionResourceRef: ResourceRef = useMemo(() => ({ id: collectionId, type: 'collection' }), [collectionId])
   const showShareButton = hasCollectionAccess && canShare(collectionResourceRef)
 
-  const [searchQuery, setSearchQuery] = useState('')
-
-  const displayAssets = useMemo(() => {
-    if (!searchQuery.trim()) return assets
-    const q = searchQuery.toLowerCase()
-    return assets.filter(a => a.name.toLowerCase().includes(q))
-  }, [assets, searchQuery])
+  // Local searchbox filtering removed — spotlight overlay owns search now.
+  const displayAssets = assets
 
   useEffect(() => {
     void ensureAssetsLoaded()
@@ -303,11 +297,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
               <Stack spacing="lg">
                 <MobileToolbar title={displayName || 'Collection'} actions={
                   <>
-                    <HawkinsSearch
-                      value={searchQuery}
-                      onValueChange={setSearchQuery}
-                      collapsible
-                    />
+                    <SearchTriggerButton collapsible />
                     <SortDropdown
                       fields={[
                         { value: 'name', label: 'Name' },
@@ -349,10 +339,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                     hideTitleOnMobile
                   />
                   <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-                    <HawkinsSearch
-                      value={searchQuery}
-                      onValueChange={setSearchQuery}
-                    />
+                    <SearchTriggerButton />
                     <SortDropdown
                       fields={[
                         { value: 'name', label: 'Name' },
@@ -458,7 +445,7 @@ export function UserCollectionDetailView({ collectionId }: UserCollectionDetailV
                           }
                           showDepartment
                           shared={sharedBy ? false : undefined}
-                          sensitive={isSensitiveAsset(asset.id)}
+                          sensitive={asset.sensitive}
                           allSelectedIds={selectedIds}
                         />
                       </div>

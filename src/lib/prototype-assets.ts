@@ -1,4 +1,5 @@
 import type { Asset, Collection } from '@/lib/data-client'
+import { SENSITIVE_ASSET_IDS } from '@/lib/scenario'
 import type { ProductionDomainId } from '@/components/department/types'
 import { mergeWorkspaceAssets, generateAssetInstances } from '@/lib/asset-instances'
 import { DEFAULT_GRANTS, getResourceLabel } from '@/lib/grants'
@@ -356,11 +357,15 @@ export function mergePrototypeAssets(apiAssets: Asset[]): Asset[] {
     ...getCGSequenceAssets(),
   ]
 
-  return merged.filter((asset) => {
-    if (seen.has(asset.id)) return false
-    seen.add(asset.id)
-    return true
-  })
+  return merged
+    .filter((asset) => {
+      if (seen.has(asset.id)) return false
+      seen.add(asset.id)
+      return true
+    })
+    .map((asset) =>
+      SENSITIVE_ASSET_IDS.has(asset.id) ? { ...asset, sensitive: true } : asset
+    )
 }
 
 /**

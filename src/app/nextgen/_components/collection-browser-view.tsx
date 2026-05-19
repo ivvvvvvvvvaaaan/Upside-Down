@@ -11,7 +11,7 @@ import {
   CollectionsListView,
   ContextualActionBar,
   EmptyState,
-  HawkinsSearch,
+  SearchTriggerButton,
   PageHeader,
   SettingGroup,
   SettingSegmented,
@@ -91,7 +91,7 @@ export function CollectionBrowserView({
     handleSelectionClick: handleCollectionSelectionClick,
     clearSelection: clearCollectionSelection,
   } = useResourceSelection<Collection>()
-  const { getCollectionAssetCount, isSensitiveAsset } = useAccess()
+  const { getCollectionAssetCount } = useAccess()
   const {
     selectedCollection,
     assets: collectionAssets,
@@ -124,7 +124,6 @@ export function CollectionBrowserView({
   const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
     { field: 'name', direction: 'asc' },
   ])
-  const [searchQuery, setSearchQuery] = useState('')
   const [collectionCardState, setCollectionCardState] = useState<CollectionCardState>('asis')
   const [assetCardState, setAssetCardState] = useState<AssetCardState>('asis')
 
@@ -305,7 +304,7 @@ export function CollectionBrowserView({
                         forceEmptyPreview={forceEmptyPreview}
                         processing={showProcessing}
                         showDepartment
-                        sensitive={isSensitiveAsset(asset.id)}
+                        sensitive={asset.sensitive}
                         allSelectedIds={selectedAssetIds}
                       />
                     ))}
@@ -353,11 +352,7 @@ export function CollectionBrowserView({
             <Stack spacing="lg">
               <MobileToolbar title={title} actions={
                 <>
-                  <HawkinsSearch
-                    value={searchQuery}
-                    onValueChange={setSearchQuery}
-                    collapsible
-                  />
+                  <SearchTriggerButton collapsible />
                   <SortDropdown
                     fields={sortFields}
                     value={sortCriteria}
@@ -383,10 +378,7 @@ export function CollectionBrowserView({
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <PageHeader title={title} description={description} hideTitleOnMobile />
                 <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-                  <HawkinsSearch
-                    value={searchQuery}
-                    onValueChange={setSearchQuery}
-                  />
+                  <SearchTriggerButton />
                   <SortDropdown
                     fields={sortFields}
                     value={sortCriteria}

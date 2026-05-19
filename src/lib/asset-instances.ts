@@ -3,6 +3,13 @@ import type { Asset, AssetType, AssetTag, MediaAssetType } from '@/lib/data'
 import type { UnifiedFileNode } from '@/lib/workspace-data'
 import { getAITagsForFile, toAIMeta } from '@/lib/ai-tags'
 import type { AITagResult } from '@/lib/ai-tags'
+import {
+  getCGSequence,
+  getCGShot,
+  getEditSequence,
+  getNarrativeScene,
+  getProductionShot,
+} from '@/lib/ontology-meta'
 
 /**
  * Bridge between the looser typeTag display string and the controlled
@@ -118,6 +125,35 @@ function parseSequenceMeta(filename: string): { sequence?: string; shot?: string
 
 function inferAssetType(ext?: string): AssetType {
   return mapExtensionToType(ext)
+}
+
+/**
+ * Derive asset.episode from AI-tag ontology references. Walks the most
+ * specific layer first; returns the first hit. Returns undefined if no
+ * reference resolves — leaves callers to keep any pre-existing value.
+ */
+function deriveEpisodeFromAITags(tags: AITagResult): string | undefined {
+  if (tags.editSequence) {
+    const meta = getEditSequence(tags.editSequence)
+    if (meta?.episode) return meta.episode
+  }
+  if (tags.productionShot) {
+    const meta = getProductionShot(tags.productionShot)
+    if (meta?.episode) return meta.episode
+  }
+  if (tags.cgShot) {
+    const meta = getCGShot(tags.cgShot)
+    if (meta?.episode) return meta.episode
+  }
+  if (tags.cgSequence) {
+    const meta = getCGSequence(tags.cgSequence)
+    if (meta?.episode) return meta.episode
+  }
+  if (tags.scene) {
+    const meta = getNarrativeScene(tags.scene)
+    if (meta?.episode) return meta.episode
+  }
+  return undefined
 }
 
 /** Walk workspace folders and generate instances for all files within */
@@ -303,6 +339,12 @@ export function promotedInstanceToAsset(instance: AssetInstance): Asset {
     if (explicit ?? inferred) {
       base.mediaAssetType = explicit ?? inferred
     }
+    // Derive asset.episode from any of the aiMeta ontology references so
+    // episode filters/facets/badges work without per-asset episode hand-tagging.
+    // Order: edit sequence > production shot > CG shot > CG sequence > scene.
+    // (Edit/production refs are most specific; scene fallback handles plain
+    // dailies/board files that are scene-tagged only.)
+    base.episode = deriveEpisodeFromAITags(instance.aiTags) ?? base.episode
   }
 
   // Build unified tags (Title Case all labels)

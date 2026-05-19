@@ -5,7 +5,7 @@ import { Button } from './button'
 import { Dropdown } from './dropdown'
 import { Tag } from './tag'
 import { Tooltip } from './tooltip'
-import { MoreVertical, Music, FileText, ImageIcon, Film, File, EyeOff, Box } from 'lucide-react'
+import { MoreVertical, Music, FileText, ImageIcon, Film, File, EyeOff, Lock, Box } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -80,7 +80,7 @@ export interface AssetCardProps {
   fromWorkspace?: boolean
   /** Asset is discoverable but not accessible — show blurred with lock */
   restricted?: boolean
-  /** Called when user clicks "Request Access" on a restricted asset */
+  /** Called when user tries to open a restricted asset */
   onRequestAccess?: (asset: Asset) => void
   /** Show "Shared" tag — asset originates from outside the user's department */
   shared?: boolean
@@ -305,11 +305,14 @@ export function AssetCard({
         e.dataTransfer.setDragImage(ghost, 0, 0)
         requestAnimationFrame(() => document.body.removeChild(ghost))
       }}
-      onClick={(e) => {
-        if (restricted) { onRequestAccess?.(asset); return }
-        onClick?.(asset, e)
+      onClick={(e) => onClick?.(asset, e)}
+      onDoubleClick={() => {
+        if (restricted) {
+          onRequestAccess?.(asset)
+          return
+        }
+        router.push(`/nextgen/assets/${asset.id}`)
       }}
-      onDoubleClick={() => { if (!restricted) router.push(`/nextgen/assets/${asset.id}`) }}
       className={cn(
         'group relative flex flex-col',
         'w-full cursor-pointer',
@@ -333,7 +336,7 @@ export function AssetCard({
         {/* Restricted overlay */}
         {restricted && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/20">
-            <EyeOff className="w-5 h-5 text-white/80" />
+            <Lock className="w-5 h-5 text-white/80" />
           </div>
         )}
 

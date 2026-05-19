@@ -830,6 +830,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
   const canDownloadFn = useCallback((resource: ResourceRef): boolean => {
     if (!activePersona) return true
+    if ((resource.type === 'asset' || resource.type === 'cut') && SENSITIVE_ASSET_IDS.has(resource.id)) return false
 
     return resolveAccessDecisionForResource(resource).permissions.includes('download')
   }, [activePersona, resolveAccessDecisionForResource])

@@ -6,6 +6,7 @@ import { PersonaProvider } from '@/hooks/usePersona'
 import { AccessProvider } from '@/hooks/useAccess'
 import { NextgenShell } from './_components/nextgen-shell'
 import { ToastProvider } from '@/components/ui/toast'
+import { SearchOverlayProvider, SearchOverlayModal } from '@/components/ui'
 
 /**
  * Nextgen Layout
@@ -29,9 +30,12 @@ export default function NextgenLayout({
           <AccessProvider>
             <SmartCollectionsProvider>
               <ToastProvider>
-                <Suspense fallback={children}>
-                  <NextgenShell>{children}</NextgenShell>
-                </Suspense>
+                <SearchOverlayProvider>
+                  <Suspense fallback={children}>
+                    <NextgenShell>{children}</NextgenShell>
+                  </Suspense>
+                  <SearchOverlayModal />
+                </SearchOverlayProvider>
               </ToastProvider>
             </SmartCollectionsProvider>
           </AccessProvider>

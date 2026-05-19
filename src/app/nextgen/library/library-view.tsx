@@ -23,7 +23,7 @@ import { AssetDetailPanelContent } from '@/components/ui/asset-detail-panel'
 export function LibraryView() {
   const { hydrated, activePersona } = usePersona()
   const { visibleCuts } = useCuts()
-  const { isSensitiveAsset, canShare: canShareResource, createGuestLink } = useAccess()
+  const { canShare: canShareResource, createGuestLink } = useAccess()
   const { showToast } = useToast()
   const { scopedAssets } = useSmartCollections()
   const { sidePanelOpen, setSidePanelOpen, showTags, metadataFields } = useViewPreferences()
@@ -205,7 +205,7 @@ export function LibraryView() {
                         }
                         showTags={showTags}
                         metadataFields={metadataFields}
-                        sensitive={isSensitiveAsset(asset.id)}
+                        sensitive={asset.sensitive}
                         allSelectedIds={selectedIds}
                       />
                     </div>

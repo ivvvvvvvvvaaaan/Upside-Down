@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Stack, CardGrid, AssetCard, EmptyState, MobileToolbar, PageHeader, HawkinsSearch, SortDropdown, AppearanceDropdown } from '@/components/ui'
+import { Stack, CardGrid, AssetCard, EmptyState, MobileToolbar, PageHeader, SearchTriggerButton, SortDropdown, AppearanceDropdown } from '@/components/ui'
 import type { SortCriterion } from '@/components/ui/sort-dropdown'
 import { ContextualActionBar } from '@/components/ui/contextual-action-bar'
 import { useToast } from '@/components/ui/toast'
@@ -23,7 +23,6 @@ export function SharedFolderView({ folderId }: SharedFolderViewProps) {
   const { cardSize, setCardSize, showTags, setShowTags, metadataFields, setMetadataField } = useViewPreferences()
   const { getResourceGrants, canAccess, canEdit } = useAccess()
   const { tree } = useFileTree()
-  const [searchQuery, setSearchQuery] = useState('')
   const [sortCriteria, setSortCriteria] = useState<SortCriterion[]>([
     { field: 'name', direction: 'asc' },
   ])
@@ -108,11 +107,7 @@ export function SharedFolderView({ folderId }: SharedFolderViewProps) {
             <Stack spacing="lg">
               <MobileToolbar title={folderName} actions={
                 <>
-                  <HawkinsSearch
-                    value={searchQuery}
-                    onValueChange={setSearchQuery}
-                    collapsible
-                  />
+                  <SearchTriggerButton collapsible />
                   <SortDropdown
                     fields={sortFields}
                     value={sortCriteria}
@@ -145,10 +140,7 @@ export function SharedFolderView({ folderId }: SharedFolderViewProps) {
                   hideTitleOnMobile
                 />
                 <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-                  <HawkinsSearch
-                    value={searchQuery}
-                    onValueChange={setSearchQuery}
-                  />
+                  <SearchTriggerButton />
                   <SortDropdown
                     fields={sortFields}
                     value={sortCriteria}
