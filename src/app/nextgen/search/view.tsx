@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef, useDeferredValue } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Search, Info, Download, PanelRight } from 'lucide-react'
 import {
@@ -25,6 +25,7 @@ import { assetToSelectionEntity } from '@/lib/selection-actions'
 import { getContextAssetGroups } from '@/lib/context-relationships'
 import {
   executeSearch,
+  parseQuery,
   getSuggestions,
   removeChipFromQuery,
   addPhraseToQuery,
@@ -56,9 +57,15 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  // Initialize from URL (?q=…). Subsequent edits write back via router.replace,
-  // so internal state stays the source of truth between writes.
-  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') ?? '')
+  // inputValue: updates on every keystroke — drives the visible input and cheap
+  // parses (chips, free text, suggestions) with zero delay.
+  // deferredQuery: React schedules this as low-priority — drives executeSearch
+  // so expensive renders are interruptible and never block a keypress.
+  const [inputValue, setInputValue] = useState(() => searchParams.get('q') ?? '')
+  const deferredQuery = useDeferredValue(inputValue)
+  // Prevents iOS autocorrect/predictive-text from racing the controlled input.
+  const composingRef = useRef(false)
+
   const [inputFocused, setInputFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -68,31 +75,31 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
   const { filterByAccess, getVisibilityState, requestAccess, canDownload } = useAccess()
   const { allAssets, assetsLoaded, assetsLoading, ensureAssetsLoaded } = useSmartCollections()
 
-  // Sync the URL with the current query — debounced so each keystroke doesn't
-  // hit the history stack. router.replace (not push) so back-button skips the
-  // intermediate states.
+  // Sync the URL once typing pauses. deferredQuery already lags keystrokes via
+  // React's scheduler; the extra 300ms timer prevents thrashing history on fast
+  // devices where deferred renders resolve quickly.
   useEffect(() => {
-    const handle = setTimeout(() => {
+    const t = setTimeout(() => {
       const params = new URLSearchParams(Array.from(searchParams.entries()))
       const current = params.get('q') ?? ''
-      if (searchQuery === current) return // nothing to write
-      if (searchQuery) params.set('q', searchQuery)
+      if (deferredQuery === current) return
+      if (deferredQuery) params.set('q', deferredQuery)
       else params.delete('q')
       const qs = params.toString()
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
-    }, 200)
-    return () => clearTimeout(handle)
+    }, 300)
+    return () => clearTimeout(t)
   // pathname intentionally excluded — replace would loop on its own write.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery])
+  }, [deferredQuery])
 
   // React to external URL changes (back/forward, deep-link, in-app link).
   useEffect(() => {
     const fromUrl = searchParams.get('q') ?? ''
-    if (fromUrl !== searchQuery) {
-      setSearchQuery(fromUrl)
+    if (fromUrl !== inputValue) {
+      setInputValue(fromUrl)
     }
-  // searchQuery intentionally excluded — we only mirror inbound changes.
+  // inputValue intentionally excluded — we only mirror inbound changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
@@ -101,10 +108,10 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
   // time they consider clicking one. Deep-linked queries also trigger load.
   useEffect(() => {
     if (assetsLoaded || assetsLoading) return
-    if (searchQuery.trim() || inputFocused) {
+    if (inputValue.trim() || inputFocused) {
       void ensureAssetsLoaded()
     }
-  }, [searchQuery, inputFocused, assetsLoaded, assetsLoading, ensureAssetsLoaded])
+  }, [inputValue, inputFocused, assetsLoaded, assetsLoading, ensureAssetsLoaded])
 
   // Workspace (live) assets are present immediately from useFileTree —
   // gating them on /api/assets's `assetsLoaded` makes Character/Scene/Location
@@ -135,24 +142,28 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     requestAccess(asset.id, { id: asset.id, type: 'asset', domainId: asset.department })
   }, [requestAccess])
 
-  // Run the engine over whatever's currently accessible. allSearchableAssets
-  // changes identity as curated /api/assets fold in, which re-triggers this.
+  // Run the engine over whatever's currently accessible. Uses deferredQuery so
+  // React can interrupt this render when a new keystroke arrives.
   const search = useMemo(() => {
     const visible = allSearchableAssets.filter((asset) => {
       const visibility = visibilityByAssetId.get(asset.id)
       return visibility === 'accessible' || visibility === 'discoverable'
     })
-    return executeSearch({ query: searchQuery, assets: visible })
-  }, [searchQuery, allSearchableAssets, visibilityByAssetId])
+    return executeSearch({ query: deferredQuery, assets: visible })
+  }, [deferredQuery, allSearchableAssets, visibilityByAssetId])
 
-  const parsedChips: ParsedChip[] = search.parsed.chips
-  const freeText: string = search.parsed.freeText
+  // Cheap parse of the *current* input — chips, free text, and suggestions stay
+  // in sync with what the user sees without waiting for the deferred render.
+  const currentParsed = useMemo(() => parseQuery(inputValue), [inputValue])
+  const parsedChips: ParsedChip[] = currentParsed.chips
+  const freeText: string = currentParsed.freeText
+  // Facets come from the deferred search; the tiny visual lag is imperceptible.
   const facets = search.facets
 
   const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return null
+    if (!deferredQuery.trim()) return null
     return search.results.map(r => r.asset)
-  }, [searchQuery, search])
+  }, [deferredQuery, search])
 
   const curatedResults = searchResults ?? []
   const workspaceResults: typeof curatedResults = []
@@ -176,23 +187,23 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
   // === Handlers that mutate the input string ===
 
   const handleDismissChip = useCallback((chip: ParsedChip) => {
-    setSearchQuery(prev => removeChipFromQuery(prev, chip))
+    setInputValue(prev => removeChipFromQuery(prev, chip))
   }, [])
 
   const handlePinFacet = useCallback((canonical: string) => {
-    setSearchQuery(prev => addPhraseToQuery(prev, canonical))
+    setInputValue(prev => addPhraseToQuery(prev, canonical))
   }, [])
 
   const handleClearAll = useCallback(() => {
-    setSearchQuery(freeText.trim())
+    setInputValue(freeText.trim())
+  }, [freeText])
+
+  const handleDismissSemanticText = useCallback(() => {
+    setInputValue(prev => replaceTrailingFreeText(prev, freeText, '').trim())
   }, [freeText])
 
   const handleSelectSuggestion = useCallback((s: Suggestion) => {
-    // Replace the trailing free-text with the canonical phrase so the parser
-    // re-chips it. Keeps already-pinned chip spans intact.
-    setSearchQuery(prev => {
-      return replaceTrailingFreeText(prev, freeText, s.canonical)
-    })
+    setInputValue(prev => replaceTrailingFreeText(prev, freeText, s.canonical))
     inputRef.current?.focus()
   }, [freeText])
 
@@ -212,7 +223,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     return selectedAssets.some(a => !canDownload({ id: a.id, type: 'asset', domainId: a.department }))
   }, [selectedAssets, canDownload])
 
-  const isSearchActive = searchQuery.trim().length > 0
+  const isSearchActive = inputValue.trim().length > 0
   const isSearching = isSearchActive && (!assetsLoaded || assetsLoading)
 
   const primaryAsset = useMemo(() => {
@@ -270,7 +281,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
 
       {/* Search bar — always the same input node, focus is preserved */}
       <div className="flex items-center justify-between gap-4">
-        <form className="flex-1 max-w-2xl" onSubmit={(e) => { e.preventDefault(); if (searchQuery.trim()) setExpanded(true) }}>
+        <form className="flex-1 max-w-2xl" onSubmit={(e) => { e.preventDefault(); if (inputValue.trim()) setExpanded(true) }}>
           <div className="relative">
             <Search className={cn(
               'absolute left-4 top-1/2 -translate-y-1/2 text-foreground-dim pointer-events-none transition-all duration-300',
@@ -279,8 +290,15 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
             <input
               ref={inputRef}
               type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={inputValue}
+              onChange={(e) => {
+                if (!composingRef.current) setInputValue(e.target.value)
+              }}
+              onCompositionStart={() => { composingRef.current = true }}
+              onCompositionEnd={(e) => {
+                composingRef.current = false
+                setInputValue(e.currentTarget.value)
+              }}
               onFocus={() => setInputFocused(true)}
               onBlur={() => setInputFocused(false)}
               placeholder='Type to filter — characters, episodes, scenes, "final cut"…'
@@ -312,6 +330,8 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
           onDismissChip={handleDismissChip}
           onPinFacet={(canonical) => { setExpanded(true); handlePinFacet(canonical) }}
           onClearAll={handleClearAll}
+          semanticText={freeText.trim() || undefined}
+          onDismissSemanticText={handleDismissSemanticText}
         />
       )}
     </div>
@@ -417,7 +437,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
                   {searchResults && searchResults.length === 0 && !isSearching && (
                     <div className="text-center py-12">
                       <Text variant="body-1" color="secondary">
-                        No results for &ldquo;{searchQuery}&rdquo;
+                        No results for &ldquo;{deferredQuery}&rdquo;
                       </Text>
                     </div>
                   )}

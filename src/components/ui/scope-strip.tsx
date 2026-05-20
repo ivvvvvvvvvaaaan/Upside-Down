@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Sparkles, X } from 'lucide-react'
 import { Chip } from './chip'
 import { Popover, PopoverContent, PopoverTrigger } from './popover'
 import { cn } from '@/lib/utils'
@@ -43,6 +43,14 @@ export interface ScopeStripProps {
   onPinFacet: (canonicalText: string) => void
   /** Clear all pinned chips at once. */
   onClearAll?: () => void
+  /**
+   * The free-text portion of the query that semantic search interpreted but
+   * didn't map to a structured chip. Rendered as an AI-inferred chip so users
+   * can see what signal was applied and dismiss it if unwanted.
+   */
+  semanticText?: string
+  /** Remove the semantic text signal from the query. */
+  onDismissSemanticText?: () => void
 }
 
 // Maps a wildcard chip value to the dimension kind it replaces.
@@ -57,7 +65,7 @@ const WILDCARD_DIMENSION: Partial<Record<string, ParsedChip['kind']>> = {
 // Kinds that support multiple selected values — + button stays visible after first pin.
 const MULTI_VALUE_KINDS = new Set<ParsedChip['kind']>(['character', 'scene', 'location', 'episode', 'stage'])
 
-export function ScopeStrip({ chips, facets, onDismissChip, onPinFacet, onClearAll }: ScopeStripProps) {
+export function ScopeStrip({ chips, facets, onDismissChip, onPinFacet, onClearAll, semanticText, onDismissSemanticText }: ScopeStripProps) {
   const pinnedKinds = new Set(chips.map(c => c.kind))
   const wildcardPinnedKinds = new Set<ParsedChip['kind']>()
   // A wildcard chip (e.g. "All Characters") also suppresses its dimension picker.
@@ -105,7 +113,9 @@ export function ScopeStrip({ chips, facets, onDismissChip, onPinFacet, onClearAl
       return { ...d, buckets: d.buckets.filter(b => !selected.has(b.value.toLowerCase())) }
     })
 
-  if (chips.length === 0 && available.length === 0) return null
+  const hasSemanticText = !!semanticText?.trim()
+
+  if (chips.length === 0 && available.length === 0 && !hasSemanticText) return null
 
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
@@ -126,8 +136,34 @@ export function ScopeStrip({ chips, facets, onDismissChip, onPinFacet, onClearAl
         </Chip>
       ))}
 
+      {/* AI-inferred semantic chip — shows free-text that influenced results */}
+      {hasSemanticText && (
+        <span className={cn(
+          'inline-flex items-center gap-1 pl-1.5 pr-1 py-1 h-6 rounded',
+          'text-label-0-bold text-foreground-inverse dark:text-foreground',
+          'bg-gray-600 dark:bg-gray-400',
+        )}>
+          <Sparkles className="w-3 h-3 shrink-0 opacity-70" />
+          {semanticText}
+          {onDismissSemanticText && (
+            <button
+              type="button"
+              onClick={onDismissSemanticText}
+              aria-label={`Remove semantic filter "${semanticText}"`}
+              className={cn(
+                'inline-flex items-center justify-center size-4 rounded text-current',
+                'transition-colors hover:bg-gray-500/40',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-system-focus',
+              )}
+            >
+              <X className="size-4" />
+            </button>
+          )}
+        </span>
+      )}
+
       {/* Faint divider between pinned + available (only when both have content) */}
-      {chips.length > 0 && available.length > 0 && (
+      {(chips.length > 0 || hasSemanticText) && available.length > 0 && (
         <span aria-hidden className="h-4 w-px bg-border-subtle dark:bg-border-inverse-subtle" />
       )}
 
@@ -136,8 +172,8 @@ export function ScopeStrip({ chips, facets, onDismissChip, onPinFacet, onClearAl
         <DimensionPicker key={dim.kind} dim={dim} onPinFacet={onPinFacet} />
       ))}
 
-      {/* Clear all — only when chips are active */}
-      {chips.length > 0 && onClearAll && (
+      {/* Clear all — when any active filter is present */}
+      {(chips.length > 0 || hasSemanticText) && onClearAll && (
         <button
           type="button"
           onClick={onClearAll}
