@@ -311,8 +311,8 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
               )}
             />
             {expanded && !inputValue && !inputFocused && (
-              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-0.5 px-1.5 h-5 rounded border border-border-dim text-label-0-regular text-foreground-subtle pointer-events-none select-none">
-                <span className="text-[11px] leading-none">⌘</span>K
+              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-px px-1.5 h-5 rounded border border-border-dim text-[10px] leading-none text-foreground-subtle pointer-events-none select-none">
+                ⌘K
               </kbd>
             )}
             <SearchSuggestions

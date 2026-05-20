@@ -5,6 +5,14 @@ import { Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
 
+function CmdKHint() {
+  return (
+    <kbd className="inline-flex items-center gap-px px-1.5 h-5 rounded border border-border-subtle dark:border-border-inverse-subtle text-[10px] leading-none text-foreground-subtle pointer-events-none select-none flex-shrink-0">
+      ⌘K
+    </kbd>
+  )
+}
+
 /**
  * Minimal search input — search icon on the left, plain text input.
  * The richer filter-chip / saved-filters UI was removed pending a foundational
@@ -21,6 +29,7 @@ export interface HawkinsSearchProps extends Omit<React.InputHTMLAttributes<HTMLI
 const HawkinsSearch = forwardRef<HTMLInputElement, HawkinsSearchProps>(
   ({ className, value, onValueChange, placeholder = 'Search...', onChange, collapsible = false, ...props }, ref) => {
     const [mobileExpanded, setMobileExpanded] = useState(false)
+    const [focused, setFocused] = useState(false)
     const inputRef = useRef<HTMLInputElement | null>(null)
 
     const setInputRef = (node: HTMLInputElement | null) => {
@@ -53,10 +62,13 @@ const HawkinsSearch = forwardRef<HTMLInputElement, HawkinsSearchProps>(
           type="text"
           value={value}
           onChange={handleChange}
+          onFocus={(e) => { setFocused(true); props.onFocus?.(e) }}
+          onBlur={(e) => { setFocused(false); props.onBlur?.(e) }}
           placeholder={placeholder}
           className="flex-1 min-w-0 h-5 bg-transparent text-body-0-regular text-foreground placeholder:text-foreground-subtle focus:outline-none"
           {...props}
         />
+        {!value && !focused && <CmdKHint />}
       </div>
     )
 
