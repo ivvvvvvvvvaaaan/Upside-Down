@@ -305,10 +305,16 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
               className={cn(
                 'w-full rounded-md bg-surface-flat ring-1 ring-inset ring-border-dim text-foreground placeholder:text-foreground-dim transition-[height,padding,font-size] duration-300 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-border-system-focus',
                 expanded
-                  ? 'h-10 pl-9 pr-3 text-body-0-regular'
+                  ? 'h-10 pl-9 text-body-0-regular'
                   : 'h-14 pl-12 pr-4 text-body-1-regular',
+                expanded && !inputValue && !inputFocused ? 'pr-16' : expanded ? 'pr-3' : '',
               )}
             />
+            {expanded && !inputValue && !inputFocused && (
+              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-0.5 px-1.5 h-5 rounded border border-border-dim text-label-0-regular text-foreground-subtle pointer-events-none select-none">
+                <span className="text-[11px] leading-none">⌘</span>K
+              </kbd>
+            )}
             <SearchSuggestions
               suggestions={suggestions}
               open={showSuggestions}

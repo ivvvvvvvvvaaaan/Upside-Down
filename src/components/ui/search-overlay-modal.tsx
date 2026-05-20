@@ -37,14 +37,28 @@ import type { Asset } from '@/lib/data'
 const RESULT_PREVIEW_LIMIT = 5
 
 export function SearchOverlayModal() {
-  const { isOpen, contextPhrase, close } = useSearchOverlay()
+  const { isOpen, contextPhrase, open, close } = useSearchOverlay()
   const router = useRouter()
 
   const [query, setQuery] = useState('')
   const [lockedChips, setLockedChips] = useState<ParsedChip[]>([])
   const [highlight, setHighlight] = useState(0)
   const [suppressSuggestions, setSuppressSuggestions] = useState(false)
+  const [inputFocused, setInputFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Global ⌘K / Ctrl+K shortcut — opens from any page.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        if (isOpen) close()
+        else open()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isOpen, open, close])
 
   // On open: parse contextPhrase into locked chips, start input empty.
   useEffect(() => {
@@ -197,11 +211,16 @@ export function SearchOverlayModal() {
               type="text"
               value={query}
               onChange={(e) => { setQuery(e.target.value); setSuppressSuggestions(false) }}
-              onBlur={() => setSuppressSuggestions(true)}
-              onFocus={() => setSuppressSuggestions(false)}
-              placeholder="Search — characters, episodes, scenes, &ldquo;final cut&rdquo;…"
-              className="w-full h-10 pl-9 pr-3 rounded-md bg-surface-flat ring-1 ring-inset ring-border-dim text-body-0-regular text-foreground placeholder:text-foreground-dim transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-border-system-focus"
+              onBlur={() => { setSuppressSuggestions(true); setInputFocused(false) }}
+              onFocus={() => { setSuppressSuggestions(false); setInputFocused(true) }}
+              placeholder="Search — characters, episodes, scenes…"
+              className="w-full h-10 pl-9 pr-16 rounded-md bg-surface-flat ring-1 ring-inset ring-border-dim text-body-0-regular text-foreground placeholder:text-foreground-dim transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-border-system-focus"
             />
+            {!query && !inputFocused && (
+              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-0.5 px-1.5 h-5 rounded border border-border-dim text-label-0-regular text-foreground-subtle pointer-events-none select-none">
+                <span className="text-[11px] leading-none">⌘</span>K
+              </kbd>
+            )}
             <SearchSuggestions
               suggestions={suggestions}
               open={suggestions.length > 0 && !suppressSuggestions}
