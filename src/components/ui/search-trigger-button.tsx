@@ -69,6 +69,9 @@ export function SearchTriggerButton({
       <span className="flex-1 min-w-0 truncate text-body-0-regular text-foreground-subtle">
         {placeholder}
       </span>
+      <kbd className="inline-flex items-center gap-px px-1.5 h-5 rounded border border-border-subtle dark:border-border-inverse-subtle leading-none text-foreground-subtle pointer-events-none select-none flex-shrink-0">
+        <span className="text-[12px]" style={{transform:"translateY(0.5px)"}}>⌘</span><span className="text-[9px]">K</span>
+      </kbd>
     </button>
   )
 

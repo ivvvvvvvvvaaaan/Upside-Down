@@ -216,9 +216,9 @@ export function SearchOverlayModal() {
               placeholder="Search — characters, episodes, scenes…"
               className="w-full h-10 pl-9 pr-16 rounded-md bg-surface-flat ring-1 ring-inset ring-border-dim text-body-0-regular text-foreground placeholder:text-foreground-dim transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-border-system-focus"
             />
-            {!query && !inputFocused && (
-              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-px px-1.5 h-5 rounded border border-border-dim text-[10px] leading-none text-foreground-subtle pointer-events-none select-none">
-                ⌘K
+            {!query && (
+              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-px px-1.5 h-5 rounded border border-border-dim leading-none text-foreground-subtle pointer-events-none select-none">
+                <span className="text-[12px]" style={{transform:"translateY(0.5px)"}}>⌘</span><span className="text-[9px]">K</span>
               </kbd>
             )}
             <SearchSuggestions
