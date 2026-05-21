@@ -285,7 +285,7 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
       <div className="h-full flex flex-col">
         <div className="flex-1 min-h-0 overflow-auto">
           <div className="p-6">
-            <div className="max-w-7xl mx-auto">
+            <div className="w-full">
               <Stack spacing="lg">
                 <div className="flex items-center gap-3">
                   <div className="h-8 w-8 rounded bg-surface-3 animate-breathe" />
@@ -306,7 +306,7 @@ export function AssetDetailView({ assetId }: AssetDetailViewProps) {
       <div className="h-full flex flex-col">
         <div className="flex-1 min-h-0 overflow-auto">
           <div className="p-6">
-            <div className="max-w-7xl mx-auto">
+            <div className="w-full">
               <Stack spacing="lg">
                 <MobileToolbar title="Asset" />
                 <EmptyState

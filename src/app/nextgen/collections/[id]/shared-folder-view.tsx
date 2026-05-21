@@ -76,7 +76,7 @@ export function SharedFolderView({ folderId }: SharedFolderViewProps) {
       <div className="h-full flex flex-col">
         <div className="flex-1 min-h-0 overflow-auto">
           <div className="p-6">
-            <div className="max-w-7xl mx-auto">
+            <div className="w-full">
               <EmptyState title="Not Found" message="This folder does not exist." />
             </div>
           </div>
@@ -90,7 +90,7 @@ export function SharedFolderView({ folderId }: SharedFolderViewProps) {
       <div className="h-full flex flex-col">
         <div className="flex-1 min-h-0 overflow-auto">
           <div className="p-6">
-            <div className="max-w-7xl mx-auto">
+            <div className="w-full">
               <EmptyState title="Access Restricted" message="You don't have access to this folder." />
             </div>
           </div>
@@ -103,7 +103,7 @@ export function SharedFolderView({ folderId }: SharedFolderViewProps) {
     <div className="h-full flex flex-col">
       <div className="flex-1 min-h-0 overflow-auto">
         <div className="p-6">
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full">
             <Stack spacing="lg">
               <MobileToolbar title={folderName} actions={
                 <>

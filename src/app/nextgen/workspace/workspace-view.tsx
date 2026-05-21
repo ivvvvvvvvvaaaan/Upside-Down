@@ -731,7 +731,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
       <div className="h-full flex flex-col">
         <div className="flex-1 min-h-0 overflow-auto">
           <div className="p-6">
-            <div className="max-w-7xl mx-auto">
+            <div className="w-full">
               <EmptyState
                 title="Workspace Not Found"
                 message="This workspace root doesn't exist in the current folder tree."
@@ -748,7 +748,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
       <div className="h-full flex flex-col">
         <div className="flex-1 min-h-0 overflow-auto">
           <div className="p-6">
-            <div className="max-w-7xl mx-auto">
+            <div className="w-full">
               <EmptyState
                 title="Access Restricted"
                 message="You don't have workspace access to this folder root. Shared items will still appear in Search, Collections, or Inbox."
@@ -765,7 +765,7 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
       <div className="flex-1 min-h-0 flex">
         <div ref={scrollRef} className={cn('flex-1 min-w-0 min-h-0', isGridView ? 'overflow-auto' : 'flex flex-col overflow-hidden')}>
           <div className="p-6">
-            <div className="max-w-7xl mx-auto">
+            <div className="w-full">
               <Stack spacing="lg">
                 {/* Mobile nav */}
                 <MobileToolbar title={pageTitle} actions={

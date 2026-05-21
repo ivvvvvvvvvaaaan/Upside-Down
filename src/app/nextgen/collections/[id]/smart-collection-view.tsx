@@ -769,7 +769,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
       <div className="h-full flex flex-col">
         <div className="flex-1 min-h-0 overflow-auto">
           <div className="p-6">
-            <div className="max-w-7xl mx-auto">
+            <div className="w-full">
               <Stack spacing="lg">
                 <MobileToolbar title="Collection" />
                 <EmptyState
@@ -1007,7 +1007,7 @@ export function SmartCollectionDetailView({ collectionId }: SmartCollectionDetai
       <div className="flex-1 min-w-0 flex flex-col">
         <div className="flex-1 min-h-0 overflow-auto">
             <div className="p-6">
-              <div className="max-w-7xl mx-auto">
+              <div className="w-full">
                 <Stack spacing="lg">
                   {/* Mobile nav */}
                   <MobileToolbar title={pageTitle} actions={

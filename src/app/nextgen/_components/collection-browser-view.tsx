@@ -253,7 +253,7 @@ export function CollectionBrowserView({
       <div className="h-full flex flex-col">
         <div className="flex-1 min-h-0 overflow-auto">
           <div className="p-6">
-            <div className="max-w-7xl mx-auto">
+            <div className="w-full">
               <Stack spacing="lg">
                 <MobileToolbar title={selectedCollection.name} />
                 <div>
@@ -348,7 +348,7 @@ export function CollectionBrowserView({
     <div className="h-full flex flex-col">
       <div className="flex-1 min-h-0 overflow-auto">
         <div className="p-6">
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full">
             <Stack spacing="lg">
               <MobileToolbar title={title} actions={
                 <>
