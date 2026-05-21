@@ -31,6 +31,12 @@ const EPISODES: Suggestion[] = [
   'EP301', 'EP302', 'EP303', 'EP304', 'EP305', 'EP306',
 ].map(code => ({ kind: 'episode', label: code, canonical: code }))
 
+const SHOOTING_DAYS: Suggestion[] = Array.from({ length: 30 }, (_, i) => i + 1).map(n => ({
+  kind: 'shootingDay' as const,
+  label: `Day ${n}`,
+  canonical: `day ${n}`,
+}))
+
 const DEPARTMENTS: Suggestion[] = [
   ['Art & Design', 'art design'],
   ['VFX', 'vfx'],
@@ -63,6 +69,7 @@ const FLAGS: Suggestion[] = [
   { kind: 'wildcard', label: 'All Scenes', canonical: 'all scenes' },
   { kind: 'wildcard', label: 'All Locations', canonical: 'all locations' },
   { kind: 'wildcard', label: 'All Episodes', canonical: 'all episodes' },
+  { kind: 'wildcard', label: 'All Shooting Days', canonical: 'all shooting days' },
   { kind: 'wildcard', label: 'All Cuts', canonical: 'all cuts' },
 ]
 
@@ -80,7 +87,7 @@ function allCandidates(): Suggestion[] {
   for (const [name] of listNarrativeLocations()) {
     candidates.push({ kind: 'location', label: name, canonical: name })
   }
-  candidates.push(...EPISODES, ...DEPARTMENTS, ...MEDIA_ASSET_TYPES, ...STAGES, ...FLAGS)
+  candidates.push(...EPISODES, ...SHOOTING_DAYS, ...DEPARTMENTS, ...MEDIA_ASSET_TYPES, ...STAGES, ...FLAGS)
   return (_candidateCache = candidates)
 }
 
