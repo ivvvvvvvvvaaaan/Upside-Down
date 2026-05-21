@@ -362,7 +362,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
         </div>
 
         <div className="px-6 pb-6">
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full">
             <Stack spacing="lg">
 
               <div className="flex items-center justify-between min-h-8">
