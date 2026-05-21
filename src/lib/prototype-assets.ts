@@ -1,5 +1,16 @@
 import type { Asset, Collection } from '@/lib/data-client'
 import { SENSITIVE_ASSET_IDS } from '@/lib/scenario'
+
+/**
+ * Infer shooting day number from a workspace path string.
+ * Matches patterns like /Day_042/, /day42/, /D042/, /Day 42/, etc.
+ */
+function inferShootingDayFromPath(path?: string): number | undefined {
+  if (!path) return undefined
+  // Matches: /Day_042/, /day42/, /D042/, /Day 42/, etc.
+  const m = path.match(/[/\\][Dd](?:ay[_\s]?)?(\d{1,3})[/\\]/i)
+  return m ? parseInt(m[1], 10) : undefined
+}
 import type { ProductionDomainId } from '@/components/department/types'
 import { mergeWorkspaceAssets, generateAssetInstances } from '@/lib/asset-instances'
 import { DEFAULT_GRANTS, getResourceLabel } from '@/lib/grants'
@@ -37,6 +48,7 @@ export function getCompositeConceptComponents(): Asset[] {
       mediaAssetType: 'camera-clip',
       department: 'editorial',
       episode,
+      shootingDay: 5,
       extension: 'mov',
       shotMeta: {
         scene: narrativeScene,
@@ -58,6 +70,7 @@ export function getCompositeConceptComponents(): Asset[] {
       mediaAssetType: 'audio-clip',
       department: 'editorial',
       episode,
+      shootingDay: 5,
       extension: 'wav',
       audioMeta: {
         duration: '00:01:42',
@@ -77,6 +90,7 @@ export function getCompositeConceptComponents(): Asset[] {
       mediaAssetType: 'dailies-proxy',
       department: 'editorial',
       episode,
+      shootingDay: 5,
       extension: 'mp4',
       shotMeta: {
         scene: narrativeScene,

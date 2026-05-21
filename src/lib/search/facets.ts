@@ -19,6 +19,7 @@ export type FacetKind =
   | 'department'
   | 'mediaAssetType'
   | 'type'
+  | 'shootingDay'
 
 export type FacetBucket<V = string> = {
   value: V
@@ -35,6 +36,7 @@ export type FacetSet = {
   department: FacetBucket<DomainId>[]
   mediaAssetType: FacetBucket<MediaAssetType>[]
   type: FacetBucket<AssetType>[]
+  shootingDay: FacetBucket<string>[]
 }
 
 const DEFAULT_CAP = 12
@@ -60,6 +62,7 @@ export function buildFacets(
     department: [],
     mediaAssetType: [],
     type: [],
+    shootingDay: [],
   }
 
   // Tally each dimension in a single pass per result.
@@ -71,6 +74,7 @@ export function buildFacets(
   const departmentCounts = new Map<DomainId, number>()
   const matCounts = new Map<MediaAssetType, number>()
   const typeCounts = new Map<AssetType, number>()
+  const shootingDayCounts = new Map<string, number>()
 
   for (const a of results) {
     if (a.aiMeta?.characters) {
@@ -89,6 +93,10 @@ export function buildFacets(
       matCounts.set(a.mediaAssetType, (matCounts.get(a.mediaAssetType) ?? 0) + 1)
     }
     if (a.type) typeCounts.set(a.type, (typeCounts.get(a.type) ?? 0) + 1)
+    if (a.shootingDay != null) {
+      const k = String(a.shootingDay)
+      shootingDayCounts.set(k, (shootingDayCounts.get(k) ?? 0) + 1)
+    }
   }
 
   if (!pinned.has('character')) facets.character = bucketsFromMap(charCounts, cap)
@@ -103,6 +111,13 @@ export function buildFacets(
     facets.mediaAssetType = bucketsFromMap(matCounts, cap, mediaAssetTypeLabel)
   }
   if (!pinned.has('type')) facets.type = bucketsFromMap(typeCounts, cap, assetTypeLabel)
+  if (!pinned.has('shootingDay')) {
+    const dayBuckets: FacetBucket<string>[] = []
+    shootingDayCounts.forEach((count, value) => dayBuckets.push({ value, label: `Day ${value}`, count }))
+    // Sort numerically (by day number) then cap
+    dayBuckets.sort((a, b) => parseInt(a.value) - parseInt(b.value))
+    facets.shootingDay = dayBuckets.slice(0, cap)
+  }
 
   return facets
 }

@@ -60,10 +60,11 @@ const WILDCARD_DIMENSION: Partial<Record<string, ParsedChip['kind']>> = {
   'has-location': 'location',
   'has-episode': 'episode',
   'has-stage': 'stage',
+  'has-shooting-day': 'shootingDay',
 }
 
 // Kinds that support multiple selected values — + button stays visible after first pin.
-const MULTI_VALUE_KINDS = new Set<ParsedChip['kind']>(['character', 'scene', 'location', 'episode', 'stage'])
+const MULTI_VALUE_KINDS = new Set<ParsedChip['kind']>(['character', 'scene', 'location', 'episode', 'stage', 'shootingDay'])
 
 export function ScopeStrip({ chips, facets, onDismissChip, onPinFacet, onClearAll, semanticText, onDismissSemanticText }: ScopeStripProps) {
   const pinnedKinds = new Set(chips.map(c => c.kind))
@@ -83,13 +84,14 @@ export function ScopeStrip({ chips, facets, onDismissChip, onPinFacet, onClearAl
   const pinnedValues = new Map<ParsedChip['kind'], Set<string>>()
   for (const chip of chips) {
     if (!pinnedValues.has(chip.kind)) pinnedValues.set(chip.kind, new Set())
-    pinnedValues.get(chip.kind)!.add(chip.value.toLowerCase())
+    pinnedValues.get(chip.kind)!.add(String(chip.value).toLowerCase())
   }
 
   // Order matches a rough "narrative → production" hierarchy.
   const dimensions: Dimension[] = [
     { kind: 'character', label: 'Character', buckets: facets.character, wildcard: 'all characters' },
     { kind: 'episode', label: 'Episode', buckets: facets.episode, wildcard: 'all episodes' },
+    { kind: 'shootingDay', label: 'Day', buckets: facets.shootingDay, wildcard: 'all shooting days' },
     { kind: 'scene', label: 'Scene', buckets: facets.scene, wildcard: 'all scenes' },
     { kind: 'location', label: 'Location', buckets: facets.location, wildcard: 'all locations' },
     { kind: 'stage', label: 'Cut', buckets: facets.stage as FacetBucket<string>[], wildcard: 'all cuts' },
@@ -286,6 +288,7 @@ const KIND_LABEL: Record<ParsedChip['kind'], string> = {
   scene: 'Scene',
   location: 'Location',
   episode: 'Episode',
+  shootingDay: 'Day',
   type: 'Format',
   mediaAssetType: 'Asset type',
   department: 'Department',

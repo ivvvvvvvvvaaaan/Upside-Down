@@ -143,6 +143,13 @@ export function matchesFilter(asset: Asset, filter: AssetFilter): boolean {
     if (!asset.stage) return false
   }
 
+  if (filter.shootingDay != null) {
+    const days = Array.isArray(filter.shootingDay) ? filter.shootingDay : [filter.shootingDay]
+    if (asset.shootingDay == null || !days.includes(asset.shootingDay)) return false
+  } else if (filter.hasShootingDay) {
+    if (asset.shootingDay == null) return false
+  }
+
   // Shot metadata filters
   if (filter.shotTake) {
     if (!asset.shotMeta?.take) {

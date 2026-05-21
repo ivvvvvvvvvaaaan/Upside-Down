@@ -23,6 +23,7 @@ const KIND_LABEL: Record<ParsedChip['kind'], string> = {
   scene: 'Scene',
   location: 'Location',
   episode: 'Episode',
+  shootingDay: 'Day',
   type: 'Type',
   mediaAssetType: 'Asset type',
   department: 'Department',

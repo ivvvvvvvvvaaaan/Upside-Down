@@ -40,7 +40,8 @@ export type ParsedChip =
   | { kind: 'camera'; label: string; value: string; source: string }
   | { kind: 'take'; label: string; value: string; source: string }
   | { kind: 'flag'; label: string; value: 'final' | 'circle-take' | 'key-art'; source: string }
-  | { kind: 'wildcard'; label: string; value: 'has-character' | 'has-scene' | 'has-location' | 'has-episode' | 'has-stage'; source: string }
+  | { kind: 'shootingDay'; label: string; value: number; source: string }
+  | { kind: 'wildcard'; label: string; value: 'has-character' | 'has-scene' | 'has-location' | 'has-episode' | 'has-stage' | 'has-shooting-day'; source: string }
 
 export type ParsedQuery = {
   /** Original input, preserved for display + URL round-trips. */
@@ -174,6 +175,8 @@ const HAS_ALIASES: Alias[] = [
   { phrase: 'episodes', chip: { kind: 'wildcard', label: 'All Episodes', value: 'has-episode' } },
   { phrase: 'all cuts', chip: { kind: 'wildcard', label: 'All Cuts', value: 'has-stage' } },
   { phrase: 'cuts', chip: { kind: 'wildcard', label: 'All Cuts', value: 'has-stage' } },
+  { phrase: 'all shooting days', chip: { kind: 'wildcard', label: 'All Shooting Days', value: 'has-shooting-day' } },
+  { phrase: 'shooting days', chip: { kind: 'wildcard', label: 'All Shooting Days', value: 'has-shooting-day' } },
 ]
 
 // === Core matching helpers ===
@@ -300,6 +303,23 @@ function consumeTake(work: string, out: ParsedChip[]): string {
   return work
 }
 
+/** Pull 'day 42', 'day42', 'd042', 'd42' — shooting day patterns. */
+function consumeShootingDay(work: string, out: ParsedChip[]): string {
+  // 'day 42' / 'day42'
+  work = work.replace(/\bday\s*(\d{1,3})\b/gi, (m0, num) => {
+    const n = parseInt(num, 10)
+    out.push({ kind: 'shootingDay', label: `Day ${n}`, value: n, source: m0 })
+    return ' '
+  })
+  // 'd042' / 'd42' (zero-padded shorthand)
+  work = work.replace(/\bd(\d{2,3})\b/gi, (m0, num) => {
+    const n = parseInt(num, 10)
+    out.push({ kind: 'shootingDay', label: `Day ${n}`, value: n, source: m0 })
+    return ' '
+  })
+  return work
+}
+
 // === Chip → AssetFilter projection ===
 
 /**
@@ -321,6 +341,7 @@ export function chipsToFilter(chips: ParsedChip[], freeText: string): AssetFilte
   const stages: string[] = []
   const types: AssetType[] = []
   const typeTags: string[] = []
+  const shootingDays: number[] = []
 
   for (const chip of chips) {
     switch (chip.kind) {
@@ -362,12 +383,16 @@ export function chipsToFilter(chips: ParsedChip[], freeText: string): AssetFilte
         else if (chip.value === 'circle-take') filter.isCircleTake = true
         else if (chip.value === 'key-art') filter.isKeyArt = true
         break
+      case 'shootingDay':
+        shootingDays.push(chip.value)
+        break
       case 'wildcard':
         if (chip.value === 'has-character') filter.aiHasCharacters = true
         else if (chip.value === 'has-scene') filter.aiHasScene = true
         else if (chip.value === 'has-location') filter.aiHasLocation = true
         else if (chip.value === 'has-episode') filter.hasEpisode = true
         else if (chip.value === 'has-stage') filter.hasStage = true
+        else if (chip.value === 'has-shooting-day') filter.hasShootingDay = true
         break
     }
   }
@@ -383,6 +408,8 @@ export function chipsToFilter(chips: ParsedChip[], freeText: string): AssetFilte
   else if (stages.length > 1) filter.stage = stages as import('@/lib/data-client').CutStage[]
   if (types.length > 0) filter.types = types
   if (typeTags.length > 0) filter.typeTags = typeTags
+  if (shootingDays.length === 1) filter.shootingDay = shootingDays[0]
+  else if (shootingDays.length > 1) filter.shootingDay = shootingDays
 
   return filter
 }
@@ -407,6 +434,7 @@ export function parseQuery(raw: string): ParsedQuery {
   work = consumeAliases(work, COMPILED_HAS, chips)
   // 3. Patterns
   work = consumeEpisode(work, chips)
+  work = consumeShootingDay(work, chips)
   work = consumeCamera(work, chips)
   work = consumeTake(work, chips)
   // 4. Media-asset-type phrases (sorted longest-first)

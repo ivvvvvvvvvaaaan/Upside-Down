@@ -98,11 +98,13 @@ export function executeSearch(input: SearchInput): SearchResult {
     aiLocation: undefined,
     episode: undefined,
     stage: undefined,
+    shootingDay: undefined,
     aiHasCharacters: undefined,
     aiHasScene: undefined,
     aiHasLocation: undefined,
     hasEpisode: undefined,
     hasStage: undefined,
+    hasShootingDay: undefined,
   }
   const disjunctiveAssets = assets.filter(a => matchesFilter(a, disjunctiveFilter))
   const disjunctiveFacets = buildFacets(disjunctiveAssets, [], facetCap)
@@ -113,6 +115,7 @@ export function executeSearch(input: SearchInput): SearchResult {
   facets.location = disjunctiveFacets.location
   facets.episode = disjunctiveFacets.episode
   facets.stage = disjunctiveFacets.stage
+  facets.shootingDay = disjunctiveFacets.shootingDay
 
   return { parsed, appliedFilter, results, facets }
 }

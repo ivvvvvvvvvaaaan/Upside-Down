@@ -372,6 +372,7 @@ function hasAnyFacet(facets: NonNullable<ReturnType<typeof executeSearch>['facet
   return (
     facets.character.length > 0
     || facets.episode.length > 0
+    || facets.shootingDay.length > 0
     || facets.scene.length > 0
     || facets.location.length > 0
     || facets.stage.length > 0

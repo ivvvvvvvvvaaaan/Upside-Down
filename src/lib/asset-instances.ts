@@ -248,6 +248,36 @@ const FINAL_ASSET_IDS = new Set([
   'ws-vfx-010-020',  // SEQ010 SH020 comp — signed off after third pass
 ])
 
+// Shooting day assignments — inferred from folder/path or production report
+const SHOOTING_DAY_MAP = new Map<string, number>([
+  // Camera dailies — Feb 14 shoot block (Day 12)
+  ['ws-cam-daily-1', 12],
+  ['ws-cam-daily-2', 12],
+  ['ws-cam-daily-3', 12],
+  // Camera dailies — Feb 13 shoot block (Day 11)
+  ['ws-cam-daily-4', 11],
+  ['ws-cam-daily-5', 11],
+  // Camera scenes — Feb 12 (Day 10)
+  ['ws-cam-scene12-take3', 10],
+  ['ws-cam-scene08-take1', 10],
+  ['ws-cam-scene15-take1', 10],
+  // B-roll (Day 9)
+  ['ws-cam-broll-town', 9],
+  ['ws-cam-broll-forest', 9],
+  // Aerials (Day 8)
+  ['ws-cam-aerial-dawn', 8],
+  ['ws-cam-aerial-quarry', 8],
+  // Steadicam / tracking (Day 7)
+  ['ws-cam-steadicam-chase', 7],
+  ['ws-cam-tracking-hall', 7],
+  // Selects (tagged to original shoot day)
+  ['ws-cam-sel-1', 10],
+  ['ws-cam-sel-2', 10],
+  ['ws-cam-sel-billy', 11],
+  ['ws-cam-sel-eleven', 12],
+  ['ws-cam-sel-portal', 9],
+])
+
 // Circle takes — director/DP picks marked by the DIT on set
 const CIRCLE_TAKE_IDS = new Set([
   'ws-cam-sel-1',       // Scene12_TakeB — director circled
@@ -297,6 +327,7 @@ export function promotedInstanceToAsset(instance: AssetInstance): Asset {
     thumbnail: getThumbnail(instance),
     isFinal: FINAL_ASSET_IDS.has(instance.id),
     isCircleTake: CIRCLE_TAKE_IDS.has(instance.id),
+    shootingDay: SHOOTING_DAY_MAP.get(instance.id),
     version,
     versionGroupId: groupKey ? `${instance.department ?? 'unknown'}:${groupKey}` : undefined,
   }

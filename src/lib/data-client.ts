@@ -121,6 +121,10 @@ export type AssetFilter = {
   hasEpisode?: boolean
   /** Any asset with a cut stage set — wildcard editorial scope. */
   hasStage?: boolean
+  /** Shooting day number(s) — matched against asset.shootingDay. */
+  shootingDay?: number | number[]
+  /** Any asset with shootingDay set — wildcard scope. */
+  hasShootingDay?: boolean
 }
 
 export type SmartCollectionGroupBy = 'characters' | 'locations' | 'scenes' | 'takes' | 'cameras'
@@ -182,6 +186,8 @@ export type Asset = {
   versionGroupId?: string
   /** Episode identifier (e.g. 'EP301') */
   episode?: string
+  /** Shooting day number (e.g. 42 for "Day 42"). Inferred from folder path or EXIF on ingest. */
+  shootingDay?: number
   /** IDs of source files that make up this composite asset */
   constituents?: string[]
   /** Source file extension (e.g. 'exr', 'nk', 'mb') */

@@ -150,6 +150,7 @@ export const KIND_DISPLAY: Record<ParsedChip['kind'], string> = {
   scene: 'Scene',
   location: 'Location',
   episode: 'Episode',
+  shootingDay: 'Day',
   type: 'Format',
   mediaAssetType: 'Asset type',
   department: 'Department',

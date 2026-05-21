@@ -178,7 +178,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
       .map(c => c.kind)
     const excludeValues = parsedChips
       .filter(c => SUGGESTION_MULTI_VALUE_KINDS.has(c.kind))
-      .map(c => ({ kind: c.kind, value: c.value }))
+      .map(c => ({ kind: c.kind, value: String(c.value) }))
     return getSuggestions(freeText, 7, excludeKinds, excludeValues)
   }, [freeText, parsedChips])
 
