@@ -147,6 +147,8 @@ interface NavLinkProps {
   icon?: React.ReactNode
   /** When true, also highlight for subpaths (e.g. /workspace/art-design matches /workspace/art-design/subfolder) */
   matchSubpaths?: boolean
+  /** Additional exact paths that should also activate this link (e.g. an alias route). */
+  alsoMatchPaths?: string[]
 }
 
 interface CollapsibleSectionProps {
@@ -155,10 +157,12 @@ interface CollapsibleSectionProps {
   children: React.ReactNode
 }
 
-function NavLink({ href, label, badge, icon, matchSubpaths = false }: NavLinkProps) {
+function NavLink({ href, label, badge, icon, matchSubpaths = false, alsoMatchPaths }: NavLinkProps) {
   const pathname = usePathname()
   const mobile = useNavMobile()
-  const isActive = pathname === href || (matchSubpaths && pathname.startsWith(href + '/'))
+  const isActive = pathname === href
+    || (matchSubpaths && pathname.startsWith(href + '/'))
+    || (alsoMatchPaths?.some(p => pathname === p || pathname.startsWith(p + '?')) ?? false)
 
   return (
     <Link
@@ -699,7 +703,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
     <>
       <div className="pt-4 pb-2">
         <div className="px-3 space-y-1">
-          <NavLink href="/nextgen" label="Search" icon={<Search className="w-4 h-4 flex-shrink-0" />} />
+          <NavLink href="/nextgen" label="Search" icon={<Search className="w-4 h-4 flex-shrink-0" />} alsoMatchPaths={['/nextgen/search']} />
           <InboxNavLink />
           <NavLink href="/nextgen/library" label="Cuts" icon={<Film className="w-4 h-4 flex-shrink-0" />} matchSubpaths />
           <SharedNavSection />
