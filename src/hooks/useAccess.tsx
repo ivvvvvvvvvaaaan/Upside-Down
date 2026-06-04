@@ -121,6 +121,7 @@ interface AccessContextValue {
   canManageGrant: (grant: Grant) => boolean
   grants: Grant[]
   updateGrantProfile: (grantId: string, profileId: AccessProfileId) => void
+  updateGrantExtras: (grantId: string, extras: { allowDownload?: boolean; allowComment?: boolean; expiresAt?: string | null }) => void
   // Role group management
   roleGroups: RoleGroup[]
   updateRoleGroup: (id: string, permissions: Permission[]) => void
@@ -527,15 +528,14 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
   }, [assetById, nodeById, collectionById, getResourceDomainId])
 
+  // Sharing with existing project users is implicit with any access to the resource.
   const canShareFn = useCallback((resource: ResourceRef, currentGrants: Grant[] = grants): boolean => {
     if (!activePersona) return true
     if (!userId) return false
-
-    const permissions = resolveAccessDecisionForResource(resource, currentGrants).permissions
-    return permissions.includes('share') || permissions.includes('edit-acl')
+    return resolveAccessDecisionForResource(resource, currentGrants).allowed
   }, [activePersona, userId, grants, resolveAccessDecisionForResource])
 
-  const canGrantProfileForResourceFn = useCallback((
+const canGrantProfileForResourceFn = useCallback((
     resource: ResourceRef,
     profileId: AccessProfileId,
     currentGrants: Grant[] = grants,
@@ -865,7 +865,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
     setGrants((prev) => {
       if (!canShareFn(resource, prev)) return prev
-      if (!isGrantProfileAllowedForResource(resource, profileId)) return prev
+      // Skip profile validation when explicit permissions are provided (toggle-only grants)
+      if (!options?.permissions?.length && !isGrantProfileAllowedForResource(resource, profileId)) return prev
 
       const supportsShareExtras = resource.type !== 'folder'
       const shareModeOption = supportsShareExtras ? options?.shareMode : undefined
@@ -1036,6 +1037,39 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
     setAccessRequests((prev) => prev.filter((request) => request.requestedByUserId !== targetUserId))
   }, [canEditAclFn, setGrants])
+
+  const updateGrantExtras = useCallback((
+    grantId: string,
+    extras: { allowDownload?: boolean; allowComment?: boolean; expiresAt?: string | null },
+  ) => {
+    setGrants((prev) => {
+      const grant = prev.find((candidate) => candidate.id === grantId)
+      if (!grant || !canManageGrantForState(grant, prev)) return prev
+
+      return prev.map((candidate) => {
+        if (candidate.id !== grantId) return candidate
+
+        let permissions = [...candidate.permissions]
+
+        if (extras.allowDownload !== undefined) {
+          if (extras.allowDownload && !permissions.includes('download')) permissions.push('download')
+          if (!extras.allowDownload) permissions = permissions.filter(p => p !== 'download')
+        }
+        if (extras.allowComment !== undefined) {
+          if (extras.allowComment && !permissions.includes('comment')) permissions.push('comment')
+          if (!extras.allowComment) permissions = permissions.filter(p => p !== 'comment')
+        }
+
+        return {
+          ...candidate,
+          permissions,
+          allowDownload: extras.allowDownload !== undefined ? (extras.allowDownload || undefined) : candidate.allowDownload,
+          allowComment: extras.allowComment !== undefined ? (extras.allowComment || undefined) : candidate.allowComment,
+          expiresAt: extras.expiresAt !== undefined ? (extras.expiresAt ?? undefined) : candidate.expiresAt,
+        }
+      })
+    })
+  }, [canManageGrantForState, setGrants])
 
   const updateGrantProfile = useCallback((grantId: string, profileId: AccessProfileId) => {
     setGrants((prev) => {
@@ -1267,6 +1301,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     canManageGrant,
     grants,
     updateGrantProfile,
+    updateGrantExtras,
     roleGroups,
     updateRoleGroup,
     renameRoleGroup,
@@ -1331,6 +1366,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     canManageGrant,
     grants,
     updateGrantProfile,
+    updateGrantExtras,
     roleGroups,
     updateRoleGroup,
     renameRoleGroup,

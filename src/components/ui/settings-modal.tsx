@@ -40,7 +40,7 @@ const ALL_PERMISSIONS: { id: Permission; name: string }[] = [
   { id: 'write', name: 'Write' },
   { id: 'delete', name: 'Delete' },
   { id: 'comment', name: 'Comment' },
-  { id: 'share', name: 'Share' },
+  { id: 'upload', name: 'Upload' },
   { id: 'edit-acl', name: 'Admin' },
 ]
 
@@ -211,33 +211,33 @@ function PersonAccessDetail({
   const summary = useMemo(() => getUserAccessSummary(userId), [getUserAccessSummary, userId])
 
   return (
-    <div className="bg-surface-mid rounded px-3 py-2 ml-8 mr-2 mb-1 space-y-2">
+    <div className="pl-10 pr-2 pb-2 space-y-2">
       {summary.workspaceRoots.length > 0 && (
-        <div>
-          <p className="text-label-0-bold text-foreground-dim uppercase mb-1">Workspaces</p>
+        <div className="space-y-0.5">
+          <p className="text-label-0-regular text-foreground-dim">Workspaces</p>
           {summary.workspaceRoots.map((root) => (
             <p key={root.folderId} className="text-body-0-regular text-foreground">
-              {root.folderName} root — {root.count} assets
+              {root.folderName} — {root.count} assets
             </p>
           ))}
         </div>
       )}
 
       {summary.directShares.length > 0 && (
-        <div>
-          <p className="text-label-0-bold text-foreground-dim uppercase mb-1">Direct shares</p>
+        <div className="space-y-0.5">
+          <p className="text-label-0-regular text-foreground-dim">Direct shares</p>
           {summary.directShares.map((s) => (
-            <div key={s.resourceId} className="flex items-center justify-between">
+            <div key={s.resourceId} className="flex items-center justify-between gap-4">
               <span className="text-body-0-regular text-foreground truncate">{s.label}</span>
-              <span className="text-label-0-regular text-foreground-dim flex-shrink-0 ml-2">{s.profile}</span>
+              <span className="text-label-0-regular text-foreground-dim flex-shrink-0">{s.profile}</span>
             </div>
           ))}
         </div>
       )}
 
       {summary.collectionShares.length > 0 && (
-        <div>
-          <p className="text-label-0-bold text-foreground-dim uppercase mb-1">Collections</p>
+        <div className="space-y-0.5">
+          <p className="text-label-0-regular text-foreground-dim">Collections</p>
           {summary.collectionShares.map((c) => (
             <p key={c.collectionId} className="text-body-0-regular text-foreground">
               {c.collectionName} — {c.assetCount} assets
@@ -247,8 +247,8 @@ function PersonAccessDetail({
       )}
 
       {summary.domainReleases.length > 0 && (
-        <div>
-          <p className="text-label-0-bold text-foreground-dim uppercase mb-1">Releases</p>
+        <div className="space-y-0.5">
+          <p className="text-label-0-regular text-foreground-dim">Releases</p>
           {summary.domainReleases.map((r) => (
             <p key={r.domainId} className="text-body-0-regular text-foreground">
               {r.domainName} — {r.assetCount} assets
@@ -257,8 +257,8 @@ function PersonAccessDetail({
         </div>
       )}
 
-      <div className="flex items-center justify-between pt-1 border-t border-border-dim">
-        <p className="text-body-0-bold text-foreground">
+      <div className="flex items-center justify-between">
+        <p className="text-label-0-regular text-foreground-dim">
           {summary.totalUniqueAssets} unique assets accessible
         </p>
         {canRemove && onRevokeAll && (
@@ -364,13 +364,8 @@ function PeopleTab({
   return (
     <div className="space-y-3">
       <p className="text-body-0-regular text-foreground-dim">
-        People appear here because they belong to a group, or are involved through explicit shares. Add new working users from the Groups tab, and use share controls on folders, assets, or collections for ad hoc access.
+        Everyone with access to this project. Add people via Groups, or share individual folders, assets, or collections directly.
       </p>
-      {canRemoveParticipants && (
-        <p className="text-label-0-regular text-foreground-dim">
-          Project admins can remove a person here to remove their direct shares and remove them from workspace and team membership.
-        </p>
-      )}
 
       {participants.length === 0 ? (
         <p className="text-body-0-regular text-foreground-dim py-4 text-center">No people with access yet.</p>
@@ -379,11 +374,17 @@ function PeopleTab({
           {participants.map((persona) => {
             const isExpanded = expandedUserId === persona.id
             return (
-              <div key={persona.id}>
+              <div
+                key={persona.id}
+                className={cn(
+                  'rounded transition-colors',
+                  isExpanded ? 'bg-surface-3/60' : '',
+                )}
+              >
                 <div
                   className={cn(
                     'flex items-center justify-between gap-2 py-2 px-2 rounded cursor-pointer transition-colors',
-                    isExpanded ? 'bg-surface-3/60' : 'hover:bg-surface-3/40',
+                    !isExpanded && 'hover:bg-surface-3/40',
                   )}
                   onClick={() => setExpandedUserId(isExpanded ? null : persona.id)}
                 >
@@ -464,7 +465,7 @@ function DiscoverySection({
   disabled: boolean
 }) {
   return (
-    <div className="space-y-3 rounded-lg border border-border-dim p-4">
+    <div className="space-y-3 py-3 border-b border-border-dim last:border-b-0">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-body-0-bold text-foreground">{title}</p>
@@ -630,14 +631,8 @@ function GroupsTab({
 
   return (
     <div className="space-y-3">
-      <p className="text-body-0-regular text-foreground-dim">
-        Groups are the working teams on this project. Add people to a group, then choose the workspace folder they should see by default.
-      </p>
       {teamOptions.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-body-0-regular text-foreground-dim">
-            Queue someone into a group, then confirm with Update Access in the footer.
-          </p>
           <div className="flex items-start gap-2">
             <Input
               icon={<Search />}
@@ -870,7 +865,7 @@ function RoleGroupsTab({
   return (
     <div className="space-y-4">
       <p className="text-body-0-regular text-foreground-dim">
-        Role groups define what actions users can take. Assign a role group to a person, team, or release audience to grant capabilities.
+        Define what actions each role can take. Assign a role when sharing a folder, asset, or collection.
       </p>
 
       <div className="overflow-x-auto">
@@ -1432,7 +1427,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   }, [onOpenChange, resetPendingWorkspaceInvites])
 
   return (
-    <Modal open={open} onOpenChange={handleModalOpenChange} size="md">
+    <Modal open={open} onOpenChange={handleModalOpenChange} width={680}>
       <div className="flex flex-col max-h-[80vh]">
         <div className="pb-0">
           <Modal.Header
@@ -1459,7 +1454,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             defaultValue="groups"
             value={activeTab}
             onValueChange={setActiveTab}
-            className="px-6 pt-4"
+            className="px-6 pt-3"
           >
             <TabsList>
               <Tab value="groups">Groups</Tab>
@@ -1470,7 +1465,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               {canManageProject && <Tab value="audit-log">Audit Log</Tab>}
             </TabsList>
 
-            <div className="flex-1 overflow-y-auto max-h-[50vh] px-1 pb-4">
+            <div className="flex-1 overflow-y-auto max-h-[50vh] pb-4">
               <TabsContent value="people">
                 <PeopleTab
                   grants={grants}
@@ -1539,7 +1534,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               )}
               {canManageProject && (
                 <TabsContent value="settings">
-                  <div className="space-y-3">
+                  <div>
                     {discoverySections.map(({ resourceType, title, description }) => {
                       const settings = getDiscoverySettings(resourceType)
                       return (
@@ -1585,7 +1580,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           </Tabs>
         </div>
 
-        <div className="flex justify-end gap-2 px-6 py-4 border-t border-border-dim">
+        <div className="flex justify-end gap-2 px-6 py-4">
           {hasPendingWorkspaceInvites ? (
             <>
               <Button

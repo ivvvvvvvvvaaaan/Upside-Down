@@ -40,7 +40,6 @@ export type Permission =
   | 'write'
   | 'delete'
   | 'comment'
-  | 'share'
   | 'edit-acl'
   | 'upload'
 
@@ -139,6 +138,7 @@ export function roleGroupOptions(roleGroups: RoleGroup[]) {
 
 const FULL_ACCESS_ONLY_PROFILES = ['manager', 'viewer'] as const satisfies readonly AccessProfileId[]
 const ASSET_ACCESS_PROFILES = ['manager', 'downloader', 'viewer'] as const satisfies readonly AccessProfileId[]
+const COLLECTION_ACCESS_PROFILES = ['downloader', 'viewer'] as const satisfies readonly AccessProfileId[]
 const STANDARD_GRANT_PROFILES = ['manager', 'editor', 'downloader', 'uploader', 'viewer'] as const satisfies readonly AccessProfileId[]
 
 type GrantAccessModel =
@@ -167,11 +167,11 @@ export const RESOURCE_GRANT_PRINCIPLES = {
   },
   collection: {
     accessModel: 'collection-assets',
-    profileIds: ASSET_ACCESS_PROFILES,
+    profileIds: COLLECTION_ACCESS_PROFILES,
   },
   'smart-collection': {
     accessModel: 'collection-assets',
-    profileIds: ASSET_ACCESS_PROFILES,
+    profileIds: COLLECTION_ACCESS_PROFILES,
   },
   'review-set': {
     accessModel: 'direct-resource',

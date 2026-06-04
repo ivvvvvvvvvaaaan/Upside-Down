@@ -29,6 +29,7 @@ import {
   RELEASE_DOMAINS,
   roleLabelForResource,
   roleOptionsForResource,
+  getPermissionsForProfile,
 } from '@/lib/grants'
 import type { RoleGroup, ShareMode } from '@/lib/grants'
 import { buildAccessDisplayEntries } from './access-display'
@@ -138,7 +139,7 @@ function PermissionRadio({
   )
 }
 
-function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onRemove, onBlock, onUpdateProfile, onSetMemberOverride, name, subtitle, members, domainId }: {
+function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onRemove, onBlock, onUpdateProfile, onUpdateExtras, onSetMemberOverride, name, subtitle, members, domainId }: {
   grant: Grant
   readOnly: boolean
   roleGroups: RoleGroup[]
@@ -147,6 +148,7 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
   onRemove?: (grantId: string) => void
   onBlock?: (grantId: string) => void
   onUpdateProfile?: (grantId: string, profileId: AccessProfileId) => void
+  onUpdateExtras?: (grantId: string, extras: { allowDownload?: boolean; allowComment?: boolean; expiresAt?: string | null }) => void
   onSetMemberOverride?: (memberUserId: string, profileId: AccessProfileId, existingGrantId?: string) => void
   name: string
   subtitle?: ReactNode
@@ -226,21 +228,72 @@ function GrantRow({ grant, readOnly, roleGroups, expanded, onToggleExpanded, onR
         </div>
       </div>
       {(() => {
-        const lines: { label: string; value?: string }[] = []
-        if (grant.resource.type !== 'folder') {
-          if (grant.allowDownload) lines.push({ label: 'Download', value: 'Yes' })
-          if (grant.allowComment) lines.push({ label: 'Comment', value: 'Yes' })
-        }
-        if (grant.lockedToVersion != null) lines.push({ label: 'Version', value: `Locked to v${grant.lockedToVersion}` })
-        if (lines.length === 0) return null
+        const isFolder = grant.resource.type === 'folder'
+        const canEditExtras = !readOnly && Boolean(onUpdateExtras)
+        const effectiveDownload = grant.allowDownload ?? grant.permissions.includes('download')
+        const effectiveComment = grant.allowComment ?? grant.permissions.includes('comment')
+        const showExtras = !isFolder && (canEditExtras || effectiveDownload || effectiveComment || grant.expiresAt || grant.lockedToVersion != null)
+        if (!showExtras) return null
+
         return (
           <div className="pl-8 space-y-0.5">
-            {lines.map((line) => (
-              <div key={line.label} className="flex justify-between text-label-0-regular gap-4">
-                <span className="text-foreground-dim whitespace-nowrap">{line.label}</span>
-                <span className="text-foreground-subtle text-right truncate">{line.value}</span>
+            {!isFolder && canEditExtras && (
+              <>
+                <div className="flex items-center justify-between h-7">
+                  <span className="text-label-0-regular text-foreground-dim">Download</span>
+                  <Toggle
+                    checked={effectiveDownload}
+                    onChange={(v) => onUpdateExtras!(grant.id, { allowDownload: v })}
+                    aria-label="Allow download"
+                  />
+                </div>
+                <div className="flex items-center justify-between h-7">
+                  <span className="text-label-0-regular text-foreground-dim">Comment</span>
+                  <Toggle
+                    checked={effectiveComment}
+                    onChange={(v) => onUpdateExtras!(grant.id, { allowComment: v })}
+                    aria-label="Allow comment"
+                  />
+                </div>
+              </>
+            )}
+            {!isFolder && !canEditExtras && (
+              <>
+                {effectiveDownload && (
+                  <div className="flex justify-between text-label-0-regular gap-4">
+                    <span className="text-foreground-dim">Download</span>
+                    <span className="text-foreground-subtle">Yes</span>
+                  </div>
+                )}
+                {effectiveComment && (
+                  <div className="flex justify-between text-label-0-regular gap-4">
+                    <span className="text-foreground-dim">Comment</span>
+                    <span className="text-foreground-subtle">Yes</span>
+                  </div>
+                )}
+              </>
+            )}
+            {grant.expiresAt && (
+              <div className="flex items-center justify-between h-7">
+                <span className="text-label-0-regular text-foreground-dim">Expires</span>
+                {canEditExtras ? (
+                  <div className="flex items-center gap-1">
+                    <span className="text-label-0-regular text-foreground-subtle">{grant.expiresAt}</span>
+                    <Button variant="tertiary" compact onClick={() => onUpdateExtras!(grant.id, { expiresAt: null })}>
+                      Clear
+                    </Button>
+                  </div>
+                ) : (
+                  <span className="text-label-0-regular text-foreground-subtle">{grant.expiresAt}</span>
+                )}
               </div>
-            ))}
+            )}
+            {grant.lockedToVersion != null && (
+              <div className="flex justify-between text-label-0-regular gap-4">
+                <span className="text-foreground-dim">Version</span>
+                <span className="text-foreground-subtle">Locked to v{grant.lockedToVersion}</span>
+              </div>
+            )}
           </div>
         )
       })()}
@@ -457,6 +510,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     createGrant,
     revokeGrant,
     updateGrantProfile,
+    updateGrantExtras,
     roleGroups,
     canShare,
     canEditAcl,
@@ -497,6 +551,11 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const [addingPrincipals, setAddingPrincipals] = useState<AddingPrincipal[]>([])
   const [addingRole, setAddingRole] = useState<AccessProfileId | null>(null)
   const [addingShareMode, setAddingShareMode] = useState<ShareMode>('snapshot')
+  const [addingAllowDownload, setAddingAllowDownload] = useState(false)
+  const [addingAllowEdit, setAddingAllowEdit] = useState(false)
+  const [addingAllowComment, setAddingAllowComment] = useState(false)
+  const [addingExpires, setAddingExpires] = useState(false)
+  const [addingExpiresInDays, setAddingExpiresInDays] = useState(7)
   const [addingNote, setAddingNote] = useState('')
   const [addingRoleWarning, setAddingRoleWarning] = useState(false)
   const addingActive = addingPrincipals.length > 0
@@ -516,6 +575,13 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   const grants = getResourceGrants(resourceId)
   const canAddGrants = Boolean(resourceRef) && canShare(resourceRef)
   const canManageAllGrants = Boolean(resourceRef) && canEditAcl(resourceRef)
+  // Onboarding new external emails is a system-level capability: admin or team manager.
+  // null persona = admin mode (no restrictions).
+  const canOnboardUsers = Boolean(
+    !activePersona ||
+    activePersona.isAdmin ||
+    TEAMS.some(t => t.kind === 'group' && t.managerUserIds.includes(activePersona.id))
+  )
 
   // Dirty tracking — snapshot grants on first change, restore on cancel
   const [dirty, setDirty] = useState(false)
@@ -571,12 +637,11 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
   // Role + share mode + expiration
   const shareMode: ShareMode = 'snapshot'
-  const expires = false
-  const expiresInDays = 7
   const { getCollection, collections, createCollection } = useUserCollections()
   const { getCollection: getSmartCollection, filterAssets, scopedAssets } = useSmartCollections()
   const isCollectionResource = resourceRef?.type === 'collection'
   const isAssetResource = resourceRef?.type === 'asset' || resourceRef?.type === 'cut'
+  const isFolderResource = resourceRef?.type === 'folder'
   const resolveShareTarget = (rawTarget: ResourceRef): ResourceRef => {
     if (rawTarget.type !== 'smart-collection') return rawTarget
 
@@ -692,8 +757,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         kind,
         role: defaultRole,
         shareMode: defaultShareMode,
-        expires,
-        expiresInDays,
+        expires: false,
+        expiresInDays: 7,
         note: '',
       }])
       onPendingChange?.(true, { confirm: () => handleConfirmPendingRef.current(), cancel: () => handleCancelPendingRef.current() })
@@ -728,6 +793,11 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     setAddingPrincipals([])
     setAddingRole(null)
     setAddingRoleWarning(false)
+    setAddingAllowDownload(false)
+    setAddingAllowEdit(false)
+    setAddingAllowComment(false)
+    setAddingExpires(false)
+    setAddingExpiresInDays(7)
     setAddingNote('')
     setQuery('')
     setShowDropdown(false)
@@ -782,7 +852,8 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
 
   const commitAdd = () => {
     if (addingPrincipals.length === 0) return
-    if (!addingRole) {
+    // Folders still require an explicit role selection (Full Access / View only)
+    if (isFolderResource && !addingRole) {
       setAddingRoleWarning(true)
       return
     }
@@ -802,22 +873,47 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
         const snapshotAssetIds = addingShareMode === 'snapshot' && collection
           ? resolveCollectionAssetIds(collection)
           : undefined
-        createGrant(target, adding.principal, addingRole, {
-          expiresInDays: expires ? expiresInDays : undefined,
-          shareMode: isCollection ? addingShareMode : undefined,
-          snapshotAssetIds,
-          note: addingNote.trim() || undefined,
-        })
+
+        if (isFolderResource && addingRole) {
+          // Folder: role-based grant
+          createGrant(target, adding.principal, addingRole, {
+            expiresInDays: addingExpires ? addingExpiresInDays : undefined,
+            note: addingNote.trim() || undefined,
+          })
+        } else {
+          // Asset / collection: toggle-only grant, view is always implicit
+          const permissions: import('@/lib/grants').Permission[] = ['open']
+          if (addingAllowDownload) permissions.push('download')
+          if (addingAllowEdit) permissions.push('write', 'upload')
+          if (addingAllowComment) permissions.push('comment')
+          // Toggle-only grant: permissions built from toggles, no templateId
+          createGrant(target, adding.principal, 'viewer', {
+            permissions,
+            expiresInDays: addingExpires ? addingExpiresInDays : undefined,
+            shareMode: isCollection ? addingShareMode : undefined,
+            snapshotAssetIds,
+            allowDownload: addingAllowDownload || undefined,
+            allowComment: addingAllowComment || undefined,
+            note: addingNote.trim() || undefined,
+          })
+        }
       }
     }
     setAddingPrincipals([])
     setAddingRole(null)
     setAddingRoleWarning(false)
+    setAddingAllowDownload(false)
+    setAddingAllowEdit(false)
+    setAddingAllowComment(false)
+    setAddingExpires(false)
+    setAddingExpiresInDays(7)
     setAddingNote('')
     setQuery('')
     onPendingChange?.(false, { confirm: () => {}, cancel: () => {} })
     onHeaderChange?.(null)
   }
+
+
 
   const handleConfirmPending = () => {
     if (pendingGrants.length === 0) return
@@ -928,6 +1024,11 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
     createGrant(resourceRef, { type: 'user', userId: memberUserId }, profileId)
   }
 
+  const handleUpdateExtras = (grantId: string, extras: { allowDownload?: boolean; allowComment?: boolean; expiresAt?: string | null }) => {
+    markDirty()
+    updateGrantExtras(grantId, extras)
+  }
+
   const handleBlockUser = (grantId: string) => {
     const grant = grants.find(g => g.id === grantId)
     if (!grant || grant.principal.type !== 'user') return
@@ -1033,7 +1134,19 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                 </div>
               </button>
             ))}
-            {!hasResults && (
+            {canOnboardUsers && query.includes('@') && (
+              <button
+                onClick={() => handleSelectPrincipal({ type: 'user', userId: query }, query, 'user')}
+                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors border-t border-border-dim first:border-t-0"
+              >
+                <Avatar name={query} size="sm" />
+                <div className="min-w-0">
+                  <span className="text-body-0-regular text-foreground truncate block">{query}</span>
+                  <span className="text-body-0-regular text-foreground-dim truncate block">Invite to project</span>
+                </div>
+              </button>
+            )}
+            {!hasResults && !canOnboardUsers && (
               <div className="px-3 py-2 text-body-0-regular text-foreground-dim">No matches</div>
             )}
           </PopoverContent>
@@ -1061,6 +1174,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
             onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
             onBlock={!entry.sourceName && !entry.readOnly && isAdmin && entry.grant.principal.type === 'user' ? handleBlockUser : undefined}
             onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
+            onUpdateExtras={!entry.sourceName && !entry.readOnly ? handleUpdateExtras : undefined}
           />
         ))}
     </div>
@@ -1115,6 +1229,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           domainId={entry.domainId}
           onRemove={!entry.sourceName && !entry.readOnly ? handleRevokeGrant : undefined}
           onUpdateProfile={!entry.sourceName && !entry.readOnly ? handleUpdateProfile : undefined}
+          onUpdateExtras={!entry.sourceName && !entry.readOnly ? handleUpdateExtras : undefined}
         />
       ))}
     </div>
@@ -1334,7 +1449,7 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
   if (addingActive) {
     const isTeamRecipient = addingPrincipals.some(p => p.kind === 'team')
     return (
-      <div className="space-y-5">
+      <div className="space-y-4">
         {/* Multi-chip recipient input. Reuses the same search results
             Popover anchored to the box, with PopoverAnchor wrapping the
             whole chip area so the dropdown lines up with its width. */}
@@ -1394,7 +1509,19 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
                 </div>
               </button>
             ))}
-            {!hasResults && (
+            {canOnboardUsers && query.includes('@') && (
+              <button
+                onClick={() => handleSelectPrincipal({ type: 'user', userId: query }, query, 'user')}
+                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors border-t border-border-dim first:border-t-0"
+              >
+                <Avatar name={query} size="sm" />
+                <div className="min-w-0">
+                  <span className="text-body-0-regular text-foreground truncate block">{query}</span>
+                  <span className="text-body-0-regular text-foreground-dim truncate block">Invite to project</span>
+                </div>
+              </button>
+            )}
+            {!hasResults && !canOnboardUsers && (
               <div className="px-3 py-2 text-body-0-regular text-foreground-dim">No matches</div>
             )}
           </PopoverContent>
@@ -1404,39 +1531,109 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
           {isTeamRecipient ? 'Team members' : 'They'} will get a notification that they&apos;ve received access
         </p>
 
-        <div className="space-y-1">
-          {addRoleOptions.map(option => (
-            <PermissionRadio
-              key={option.value}
-              selected={addingRole === option.value}
-              title={option.label}
-              description={ROLE_DESCRIPTIONS[option.value]}
-              onClick={() => {
-                setAddingRole(option.value as AccessProfileId)
-                setAddingRoleWarning(false)
-              }}
-            />
-          ))}
-          {addingRoleWarning && (
-            <p role="alert" className="text-label-1-regular text-foreground-system-error">
-              Choose an access level before sharing
-            </p>
-          )}
-        </div>
+        {isFolderResource ? (
+          <div className="space-y-1">
+            {addRoleOptions.map(option => (
+              <PermissionRadio
+                key={option.value}
+                selected={addingRole === option.value}
+                title={option.label}
+                description={ROLE_DESCRIPTIONS[option.value]}
+                onClick={() => {
+                  setAddingRole(option.value as AccessProfileId)
+                  setAddingRoleWarning(false)
+                }}
+              />
+            ))}
+            {addingRoleWarning && (
+              <p role="alert" className="text-label-1-regular text-foreground-system-error">
+                Choose an access level before sharing
+              </p>
+            )}
+          </div>
+        ) : null}
 
-        {isCollectionResource && (
+        <div className="space-y-1">
+          {isCollectionResource && (
+            <label className="flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer hover:bg-surface-highlight">
+              <div className="flex-1 min-w-0">
+                <p className="text-body-1-bold text-foreground">Auto-update</p>
+                <p className="text-label-1-regular text-foreground-dim">Include new items as they&apos;re added to the collection</p>
+              </div>
+              <Toggle
+                checked={addingShareMode === 'live'}
+                onChange={(checked) => setAddingShareMode(checked ? 'live' : 'snapshot')}
+                aria-label="Auto-update"
+              />
+            </label>
+          )}
+          {!isFolderResource && (
+            <label className="flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer hover:bg-surface-highlight">
+              <div className="flex-1 min-w-0">
+                <p className="text-body-1-bold text-foreground">Download</p>
+                <p className="text-label-1-regular text-foreground-dim">Can download source files</p>
+              </div>
+              <Toggle
+                checked={addingAllowDownload}
+                onChange={setAddingAllowDownload}
+                aria-label="Download"
+              />
+            </label>
+          )}
+          {isAssetResource && (
+            <label className="flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer hover:bg-surface-highlight">
+              <div className="flex-1 min-w-0">
+                <p className="text-body-1-bold text-foreground">Edit</p>
+                <p className="text-label-1-regular text-foreground-dim">Can modify and upload new versions</p>
+              </div>
+              <Toggle
+                checked={addingAllowEdit}
+                onChange={setAddingAllowEdit}
+                aria-label="Edit"
+              />
+            </label>
+          )}
+          {!isFolderResource && (
+            <label className="flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer hover:bg-surface-highlight">
+              <div className="flex-1 min-w-0">
+                <p className="text-body-1-bold text-foreground">Comment</p>
+                <p className="text-label-1-regular text-foreground-dim">Can leave timecoded notes</p>
+              </div>
+              <Toggle
+                checked={addingAllowComment}
+                onChange={setAddingAllowComment}
+                aria-label="Comment"
+              />
+            </label>
+          )}
           <label className="flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer hover:bg-surface-highlight">
             <div className="flex-1 min-w-0">
-              <p className="text-body-1-bold text-foreground">Auto-update</p>
-              <p className="text-label-1-regular text-foreground-dim">Include new items as they&apos;re added to the collection</p>
+              <p className="text-body-1-bold text-foreground">Set expiry</p>
+              <p className="text-label-1-regular text-foreground-dim">Access is removed automatically after this date</p>
             </div>
             <Toggle
-              checked={addingShareMode === 'live'}
-              onChange={(checked) => setAddingShareMode(checked ? 'live' : 'snapshot')}
-              aria-label="Auto-update"
+              checked={addingExpires}
+              onChange={setAddingExpires}
+              aria-label="Set expiry"
             />
           </label>
-        )}
+          {addingExpires && (
+            <div className="px-3">
+              <MenuSelect
+                value={String(addingExpiresInDays)}
+                options={[
+                  { value: '1', label: '1 day' },
+                  { value: '7', label: '7 days' },
+                  { value: '14', label: '14 days' },
+                  { value: '30', label: '30 days' },
+                  { value: '90', label: '90 days' },
+                ]}
+                onChange={(v) => setAddingExpiresInDays(Number(v))}
+                size="compact"
+              />
+            </div>
+          )}
+        </div>
 
         <Textarea
           value={addingNote}

@@ -191,12 +191,12 @@ export const SCENARIO: Scenario = {
   ],
 
   roleGroups: [
-    { id: 'manager',     name: 'Full Access',      permissions: ['open', 'download', 'write', 'delete', 'comment', 'share', 'edit-acl', 'upload'] },
-    { id: 'editor',      name: 'Edit',             permissions: ['open', 'download', 'write', 'comment', 'share', 'upload'] },
-    { id: 'downloader',  name: 'Review & Share',   permissions: ['open', 'download', 'comment', 'share'] },
-    { id: 'uploader',    name: 'Upload',           permissions: ['open', 'upload'] },
-    { id: 'viewer',      name: 'View only',        permissions: ['open'] },
-    { id: 'link-viewer', name: 'Link Viewer',      permissions: ['open'] },
+    { id: 'manager',     name: 'Full Access',  permissions: ['open', 'download', 'write', 'delete', 'comment', 'edit-acl', 'upload'] },
+    { id: 'editor',      name: 'Editor',       permissions: ['open', 'download', 'write', 'comment', 'upload'] },
+    { id: 'downloader',  name: 'Review',       permissions: ['open', 'download', 'comment'] },
+    { id: 'uploader',    name: 'Upload',       permissions: ['open', 'upload'] },
+    { id: 'viewer',      name: 'View only',    permissions: ['open'] },
+    { id: 'link-viewer', name: 'Link Viewer',  permissions: ['open'] },
   ],
 
   people: [

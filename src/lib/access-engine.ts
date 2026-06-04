@@ -139,7 +139,6 @@ const ALL_PERMISSIONS: Permission[] = [
   'write',
   'delete',
   'comment',
-  'share',
   'edit-acl',
   'upload',
 ]
