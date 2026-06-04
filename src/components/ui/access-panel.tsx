@@ -1606,33 +1606,38 @@ export function AccessPanel({ resourceId, resourceRef, batchResourceRefs, readOn
               />
             </label>
           )}
-          <label className="flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer hover:bg-surface-highlight">
+          <div
+            className="flex items-start gap-3 px-3 py-2 rounded-md cursor-pointer hover:bg-surface-highlight"
+            onClick={() => setAddingExpires((v) => !v)}
+          >
             <div className="flex-1 min-w-0">
               <p className="text-body-1-bold text-foreground">Set expiry</p>
               <p className="text-label-1-regular text-foreground-dim">Access is removed automatically after this date</p>
+              {addingExpires && (
+                <div className="mt-1.5" onClick={(e) => e.stopPropagation()}>
+                  <MenuSelect
+                    value={String(addingExpiresInDays)}
+                    options={[
+                      { value: '1', label: '1 day' },
+                      { value: '7', label: '7 days' },
+                      { value: '14', label: '14 days' },
+                      { value: '30', label: '30 days' },
+                      { value: '90', label: '90 days' },
+                    ]}
+                    onChange={(v) => setAddingExpiresInDays(Number(v))}
+                    size="compact"
+                  />
+                </div>
+              )}
             </div>
-            <Toggle
-              checked={addingExpires}
-              onChange={setAddingExpires}
-              aria-label="Set expiry"
-            />
-          </label>
-          {addingExpires && (
-            <div className="px-3">
-              <MenuSelect
-                value={String(addingExpiresInDays)}
-                options={[
-                  { value: '1', label: '1 day' },
-                  { value: '7', label: '7 days' },
-                  { value: '14', label: '14 days' },
-                  { value: '30', label: '30 days' },
-                  { value: '90', label: '90 days' },
-                ]}
-                onChange={(v) => setAddingExpiresInDays(Number(v))}
-                size="compact"
+            <div onClick={(e) => e.stopPropagation()}>
+              <Toggle
+                checked={addingExpires}
+                onChange={setAddingExpires}
+                aria-label="Set expiry"
               />
             </div>
-          )}
+          </div>
         </div>
 
         <Textarea

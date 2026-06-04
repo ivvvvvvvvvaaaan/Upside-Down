@@ -75,7 +75,7 @@ export function MenuSelect({
   if (disabled) {
     return (
       <span className={cn(
-        'inline-flex items-center justify-between gap-1.5 rounded-md bg-transparent ring-1 ring-inset ring-border-subtle dark:ring-border-inverse-subtle text-foreground-dim opacity-50',
+        'inline-flex items-center justify-between gap-1.5 rounded-md bg-transparent border border-border-subtle dark:border-border-inverse-subtle text-foreground-dim opacity-50',
         size === 'compact' ? 'h-8 px-3 text-label-1-regular min-w-28' : 'h-10 px-3 text-body-0-regular min-w-36',
         className,
       )}>
