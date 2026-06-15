@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef, useDeferredValue } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Search, Info, Download, PanelRight } from 'lucide-react'
+import { Info, Download, PanelRight } from 'lucide-react'
 import {
   AssetCard,
   CardGrid,
@@ -10,13 +10,14 @@ import {
   ContextualActionBar,
   Text,
   MobileToolbar,
-  ScopeStrip,
+  FilterBar,
   SearchSuggestions,
   AssetDetailPanel,
   DropdownMenuItem,
   DropdownMenuDivider,
   Button,
 } from '@/components/ui'
+import type { SearchInputConfig } from '@/components/ui/filter-bar'
 import { SelectAllRow } from '@/components/ui/select-all-row'
 import { cn } from '@/lib/utils'
 import { getGridColumns, useAccess, useAssetSelection, useSmartCollections, useViewPreferences, useMobilePanel } from '@/hooks'
@@ -67,6 +68,8 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
   const composingRef = useRef(false)
 
   const [inputFocused, setInputFocused] = useState(false)
+  const [searchDrillKind, setSearchDrillKind] = useState<string | null>(null)
+  const [chipDropdownLeft, setChipDropdownLeft] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const { selectedIds, primaryId, handleAssetClick, selectAll, selectOnly, clearSelection } = useAssetSelection()
@@ -182,7 +185,7 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     return getSuggestions(freeText, 7, excludeKinds, excludeValues)
   }, [freeText, parsedChips])
 
-  const showSuggestions = inputFocused && suggestions.length > 0
+  const showSuggestions = inputFocused
 
   // === Handlers that mutate the input string ===
 
@@ -269,6 +272,35 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     if (!expanded && searchResults && searchResults.length > 0) setExpanded(true)
   }, [searchResults, expanded])
 
+  const searchInputConfig: SearchInputConfig = {
+    value: freeText,
+    onChange: (v) => { if (!composingRef.current) setInputValue(prev => replaceTrailingFreeText(prev, freeText, v)) },
+    onFocus: () => setInputFocused(true),
+    onBlur: () => { setInputFocused(false); setSearchDrillKind(null); setChipDropdownLeft(0) },
+    onCompositionStart: () => { composingRef.current = true },
+    onCompositionEnd: (v) => { composingRef.current = false; setInputValue(prev => replaceTrailingFreeText(prev, freeText, v)) },
+    inputRef,
+    placeholder: parsedChips.length > 0 ? 'Add more…' : 'Filter by character, scene, episode…',
+    onSubmit: () => { if (inputValue.trim()) setExpanded(true) },
+    suggestionsContent: (
+      <SearchSuggestions
+        suggestions={suggestions}
+        open={showSuggestions}
+        onSelect={(s) => { setExpanded(true); handleSelectSuggestion(s) }}
+        onDismiss={() => setInputFocused(false)}
+        inputRef={inputRef}
+        browseMode={!freeText}
+        facets={facets}
+        activeChips={parsedChips}
+        onPinFacet={(canonical) => { setExpanded(true); handlePinFacet(canonical) }}
+        onDeselect={handleDismissChip}
+        drillKind={searchDrillKind}
+        onDrillKindChange={(kind) => { setSearchDrillKind(kind); if (!kind) setChipDropdownLeft(0) }}
+        leftOffset={chipDropdownLeft}
+      />
+    ),
+  }
+
   const searchSection = (
     <div className="w-full space-y-3">
       {/* Title fades out when expanded */}
@@ -279,67 +311,26 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
         <h1 className="truncate text-lg font-bold md:text-2xl text-foreground">Search</h1>
       </div>
 
-      {/* Search bar — always the same input node, focus is preserved */}
+      {/* Combined filter + search bar */}
       <div className="flex items-center justify-between gap-4">
-        <form className="flex-1 max-w-2xl" onSubmit={(e) => { e.preventDefault(); if (inputValue.trim()) setExpanded(true) }}>
-          <div className="relative">
-            <Search className={cn(
-              'absolute left-4 top-1/2 -translate-y-1/2 text-foreground-dim pointer-events-none transition-all duration-300',
-              expanded ? 'w-4 h-4 left-3' : 'w-5 h-5',
-            )} />
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputValue}
-              onChange={(e) => {
-                if (!composingRef.current) setInputValue(e.target.value)
-              }}
-              onCompositionStart={() => { composingRef.current = true }}
-              onCompositionEnd={(e) => {
-                composingRef.current = false
-                setInputValue(e.currentTarget.value)
-              }}
-              onFocus={() => setInputFocused(true)}
-              onBlur={() => setInputFocused(false)}
-              placeholder='Type to filter — characters, episodes, scenes, "final cut"…'
-              className={cn(
-                'w-full rounded-md bg-surface-flat ring-1 ring-inset ring-border-dim text-foreground placeholder:text-foreground-dim transition-[height,padding,font-size] duration-300 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-border-system-focus',
-                expanded
-                  ? 'h-10 pl-9 text-body-0-regular'
-                  : 'h-14 pl-12 pr-4 text-body-1-regular',
-                expanded && !inputValue && !inputFocused ? 'pr-16' : expanded ? 'pr-3' : '',
-              )}
-            />
-            {expanded && !inputValue && !inputFocused && (
-              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-px px-1.5 h-5 rounded border border-border-dim leading-none text-foreground-subtle pointer-events-none select-none">
-                <span className="text-[12px]" style={{transform:"translateY(0.5px)"}}>⌘</span><span className="text-[9px]">K</span>
-              </kbd>
-            )}
-            <SearchSuggestions
-              suggestions={suggestions}
-              open={showSuggestions}
-              onSelect={(s) => { setExpanded(true); handleSelectSuggestion(s) }}
-              onDismiss={() => setInputFocused(false)}
-              inputRef={inputRef}
-            />
-          </div>
-        </form>
+        <FilterBar
+          className="flex-1 max-w-2xl"
+          chips={parsedChips}
+          facets={facets ?? undefined}
+          onDismissChip={handleDismissChip}
+          onPinFacet={(canonical) => { setExpanded(true); handlePinFacet(canonical) }}
+          onClearAll={handleClearAll}
+          searchInput={searchInputConfig}
+          onChipBodyClick={(drillKind, leftPx) => {
+            setSearchDrillKind(drillKind)
+            inputRef.current?.focus()
+            setChipDropdownLeft(leftPx)
+          }}
+        />
         <Button variant="icon" onClick={togglePanel} aria-label={panelOpen ? 'Close panel' : 'Open panel'}>
           <PanelRight className="w-4 h-4" />
         </Button>
       </div>
-
-      {facets && (
-        <ScopeStrip
-          chips={parsedChips}
-          facets={facets}
-          onDismissChip={handleDismissChip}
-          onPinFacet={(canonical) => { setExpanded(true); handlePinFacet(canonical) }}
-          onClearAll={handleClearAll}
-          semanticText={freeText.trim() || undefined}
-          onDismissSemanticText={handleDismissSemanticText}
-        />
-      )}
     </div>
   )
 

@@ -136,6 +136,8 @@ export interface NavSidebarProps {
   navConfig?: NavConfig
   /** Callback when "New Collection" is clicked */
   onNewCollection?: () => void
+  /** Callback when "New Folder" is clicked */
+  onNewFolder?: () => void
   /** Render with larger touch targets and text for mobile */
   mobile?: boolean
 }
@@ -666,7 +668,7 @@ function SmartCollectionNavItem({ collection, getChildren, badge }: {
 }
 
 
-function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void }) {
+function HardcodedNavigation({ onNewCollection, onNewFolder }: { onNewCollection?: () => void; onNewFolder?: () => void }) {
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
 
@@ -719,6 +721,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
               <WorkspaceRootNavItem key={root.id} root={root} />
             ))}
             <button
+              onClick={onNewFolder}
               className="flex items-center pr-3 py-2 text-body-0-bold text-foreground-subtle hover:text-foreground transition-colors min-w-0"
             >
               <span className="w-7 flex items-center justify-center flex-shrink-0">
@@ -824,7 +827,7 @@ function HardcodedNavigation({ onNewCollection }: { onNewCollection?: () => void
   )
 }
 
-export function NavSidebar({ className, width, style, navConfig, onNewCollection, mobile = false }: NavSidebarProps) {
+export function NavSidebar({ className, width, style, navConfig, onNewCollection, onNewFolder, mobile = false }: NavSidebarProps) {
   const pathname = usePathname()
   const navRef = useRef<HTMLElement | null>(null)
   const scrollTopRef = useRef<number | null>(null)
@@ -875,7 +878,7 @@ export function NavSidebar({ className, width, style, navConfig, onNewCollection
         {navConfig ? (
           <DynamicNavigation navConfig={navConfig} />
         ) : (
-          <HardcodedNavigation onNewCollection={onNewCollection} />
+          <HardcodedNavigation onNewCollection={onNewCollection} onNewFolder={onNewFolder} />
         )}
       </nav>
     </NavMobileContext.Provider>

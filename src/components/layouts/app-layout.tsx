@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { NavSidebar, PrimaryNavRail, ResizeHandle, ProjectBreadcrumb, NewCollectionModal } from '@/components/ui'
+import { NavSidebar, PrimaryNavRail, ResizeHandle, ProjectBreadcrumb, NewCollectionModal, NewFolderModal } from '@/components/ui'
 import { ScenarioGuide } from '@/components/ui/scenario-guide'
-import { useUserCollections, useSmartCollections } from '@/hooks'
+import { useUserCollections, useSmartCollections, useFileTree } from '@/hooks'
 import type { AssetFilter } from '@/lib/data'
 
 /**
@@ -28,10 +28,12 @@ export function AppLayout({ children, hideNav = false }: AppLayoutProps) {
   const router = useRouter()
   const { createCollection: createUserCollection } = useUserCollections()
   const { createCollection: createSmartCollection } = useSmartCollections()
+  const { createFolder } = useFileTree()
 
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH)
   const [isDragging, setIsDragging] = useState(false)
   const [showNewCollectionModal, setShowNewCollectionModal] = useState(false)
+  const [showNewFolderModal, setShowNewFolderModal] = useState(false)
   const startWidthRef = useRef(SIDEBAR_DEFAULT_WIDTH)
   const currentWidthRef = useRef(SIDEBAR_DEFAULT_WIDTH)
 
@@ -81,7 +83,11 @@ export function AppLayout({ children, hideNav = false }: AppLayoutProps) {
         <div className="flex-1 min-h-0 flex overflow-hidden">
           {!hideNav && (
             <div className="hidden md:flex">
-              <NavSidebar width={sidebarWidth} onNewCollection={() => setShowNewCollectionModal(true)} />
+              <NavSidebar
+                width={sidebarWidth}
+                onNewCollection={() => setShowNewCollectionModal(true)}
+                onNewFolder={() => setShowNewFolderModal(true)}
+              />
               <ResizeHandle
                 isDragging={isDragging}
                 onDragStart={handleDragStart}
@@ -99,6 +105,12 @@ export function AppLayout({ children, hideNav = false }: AppLayoutProps) {
       </div>
 
       <ScenarioGuide />
+
+      <NewFolderModal
+        open={showNewFolderModal}
+        onOpenChange={setShowNewFolderModal}
+        onCreate={(name) => createFolder(null, name)}
+      />
 
       <NewCollectionModal
         open={showNewCollectionModal}

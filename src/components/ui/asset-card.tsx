@@ -1,11 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import { cn, formatSceneSlug } from '@/lib/utils'
 import { Button } from './button'
 import { Dropdown } from './dropdown'
+import { Popover, PopoverTrigger, PopoverContent } from './popover'
 import { Tag } from './tag'
 import { Tooltip } from './tooltip'
-import { MoreVertical, Music, FileText, ImageIcon, Film, File, EyeOff, Lock, Box } from 'lucide-react'
+import { MoreVertical, Music, FileText, ImageIcon, Film, File, EyeOff, Lock, Box, Eye, Check } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -28,35 +30,6 @@ const DOMAIN_NAMES: Record<DomainId, string> = {
   'legal': 'Legal',
   'globalization': 'Globalization',
 }
-
-/**
- * AssetCard Component
- *
- * Clickable card displaying individual assets with type-specific styling and metadata.
- * Supports 4 asset types: shot, video, image, text
- *
- * TOKENS USED (Hawkins only - NO hardcoded values):
- * - text-body-0-bold: Asset title (13px font / 20px line / 600 weight)
- * - text-label-0-regular: Metadata (10px font / 15px line / 400 weight)
- * - text-tag-small: Tag and duration (10px font / 15px line / 600 weight)
- * - text-foreground: Asset title default color
- * - text-foreground-system-link: Asset title hover color (blue)
- * - text-foreground-subtle: Metadata line color
- * - bg-surface-flat: Card background default
- * - bg-surface-low: Card background on hover
- * - bg-gray-600 / dark:bg-gray-400: Type tag background
- * - bg-black/60: Duration badge background
- * - rounded: 4px radius
- *
- * Design specs from Figma (Node: 4244-234267):
- * - Card: button element with hover states
- * - Title: body-0-bold (13px/20px/600), hover → link blue with underline
- * - Background: surface-flat → surface-low on hover
- * - Type Tag: tag--text-small (10px/15px/600), 4px horizontal, 0px vertical, gray bg, white text
- * - Metadata: label-0-regular (10px/15px/400), foreground-subtle color (SHOT type only)
- * - Duration: tag--text-small (10px/15px/600), 4px horizontal, 0px vertical, bg-black/60
- * - Menu: Button variant="icon" size="icon", appears on hover
- */
 
 export interface AssetCardProps {
   asset?: Asset
@@ -120,6 +93,7 @@ export function AssetCard({
   // Primary implies selected
   const isSelected = selected || primary
   const isShared = shared === true
+  const [scrubX, setScrubX] = useState<number | null>(null)
 
   // Loading state with breathing animation (no asset data available)
   if (loading || !asset) {
@@ -203,6 +177,9 @@ export function AssetCard({
       </div>
     )
   }
+
+  const isVideoType = asset.type === 'shot' || asset.type === 'video'
+
   const hasDuration = asset.type === 'shot' || asset.type === 'video' || asset.type === 'audio'
   const duration = asset.type === 'shot'
     ? asset.shotMeta?.duration
@@ -285,6 +262,17 @@ export function AssetCard({
     )
   }
 
+  // Toggle-select without clearing others — simulates cmd+click
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onClick?.(asset, { ...e, metaKey: true, shiftKey: false, ctrlKey: false } as React.MouseEvent)
+  }
+
+  const handleThumbnailMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setScrubX(Math.max(0, Math.min(e.clientX - rect.left, rect.width)))
+  }
+
   return (
     <div
       data-card={asset.id}
@@ -327,8 +315,56 @@ export function AssetCard({
         className
       )}
     >
+      {/* Action buttons — sibling to thumbnail, positioned absolute to card.
+          card p-2 (8px) + 4px inset = top-3/right-3 (12px from card edge) */}
+      {!restricted && (
+        <div
+          className="absolute top-3 right-3 z-10 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Tooltip label="View" position="bottom">
+            <button
+              className="w-8 h-8 flex items-center justify-center rounded bg-black/60 hover:bg-black/80 text-white transition-colors"
+              onClick={() => router.push(`/nextgen/assets/${asset.id}`)}
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+          </Tooltip>
+          {menuContent ? (
+            <Tooltip label="More actions" position="bottom">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="w-8 h-8 flex items-center justify-center rounded bg-black/60 hover:bg-black/80 text-white transition-colors">
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="p-0 w-48">
+                  {menuContent}
+                </PopoverContent>
+              </Popover>
+            </Tooltip>
+          ) : onMenuClick ? (
+            <Tooltip label="More actions" position="bottom">
+              <button
+                className="w-8 h-8 flex items-center justify-center rounded bg-black/60 hover:bg-black/80 text-white transition-colors"
+                onClick={() => onMenuClick(asset)}
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+            </Tooltip>
+          ) : null}
+        </div>
+      )}
+
       {/* Thumbnail container - 16:9 aspect ratio */}
-      <div className="relative w-full aspect-video rounded overflow-hidden mb-2">
+      <div
+        className={cn(
+          'relative w-full aspect-video rounded overflow-hidden mb-2',
+          isVideoType && !restricted && 'cursor-col-resize'
+        )}
+        onMouseMove={isVideoType && !restricted ? handleThumbnailMouseMove : undefined}
+        onMouseLeave={isVideoType && !restricted ? () => setScrubX(null) : undefined}
+      >
         <div className={cn(restricted && 'blur-lg scale-110')}>
           {renderThumbnail()}
         </div>
@@ -340,13 +376,30 @@ export function AssetCard({
           </div>
         )}
 
-        {/* Sensitive media badge - top-left */}
-        {!restricted && asset && sensitive && (
+        {/* Sensitive badge owns top-left; otherwise show selection checkbox */}
+        {!restricted && sensitive ? (
           <div className="absolute top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/60">
             <EyeOff className="w-3 h-3 text-white" />
             <span className="text-label-0-regular text-white">Sensitive</span>
           </div>
-        )}
+        ) : !restricted ? (
+          <div
+            className={cn(
+              'absolute top-2 left-2 transition-opacity',
+              isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            )}
+            onClick={handleCheckboxClick}
+          >
+            <div className={cn(
+              'w-4 h-4 rounded flex items-center justify-center border',
+              isSelected
+                ? 'bg-indigo-500 border-indigo-500'
+                : 'bg-black/40 border-white/60'
+            )}>
+              {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
+            </div>
+          </div>
+        ) : null}
 
         {/* Duration / file-type badge - bottom-right overlay */}
         {!restricted && hasDuration && duration && (
@@ -363,45 +416,32 @@ export function AssetCard({
             </span>
           </div>
         )}
+
+        {/* Scrub line — thin vertical marker tracking mouse X, video/shot types only */}
+        {isVideoType && scrubX !== null && !restricted && (
+          <div
+            className="absolute top-0 bottom-0 w-px bg-white/70 pointer-events-none"
+            style={{ left: scrubX }}
+          />
+        )}
       </div>
 
       {/* Content area */}
       <div className="flex flex-col gap-1">
-        {/* Title row — title + menu button aligned */}
-        <div className="flex items-center gap-1">
-          <div className="flex-1 min-w-0">
-            {restricted ? (
-              <span className="text-body-0-bold text-foreground-dim truncate block">
-                {asset.name}
-              </span>
-            ) : (
-              <Link
-                href={`/nextgen/assets/${asset.id}`}
-                onClick={(e) => e.stopPropagation()}
-                className="text-body-0-bold text-foreground truncate block group-hover:text-foreground-system-link transition-colors"
-              >
-                {asset.name}
-              </Link>
-            )}
-          </div>
-          {menuContent ? (
-            <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-              <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
-                {menuContent}
-              </Dropdown>
-            </div>
+        {/* Title */}
+        <div className="min-w-0">
+          {restricted ? (
+            <span className="text-body-0-bold text-foreground-dim truncate block">
+              {asset.name}
+            </span>
           ) : (
-            <Button
-              variant="icon"
-              compact
-              onClick={(e) => {
-                e.stopPropagation()
-                onMenuClick?.(asset)
-              }}
-              className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            <Link
+              href={`/nextgen/assets/${asset.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-body-0-bold text-foreground truncate block group-hover:text-foreground-system-link transition-colors"
             >
-              <MoreVertical />
-            </Button>
+              {asset.name}
+            </Link>
           )}
         </div>
 

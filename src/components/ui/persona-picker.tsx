@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, Shield, Monitor } from 'lucide-react'
+import { ChevronDown, Shield, Monitor, Sun, Moon } from 'lucide-react'
 import Link from 'next/link'
 import { UserJourneyModal } from './user-journey-modal'
-import { usePersona } from '@/hooks'
+import { usePersona, useTheme } from '@/hooks'
 import type { User } from '@/lib/personas'
+import { THEMES } from '@/lib/constants'
 import { Avatar } from './avatar'
 import { cn } from '@/lib/utils'
 
@@ -25,6 +26,7 @@ export function PersonaPicker({
   compactSingleLine?: boolean
 } = {}) {
   const { activePersona, setActivePersona, allPersonas } = usePersona()
+  const { theme, toggleTheme } = useTheme()
   const [open, setOpen] = useState(false)
   const [journeyOpen, setJourneyOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -188,6 +190,27 @@ export function PersonaPicker({
               <div className="text-body-0-bold text-foreground">Desktop Environment</div>
             </div>
           </Link>
+
+          <div className="border-t border-border-dim" />
+          <button
+            onClick={toggleTheme}
+            className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-surface-2 transition-colors"
+            aria-label="Toggle theme"
+          >
+            <span className="w-8 h-8 rounded-full bg-surface-3 flex items-center justify-center flex-shrink-0">
+              {theme === THEMES.DARK ? (
+                <Moon className="w-4 h-4 text-foreground-dim" />
+              ) : (
+                <Sun className="w-4 h-4 text-foreground-dim" />
+              )}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-body-0-bold text-foreground">Theme</div>
+            </div>
+            <span className="text-label-0-regular text-foreground-dim capitalize flex-shrink-0">
+              {theme}
+            </span>
+          </button>
         </div>
       )}
 

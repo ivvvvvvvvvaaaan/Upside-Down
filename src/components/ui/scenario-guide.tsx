@@ -361,7 +361,7 @@ export function ScenarioGuide() {
     <div
       ref={containerRef}
       className={cn('fixed z-50', collapsed ? 'w-auto' : 'w-80')}
-      style={position ? { left: position.x, top: position.y } : { top: 8, right: 16 }}
+      style={position ? { left: position.x, top: position.y } : { bottom: 16, right: 16 }}
     >
       <div className="bg-black border border-border-dim rounded-lg shadow-lg overflow-hidden">
         {/* Header */}

@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Avatar } from './avatar'
-import { Button } from './button'
-import { Dropdown } from './dropdown'
-import { MoreVertical } from 'lucide-react'
+import { Popover, PopoverTrigger, PopoverContent } from './popover'
+import { Tooltip } from './tooltip'
+import { MoreVertical, Check } from 'lucide-react'
 import Image from 'next/image'
 
 const EMPTY_COLLECTION_PLACEHOLDER = '/assets/clapper-img.png'
@@ -428,30 +428,6 @@ export function CollectionCard({
               {renderCountLabel()}
             </div>
           </div>
-          {type !== 'folder' && accessIcon && (
-            <div className="shrink-0 text-foreground-dim">
-              {accessIcon}
-            </div>
-          )}
-          {menuContent ? (
-            <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-              <Dropdown label="More" icon={<MoreVertical className="w-4 h-4" />} iconOnly compact align="end" width="sm">
-                {menuContent}
-              </Dropdown>
-            </div>
-          ) : onMenuClick ? (
-            <Button
-              variant="icon"
-              compact
-              onClick={(e) => {
-                e.stopPropagation()
-                onMenuClick(e)
-              }}
-              className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <MoreVertical className="w-4 h-4" />
-            </Button>
-          ) : null}
         </div>
       )
     }
@@ -560,6 +536,61 @@ export function CollectionCard({
         <div className={cn(isFolder && cn('rounded-md rounded-tl-none p-1 transition-colors', isSelected ? 'bg-white/10' : 'bg-surface-3 group-hover:bg-surface-4'))}>
           {renderThumbnails()}
         </div>
+
+        {/* Selection checkbox — top-left, appears on hover or when selected */}
+        {isFolder && (
+          <div
+            className={cn(
+              'absolute top-3 left-2 transition-opacity',
+              isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            )}
+            onClick={(e) => {
+              e.stopPropagation()
+              onClick?.(e as unknown as React.MouseEvent<HTMLDivElement>)
+            }}
+          >
+            <div className={cn(
+              'w-4 h-4 rounded flex items-center justify-center border',
+              isSelected
+                ? 'bg-indigo-500 border-indigo-500'
+                : 'bg-black/40 border-white/60'
+            )}>
+              {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
+            </div>
+          </div>
+        )}
+
+        {/* Action buttons — top-right overlay, appears on hover */}
+        {isFolder && (
+          <div
+            className="absolute top-3 right-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {menuContent ? (
+              <Tooltip label="More actions" position="bottom">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="w-8 h-8 flex items-center justify-center rounded bg-black/60 hover:bg-black/80 text-white transition-colors">
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="p-0 w-48">
+                    {menuContent}
+                  </PopoverContent>
+                </Popover>
+              </Tooltip>
+            ) : onMenuClick ? (
+              <Tooltip label="More actions" position="bottom">
+                <button
+                  className="w-8 h-8 flex items-center justify-center rounded bg-black/60 hover:bg-black/80 text-white transition-colors"
+                  onClick={(e) => { e.stopPropagation(); onMenuClick(e) }}
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+              </Tooltip>
+            ) : null}
+          </div>
+        )}
       </div>
       
       {/* Footer with avatar/icon and metadata */}

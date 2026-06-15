@@ -18,6 +18,8 @@ export { FileTreeProvider, useFileTree } from './useFileTree'
 
 export { PersonaProvider, usePersona } from './usePersona'
 
+export { ThemeProvider, useTheme } from './useTheme'
+
 export { AccessProvider, useAccess } from './useAccess'
 export { useBlocks } from './useBlocks'
 export { useProjectLock } from './useProjectLock'
