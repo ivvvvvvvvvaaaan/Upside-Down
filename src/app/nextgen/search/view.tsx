@@ -67,7 +67,7 @@ type DirectDrillMeta = {
 const DIRECT_DRILL_META: Record<string, DirectDrillMeta> = {
   dialogue: { label: 'Dialogue', icon: MessageCircle, mode: 'dialogue' },
   visual: { label: 'Visual', icon: Film, mode: 'visual' },
-  semantic: { label: 'Semantic', icon: Sparkles, mode: 'semantic' },
+  semantic: { label: 'Anything', icon: Sparkles, mode: 'semantic' },
 }
 
 export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewProps) {

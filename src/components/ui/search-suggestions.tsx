@@ -167,7 +167,7 @@ export function SearchSuggestions({
   const drillCat = useMemo<BrowseCategory | null>(() => {
     if (!drillKind) return null
     if (drillKind === 'semantic') {
-      return { kind: 'semantic' as Suggestion['kind'], label: 'Semantic', direct: 'semantic', icon: Sparkles }
+      return { kind: 'semantic' as Suggestion['kind'], label: 'Anything', direct: 'semantic', icon: Sparkles }
     }
     return BROWSE_CATEGORIES.find(c => c.kind === drillKind || c.direct === drillKind) ?? null
   }, [drillKind])
@@ -325,7 +325,7 @@ export function SearchSuggestions({
                     onDirectDrillTextChange?.('')
                   }
                 }}
-                placeholder={`Type ${drillCat.label.toLowerCase()} keywords…`}
+                placeholder="Type what you're looking for…"
                 className="w-full bg-transparent text-body-1-regular text-foreground placeholder:text-foreground-dim focus:outline-none"
               />
               <p className="text-label-0-regular text-foreground-subtle mt-1.5">Press Enter to confirm</p>
@@ -426,7 +426,7 @@ export function SearchSuggestions({
                     )}
                   >
                     <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                    <span>Semantic Search</span>
+                    <span>Anything</span>
                   </div>
                 )
               }
