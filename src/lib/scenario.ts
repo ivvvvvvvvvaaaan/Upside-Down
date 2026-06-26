@@ -87,6 +87,7 @@ type ScenarioCollection = {
   createdAt: string
   assetIds: string[]
   sourceSmartCollectionId?: string
+  domainId?: string
 }
 
 type ScenarioCut = {
@@ -436,13 +437,13 @@ export const SCENARIO: Scenario = {
 
   collections: [
     // Shared collections (referenced by grants)
-    { id: 'ws-vfx-coll-for-editorial', name: 'EP301 VFX Pulls - Edit Review',  createdBy: 'schen@netflix.com',   createdAt: '2026-01-27', assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-020-010'] },
-    { id: 'coll-smart-finals-shared',  name: 'Finals (shared)',                createdBy: 'schen@netflix.com',   createdAt: '2026-02-11', assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020'], sourceSmartCollectionId: 'smart-finals' },
-    { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', createdAt: '2026-01-19', assetIds: ['cut-ep301-lc-1', 'cut-ep301-lc-2', 'cut-ep301-lc-3'] },
+    { id: 'ws-vfx-coll-for-editorial', name: 'EP301 VFX Pulls - Edit Review',  createdBy: 'schen@netflix.com',   createdAt: '2026-01-27', assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020', 'ws-vfx-020-010'], domainId: 'vfx' },
+    { id: 'coll-smart-finals-shared',  name: 'Finals (shared)',                createdBy: 'schen@netflix.com',   createdAt: '2026-02-11', assetIds: ['ws-vfx-010-010', 'ws-vfx-010-020'], sourceSmartCollectionId: 'smart-finals', domainId: 'vfx' },
+    { id: 'ws-edit-coll-dailies', name: 'Dailies Review Cuts', createdBy: 'lkim@netflix.com', createdAt: '2026-01-19', assetIds: ['cut-ep301-lc-1', 'cut-ep301-lc-2', 'cut-ep301-lc-3'], domainId: 'editorial' },
     // Everyday organising collections
-    { id: 'coll-creature-designs',  name: 'Car Designs', createdBy: 'psharma@netflix.com', createdAt: '2026-01-14', assetIds: ['ws-art-concept-demogorgon', 'ws-art-concept-creature', 'ws-art-char-eleven'] },
-    { id: 'coll-key-locations',     name: 'Key Circuits',    createdBy: 'psharma@netflix.com', createdAt: '2026-01-14', assetIds: ['ws-art-concept-ud-env', 'ws-art-concept-lab', 'ws-art-env-byers', 'ws-art-env-starcourt'] },
-    { id: 'coll-hero-shots',        name: 'Hero Shots',       createdBy: 'schen@netflix.com',   createdAt: '2026-01-20', assetIds: ['ws-vfx-010-010', 'ws-vfx-020-010', 'ws-vfx-comp-eleven'] },
+    { id: 'coll-creature-designs',  name: 'Car Designs', createdBy: 'psharma@netflix.com', createdAt: '2026-01-14', assetIds: ['ws-art-concept-demogorgon', 'ws-art-concept-creature', 'ws-art-char-eleven'], domainId: 'art-design' },
+    { id: 'coll-key-locations',     name: 'Key Circuits',    createdBy: 'psharma@netflix.com', createdAt: '2026-01-14', assetIds: ['ws-art-concept-ud-env', 'ws-art-concept-lab', 'ws-art-env-byers', 'ws-art-env-starcourt'], domainId: 'art-design' },
+    { id: 'coll-hero-shots',        name: 'Hero Shots',       createdBy: 'schen@netflix.com',   createdAt: '2026-01-20', assetIds: ['ws-vfx-010-010', 'ws-vfx-020-010', 'ws-vfx-comp-eleven'], domainId: 'vfx' },
   ],
 
   sensitiveAssetIds: ['cut-ep301-lc-1', 'cut-ep301-lc-2'],
@@ -781,5 +782,6 @@ export function buildSeedCollections(): UserCollection[] {
       createdAt: new Date(c.createdAt),
       createdBy: c.createdBy,
       sourceSmartCollectionId: c.sourceSmartCollectionId,
+      domainId: c.domainId as UserCollection['domainId'],
     }))
 }

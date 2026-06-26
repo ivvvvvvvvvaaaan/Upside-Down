@@ -478,7 +478,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [activePersona, grants, accessEngine, preparedAccessEngineContext, managerAccessDecisionForResource])
 
   const visibleCollections = useMemo(() => {
-    return collections.filter((collection) => accessEngine.resolve({ id: collection.id, type: 'collection' }).allowed)
+    return collections.filter((collection) => accessEngine.resolve({ id: collection.id, type: 'collection', domainId: collection.domainId }).allowed)
   }, [collections, accessEngine])
 
   const visibleCollectionIds = useMemo(() => new Set(visibleCollections.map((collection) => collection.id)), [visibleCollections])

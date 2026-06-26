@@ -1,26 +1,10 @@
 'use client'
 
-import { useRef, useState } from 'react'
-import { SlidersHorizontal, Sparkles, X } from 'lucide-react'
-import { Popover, PopoverContent, PopoverTrigger } from './popover'
+import { useRef } from 'react'
+import { Search, Sparkles, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ParsedChip } from '@/lib/search'
-import type { FacetBucket, FacetSet } from '@/lib/search'
-
-type Dimension = {
-  kind: ParsedChip['kind']
-  label: string
-  allBuckets: FacetBucket<string>[]
-  remainingBuckets: FacetBucket<string>[]
-  activeChips: ParsedChip[]
-  wildcardChip?: ParsedChip
-  wildcard?: string
-  canAddMore: boolean
-}
-
-const MULTI_VALUE_KINDS = new Set<ParsedChip['kind']>([
-  'character', 'scene', 'location', 'episode', 'stage', 'shootingDay',
-])
+import type { FacetSet } from '@/lib/search'
 
 const WILDCARD_DIMENSION: Partial<Record<string, ParsedChip['kind']>> = {
   'has-character': 'character',
@@ -64,19 +48,33 @@ export interface FilterBarProps {
   chips: ParsedChip[]
   facets?: FacetSet
   onDismissChip: (chip: ParsedChip) => void
-  onPinFacet: (canonicalText: string) => void
+  onPinFacet?: (canonicalText: string) => void
   onClearAll?: () => void
-  semanticText?: string
-  onDismissSemanticText?: () => void
+  /** Semantic searches (Dialogue/Visual/Semantic), each rendered as "{label}: {text}". */
+  semanticChips?: SemanticChipSpec[]
+  /** Remove a semantic chip by id. */
+  onDismissSemanticChip?: (id: number) => void
+  /** Click a semantic chip body to reopen its drill panel for editing. */
+  onEditSemanticChip?: (id: number) => void
   searchInput?: SearchInputConfig
   /** Called when a chip body (not the X) is clicked — provides the drill kind and left offset (px from chips area left edge) */
   onChipBodyClick?: (drillKind: string, leftPx: number) => void
+  /** In-progress chip shown while the user is typing inside a direct drill panel. */
+  provisionalChip?: { label: string; text: string; icon?: React.ComponentType<{ className?: string }> }
+  onDismissProvisionalChip?: () => void
   className?: string
 }
 
 const EMPTY_FACETS: FacetSet = {
   character: [], scene: [], location: [], episode: [],
   stage: [], department: [], mediaAssetType: [], type: [], shootingDay: [],
+}
+
+export type SemanticChipSpec = {
+  id: number
+  label: string
+  text: string
+  icon?: React.ComponentType<{ className?: string }>
 }
 
 type ChipGroup = { kind: ParsedChip['kind']; chips: ParsedChip[]; drillKind: string }
@@ -91,6 +89,9 @@ function buildChipGroups(chips: ParsedChip[]): ChipGroup[] {
         chips: [chip],
         drillKind: WILDCARD_DIMENSION[String(chip.value)] ?? chip.kind,
       })
+    } else if (chip.kind === 'flag') {
+      // Each flag chip gets its own pill (dialogue, visual, final, etc. are distinct modes)
+      groups.push({ kind: 'flag', chips: [chip], drillKind: 'flag' })
     } else if (!seen.has(chip.kind)) {
       seen.add(chip.kind)
       groups.push({
@@ -107,118 +108,92 @@ export function FilterBar({
   chips,
   facets,
   onDismissChip,
-  onPinFacet,
   onClearAll,
-  semanticText,
-  onDismissSemanticText,
+  semanticChips,
+  onDismissSemanticChip,
+  onEditSemanticChip,
   searchInput,
   onChipBodyClick,
+  provisionalChip,
+  onDismissProvisionalChip,
   className,
 }: FilterBarProps) {
-  const [panelOpen, setPanelOpen] = useState(false)
   const chipsWrapperRef = useRef<HTMLDivElement>(null)
-  const f = facets ?? EMPTY_FACETS
+  // Preserves insertion order across structured groups + semantic chips: keys are
+  // appended as they first appear and never reordered, so chips stay where added.
+  const orderRef = useRef<string[]>([])
 
   const chipGroups = buildChipGroups(chips)
+  const sems = semanticChips ?? []
 
-  // Group chips by kind, wildcards separately
-  const chipsByKind = new Map<ParsedChip['kind'], ParsedChip[]>()
-  const wildcardByDimKind = new Map<ParsedChip['kind'], ParsedChip>()
-  for (const chip of chips) {
-    if (chip.kind === 'wildcard') {
-      const dimKind = WILDCARD_DIMENSION[chip.value]
-      if (dimKind) wildcardByDimKind.set(dimKind, chip)
-    } else {
-      if (!chipsByKind.has(chip.kind)) chipsByKind.set(chip.kind, [])
-      chipsByKind.get(chip.kind)!.push(chip)
-    }
-  }
+  // Build a merged, insertion-ordered render list. A structured group keys off its
+  // first chip's source (stable across re-parses); a semantic chip keys off its id.
+  const groupKey = (g: ChipGroup) => `g:${g.drillKind}:${g.chips[0]?.source ?? ''}`
+  const present = new Map<string, { _t: 'group'; g: ChipGroup } | { _t: 'sem'; s: SemanticChipSpec }>()
+  for (const g of chipGroups) present.set(groupKey(g), { _t: 'group', g })
+  for (const s of sems) present.set(`m:${s.id}`, { _t: 'sem', s })
 
-  const rawDimensions = [
-    { kind: 'character' as const, label: 'Character', buckets: f.character, wildcard: 'all characters' },
-    { kind: 'episode' as const, label: 'Episode', buckets: f.episode, wildcard: 'all episodes' },
-    { kind: 'shootingDay' as const, label: 'Day', buckets: f.shootingDay as FacetBucket<string>[], wildcard: 'all shooting days' },
-    { kind: 'scene' as const, label: 'Scene', buckets: f.scene, wildcard: 'all scenes' },
-    { kind: 'location' as const, label: 'Location', buckets: f.location, wildcard: 'all locations' },
-    { kind: 'stage' as const, label: 'Cut', buckets: f.stage as FacetBucket<string>[], wildcard: 'all cuts' },
-    { kind: 'department' as const, label: 'Department', buckets: f.department as FacetBucket<string>[] },
-    { kind: 'mediaAssetType' as const, label: 'Type', buckets: f.mediaAssetType as FacetBucket<string>[] },
-  ]
+  const kept = orderRef.current.filter(k => present.has(k))
+  const known = new Set(kept)
+  for (const k of Array.from(present.keys())) if (!known.has(k)) kept.push(k)
+  orderRef.current = kept
+  const orderedEntries = kept.map(k => present.get(k)!)
 
-  const dimensions: Dimension[] = rawDimensions.map(d => {
-    const activeChips = chipsByKind.get(d.kind) ?? []
-    const wildcardChip = wildcardByDimKind.get(d.kind)
-    const pinnedValues = new Set(activeChips.map(c => String(c.value).toLowerCase()))
-    const remainingBuckets = d.buckets.filter(b => !pinnedValues.has(b.value.toLowerCase()))
-    const isWildcardActive = !!wildcardChip
-    const canAddMore = !isWildcardActive && (
-      MULTI_VALUE_KINDS.has(d.kind)
-        ? remainingBuckets.length > 0
-        : activeChips.length === 0 && remainingBuckets.length > 0
-    )
-    return { kind: d.kind, label: d.label, allBuckets: d.buckets, remainingBuckets, activeChips, wildcardChip, wildcard: d.wildcard, canAddMore }
-  })
-
-  const addableDimensions = dimensions.filter(d => d.canAddMore)
-  const hasSemanticText = !!semanticText?.trim()
-  const anyActive = chips.length > 0 || hasSemanticText
-  const hasFiltersToAdd = addableDimensions.length > 0
+  const hasSemantic = sems.length > 0
+  const anyActive = chips.length > 0 || hasSemantic
 
   // Without searchInput, hide when there's nothing to show
-  if (!searchInput && dimensions.every(d => d.allBuckets.length === 0) && !hasSemanticText) return null
+  const f = facets ?? EMPTY_FACETS
+  const anyBuckets = Object.values(f).some(arr => Array.isArray(arr) && arr.length > 0)
+  if (!searchInput && !anyBuckets && !hasSemantic) return null
 
   return (
     <div className={cn(
       'flex items-center gap-1 pl-1.5 pr-1.5 min-h-10 py-1',
-      'rounded ring-1 ring-inset ring-border-dim bg-surface-flat',
+      'rounded ring-1 ring-inset ring-border-dim bg-surface-low shadow-md',
       'focus-within:ring-2 focus-within:ring-border-system-focus',
       className,
     )}>
-      {/* Filter icon — opens add-filter panel */}
-      <Popover open={panelOpen} onOpenChange={setPanelOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            aria-label="Add filter"
-            disabled={!hasFiltersToAdd}
-            className={cn(
-              'flex items-center justify-center w-7 h-7 shrink-0 rounded',
-              'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-system-focus',
-              hasFiltersToAdd
-                ? 'text-foreground-dim hover:text-foreground hover:bg-surface-highlight cursor-pointer'
-                : 'text-foreground-subtle cursor-default',
-              panelOpen && 'text-foreground bg-surface-highlight',
-            )}
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="p-0 w-72">
-          <AddFilterPanel dimensions={addableDimensions} onPinFacet={onPinFacet} />
-        </PopoverContent>
-      </Popover>
+      {/* Search icon */}
+      <Search className="w-4 h-4 text-foreground-dim shrink-0 mx-1" />
 
       {/* Separator */}
       <div className="w-px h-5 shrink-0 bg-border-dim" />
 
-      {/* Chips + inline search input */}
+      {/* Chips + inline search input — rendered in insertion order */}
       <div ref={chipsWrapperRef} className="relative flex-1 min-w-0 flex flex-wrap items-center gap-1 px-0.5">
-        {hasSemanticText && (
-          <SemanticFilterChip text={semanticText!} onDismiss={onDismissSemanticText} />
-        )}
-        {chipGroups.map((group, i) => (
-          <FilterChip
-            key={`${group.drillKind}-${i}`}
-            kind={group.kind}
-            chips={group.chips}
-            onDismiss={() => group.chips.forEach(c => onDismissChip(c))}
-            onBodyClick={onChipBodyClick ? (rect) => {
-              const wrapperRect = chipsWrapperRef.current?.getBoundingClientRect()
-              const leftPx = wrapperRect ? rect.left - wrapperRect.left : 0
-              onChipBodyClick(group.drillKind, leftPx)
-            } : undefined}
-          />
+        {orderedEntries.map((entry) => (
+          entry._t === 'group' ? (
+            <FilterChip
+              key={groupKey(entry.g)}
+              kind={entry.g.kind}
+              chips={entry.g.chips}
+              onDismiss={() => entry.g.chips.forEach(c => onDismissChip(c))}
+              onBodyClick={onChipBodyClick ? (rect) => {
+                const wrapperRect = chipsWrapperRef.current?.getBoundingClientRect()
+                const leftPx = wrapperRect ? rect.left - wrapperRect.left : 0
+                onChipBodyClick(entry.g.drillKind, leftPx)
+              } : undefined}
+            />
+          ) : (
+            <SemanticFilterChip
+              key={`m:${entry.s.id}`}
+              text={entry.s.text}
+              modeLabel={entry.s.label}
+              icon={entry.s.icon}
+              onDismiss={onDismissSemanticChip ? () => onDismissSemanticChip(entry.s.id) : undefined}
+              onBodyClick={onEditSemanticChip ? () => onEditSemanticChip(entry.s.id) : undefined}
+            />
+          )
         ))}
+        {provisionalChip && (
+          <ProvisionalChip
+            label={provisionalChip.label}
+            text={provisionalChip.text}
+            icon={provisionalChip.icon}
+            onDismiss={onDismissProvisionalChip}
+          />
+        )}
         {searchInput && (
           <div className="flex-1 min-w-[140px]">
             <input
@@ -231,7 +206,16 @@ export function FilterBar({
               onBlur={searchInput.onBlur}
               onCompositionStart={searchInput.onCompositionStart}
               onCompositionEnd={(e) => searchInput.onCompositionEnd(e.currentTarget.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') searchInput.onSubmit?.() }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { searchInput.onSubmit?.(); return }
+                // Backspace on an empty input removes the last chip (in visual order).
+                if (e.key === 'Backspace' && e.currentTarget.value === '' && orderedEntries.length > 0) {
+                  e.preventDefault()
+                  const last = orderedEntries[orderedEntries.length - 1]
+                  if (last._t === 'group') last.g.chips.forEach(c => onDismissChip(c))
+                  else onDismissSemanticChip?.(last.s.id)
+                }
+              }}
               className="w-full h-8 bg-transparent text-body-0-regular text-foreground placeholder:text-foreground-dim focus:outline-none"
             />
           </div>
@@ -263,7 +247,52 @@ export function FilterBar({
   )
 }
 
-// === Individual filter chip ===
+// === Chip shell ===
+// Shared presentation for all filter chips: a pill with an optional click-to-edit
+// body and an optional dismiss button. Variants differ only by content + accent.
+
+function ChipShell({ accent, dismissLabel, onDismiss, onBodyClick, children }: {
+  accent?: boolean
+  dismissLabel?: string
+  onDismiss?: () => void
+  /** When set, the body becomes a button; receives its bounding rect (for dropdown positioning). */
+  onBodyClick?: (rect: DOMRect) => void
+  children: React.ReactNode
+}) {
+  const bodyClass = 'inline-flex items-center gap-1 pl-2 pr-1 py-1 rounded-l text-label-0-bold text-current whitespace-nowrap'
+  return (
+    <span className={cn(
+      'inline-flex items-center shrink-0 rounded transition-colors',
+      accent
+        ? 'bg-indigo-600 dark:bg-indigo-500 text-white'
+        : 'bg-gray-600 hover:bg-gray-500 dark:bg-gray-400 dark:hover:bg-gray-300 text-foreground-inverse dark:text-foreground',
+    )}>
+      {onBodyClick ? (
+        <button
+          type="button"
+          onMouseDown={(e) => { e.preventDefault(); onBodyClick(e.currentTarget.getBoundingClientRect()) }}
+          className={cn(bodyClass, 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-system-focus')}
+        >
+          {children}
+        </button>
+      ) : (
+        <span className={bodyClass}>{children}</span>
+      )}
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label={dismissLabel}
+          className="inline-flex items-center justify-center size-4 mr-1 rounded text-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-system-focus"
+        >
+          <X className="size-4" />
+        </button>
+      )}
+    </span>
+  )
+}
+
+// === Individual filter chip (structured) ===
 
 function FilterChip({ kind, chips, onDismiss, onBodyClick }: {
   kind: ParsedChip['kind']
@@ -273,103 +302,54 @@ function FilterChip({ kind, chips, onDismiss, onBodyClick }: {
 }) {
   const kindLabel = kind !== 'wildcard' ? KIND_LABEL[kind] : undefined
   const valueText = chips.map(c => c.label).join(', ')
-
   return (
-    <span className="inline-flex items-center shrink-0 rounded bg-gray-600 hover:bg-gray-500 dark:bg-gray-400 dark:hover:bg-gray-300 text-foreground-inverse dark:text-foreground transition-colors">
-      <button
-        type="button"
-        onMouseDown={(e) => { e.preventDefault(); onBodyClick?.(e.currentTarget.getBoundingClientRect()) }}
-        className={cn(
-          'inline-flex items-center gap-1 pl-2 pr-1 py-1 rounded-l text-label-0-bold text-current whitespace-nowrap',
-          onBodyClick
-            ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-system-focus'
-            : 'cursor-default',
-        )}
-      >
-        {kindLabel && <span className="font-normal opacity-60">{kindLabel}:</span>}
-        {valueText}
-      </button>
-      <button
-        type="button"
-        onClick={onDismiss}
-        aria-label={`Remove ${kindLabel ? kindLabel + ': ' : ''}${valueText}`}
-        className="inline-flex items-center justify-center size-4 mr-1 rounded text-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-system-focus"
-      >
-        <X className="size-4" />
-      </button>
-    </span>
+    <ChipShell
+      onDismiss={onDismiss}
+      dismissLabel={`Remove ${kindLabel ? kindLabel + ': ' : ''}${valueText}`}
+      onBodyClick={onBodyClick}
+    >
+      {kindLabel && <span className="font-normal opacity-60">{kindLabel}:</span>}
+      {valueText}
+    </ChipShell>
   )
 }
 
-// === Semantic (AI-inferred) chip ===
+// === Provisional (in-progress direct drill) chip ===
 
-function SemanticFilterChip({ text, onDismiss }: { text: string; onDismiss?: () => void }) {
+function ProvisionalChip({ label, text, icon: Icon, onDismiss }: {
+  label: string
+  text: string
+  icon?: React.ComponentType<{ className?: string }>
+  onDismiss?: () => void
+}) {
   return (
-    <div className="inline-flex items-center shrink-0 h-7 rounded bg-gray-600 dark:bg-gray-400">
-      <span className="pl-2 pr-1 flex items-center gap-1 text-label-0-bold text-foreground-inverse dark:text-foreground whitespace-nowrap">
-        <Sparkles className="w-3 h-3 shrink-0 opacity-70" />
-        {text}
-      </span>
-      {onDismiss && (
-        <button
-          type="button"
-          onClick={onDismiss}
-          aria-label={`Remove semantic filter "${text}"`}
-          className="flex items-center justify-center w-6 h-full rounded-r text-foreground-inverse dark:text-foreground hover:bg-gray-500/40 transition-colors focus-visible:outline-none"
-        >
-          <X className="w-3 h-3" />
-        </button>
-      )}
-    </div>
+    <ChipShell accent onDismiss={onDismiss} dismissLabel={`Cancel ${label} filter`}>
+      {Icon && <Icon className="w-3 h-3 shrink-0 opacity-70" />}
+      {label}{text ? `: ${text}` : ':'}
+    </ChipShell>
   )
 }
 
-// === Add-filter panel ===
+// === Semantic (Dialogue / Visual / Semantic) chip ===
 
-function AddFilterPanel({ dimensions, onPinFacet }: { dimensions: Dimension[]; onPinFacet: (canonical: string) => void }) {
-  if (dimensions.length === 0) {
-    return (
-      <div className="px-3 py-4 text-label-0-regular text-foreground-subtle text-center">
-        No more filters available
-      </div>
-    )
-  }
-
+function SemanticFilterChip({ text, modeLabel, icon: Icon = Sparkles, onDismiss, onBodyClick }: {
+  text: string
+  modeLabel?: string
+  icon?: React.ComponentType<{ className?: string }>
+  onDismiss?: () => void
+  onBodyClick?: () => void
+}) {
+  const ariaText = modeLabel ? `${modeLabel}${text ? `: ${text}` : ''}` : text
   return (
-    <div className="max-h-80 overflow-y-auto py-1">
-      {dimensions.map(dim => (
-        <div key={dim.kind}>
-          <div className="px-3 pt-2 pb-1 text-label-0-regular text-foreground-subtle">{dim.label}</div>
-          <ul>
-            {dim.wildcard && (
-              <li>
-                <button
-                  type="button"
-                  onClick={() => onPinFacet(dim.wildcard!)}
-                  className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-body-0-regular text-foreground text-left hover:bg-surface-highlight focus-visible:outline-none focus-visible:bg-surface-highlight"
-                >
-                  <span>All {dim.label.toLowerCase()}s</span>
-                  <span className="text-label-0-regular text-foreground-subtle tabular-nums">
-                    {dim.remainingBuckets.reduce((s, b) => s + b.count, 0)}
-                  </span>
-                </button>
-              </li>
-            )}
-            {dim.remainingBuckets.map(b => (
-              <li key={`${dim.kind}-${b.value}`}>
-                <button
-                  type="button"
-                  onClick={() => onPinFacet(b.label)}
-                  className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-body-0-regular text-foreground text-left hover:bg-surface-highlight focus-visible:outline-none focus-visible:bg-surface-highlight"
-                >
-                  <span className="truncate">{b.label}</span>
-                  <span className="text-label-0-regular text-foreground-subtle tabular-nums">{b.count}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
+    <ChipShell
+      onDismiss={onDismiss}
+      dismissLabel={`Remove semantic filter "${ariaText}"`}
+      onBodyClick={onBodyClick}
+    >
+      <Icon className="w-3 h-3 shrink-0 opacity-70" />
+      {modeLabel && <span className="font-normal opacity-60">{modeLabel}{text ? ':' : ''}</span>}
+      {text}
+    </ChipShell>
   )
 }
+

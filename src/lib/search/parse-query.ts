@@ -21,6 +21,15 @@ import {
   listNarrativeScenes,
 } from '@/lib/ontology-meta'
 
+/**
+ * Asset types each scope mode narrows to. Single source of truth shared by chip
+ * projection (chipsToFilter) and the search view's semantic-mode scoping.
+ */
+export const SEMANTIC_MODE_ASSET_TYPES: Record<'dialogue' | 'visual', AssetType[]> = {
+  dialogue: ['audio'],
+  visual: ['video', 'image', 'shot'],
+}
+
 // === Chip shape ===
 
 /**
@@ -39,7 +48,7 @@ export type ParsedChip =
   | { kind: 'stage'; label: string; value: CutStage; source: string }
   | { kind: 'camera'; label: string; value: string; source: string }
   | { kind: 'take'; label: string; value: string; source: string }
-  | { kind: 'flag'; label: string; value: 'final' | 'circle-take' | 'key-art'; source: string }
+  | { kind: 'flag'; label: string; value: 'final' | 'circle-take' | 'key-art' | 'has-dialogue' | 'visual'; source: string }
   | { kind: 'shootingDay'; label: string; value: number; source: string }
   | { kind: 'wildcard'; label: string; value: 'has-character' | 'has-scene' | 'has-location' | 'has-episode' | 'has-stage' | 'has-shooting-day'; source: string }
 
@@ -159,6 +168,9 @@ const FLAG_ALIASES: Alias[] = [
   { phrase: 'key art', chip: { kind: 'flag', label: 'Key art', value: 'key-art' } },
   { phrase: 'keyart', chip: { kind: 'flag', label: 'Key art', value: 'key-art' } },
   { phrase: 'is final', chip: { kind: 'flag', label: 'Final', value: 'final' } },
+  { phrase: 'dialogue', chip: { kind: 'flag', label: 'Dialogue', value: 'has-dialogue' } },
+  { phrase: 'dialog', chip: { kind: 'flag', label: 'Dialogue', value: 'has-dialogue' } },
+  { phrase: 'visual', chip: { kind: 'flag', label: 'Visual', value: 'visual' } },
   // Bare 'final' is matched LAST, after 'final cut' and 'is final' have had a chance.
   { phrase: 'final', chip: { kind: 'flag', label: 'Final', value: 'final' } },
 ]
@@ -382,6 +394,11 @@ export function chipsToFilter(chips: ParsedChip[], freeText: string): AssetFilte
         if (chip.value === 'final') filter.isFinal = true
         else if (chip.value === 'circle-take') filter.isCircleTake = true
         else if (chip.value === 'key-art') filter.isKeyArt = true
+        else if (chip.value === 'has-dialogue') {
+          for (const t of SEMANTIC_MODE_ASSET_TYPES.dialogue) if (!types.includes(t)) types.push(t)
+        } else if (chip.value === 'visual') {
+          for (const t of SEMANTIC_MODE_ASSET_TYPES.visual) if (!types.includes(t)) types.push(t)
+        }
         break
       case 'shootingDay':
         shootingDays.push(chip.value)

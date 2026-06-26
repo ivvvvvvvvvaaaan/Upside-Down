@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { X, Folder, FolderSymlink, FolderLock, File, Film } from 'lucide-react'
+import { X, Folder, FolderSymlink, FolderLock, File } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tag } from '@/components/ui/tag'
 import { ActivityFeed } from '@/components/ui/activity-feed'
@@ -10,8 +10,6 @@ import { Modal } from '@/components/ui/modal'
 import { Card } from '@/components/ui/card'
 import { ResponsivePanel } from '@/components/ui/responsive-panel'
 import { AccessModal } from '@/components/ui/access-modal'
-import { AssetThumbnailCard } from '@/components/ui/asset-thumbnail-card'
-import type { Asset } from '@/lib/data'
 import type { WorkspaceFileNode } from '@/lib/workspace-data'
 import type { DomainId } from '@/components/department/types'
 import type { ResourceRef } from '@/lib/grants'
@@ -19,10 +17,8 @@ import { formatDate, formatFileSize } from '@/lib/utils'
 import { useAccess, useFileTree } from '@/hooks'
 import { PERSONAS } from '@/lib/personas'
 import { TEAMS } from '@/lib/teams'
-import { DOMAIN_FOLDER_MAP, isReferenceFolder, isCutFolder } from '@/lib/workspace-data'
+import { DOMAIN_FOLDER_MAP, isReferenceFolder } from '@/lib/workspace-data'
 import { domainConfigs } from '@/lib/domain-configs'
-import { getEditSequence } from '@/lib/ontology-meta'
-import { getCutStageLabel } from '@/lib/cuts'
 
 interface WorkspaceSidePanelProps {
   node?: WorkspaceFileNode | null
@@ -87,29 +83,6 @@ export function WorkspaceSidePanel({
     return node ? findNodePath(fileTree as WorkspaceFileNode[], node.id) : null
   }, [node, fileTree])
 
-  // Cut-aware lookups — the cut folder is a Concept-Asset Collection bound 1:1 to
-  // an Edit Sequence Concept. Surface the Concept identity (stage, version,
-  // description) + the typed Media Asset children so users see the spec model,
-  // not a generic folder.
-  const isCut = !!node && isCutFolder(node)
-  const editSequence = useMemo(() => {
-    return isCut && node ? getEditSequence(node.id) : undefined
-  }, [isCut, node])
-  const cutSourceFiles = useMemo<Asset[]>(() => {
-    if (!isCut || !node || !node.children) return []
-    return node.children
-      .filter((child): child is WorkspaceFileNode => child.type === 'file')
-      .map((child) => assetById.get(child.id))
-      .filter((a): a is Asset => !!a)
-  }, [isCut, node, assetById])
-  const cutSubtitle = useMemo(() => {
-    if (!isCut || !editSequence) return null
-    const stageLabel = editSequence.stage ? getCutStageLabel(editSequence.stage) : null
-    if (stageLabel && editSequence.version != null) return `${stageLabel} · V${editSequence.version}`
-    if (stageLabel) return stageLabel
-    return 'Cut'
-  }, [isCut, editSequence])
-
   const resolvedDomainId = useMemo(() => {
     if (domainId) return domainId
     if (!node) return undefined
@@ -123,7 +96,7 @@ export function WorkspaceSidePanel({
 
   const resourceRef: ResourceRef | undefined = node ? {
     id: node.id,
-    type: isCutFolder(node) ? 'cut' : node.type === 'folder' ? 'folder' : 'asset',
+    type: node.type === 'folder' ? 'folder' : 'asset',
     domainId: resolvedDomainId,
   } : undefined
 
@@ -228,9 +201,7 @@ export function WorkspaceSidePanel({
       <div className="flex items-center justify-between gap-3 p-4">
         {node ? (
           <div className="flex items-center gap-3 min-w-0">
-            {isCut ? (
-              <Film className="w-8 h-8 text-foreground flex-shrink-0" />
-            ) : isFolder ? (
+            {isFolder ? (
               <FolderIcon className="w-8 h-8 text-foreground flex-shrink-0" />
             ) : (
               <File className="w-8 h-8 text-foreground-dim flex-shrink-0" />
@@ -238,11 +209,9 @@ export function WorkspaceSidePanel({
             <div className="min-w-0">
               <p className="text-body-0-bold text-foreground truncate">{node.name}</p>
               <p className="text-body-0-regular text-foreground-dim">
-                {isCut
-                  ? (cutSubtitle ?? 'Cut')
-                  : isFolder
-                    ? (isCollectionProjection ? 'Collection' : 'Folder')
-                    : node.extension?.toUpperCase() || 'File'}
+                {isFolder
+                  ? (isCollectionProjection ? 'Collection' : 'Folder')
+                  : node.extension?.toUpperCase() || 'File'}
               </p>
             </div>
           </div>
@@ -262,40 +231,6 @@ export function WorkspaceSidePanel({
         </div>
       ) : (
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Cut Concept identity — stage, version, description */}
-        {isCut && editSequence && (
-          <section className="space-y-3">
-            <div className="flex flex-wrap gap-1.5">
-              {editSequence.stage && (
-                <Tag variant="glass">{getCutStageLabel(editSequence.stage)}</Tag>
-              )}
-              {editSequence.version != null && (
-                <Tag variant="glass">V{editSequence.version}</Tag>
-              )}
-              {editSequence.episode && (
-                <Tag variant="glass">{editSequence.episode}</Tag>
-              )}
-            </div>
-            {editSequence.description && (
-              <p className="text-body-0-regular text-foreground">
-                {editSequence.description}
-              </p>
-            )}
-          </section>
-        )}
-
-        {/* Source Files — the typed Media Asset children of the cut */}
-        {isCut && cutSourceFiles.length > 0 && (
-          <section className="space-y-2">
-            <h4 className="text-body-0-bold text-foreground-dim">Source Files</h4>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {cutSourceFiles.map((asset) => (
-                <AssetThumbnailCard key={asset.id} asset={asset} />
-              ))}
-            </div>
-          </section>
-        )}
-
         {/* Details */}
         <section className="space-y-2">
           <div className="space-y-1">

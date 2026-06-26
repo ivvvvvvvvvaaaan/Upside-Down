@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Folder, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RELEASE_DOMAINS, roleLabelForResource, roleOptionsForResource } from '@/lib/grants'
@@ -91,9 +92,9 @@ function AccessSourceRow({
   const showAutoUpdate = grants.some((grant) => grant.shareMode === 'live')
   const SourceIcon = sourceType === 'folder' ? Folder : Layers
   const nameNode = href ? (
-    <a href={href} className="text-body-0-regular text-foreground hover:text-foreground-system-link transition-colors truncate block">
+    <Link href={href} className="text-body-0-regular text-foreground hover:text-foreground-system-link transition-colors truncate block">
       {name}
-    </a>
+    </Link>
   ) : (
     <span className="text-body-0-regular text-foreground truncate block">{name}</span>
   )

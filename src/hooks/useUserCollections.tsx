@@ -6,6 +6,7 @@ import { buildSeedCollections } from '@/lib/scenario'
 import { mergeCollectionAssetIds } from '@/lib/collection-membership'
 import { PERSONAS } from '@/lib/personas'
 import { SEED_VERSION } from '@/lib/constants'
+import type { DomainId } from '@/components/department/types'
 
 /**
  * User-created collection (distinct from smart collections)
@@ -20,6 +21,8 @@ export type UserCollection = {
   createdBy?: string
   /** If set, this collection is a share snapshot created from a smart collection */
   sourceSmartCollectionId?: string
+  /** Domain the collection belongs to, used for workspace-level access resolution */
+  domainId?: DomainId
 }
 
 const COLLECTIONS_STORAGE_KEY = 'user-collections'

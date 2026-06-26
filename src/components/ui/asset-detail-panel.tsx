@@ -69,7 +69,7 @@ function uniqueTagsByLabel(tags: AssetTag[]): AssetTag[] {
 
 function MetaRow({ label, value, capitalize }: { label: string; value: string; capitalize?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-4">
+    <div className="flex items-baseline justify-between gap-4 py-1.5">
       <span className="text-body-0-regular text-foreground-dim flex-shrink-0">{label}</span>
       <span className={`text-body-0-regular text-foreground text-right truncate ${capitalize ? 'capitalize' : ''}`}>{value}</span>
     </div>
@@ -245,6 +245,7 @@ function AssetAccessView({ assetId, inheritedGrants, resourceRef, resourceName, 
           </span>
           <CollectionAccessSourceRow
             name={collection.name}
+            href={collection.id !== currentCollectionId ? `/nextgen/collections/${collection.id}` : undefined}
             grants={grants}
             roleGroups={roleGroups}
             roleDisplay="text"
@@ -779,11 +780,23 @@ export function AssetDetailPanelContent({
     constituentAssets.length +
     containerItems.length
 
+  const specParts: string[] = []
+  if (asset.type) specParts.push(asset.type.charAt(0).toUpperCase() + asset.type.slice(1))
+  if (asset.extension) specParts.push(asset.extension.toUpperCase())
+  if (asset.version != null) specParts.push(`V${asset.version}`)
+  if (duration) specParts.push(duration)
+  const specSummary = specParts.length > 0 ? specParts.join(' · ') : null
+
   return (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between p-4">
-        <span className="text-body-0-bold text-foreground truncate">{asset.name}</span>
+      <div className="flex items-start justify-between px-4 pt-4 pb-3 gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-body-0-bold text-foreground truncate">{asset.name}</p>
+          {specSummary && (
+            <p className="text-label-0-regular text-foreground-dim mt-0.5">{specSummary}</p>
+          )}
+        </div>
         <Button variant="icon" compact onClick={onClose}>
           <X className="w-4 h-4" />
         </Button>
@@ -798,71 +811,74 @@ export function AssetDetailPanelContent({
         </TabsList>
 
         <div className="flex-1 overflow-y-auto">
-          <TabsContent value="details" className="px-4 pb-4 space-y-4">
+          <TabsContent value="details" className="px-4 pt-4 pb-4 space-y-4">
             {/* Metadata */}
-            <section className="space-y-1.5">
-              <MetaRow label="File name" value={asset.name} />
-              <MetaRow label="Type" value={asset.type} capitalize />
-              {asset.sensitive && (
-                <div className="flex items-center gap-1.5 py-0.5">
-                  <EyeOff className="w-3.5 h-3.5 text-foreground-dim" />
-                  <Tag size="compact" type="notice" variant="fill">Sensitive</Tag>
+            <section className="space-y-5">
+              {/* Shot-specific section */}
+              {(asset.type === 'shot' || asset.kind === 'production-shot' || asset.kind === 'cg-shot' || asset.kind === 'cg-sequence') && (
+                <div>
+                  <h3 className="text-body-0-bold text-foreground mb-0.5">Shot</h3>
+                  {asset.type === 'shot' && asset.shotMeta && (
+                    <>
+                      {asset.shotMeta.scene && <MetaRow label="Scene" value={asset.shotMeta.scene} />}
+                      {asset.shotMeta.take && <MetaRow label="Take" value={asset.shotMeta.take} />}
+                      {asset.shotMeta.camera && <MetaRow label="Camera" value={asset.shotMeta.camera} />}
+                    </>
+                  )}
+                  {asset.kind === 'production-shot' && (() => {
+                    const meta = getProductionShot(asset.id)
+                    if (!meta) return null
+                    const scene = getProductionScene(meta.productionScene)
+                    return (
+                      <>
+                        {meta.lens && <MetaRow label="Lens" value={meta.lens} />}
+                        {meta.circle && <MetaRow label="Circle take" value="Yes" />}
+                        {scene?.shootDate && <MetaRow label="Shot on" value={new Date(scene.shootDate).toLocaleDateString()} />}
+                        {scene?.unit && <MetaRow label="Unit" value={scene.unit} />}
+                        {scene?.shootDay != null && <MetaRow label="Shoot day" value={`Day ${scene.shootDay}`} />}
+                      </>
+                    )
+                  })()}
+                  {asset.kind === 'cg-shot' && (() => {
+                    const meta = getCGShot(asset.id)
+                    if (!meta) return null
+                    return (
+                      <>
+                        {meta.vendor && <MetaRow label="Vendor" value={meta.vendor} />}
+                        {meta.status && <MetaRow label="Status" value={meta.status} capitalize />}
+                      </>
+                    )
+                  })()}
+                  {asset.kind === 'cg-sequence' && (() => {
+                    const meta = getCGSequence(asset.id)
+                    if (!meta) return null
+                    return (
+                      <>
+                        {meta.vendor && <MetaRow label="Vendor" value={meta.vendor} />}
+                        {meta.status && <MetaRow label="Status" value={meta.status} capitalize />}
+                      </>
+                    )
+                  })()}
                 </div>
               )}
-              {asset.department && <MetaRow label="Department" value={DOMAIN_NAMES[asset.department]} />}
-              {duration && <MetaRow label="Duration" value={duration} />}
-              {asset.version != null && <MetaRow label="Version" value={`V${asset.version}`} />}
-              {asset.extension && <MetaRow label="Format" value={asset.extension.toUpperCase()} />}
-              {asset.type === 'shot' && asset.shotMeta && (
-                <>
-                  {asset.shotMeta.scene && <MetaRow label="Scene" value={asset.shotMeta.scene} />}
-                  {asset.shotMeta.take && <MetaRow label="Take" value={asset.shotMeta.take} />}
-                  {asset.shotMeta.camera && <MetaRow label="Camera" value={asset.shotMeta.camera} />}
-                </>
-              )}
-              {/* Production Shot Concept extras — lens, circle take, plus the
-                  linked Production Scene's shoot day metadata. */}
-              {asset.kind === 'production-shot' && (() => {
-                const meta = getProductionShot(asset.id)
-                if (!meta) return null
-                const scene = getProductionScene(meta.productionScene)
-                return (
-                  <>
-                    {meta.lens && <MetaRow label="Lens" value={meta.lens} />}
-                    {meta.circle && <MetaRow label="Circle take" value="Yes" />}
-                    {scene?.shootDate && <MetaRow label="Shot on" value={new Date(scene.shootDate).toLocaleDateString()} />}
-                    {scene?.unit && <MetaRow label="Unit" value={scene.unit} />}
-                    {scene?.shootDay != null && <MetaRow label="Shoot day" value={`Day ${scene.shootDay}`} />}
-                  </>
-                )
-              })()}
-              {/* CG Shot Concept extras — vendor, status from the ontology meta */}
-              {asset.kind === 'cg-shot' && (() => {
-                const meta = getCGShot(asset.id)
-                if (!meta) return null
-                return (
-                  <>
-                    {meta.vendor && <MetaRow label="Vendor" value={meta.vendor} />}
-                    {meta.status && <MetaRow label="Status" value={meta.status} capitalize />}
-                  </>
-                )
-              })()}
-              {/* CG Sequence Concept extras */}
-              {asset.kind === 'cg-sequence' && (() => {
-                const meta = getCGSequence(asset.id)
-                if (!meta) return null
-                return (
-                  <>
-                    {meta.vendor && <MetaRow label="Vendor" value={meta.vendor} />}
-                    {meta.status && <MetaRow label="Status" value={meta.status} capitalize />}
-                  </>
-                )
-              })()}
-              {asset.workspacePath && (
-                <MetaRow label="Location" value={`${asset.department ? `${DOMAIN_NAMES[asset.department]} / ` : ''}${asset.workspacePath}`} />
-              )}
-              {asset.created_at && <MetaRow label="Created" value={new Date(asset.created_at).toLocaleDateString()} />}
-              {asset.modifiedBy && <MetaRow label="Modified by" value={PERSONAS.find(p => p.email === asset.modifiedBy)?.name ?? asset.modifiedBy} />}
+
+              {/* File section */}
+              <div>
+                <h3 className="text-body-0-bold text-foreground mb-0.5">File</h3>
+                {asset.sensitive && (
+                  <div className="flex items-center gap-1.5 py-1.5">
+                    <EyeOff className="w-3.5 h-3.5 text-foreground-dim" />
+                    <Tag size="compact" type="notice" variant="fill">Sensitive</Tag>
+                  </div>
+                )}
+                {asset.department && <MetaRow label="Department" value={DOMAIN_NAMES[asset.department]} />}
+                {duration && <MetaRow label="Duration" value={duration} />}
+                {asset.workspacePath && (
+                  <MetaRow label="Location" value={`${asset.department ? `${DOMAIN_NAMES[asset.department]} / ` : ''}${asset.workspacePath}`} />
+                )}
+                {asset.created_at && <MetaRow label="Created" value={new Date(asset.created_at).toLocaleDateString()} />}
+                {asset.modifiedBy && <MetaRow label="Modified by" value={PERSONAS.find(p => p.email === asset.modifiedBy)?.name ?? asset.modifiedBy} />}
+              </div>
             </section>
 
             {/* Version History — only shown when version switching is available (full asset page) */}
@@ -947,33 +963,28 @@ export function AssetDetailPanelContent({
                   <h3 className="text-body-0-bold text-foreground-dim">Tags</h3>
                   <div className="flex flex-wrap gap-1.5">
                     {displayTags.map(tag => (
-                      <Chip
-                        key={tag.label}
-                        size="compact"
-                      >
-                        {tag.label}
-                      </Chip>
+                      <Chip key={tag.label} size="compact">{tag.label}</Chip>
                     ))}
                     {canEdit(asset.id) && (
-                      <>
-                        <button
-                          onClick={() => setTagModalOpen(true)}
-                          className="inline-flex items-center gap-0.5 px-1 py-0 rounded border border-border-dim text-label-0-bold text-foreground-dim hover:text-foreground hover:border-border-subtle transition-colors"
-                        >
-                          <Plus className="w-3 h-3" />
-                          Add
-                        </button>
-                        <TagManagerModal
-                          open={tagModalOpen}
-                          onClose={() => setTagModalOpen(false)}
-                          readonlyTags={readonlyTags}
-                          editableTags={editableTags}
-                          onAddTag={(label) => addUserTag(asset.id, label)}
-                          onRemoveTag={removeEditableTag}
-                        />
-                      </>
+                      <button
+                        onClick={() => setTagModalOpen(true)}
+                        className="inline-flex items-center gap-0.5 px-1 py-0 rounded border border-border-dim text-label-0-bold text-foreground-dim hover:text-foreground hover:border-border-subtle transition-colors"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Add
+                      </button>
                     )}
                   </div>
+                  {canEdit(asset.id) && (
+                    <TagManagerModal
+                      open={tagModalOpen}
+                      onClose={() => setTagModalOpen(false)}
+                      readonlyTags={readonlyTags}
+                      editableTags={editableTags}
+                      onAddTag={(label) => addUserTag(asset.id, label)}
+                      onRemoveTag={removeEditableTag}
+                    />
+                  )}
                 </section>
               )
             })()}
@@ -981,7 +992,7 @@ export function AssetDetailPanelContent({
             {!activeCollectionId && <ActivityFeed events={assetActivity} />}
           </TabsContent>
 
-          <TabsContent value="connections" className="px-4 pb-4 space-y-4">
+          <TabsContent value="connections" className="px-4 pt-4 pb-4 space-y-4">
             <OntologySection
               dimensions={{
                 characters: characterCollections,

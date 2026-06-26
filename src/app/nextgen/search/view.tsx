@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef, useDeferredValue } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Info, Download, PanelRight } from 'lucide-react'
+import { Info, Download, PanelRight, MessageCircle, Film, Sparkles } from 'lucide-react'
 import {
   AssetCard,
   CardGrid,
@@ -22,6 +22,7 @@ import { SelectAllRow } from '@/components/ui/select-all-row'
 import { cn } from '@/lib/utils'
 import { getGridColumns, useAccess, useAssetSelection, useSmartCollections, useViewPreferences, useMobilePanel } from '@/hooks'
 import type { Asset } from '@/lib/data'
+import type { AssetFilter, AssetType } from '@/lib/data-client'
 import { assetToSelectionEntity } from '@/lib/selection-actions'
 import { getContextAssetGroups } from '@/lib/context-relationships'
 import {
@@ -31,6 +32,7 @@ import {
   removeChipFromQuery,
   addPhraseToQuery,
   replaceTrailingFreeText,
+  SEMANTIC_MODE_ASSET_TYPES,
   type ParsedChip,
   type Suggestion,
 } from '@/lib/search'
@@ -53,6 +55,21 @@ const SUGGESTION_MULTI_VALUE_KINDS = new Set<ParsedChip['kind']>([
  * URL-aware: `?q=…` seeds the initial query and round-trips on edits so
  * deep-links and back-button work.
  */
+// Direct drills open a text-input panel (select → type → Enter) rather than a
+// sub-list. `mode` scopes the resulting semantic search: dialogue → audio,
+// visual → visual media, semantic → unscoped. Icons mirror the browse dropdown.
+type SemanticMode = 'dialogue' | 'visual' | 'semantic'
+type DirectDrillMeta = {
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  mode: SemanticMode
+}
+const DIRECT_DRILL_META: Record<string, DirectDrillMeta> = {
+  dialogue: { label: 'Dialogue', icon: MessageCircle, mode: 'dialogue' },
+  visual: { label: 'Visual', icon: Film, mode: 'visual' },
+  semantic: { label: 'Semantic', icon: Sparkles, mode: 'semantic' },
+}
+
 export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -67,8 +84,15 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
   // Prevents iOS autocorrect/predictive-text from racing the controlled input.
   const composingRef = useRef(false)
 
+  // Semantic chips stack: each has a mode (Dialogue → audio, Visual → visual media,
+  // Semantic → unscoped) + the text to rank against. Confirming a new one appends —
+  // it never replaces an existing chip. Each is individually editable/dismissable.
+  const [semanticChips, setSemanticChips] = useState<{ id: number; mode: SemanticMode; text: string }[]>([])
+  const semanticIdRef = useRef(0)
+  const nextSemanticId = () => ++semanticIdRef.current
   const [inputFocused, setInputFocused] = useState(false)
   const [searchDrillKind, setSearchDrillKind] = useState<string | null>(null)
+  const [directDrillText, setDirectDrillText] = useState('')
   const [chipDropdownLeft, setChipDropdownLeft] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -152,8 +176,15 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
       const visibility = visibilityByAssetId.get(asset.id)
       return visibility === 'accessible' || visibility === 'discoverable'
     })
-    return executeSearch({ query: deferredQuery, assets: visible })
-  }, [deferredQuery, allSearchableAssets, visibilityByAssetId])
+    // Combine every semantic chip's text for scoring; union the mode type-scopes.
+    const semanticText = semanticChips.map(c => c.text).filter(Boolean).join(' ').trim()
+    const modes = new Set(semanticChips.map(c => c.mode))
+    const types: AssetType[] = []
+    if (modes.has('dialogue')) types.push(...SEMANTIC_MODE_ASSET_TYPES.dialogue)
+    if (modes.has('visual')) types.push(...SEMANTIC_MODE_ASSET_TYPES.visual)
+    const contextFilter: AssetFilter | undefined = types.length ? { types } : undefined
+    return executeSearch({ query: deferredQuery, assets: visible, semanticText: semanticText || undefined, contextFilter })
+  }, [deferredQuery, allSearchableAssets, visibilityByAssetId, semanticChips])
 
   // Cheap parse of the *current* input — chips, free text, and suggestions stay
   // in sync with what the user sees without waiting for the deferred render.
@@ -185,7 +216,8 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     return getSuggestions(freeText, 7, excludeKinds, excludeValues)
   }, [freeText, parsedChips])
 
-  const showSuggestions = inputFocused
+  // Keep dropdown open while in any drill mode (incl. direct text drills)
+  const showSuggestions = inputFocused || !!DIRECT_DRILL_META[searchDrillKind ?? '']
 
   // === Handlers that mutate the input string ===
 
@@ -199,11 +231,50 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
 
   const handleClearAll = useCallback(() => {
     setInputValue(freeText.trim())
+    setSemanticChips([])
   }, [freeText])
 
-  const handleDismissSemanticText = useCallback(() => {
+  const handleDismissSemanticChip = useCallback((id: number) => {
+    setSemanticChips(prev => prev.filter(c => c.id !== id))
+  }, [])
+
+  const handleSemanticSearch = useCallback((text: string) => {
+    if (!text.trim()) return
     setInputValue(prev => replaceTrailingFreeText(prev, freeText, '').trim())
+    setSemanticChips(prev => [...prev, { id: nextSemanticId(), mode: 'semantic', text: text.trim() }])
+    inputRef.current?.focus()
   }, [freeText])
+
+  const handleDirectDrillConfirm = useCallback((direct: string, text: string) => {
+    // Dialogue/Visual/Semantic each APPEND a semantic chip (e.g. "Dialogue: hey") —
+    // they never replace an existing one. Anything else pins a plain phrase in the input.
+    const meta = DIRECT_DRILL_META[direct]
+    if (meta) {
+      // Empty text is allowed for Dialogue/Visual (the mode itself is a type filter).
+      if (text.trim() || meta.mode !== 'semantic') {
+        setSemanticChips(prev => [...prev, { id: nextSemanticId(), mode: meta.mode, text: text.trim() }])
+      }
+    } else {
+      setInputValue(prev => addPhraseToQuery(prev, direct))
+    }
+    setSearchDrillKind(null)
+    setDirectDrillText('')
+    inputRef.current?.focus()
+  }, [])
+
+  // Click a semantic chip → reopen its drill panel with the text pre-filled for editing.
+  // That chip is removed; re-confirming appends it again (at the end).
+  const handleEditSemanticChip = useCallback((id: number) => {
+    setSemanticChips(prev => {
+      const chip = prev.find(c => c.id === id)
+      if (chip) {
+        setSearchDrillKind(chip.mode)
+        setDirectDrillText(chip.text)
+      }
+      return prev.filter(c => c.id !== id)
+    })
+    inputRef.current?.focus()
+  }, [])
 
   const handleSelectSuggestion = useCallback((s: Suggestion) => {
     setInputValue(prev => replaceTrailingFreeText(prev, freeText, s.canonical))
@@ -261,55 +332,77 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
     </div>
   ), [canDownload, selectOnly, setSidePanelOpen])
 
-  // One-way expansion. Triggers: Enter, chip pin, suggestion select, or first result.
-  // Not on every keystroke — keeps focus intact during layout shift.
-  const [expanded, setExpanded] = useState(
-    () => !!(searchParams.get('q') ?? '').trim(),
-  )
+  // Ref so onChange/onCompositionEnd always see the latest chips, even when
+  // multiple keystrokes fire before the next render (stale closure guard).
+  const parsedChipsRef = useRef(parsedChips)
+  parsedChipsRef.current = parsedChips
 
-  // Expand when results appear (async, after assets load)
-  useEffect(() => {
-    if (!expanded && searchResults && searchResults.length > 0) setExpanded(true)
-  }, [searchResults, expanded])
+  const buildInputValue = (newFreeText: string) => {
+    const chipStr = parsedChipsRef.current.map(c => c.source).join(' ').trim()
+    return chipStr ? `${chipStr} ${newFreeText}` : newFreeText
+  }
+
+  // parseQuery always trims freeText, so a trailing space typed by the user
+  // gets eaten on re-render and the next character lands without the space.
+  // Track it separately so the input can display the space while freeText is trimmed.
+  const [trailingSpace, setTrailingSpace] = useState(false)
+  // Reset whenever freeText actually changes (chip added, suggestion selected, etc.)
+  useEffect(() => { setTrailingSpace(false) }, [freeText])
+
+  const handleFreeTextChange = (v: string) => {
+    setTrailingSpace(v.endsWith(' '))
+    setInputValue(buildInputValue(v))
+  }
 
   const searchInputConfig: SearchInputConfig = {
-    value: freeText,
-    onChange: (v) => { if (!composingRef.current) setInputValue(prev => replaceTrailingFreeText(prev, freeText, v)) },
+    value: trailingSpace ? freeText + ' ' : freeText,
+    onChange: (v) => { if (!composingRef.current) handleFreeTextChange(v) },
     onFocus: () => setInputFocused(true),
-    onBlur: () => { setInputFocused(false); setSearchDrillKind(null); setChipDropdownLeft(0) },
+    onBlur: () => {
+      setInputFocused(false)
+      // Don't kill a direct drill — focus is moving to the drill text input inside the panel.
+      // Non-direct drills (character, scene, etc.) rely on inputFocused to stay open, so do clear them.
+      if (!DIRECT_DRILL_META[searchDrillKind ?? '']) {
+        setSearchDrillKind(null)
+        setChipDropdownLeft(0)
+      }
+    },
     onCompositionStart: () => { composingRef.current = true },
-    onCompositionEnd: (v) => { composingRef.current = false; setInputValue(prev => replaceTrailingFreeText(prev, freeText, v)) },
+    onCompositionEnd: (v) => { composingRef.current = false; handleFreeTextChange(v) },
     inputRef,
     placeholder: parsedChips.length > 0 ? 'Add more…' : 'Filter by character, scene, episode…',
-    onSubmit: () => { if (inputValue.trim()) setExpanded(true) },
+    onSubmit: () => {},
     suggestionsContent: (
       <SearchSuggestions
         suggestions={suggestions}
         open={showSuggestions}
-        onSelect={(s) => { setExpanded(true); handleSelectSuggestion(s) }}
+        onSelect={(s) => { handleSelectSuggestion(s) }}
         onDismiss={() => setInputFocused(false)}
         inputRef={inputRef}
         browseMode={!freeText}
         facets={facets}
         activeChips={parsedChips}
-        onPinFacet={(canonical) => { setExpanded(true); handlePinFacet(canonical) }}
+        onPinFacet={(canonical) => { handlePinFacet(canonical) }}
         onDeselect={handleDismissChip}
         drillKind={searchDrillKind}
-        onDrillKindChange={(kind) => { setSearchDrillKind(kind); if (!kind) setChipDropdownLeft(0) }}
+        onDrillKindChange={(kind) => {
+          setSearchDrillKind(kind)
+          if (!kind) { setChipDropdownLeft(0); setDirectDrillText('') }
+        }}
         leftOffset={chipDropdownLeft}
+        freeText={freeText}
+        onSemanticSearch={handleSemanticSearch}
+        directDrillText={directDrillText}
+        onDirectDrillTextChange={setDirectDrillText}
+        onDirectDrillConfirm={handleDirectDrillConfirm}
       />
     ),
   }
 
   const searchSection = (
     <div className="w-full space-y-3">
-      {/* Title fades out when expanded */}
-      <div className={cn(
-        'overflow-hidden transition-all duration-200 ease-out',
-        expanded ? 'max-h-0 opacity-0 mb-0 pointer-events-none' : 'max-h-32 opacity-100',
-      )}>
-        <h1 className="truncate text-lg font-bold md:text-2xl text-foreground">Search</h1>
-      </div>
+      {/* Always-present title — kept visible so results appearing doesn't shift the layout */}
+      <h1 className="truncate text-lg font-bold md:text-2xl text-foreground">Search</h1>
 
       {/* Combined filter + search bar */}
       <div className="flex items-center justify-between gap-4">
@@ -318,14 +411,25 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
           chips={parsedChips}
           facets={facets ?? undefined}
           onDismissChip={handleDismissChip}
-          onPinFacet={(canonical) => { setExpanded(true); handlePinFacet(canonical) }}
           onClearAll={handleClearAll}
+          semanticChips={semanticChips.map(c => ({
+            id: c.id,
+            label: DIRECT_DRILL_META[c.mode].label,
+            icon: DIRECT_DRILL_META[c.mode].icon,
+            text: c.text,
+          }))}
+          onDismissSemanticChip={handleDismissSemanticChip}
+          onEditSemanticChip={handleEditSemanticChip}
           searchInput={searchInputConfig}
           onChipBodyClick={(drillKind, leftPx) => {
             setSearchDrillKind(drillKind)
             inputRef.current?.focus()
             setChipDropdownLeft(leftPx)
           }}
+          provisionalChip={searchDrillKind && DIRECT_DRILL_META[searchDrillKind]
+            ? { label: DIRECT_DRILL_META[searchDrillKind].label, text: directDrillText, icon: DIRECT_DRILL_META[searchDrillKind].icon }
+            : undefined}
+          onDismissProvisionalChip={() => { setSearchDrillKind(null); setDirectDrillText('') }}
         />
         <Button variant="icon" onClick={togglePanel} aria-label={panelOpen ? 'Close panel' : 'Open panel'}>
           <PanelRight className="w-4 h-4" />
@@ -342,14 +446,11 @@ export function MediaLibrarySearchView({ recentAssets }: MediaLibrarySearchViewP
           <MobileToolbar title="Search" />
         </div>
 
-        {/* Search bar — sticky in expanded state, hero in default */}
-        <div className={cn(
-          'px-6 pb-3 bg-surface-flat',
-          expanded && 'sticky top-0 z-10',
-        )}>
-          <div className={cn('transition-[padding] duration-300 ease-out', expanded ? 'pt-1' : 'pt-6 pb-4')}>
-            {searchSection}
-          </div>
+        {/* Search bar — always sticky so it stays in view as results scroll.
+            z-30 keeps the bar + its suggestions dropdown above the grid's card-level
+            z-10 content (hover action bars), so dropdown clicks aren't stolen by cards. */}
+        <div className="px-6 pt-6 pb-3 bg-surface-flat sticky top-0 z-30">
+          {searchSection}
         </div>
 
         <div className="px-6 pb-6">

@@ -1087,8 +1087,8 @@ export function WorkspaceView({ folderPath: urlPath, landingFolderId }: Workspac
 
         </div>
 
-        {/* Side Panel — AssetDetailPanel for files, WorkspaceSidePanel for folders */}
-        {primarySelectionEntry?.node.type === 'file' && selectedNodeDomainId && primarySelectionEntry.asset ? (
+        {/* Side Panel — AssetDetailPanel for assets (files + cuts), WorkspaceSidePanel for folders */}
+        {primarySelectionEntry?.asset != null ? (
           <AssetDetailPanel
             asset={primarySelectionEntry.asset}
             open={panelOpen}

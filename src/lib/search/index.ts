@@ -15,6 +15,7 @@ export {
   removeChipFromQuery,
   addPhraseToQuery,
   replaceTrailingFreeText,
+  SEMANTIC_MODE_ASSET_TYPES,
 } from './parse-query'
 export type { ParsedQuery, ParsedChip } from './parse-query'
 export { getSuggestions, KIND_DISPLAY } from './suggestions'
@@ -29,7 +30,7 @@ export { expandTerms, getSynonymMap } from './synonyms'
 import type { Asset, AssetFilter } from '@/lib/data-client'
 import { matchesFilter } from '@/lib/smart-collection-filters'
 import { parseQuery, type ParsedQuery } from './parse-query'
-import { rankAssets, type ScoredAsset } from './score'
+import { rankAssets, type ScoredAsset, type ScoreMatch } from './score'
 import { buildFacets, type FacetSet } from './facets'
 
 export type SearchInput = {
@@ -45,6 +46,12 @@ export type SearchInput = {
   contextFilter?: AssetFilter
   /** Optional facet bucket cap (default 12). */
   facetCap?: number
+  /**
+   * Semantic query captured from a SemanticFilterChip. Used for scoring when
+   * parsed.freeText is empty (the user locked the phrase into a chip and
+   * cleared the input).
+   */
+  semanticText?: string
 }
 
 export type SearchResult = {
@@ -76,12 +83,29 @@ export function executeSearch(input: SearchInput): SearchResult {
 
   const filtered = assets.filter(a => matchesFilter(a, appliedFilter))
 
+  // freeText in the input takes priority; semantic chip text is the fallback
+  // scorer when the user locked a phrase into a chip and cleared the input.
+  const freeTextForScoring = parsed.freeText.trim() || input.semanticText?.trim() || ''
+
   let results: ScoredAsset[]
-  if (parsed.freeText.trim()) {
-    // freeText present → rank, and drop 0-score (none of the terms or
-    // synonyms hit). Assets that pass structured filtering but match nothing
-    // in freeText were not what the user asked for.
-    results = rankAssets(filtered, parsed.freeText).filter(r => r.score > 0)
+  if (freeTextForScoring) {
+    // Primary pass: synonym-expanded term scoring. Ranked results that hit at
+    // least one field come first.
+    const scored = rankAssets(filtered, freeTextForScoring)
+    const scoredAboveZero = scored.filter(r => r.score > 0)
+    const scoredIds = new Set<string>()
+    for (const r of scoredAboveZero) scoredIds.add(r.asset.id)
+
+    // Natural-language fallback: any asset whose combined metadata contains the
+    // raw freeText as a literal substring — the old behavior. Appended after
+    // scored results so ranking is preserved, but nothing disappears because
+    // a word isn't in the synonym map.
+    const needle = freeTextForScoring.toLowerCase()
+    const substringFallback = filtered
+      .filter(a => !scoredIds.has(a.id) && substringMatchesAsset(a, needle))
+      .map(a => ({ asset: a, score: 0 as number, matches: [] as ScoreMatch[] }))
+
+    results = [...scoredAboveZero, ...substringFallback]
   } else {
     // No freeText → structured filter alone defines the set; preserve input order.
     results = filtered.map(a => ({ asset: a, score: 0, matches: [] }))
@@ -118,6 +142,26 @@ export function executeSearch(input: SearchInput): SearchResult {
   facets.shootingDay = disjunctiveFacets.shootingDay
 
   return { parsed, appliedFilter, results, facets }
+}
+
+/**
+ * Returns true if the needle appears as a literal substring in any searchable
+ * metadata field on the asset. Mirrors the old matchesFilter(asset, { query })
+ * behavior so it can serve as a recall fallback when term-based scoring finds
+ * nothing.
+ */
+function substringMatchesAsset(asset: Asset, needle: string): boolean {
+  return [
+    asset.name,
+    asset.episode,
+    asset.mediaAssetType,
+    asset.department,
+    asset.aiMeta?.location,
+    asset.aiMeta?.scene,
+    ...(asset.tags ?? []).map(t => t.label),
+    ...(asset.aiMeta?.characters ?? []),
+    ...(asset.aiMeta?.keywords ?? []),
+  ].some(s => !!s && s.toLowerCase().includes(needle))
 }
 
 /**
